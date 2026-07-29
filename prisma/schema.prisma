@@ -1,0 +1,176 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id             String   @id @default(cuid())
+  email          String   @unique
+  name           String
+  avatar         String?
+  role           String   @default("user")
+  balance        Float    @default(0)
+  totalProfit    Float    @default(0)
+  totalLoss      Float    @default(0)
+  commissionPaid Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  bettingAccounts BettingAccount[]
+  bets            Bet[]
+  transactions    Transaction[]
+  settings        UserSettings?
+}
+
+model UserSettings {
+  id                   String  @id @default(cuid())
+  userId               String  @unique
+  autoBettingEnabled   Boolean @default(false)
+  maxBetAmount         Float   @default(100)
+  minOddsThreshold     Float   @default(1.5)
+  maxOddsThreshold     Float   @default(5.0)
+  riskLevel            String  @default("medium")
+  autoCashoutEnabled   Boolean @default(true)
+  cashoutThreshold     Float   @default(0.7)
+  commissionRate       Float   @default(0.10)
+  preferredSports      String  @default("football,basketball,tennis")
+  notificationsEnabled Boolean @default(true)
+  dailyBetLimit        Float   @default(500)
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model BettingAccount {
+  id           String   @id @default(cuid())
+  userId       String
+  platform     String
+  accountId    String
+  accountName  String
+  accessToken  String?
+  refreshToken String?
+  balance      Float    @default(0)
+  currency     String   @default("USD")
+  isConnected  Boolean  @default(false)
+  lastSyncedAt DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bets Bet[]
+}
+
+model Match {
+  id             String   @id @default(cuid())
+  externalId     String?
+  sport          String
+  league         String
+  homeTeam       String
+  awayTeam       String
+  homeOdds       Float
+  drawOdds       Float?
+  awayOdds       Float
+  overUnderLine  Float?   @default(2.5)
+  overOdds       Float?   @default(1.85)
+  underOdds      Float?   @default(2.10)
+  commenceTime   DateTime
+  status         String   @default("upcoming")
+  homeScore      Int?
+  awayScore      Int?
+  minute         Int?
+  aiHomeWinProb  Float?   @default(0)
+  aiDrawProb     Float?   @default(0)
+  aiAwayWinProb  Float?   @default(0)
+  aiConfidence   Float?   @default(0)
+  aiAnalysis     String?
+  aiRecommended  String?  // "home" | "away" | "draw" | "over" | "under"
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  bets Bet[]
+}
+
+model TeamStats {
+  id            String   @id @default(cuid())
+  teamName      String
+  sport         String
+  league        String
+  season        String
+  matchesPlayed Int      @default(0)
+  wins          Int      @default(0)
+  draws         Int      @default(0)
+  losses        Int      @default(0)
+  goalsFor      Int      @default(0)
+  goalsAgainst  Int      @default(0)
+  form          String?  @default("")
+  homeRecord    String?  @default("")
+  awayRecord    String?  @default("")
+  attackRating  Float    @default(0)
+  defenseRating Float    @default(0)
+  overallRating Float    @default(0)
+  keyPlayers    String?  @default("[]")
+  lastUpdated   DateTime @default(now())
+  createdAt     DateTime @default(now())
+
+  @@unique([teamName, sport, league, season])
+}
+
+model Bet {
+  id              String    @id @default(cuid())
+  userId          String
+  bettingAccountId String
+  matchId         String
+  betType         String
+  selection       String
+  odds            Float
+  stake           Float
+  potentialWin    Float
+  status          String    @default("pending")
+  cashoutAmount   Float?
+  cashoutOdds     Float?
+  profit          Float?
+  isAutoPlaced    Boolean   @default(false)
+  aiConfidence    Float?    @default(0)
+  aiReasoning     String?
+  placedAt        DateTime  @default(now())
+  settledAt       DateTime?
+  cashedOutAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bettingAccount BettingAccount @relation(fields: [bettingAccountId], references: [id], onDelete: Cascade)
+  match          Match         @relation(fields: [matchId], references: [id], onDelete: Cascade)
+}
+
+model Transaction {
+  id          String   @id @default(cuid())
+  userId      String
+  type        String
+  amount      Float
+  currency    String   @default("USD")
+  status      String   @default("completed")
+  description String?
+  betId       String?
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AdminSettings {
+  id                    String  @id @default(cuid())
+  defaultCommissionRate Float   @default(0.10)
+  minCommissionRate     Float   @default(0.05)
+  maxCommissionRate     Float   @default(0.25)
+  platformName          String  @default("iBetPro")
+  maintenanceMode       Boolean @default(false)
+  maxUsers              Int     @default(10000)
+  autoApproveAccounts   Boolean @default(true)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+}
