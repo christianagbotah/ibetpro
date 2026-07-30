@@ -15,6 +15,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Dice5,
+  History,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -26,6 +27,7 @@ const navItems = [
   { href: "/analysis", label: "AI Analysis", icon: Brain },
   { href: "/betting", label: "Betting", icon: Zap },
   { href: "/monitor", label: "Monitor", icon: Monitor },
+  { href: "/history", label: "History", icon: History },
   { href: "/accounts", label: "Accounts", icon: Wallet },
   { href: "/profits", label: "Profits", icon: TrendingUp },
   { href: "/settings", label: "Settings", icon: Settings },

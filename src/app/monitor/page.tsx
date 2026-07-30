@@ -1,11 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useFetch } from "@/lib/hooks";
+import { usePolling } from "@/lib/hooks";
+import { useToast } from "@/components/ui/toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Radio, Eye, DollarSign, Clock, Zap } from "lucide-react";
+import { Radio, Eye, DollarSign, Clock, Zap, Volume2, VolumeX, Play, TrendingUp } from "lucide-react";
+import Link from "next/link";
 
 interface LiveMatch {
   id: string;
@@ -59,11 +61,22 @@ interface CashoutRec {
   urgency: "low" | "medium" | "high";
 }
 
+interface MatchEvent {
+  matchId: string;
+  text: string;
+  timestamp: number;
+}
+
 export default function MonitorPage() {
-  const { data: allMatches, loading: matchesLoading } = useFetch<LiveMatch[]>("/api/matches", []);
-  const { data: bets, loading: betsLoading } = useFetch<ActiveBet[]>("/api/bets?userId=demo-user&status=pending", []);
+  const { addToast } = useToast();
+  // Use polling for live match updates every 15 seconds
+  const { data: allMatches, loading: matchesLoading, refetch: refetchMatches } = usePolling<LiveMatch[]>("/api/matches", 15000, []);
+  const { data: bets, loading: betsLoading, refetch: refetchBets } = usePolling<ActiveBet[]>("/api/bets?userId=demo-user&status=pending", 15000, []);
   const [cashoutRecs, setCashoutRecs] = useState<Record<string, CashoutRec>>({});
   const [cashedOutBets, setCashedOutBets] = useState<Set<string>>(new Set());
+  const [soundEnabled, setSoundEnabled] = useState(false);
+  const [simulating, setSimulating] = useState<string | null>(null);
+  const [matchEvents, setMatchEvents] = useState<MatchEvent[]>([]);
 
   const loading = matchesLoading || betsLoading;
 
@@ -105,7 +118,41 @@ export default function MonitorPage() {
 
   const handleCashout = useCallback(async (betId: string) => {
     setCashedOutBets((prev) => new Set(prev).add(betId));
-  }, []);
+    addToast("success", "Cashout initiated successfully!");
+  }, [addToast]);
+
+  const handleSimulate = useCallback(async (matchId: string) => {
+    setSimulating(matchId);
+    try {
+      const res = await fetch("/api/matches/simulate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ matchId }),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.events && result.events.length > 0) {
+          result.events.forEach((event: string) => {
+            setMatchEvents((prev) => [
+              { matchId, text: event, timestamp: Date.now() },
+              ...prev,
+            ].slice(0, 20));
+          });
+          addToast("info", `Match progressed: ${result.events.join(", ")}`);
+        } else {
+          addToast("info", "Match progressed, no goals scored");
+        }
+        refetchMatches();
+        refetchBets();
+      } else {
+        addToast("error", "Failed to simulate match progress");
+      }
+    } catch {
+      addToast("error", "Failed to simulate match progress");
+    } finally {
+      setSimulating(null);
+    }
+  }, [addToast, refetchMatches, refetchBets]);
 
   const liveMatches = allMatches.filter((m) => m.status === "live" || m.status === "upcoming");
   const liveMatchesList = liveMatches.filter((m) => m.status === "live");
@@ -125,11 +172,29 @@ export default function MonitorPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Live Monitor</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Track live matches and manage active bets in real-time
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Live Monitor</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Track live matches and manage active bets in real-time
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Sound Notification Toggle */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setSoundEnabled(!soundEnabled)}
+            className={`${soundEnabled ? "border-primary/30 text-primary" : "border-border text-muted-foreground"}`}
+          >
+            {soundEnabled ? (
+              <Volume2 className="h-4 w-4 mr-1.5" />
+            ) : (
+              <VolumeX className="h-4 w-4 mr-1.5" />
+            )}
+            {soundEnabled ? "Sound On" : "Sound Off"}
+          </Button>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -182,6 +247,7 @@ export default function MonitorPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Live Matches with Simulate */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -211,23 +277,41 @@ export default function MonitorPage() {
                       </Badge>
                       <span className="text-xs text-muted-foreground">{match.minute}&apos;</span>
                     </div>
-                    <span className="text-xs text-muted-foreground">{match.league}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{match.league}</span>
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        className="border-primary/30 text-primary hover:bg-primary/10"
+                        onClick={() => handleSimulate(match.id)}
+                        disabled={simulating === match.id}
+                      >
+                        {simulating === match.id ? (
+                          <div className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Play className="h-3 w-3" />
+                        )}
+                        Simulate
+                      </Button>
+                    </div>
                   </div>
 
-                  <div className="flex items-center justify-center gap-6 my-3">
-                    <div className="text-center">
-                      <p className="text-sm font-medium text-foreground">{match.homeTeam}</p>
-                      <p className="text-3xl font-bold text-foreground">{match.homeScore}</p>
+                  <Link href={`/matches/${match.id}`} className="block">
+                    <div className="flex items-center justify-center gap-6 my-3">
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-foreground">{match.homeTeam}</p>
+                        <p className="text-3xl font-bold text-foreground">{match.homeScore}</p>
+                      </div>
+                      <div className="text-lg text-muted-foreground">-</div>
+                      <div className="text-center">
+                        <p className="text-sm font-medium text-foreground">{match.awayTeam}</p>
+                        <p className="text-3xl font-bold text-foreground">{match.awayScore}</p>
+                      </div>
                     </div>
-                    <div className="text-lg text-muted-foreground">-</div>
-                    <div className="text-center">
-                      <p className="text-sm font-medium text-foreground">{match.awayTeam}</p>
-                      <p className="text-3xl font-bold text-foreground">{match.awayScore}</p>
-                    </div>
-                  </div>
+                  </Link>
 
                   <div className="mt-2">
-                    <div className="h-1 rounded-full bg-secondary overflow-hidden">
+                    <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
                       <div
                         className="h-full rounded-full bg-red-500 transition-all"
                         style={{ width: `${((match.minute || 0) / 90) * 100}%` }}
@@ -261,31 +345,31 @@ export default function MonitorPage() {
                   Upcoming
                 </div>
                 {upcomingMatchesList.slice(0, 3).map((match) => (
-                  <div
-                    key={match.id}
-                    className="rounded-lg bg-secondary/50 p-3"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">
-                          {match.homeTeam} vs {match.awayTeam}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          {match.league} &middot; {new Date(match.commenceTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">Upcoming</span>
+                  <Link key={match.id} href={`/matches/${match.id}`} className="block">
+                    <div className="rounded-lg bg-secondary/50 p-3 hover:bg-secondary transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-sm font-medium text-foreground">
+                            {match.homeTeam} vs {match.awayTeam}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {match.league} &middot; {new Date(match.commenceTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-xs text-muted-foreground">Upcoming</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 ))}
               </>
             )}
           </CardContent>
         </Card>
 
+        {/* Active Bets & Cashout */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -351,7 +435,7 @@ export default function MonitorPage() {
                       </span>
                     </div>
 
-                    {isSelectedOnLiveMatch && bet.match?.homeScore !== null && (
+                    {isSelectedOnLiveMatch && bet.match?.homeScore != null && (
                       <div className="flex items-center justify-center gap-4 my-2">
                         <span className="text-lg font-bold text-foreground">
                           {bet.match.homeScore} - {bet.match.awayScore}
@@ -362,6 +446,7 @@ export default function MonitorPage() {
                       </div>
                     )}
 
+                    {/* Cashout visualization with progress bar */}
                     {cashoutRec && (
                       <div className="mt-2 rounded-lg bg-secondary/50 p-3">
                         <div className="flex items-center justify-between mb-1">
@@ -369,6 +454,19 @@ export default function MonitorPage() {
                           <span className="text-sm font-bold text-amber-400">
                             ${cashoutRec.cashoutAmount.toFixed(2)}
                           </span>
+                        </div>
+                        {/* Cashout progress bar */}
+                        <div className="h-1.5 rounded-full bg-secondary overflow-hidden mb-2">
+                          <div
+                            className={`h-full rounded-full transition-all ${
+                              cashoutRec.urgency === "high"
+                                ? "bg-red-500"
+                                : cashoutRec.urgency === "medium"
+                                ? "bg-amber-400"
+                                : "bg-primary"
+                            }`}
+                            style={{ width: `${Math.min((cashoutRec.cashoutAmount / bet.potentialWin) * 100, 100)}%` }}
+                          />
                         </div>
                         <p className="text-[10px] text-muted-foreground mb-2">
                           {cashoutRec.reasoning}
@@ -399,6 +497,44 @@ export default function MonitorPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Match Events Timeline */}
+      {matchEvents.length > 0 && (
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3">
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Match Events Timeline
+              </CardTitle>
+              <Button
+                size="xs"
+                variant="ghost"
+                onClick={() => setMatchEvents([])}
+              >
+                Clear
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {matchEvents.map((event, i) => (
+                <div key={i} className="flex items-start gap-3 text-sm">
+                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 shrink-0 mt-0.5">
+                    <Radio className="h-3 w-3 text-primary" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-foreground">{event.text}</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {new Date(event.timestamp).toLocaleTimeString()}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

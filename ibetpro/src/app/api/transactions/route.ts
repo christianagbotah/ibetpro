@@ -11,6 +11,7 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const userId = searchParams.get("userId") || await getDemoUserId();
     const type = searchParams.get("type");
+    const limit = searchParams.get("limit");
 
     if (!userId) {
       return NextResponse.json({ error: "No user found" }, { status: 404 });
@@ -22,6 +23,7 @@ export async function GET(request: NextRequest) {
     const transactions = await prisma.transaction.findMany({
       where,
       orderBy: { createdAt: "desc" },
+      ...(limit ? { take: parseInt(limit, 10) } : {}),
     });
 
     return NextResponse.json(transactions);

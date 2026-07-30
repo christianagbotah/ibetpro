@@ -6,6 +6,21 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const sport = searchParams.get("sport");
     const status = searchParams.get("status");
+    const id = searchParams.get("id");
+
+    // If a specific match ID is requested, return that single match
+    if (id) {
+      const match = await prisma.match.findUnique({
+        where: { id },
+        include: { bets: true },
+      });
+
+      if (!match) {
+        return NextResponse.json({ error: "Match not found" }, { status: 404 });
+      }
+
+      return NextResponse.json(match);
+    }
 
     const where: Record<string, unknown> = {};
     if (sport) where.sport = sport;
