@@ -25,6 +25,9 @@ import {
   Loader2,
   CheckCircle,
   AlertTriangle,
+  Key,
+  Globe,
+  RefreshCw,
 } from "lucide-react";
 import { useState } from "react";
 
@@ -37,6 +40,8 @@ interface AdminSettings {
   maintenanceMode: boolean;
   maxUsers: number;
   autoApproveAccounts: boolean;
+  oddsApiKey: string | null;
+  apiFootballKey: string | null;
 }
 
 interface Stats {
@@ -68,7 +73,7 @@ interface Stats {
 }
 
 export default function AdminPage() {
-  const { data: stats, loading } = useFetch<Stats>("/api/stats", {
+  const { data: stats, loading, refetch } = useFetch<Stats>("/api/stats", {
     totalUsers: 0,
     totalBets: 0,
     totalCommission: 0,
@@ -90,6 +95,9 @@ export default function AdminPage() {
   const [commissionRate, setCommissionRate] = useState(
     stats.adminSettings ? Math.round(stats.adminSettings.defaultCommissionRate * 100) : 10
   );
+  const [oddsApiKey, setOddsApiKey] = useState(stats.adminSettings?.oddsApiKey || "");
+  const [apiFootballKey, setApiFootballKey] = useState(stats.adminSettings?.apiFootballKey || "");
+  const [syncing, setSyncing] = useState(false);
 
   const handleSaveCommission = async () => {
     setSaving(true);
@@ -98,6 +106,28 @@ export default function AdminPage() {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
+
+  const handleSyncData = async () => {
+    setSyncing(true);
+    try {
+      const res = await fetch("/api/matches?refresh=true");
+      if (res.ok) {
+        refetch();
+      }
+    } catch (error) {
+      console.error("Sync failed:", error);
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  // Update form values when stats load
+  if (stats.adminSettings && !oddsApiKey && stats.adminSettings.oddsApiKey) {
+    setOddsApiKey(stats.adminSettings.oddsApiKey);
+  }
+  if (stats.adminSettings && !apiFootballKey && stats.adminSettings.apiFootballKey) {
+    setApiFootballKey(stats.adminSettings.apiFootballKey || "");
+  }
 
   if (loading) {
     return (
@@ -109,6 +139,8 @@ export default function AdminPage() {
       </div>
     );
   }
+
+  const hasApiKeys = !!(stats.adminSettings?.oddsApiKey || stats.adminSettings?.apiFootballKey);
 
   return (
     <div className="space-y-6">
@@ -197,6 +229,104 @@ export default function AdminPage() {
         </Card>
       </div>
 
+      {/* API Keys Configuration */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Key className="h-4 w-4 text-amber-400" />
+            API Keys Configuration
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {!hasApiKeys && (
+            <div className="rounded-lg bg-amber-400/5 border border-amber-400/10 p-3 mb-4">
+              <div className="flex items-center gap-2 mb-1">
+                <AlertTriangle className="h-4 w-4 text-amber-400" />
+                <p className="text-sm font-medium text-amber-400">API Keys Required</p>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                To fetch real-time odds and team statistics, you need to configure at least one API key.
+                The Odds API provides live bookmaker odds, and API-Football provides team statistics and fixtures.
+                Without API keys, the app will have no match data.
+              </p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Globe className="h-4 w-4 text-primary" />
+                The Odds API Key
+              </Label>
+              <Input
+                type="password"
+                placeholder="Enter your the-odds-api.com key"
+                value={oddsApiKey}
+                onChange={(e) => setOddsApiKey(e.target.value)}
+                className="bg-secondary border-border"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Get a free key at the-odds-api.com. Provides live odds from multiple bookmakers.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label className="text-sm font-medium flex items-center gap-2">
+                <Globe className="h-4 w-4 text-primary" />
+                API-Football Key
+              </Label>
+              <Input
+                type="password"
+                placeholder="Enter your api-football.com key"
+                value={apiFootballKey}
+                onChange={(e) => setApiFootballKey(e.target.value)}
+                className="bg-secondary border-border"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Get a key at api-football.com. Provides team statistics, fixtures, and live scores.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Button
+              className="bg-primary text-primary-foreground hover:bg-primary/80"
+              onClick={handleSaveCommission}
+              disabled={saving}
+            >
+              {saving ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : saved ? (
+                <CheckCircle className="h-4 w-4" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              {saving ? "Saving..." : saved ? "Saved!" : "Save API Keys"}
+            </Button>
+            <Button
+              variant="outline"
+              className="border-primary/30 text-primary hover:bg-primary/10"
+              onClick={handleSyncData}
+              disabled={syncing || !hasApiKeys}
+            >
+              {syncing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              {syncing ? "Syncing..." : "Sync Live Data"}
+            </Button>
+          </div>
+
+          {hasApiKeys && (
+            <div className="flex items-center gap-2">
+              <CheckCircle className="h-4 w-4 text-emerald-400" />
+              <p className="text-xs text-emerald-400">API keys configured. Data sync is active.</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Platform Health */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -228,15 +358,15 @@ export default function AdminPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {stats.adminSettings?.maintenanceMode ? (
-                <AlertTriangle className="h-4 w-4 text-red-400" />
-              ) : (
+              {hasApiKeys ? (
                 <CheckCircle className="h-4 w-4 text-emerald-400" />
+              ) : (
+                <AlertTriangle className="h-4 w-4 text-amber-400" />
               )}
               <div>
-                <p className="text-xs text-muted-foreground">Maintenance</p>
-                <p className={`text-sm font-medium ${stats.adminSettings?.maintenanceMode ? "text-red-400" : "text-emerald-400"}`}>
-                  {stats.adminSettings?.maintenanceMode ? "Active" : "None"}
+                <p className="text-xs text-muted-foreground">API Status</p>
+                <p className={`text-sm font-medium ${hasApiKeys ? "text-emerald-400" : "text-amber-400"}`}>
+                  {hasApiKeys ? "Connected" : "No Keys"}
                 </p>
               </div>
             </div>
@@ -244,6 +374,7 @@ export default function AdminPage() {
         </CardContent>
       </Card>
 
+      {/* Commission Rate */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -293,6 +424,7 @@ export default function AdminPage() {
         </CardContent>
       </Card>
 
+      {/* Users Table */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
