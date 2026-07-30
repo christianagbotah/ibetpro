@@ -61,11 +61,16 @@ function AuthContextInner({ children }: { children: ReactNode }) {
         redirect: false,
       });
 
-      if (result?.error) {
-        return { success: false, error: result.error };
+      // NextAuth v4: check result.ok for success, not just absence of error
+      if (result?.ok) {
+        return { success: true };
       }
 
-      return { success: true };
+      // Map generic NextAuth error to user-friendly message
+      const errorMsg = result?.error === "CredentialsSignin"
+        ? "Invalid email or password"
+        : result?.error || "Login failed. Please try again.";
+      return { success: false, error: errorMsg };
     } catch (error) {
       return { success: false, error: "Login failed. Please try again." };
     }

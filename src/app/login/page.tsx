@@ -7,18 +7,26 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Brain, Loader2, AlertCircle, Shield, Zap, TrendingUp } from "lucide-react";
+import { Brain, Loader2, AlertCircle, Shield, Zap, TrendingUp, CheckCircle2 } from "lucide-react";
 
 function LoginForm() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
   const [isRegister, setIsRegister] = useState(false);
   const [name, setName] = useState("");
   const { login, isAuthenticated } = useAuth();
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  // Check for registration success message from URL params
+  useEffect(() => {
+    if (searchParams.get("registered") === "true") {
+      setSuccess("Account created successfully! Please sign in with your credentials.");
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -30,6 +38,7 @@ function LoginForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSuccess("");
     setLoading(true);
 
     try {
@@ -47,17 +56,13 @@ function LoginForm() {
           return;
         }
 
-        const result = await login(email, password);
-        if (result.success) {
-          const callbackUrl = searchParams.get("callbackUrl") || "/";
-          router.push(callbackUrl);
-        } else {
-          setError("Account created. Please log in.");
-          setIsRegister(false);
-        }
+        // Redirect to login page with success message
+        router.push("/login?registered=true");
       } else {
         const result = await login(email, password);
         if (result.success) {
+          // Small delay to let NextAuth session refresh propagate
+          await new Promise((resolve) => setTimeout(resolve, 300));
           const callbackUrl = searchParams.get("callbackUrl") || "/";
           router.push(callbackUrl);
         } else {
@@ -223,6 +228,13 @@ function LoginForm() {
                   </div>
                 )}
 
+                {success && (
+                  <div className="flex items-center gap-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+                    <p className="text-xs text-emerald-400">{success}</p>
+                  </div>
+                )}
+
                 <Button
                   type="submit"
                   className="w-full bg-primary text-primary-foreground hover:bg-primary/80 h-10"
@@ -243,6 +255,7 @@ function LoginForm() {
                     onClick={() => {
                       setIsRegister(!isRegister);
                       setError("");
+                      setSuccess("");
                     }}
                     className="text-xs text-muted-foreground hover:text-primary transition-colors"
                   >
