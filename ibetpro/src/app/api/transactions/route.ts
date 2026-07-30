@@ -1,23 +1,20 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { getAuthUser } from "@/lib/session";
 
-async function getDemoUserId(): Promise<string> {
-  const user = await prisma.user.findFirst({ where: { email: "demo@ibetpro.com" } });
-  return user?.id || "";
-}
-
+// GET /api/transactions - List transactions for authenticated user
 export async function GET(request: NextRequest) {
   try {
+    const user = await getAuthUser();
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId") || await getDemoUserId();
     const type = searchParams.get("type");
     const limit = searchParams.get("limit");
 
-    if (!userId) {
-      return NextResponse.json({ error: "No user found" }, { status: 404 });
-    }
-
-    const where: Record<string, unknown> = { userId };
+    const where: Record<string, unknown> = { userId: user.id };
     if (type) where.type = type;
 
     const transactions = await prisma.transaction.findMany({

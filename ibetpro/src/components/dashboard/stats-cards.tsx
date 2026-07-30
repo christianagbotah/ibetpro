@@ -16,32 +16,24 @@ export function StatsCards({ balance, profit, activeBets, winRate }: StatsCardsP
       title: "Total Balance",
       value: `$${balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
       icon: DollarSign,
-      change: "+12.5%",
-      changeType: "positive" as const,
       color: "text-primary",
     },
     {
       title: "Total Profit",
       value: `$${profit.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
       icon: TrendingUp,
-      change: "+$134.50",
-      changeType: "positive" as const,
-      color: "text-emerald-400",
+      color: profit >= 0 ? "text-emerald-400" : "text-red-400",
     },
     {
       title: "Active Bets",
       value: activeBets.toString(),
       icon: Zap,
-      change: "5 pending",
-      changeType: "neutral" as const,
       color: "text-amber-400",
     },
     {
       title: "Win Rate",
       value: `${winRate}%`,
       icon: Trophy,
-      change: "+3.2%",
-      changeType: "positive" as const,
       color: "text-primary",
     },
   ];
@@ -58,12 +50,6 @@ export function StatsCards({ balance, profit, activeBets, winRate }: StatsCardsP
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{card.value}</div>
-            <p className={`text-xs mt-1 ${
-              card.changeType === "positive" ? "text-emerald-400" : "text-muted-foreground"
-            }`}>
-              {card.changeType === "positive" && "+"}
-              {card.change} from last week
-            </p>
           </CardContent>
         </Card>
       ))}

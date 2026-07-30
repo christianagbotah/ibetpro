@@ -59,7 +59,7 @@ interface Bet {
 
 export default function HistoryPage() {
   const { addToast } = useToast();
-  const { data: bets, loading } = useFetch<Bet[]>("/api/bets?userId=demo-user", []);
+  const { data: bets, loading } = useFetch<Bet[]>("/api/bets", []);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sportFilter, setSportFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("date");

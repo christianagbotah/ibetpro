@@ -1,8 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { getAuthUser, isAdmin } from "@/lib/session";
 
+// GET /api/stats - Get platform-wide stats (admin only or public)
 export async function GET() {
   try {
+    const user = await getAuthUser();
+
     // Get total users
     const totalUsers = await prisma.user.count();
 
@@ -52,21 +56,39 @@ export async function GET() {
       where: { status: "upcoming" },
     });
 
-    // Get users with their profit/loss
-    const users = await prisma.user.findMany({
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        role: true,
-        balance: true,
-        totalProfit: true,
-        totalLoss: true,
-        commissionPaid: true,
-        createdAt: true,
-      },
-      orderBy: { createdAt: "desc" },
-    });
+    // Only include user list if admin
+    let users: Array<{
+      id: string;
+      name: string;
+      email: string;
+      role: string;
+      balance: number;
+      totalProfit: number;
+      totalLoss: number;
+      commissionPaid: number;
+      createdAt: string;
+    }> = [];
+
+    if (user && (await isAdmin())) {
+      const dbUsers = await prisma.user.findMany({
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true,
+          balance: true,
+          totalProfit: true,
+          totalLoss: true,
+          commissionPaid: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: "desc" },
+      });
+      users = dbUsers.map((u) => ({
+        ...u,
+        createdAt: u.createdAt.toISOString(),
+      }));
+    }
 
     return NextResponse.json({
       totalUsers,

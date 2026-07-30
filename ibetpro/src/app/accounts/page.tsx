@@ -1,6 +1,7 @@
 "use client";
 
 import { useFetch } from "@/lib/hooks";
+import { useAuth } from "@/components/auth/auth-provider";
 import { AccountCard } from "@/components/accounts/account-card";
 import { ConnectDialog } from "@/components/accounts/connect-dialog";
 import { Card, CardContent } from "@/components/ui/card";
@@ -17,10 +18,10 @@ interface Account {
 }
 
 export default function AccountsPage() {
-  const { data: accounts, loading, refetch } = useFetch<Account[]>("/api/accounts?userId=demo-user", []);
+  const { isAuthenticated } = useAuth();
+  const { data: accounts, loading, refetch } = useFetch<Account[]>("/api/accounts", []);
 
   const handleSync = async () => {
-    // Simulate sync - in a real app, this would call an API
     refetch();
   };
 
@@ -30,7 +31,6 @@ export default function AccountsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: "demo-user",
           platform,
           accountName,
         }),
@@ -121,6 +121,9 @@ export default function AccountsPage() {
             <Wallet className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
             <p className="text-sm text-muted-foreground">
               No betting accounts connected yet. Connect your first account to get started.
+            </p>
+            <p className="text-xs text-muted-foreground mt-2">
+              Supported: Bet365, Betway, 1xBet, Sportybet, Stake, Pinnacle
             </p>
           </CardContent>
         </Card>

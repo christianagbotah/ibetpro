@@ -1,6 +1,7 @@
 "use client";
 
 import { useFetch } from "@/lib/hooks";
+import { useAuth } from "@/components/auth/auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -29,7 +30,7 @@ import {
   Globe,
   RefreshCw,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface AdminSettings {
   id: string;
@@ -73,6 +74,7 @@ interface Stats {
 }
 
 export default function AdminPage() {
+  const { user, isAdmin: isAdminUser } = useAuth();
   const { data: stats, loading, refetch } = useFetch<Stats>("/api/stats", {
     totalUsers: 0,
     totalBets: 0,
@@ -90,28 +92,71 @@ export default function AdminPage() {
     adminSettings: null,
     users: [],
   });
+
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [commissionRate, setCommissionRate] = useState(
-    stats.adminSettings ? Math.round(stats.adminSettings.defaultCommissionRate * 100) : 10
-  );
-  const [oddsApiKey, setOddsApiKey] = useState(stats.adminSettings?.oddsApiKey || "");
-  const [apiFootballKey, setApiFootballKey] = useState(stats.adminSettings?.apiFootballKey || "");
+  const [commissionRate, setCommissionRate] = useState(10);
+  const [oddsApiKey, setOddsApiKey] = useState("");
+  const [apiFootballKey, setApiFootballKey] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ success: boolean; matchesSynced: number; errors?: string[] } | null>(null);
 
-  const handleSaveCommission = async () => {
+  // Load current admin settings
+  useEffect(() => {
+    async function loadAdminSettings() {
+      try {
+        const res = await fetch("/api/admin");
+        if (res.ok) {
+          const data = await res.json();
+          setCommissionRate(Math.round(data.defaultCommissionRate * 100));
+          if (data.oddsApiKey) setOddsApiKey(data.oddsApiKey);
+          if (data.apiFootballKey) setApiFootballKey(data.apiFootballKey);
+        }
+      } catch (error) {
+        console.error("Failed to load admin settings:", error);
+      }
+    }
+    loadAdminSettings();
+  }, []);
+
+  const handleSaveSettings = async () => {
     setSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      const res = await fetch("/api/admin", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          defaultCommissionRate: commissionRate / 100,
+          oddsApiKey,
+          apiFootballKey,
+        }),
+      });
+
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+        refetch();
+      }
+    } catch (error) {
+      console.error("Failed to save admin settings:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSyncData = async () => {
     setSyncing(true);
+    setSyncResult(null);
     try {
-      const res = await fetch("/api/matches?refresh=true");
+      const res = await fetch("/api/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ source: "auto" }),
+      });
+
       if (res.ok) {
+        const data = await res.json();
+        setSyncResult(data);
         refetch();
       }
     } catch (error) {
@@ -121,13 +166,7 @@ export default function AdminPage() {
     }
   };
 
-  // Update form values when stats load
-  if (stats.adminSettings && !oddsApiKey && stats.adminSettings.oddsApiKey) {
-    setOddsApiKey(stats.adminSettings.oddsApiKey);
-  }
-  if (stats.adminSettings && !apiFootballKey && stats.adminSettings.apiFootballKey) {
-    setApiFootballKey(stats.adminSettings.apiFootballKey || "");
-  }
+  const hasApiKeys = !!(oddsApiKey || apiFootballKey);
 
   if (loading) {
     return (
@@ -140,7 +179,19 @@ export default function AdminPage() {
     );
   }
 
-  const hasApiKeys = !!(stats.adminSettings?.oddsApiKey || stats.adminSettings?.apiFootballKey);
+  if (!isAdminUser) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center">
+          <AlertTriangle className="h-12 w-12 text-amber-400 mx-auto mb-3" />
+          <p className="text-lg font-medium text-foreground">Admin Access Required</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            You need admin privileges to access this page.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -245,7 +296,7 @@ export default function AdminPage() {
                 <p className="text-sm font-medium text-amber-400">API Keys Required</p>
               </div>
               <p className="text-xs text-muted-foreground">
-                To fetch real-time odds and team statistics, you need to configure at least one API key.
+                To fetch real-time odds and team statistics, configure at least one API key.
                 The Odds API provides live bookmaker odds, and API-Football provides team statistics and fixtures.
                 Without API keys, the app will have no match data.
               </p>
@@ -290,7 +341,7 @@ export default function AdminPage() {
           <div className="flex items-center gap-3">
             <Button
               className="bg-primary text-primary-foreground hover:bg-primary/80"
-              onClick={handleSaveCommission}
+              onClick={handleSaveSettings}
               disabled={saving}
             >
               {saving ? (
@@ -306,7 +357,7 @@ export default function AdminPage() {
               variant="outline"
               className="border-primary/30 text-primary hover:bg-primary/10"
               onClick={handleSyncData}
-              disabled={syncing || !hasApiKeys}
+              disabled={syncing}
             >
               {syncing ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -316,6 +367,26 @@ export default function AdminPage() {
               {syncing ? "Syncing..." : "Sync Live Data"}
             </Button>
           </div>
+
+          {syncResult && (
+            <div className={`rounded-lg p-3 ${syncResult.success ? "bg-emerald-400/5 border border-emerald-400/10" : "bg-red-400/5 border border-red-400/10"}`}>
+              <div className="flex items-center gap-2">
+                {syncResult.success ? (
+                  <CheckCircle className="h-4 w-4 text-emerald-400" />
+                ) : (
+                  <AlertTriangle className="h-4 w-4 text-red-400" />
+                )}
+                <span className={`text-sm ${syncResult.success ? "text-emerald-400" : "text-red-400"}`}>
+                  {syncResult.success
+                    ? `Synced ${syncResult.matchesSynced} matches`
+                    : "Sync failed"}
+                </span>
+              </div>
+              {syncResult.errors && syncResult.errors.map((err, i) => (
+                <p key={i} className="text-xs text-muted-foreground mt-1">{err}</p>
+              ))}
+            </div>
+          )}
 
           {hasApiKeys && (
             <div className="flex items-center gap-2">
@@ -409,7 +480,7 @@ export default function AdminPage() {
 
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/80"
-            onClick={handleSaveCommission}
+            onClick={handleSaveSettings}
             disabled={saving}
           >
             {saving ? (
@@ -446,42 +517,42 @@ export default function AdminPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {stats.users.map((user) => (
-                  <TableRow key={user.id} className="border-border">
+                {stats.users.map((u) => (
+                  <TableRow key={u.id} className="border-border">
                     <TableCell className="text-sm font-medium text-foreground">
-                      {user.name}
+                      {u.name}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {user.email}
+                      {u.email}
                     </TableCell>
                     <TableCell>
                       <Badge
                         variant="secondary"
                         className={
-                          user.role === "admin"
+                          u.role === "admin"
                             ? "bg-primary/10 text-primary"
                             : "bg-secondary text-muted-foreground"
                         }
                       >
-                        {user.role}
+                        {u.role}
                       </Badge>
                     </TableCell>
                     <TableCell>
                       <span
                         className={`text-sm font-medium ${
-                          user.totalProfit - user.totalLoss >= 0
+                          u.totalProfit - u.totalLoss >= 0
                             ? "text-emerald-400"
                             : "text-red-400"
                         }`}
                       >
-                        ${(user.totalProfit - user.totalLoss).toFixed(2)}
+                        ${(u.totalProfit - u.totalLoss).toFixed(2)}
                       </span>
                     </TableCell>
                     <TableCell className="text-sm text-amber-400">
-                      ${user.commissionPaid.toFixed(2)}
+                      ${u.commissionPaid.toFixed(2)}
                     </TableCell>
                     <TableCell className="text-sm text-foreground">
-                      ${user.balance.toFixed(2)}
+                      ${u.balance.toFixed(2)}
                     </TableCell>
                   </TableRow>
                 ))}

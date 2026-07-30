@@ -1,15 +1,25 @@
 "use client";
 
-import { Bell, Search, Menu } from "lucide-react";
+import { Bell, Search, Menu, LogOut, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/components/auth/auth-provider";
+import { useFetch } from "@/lib/hooks";
+import Link from "next/link";
 
 interface HeaderProps {
   onMobileMenuToggle?: () => void;
 }
 
+interface UserStats {
+  balance: number;
+}
+
 export function Header({ onMobileMenuToggle }: HeaderProps) {
+  const { user, isAuthenticated, logout } = useAuth();
+  const { data: stats } = useFetch<UserStats>("/api/stats/user", { balance: 0 });
+
   return (
     <header className="flex h-16 items-center justify-between border-b border-border bg-card px-4 lg:px-6">
       <div className="flex items-center gap-4">
@@ -31,17 +41,43 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
       </div>
 
       <div className="flex items-center gap-3">
-        <div className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-1.5">
-          <span className="text-xs text-muted-foreground">Balance</span>
-          <span className="text-sm font-bold text-primary">$5,000.00</span>
-        </div>
+        {isAuthenticated ? (
+          <>
+            <div className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-1.5">
+              <span className="text-xs text-muted-foreground">Balance</span>
+              <span className="text-sm font-bold text-primary">
+                ${stats.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+              </span>
+            </div>
 
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-primary text-primary-foreground">
-            3
-          </Badge>
-        </Button>
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-5 w-5" />
+            </Button>
+
+            <div className="flex items-center gap-2 ml-2">
+              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+                <User className="h-4 w-4 text-primary" />
+              </div>
+              <span className="text-sm font-medium text-foreground hidden sm:block">
+                {user?.name}
+              </span>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={logout}
+                className="text-muted-foreground hover:text-foreground"
+              >
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </div>
+          </>
+        ) : (
+          <Link href="/login">
+            <Button className="bg-primary text-primary-foreground hover:bg-primary/80">
+              Sign In
+            </Button>
+          </Link>
+        )}
       </div>
     </header>
   );

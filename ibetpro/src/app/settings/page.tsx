@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useAuth } from "@/components/auth/auth-provider";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -30,11 +31,14 @@ interface UserSettings {
   dailyBetLimit: number;
   preferredSports: string;
   notificationsEnabled: boolean;
+  kellyFraction: number;
+  minEdgeThreshold: number;
 }
 
 export default function SettingsPage() {
+  const { user, isAuthenticated } = useAuth();
   const [settings, setSettings] = useState<UserSettings>({
-    autoBettingEnabled: true,
+    autoBettingEnabled: false,
     maxBetAmount: 200,
     minOddsThreshold: 1.5,
     maxOddsThreshold: 5.0,
@@ -45,17 +49,66 @@ export default function SettingsPage() {
     dailyBetLimit: 500,
     preferredSports: "football,basketball,tennis",
     notificationsEnabled: true,
+    kellyFraction: 0.25,
+    minEdgeThreshold: 0.03,
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Load settings from API
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    async function loadSettings() {
+      try {
+        const res = await fetch("/api/settings");
+        if (res.ok) {
+          const data = await res.json();
+          setSettings({
+            autoBettingEnabled: data.autoBettingEnabled ?? false,
+            maxBetAmount: data.maxBetAmount ?? 200,
+            minOddsThreshold: data.minOddsThreshold ?? 1.5,
+            maxOddsThreshold: data.maxOddsThreshold ?? 5.0,
+            riskLevel: data.riskLevel ?? "medium",
+            autoCashoutEnabled: data.autoCashoutEnabled ?? true,
+            cashoutThreshold: data.cashoutThreshold ?? 0.7,
+            commissionRate: data.commissionRate ?? 0.10,
+            dailyBetLimit: data.dailyBetLimit ?? 500,
+            preferredSports: data.preferredSports ?? "football,basketball,tennis",
+            notificationsEnabled: data.notificationsEnabled ?? true,
+            kellyFraction: data.kellyFraction ?? 0.25,
+            minEdgeThreshold: data.minEdgeThreshold ?? 0.03,
+          });
+        }
+      } catch (error) {
+        console.error("Failed to load settings:", error);
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadSettings();
+  }, [isAuthenticated]);
 
   const handleSave = async () => {
     setSaving(true);
-    // Simulate save
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    try {
+      const res = await fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(settings),
+      });
+
+      if (res.ok) {
+        setSaved(true);
+        setTimeout(() => setSaved(false), 2000);
+      }
+    } catch (error) {
+      console.error("Failed to save settings:", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   const riskLevels = [
@@ -68,6 +121,8 @@ export default function SettingsPage() {
     { id: "football", label: "Football" },
     { id: "basketball", label: "Basketball" },
     { id: "tennis", label: "Tennis" },
+    { id: "hockey", label: "Hockey" },
+    { id: "baseball", label: "Baseball" },
   ];
 
   const toggleSport = (sport: string) => {
@@ -78,9 +133,19 @@ export default function SettingsPage() {
     setSettings({ ...settings, preferredSports: updated.join(",") });
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          Loading settings...
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6 max-w-3xl">
-      {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-foreground">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">
@@ -186,6 +251,37 @@ export default function SettingsPage() {
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Kelly Criterion */}
+          <Separator />
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="text-sm font-medium">Kelly Fraction</Label>
+              <Input
+                type="number"
+                step="0.05"
+                value={settings.kellyFraction}
+                onChange={(e) =>
+                  setSettings({ ...settings, kellyFraction: parseFloat(e.target.value) || 0.25 })
+                }
+                className="bg-secondary border-border mt-1"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Quarter-Kelly (0.25) recommended</p>
+            </div>
+            <div>
+              <Label className="text-sm font-medium">Min Edge Threshold</Label>
+              <Input
+                type="number"
+                step="0.01"
+                value={settings.minEdgeThreshold}
+                onChange={(e) =>
+                  setSettings({ ...settings, minEdgeThreshold: parseFloat(e.target.value) || 0.03 })
+                }
+                className="bg-secondary border-border mt-1"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Minimum 3% edge to place bet</p>
             </div>
           </div>
         </CardContent>
@@ -323,15 +419,15 @@ export default function SettingsPage() {
         <CardContent className="space-y-3">
           <div className="flex items-center justify-between">
             <Label className="text-sm text-muted-foreground">Name</Label>
-            <span className="text-sm text-foreground">Alex Johnson</span>
+            <span className="text-sm text-foreground">{user?.name || "N/A"}</span>
           </div>
           <div className="flex items-center justify-between">
             <Label className="text-sm text-muted-foreground">Email</Label>
-            <span className="text-sm text-foreground">demo@ibetpro.com</span>
+            <span className="text-sm text-foreground">{user?.email || "N/A"}</span>
           </div>
           <div className="flex items-center justify-between">
             <Label className="text-sm text-muted-foreground">Role</Label>
-            <Badge variant="secondary">User</Badge>
+            <Badge variant="secondary">{user?.role || "user"}</Badge>
           </div>
         </CardContent>
       </Card>

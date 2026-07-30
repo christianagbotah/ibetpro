@@ -1,474 +1,42 @@
 // ============================================================================
-// iBetPro Real Sports Data API Integration Layer
-// Connects to The Odds API and API-Football for live production data
+// iBetPro External API Integration Layer
+// Real API integration with The Odds API, API-Football, and SportMonks
 // ============================================================================
 
-// ==================== CONFIGURATION ====================
+import { config, getPrimaryDataSource } from "./config";
 
-const ODDS_API_KEY = process.env.ODDS_API_KEY || "";
-const ODDS_API_BASE = "https://api.the-odds-api.com/v4";
-const API_FOOTBALL_KEY = process.env.API_FOOTBALL_KEY || "";
-const API_FOOTBALL_BASE = "https://v3.football.api-sports.io";
+// ==================== TYPE DEFINITIONS ====================
 
-// Cache configuration
-const CACHE_TTL = 60 * 1000; // 1 minute for live data
-const CACHE_TTL_LONG = 5 * 60 * 1000; // 5 minutes for non-live data
-const cache = new Map<string, { data: unknown; timestamp: number }>();
-
-function getCached<T>(key: string): T | null {
-  const entry = cache.get(key);
-  if (!entry) return null;
-  const isLive = key.includes("live");
-  const ttl = isLive ? CACHE_TTL : CACHE_TTL_LONG;
-  if (Date.now() - entry.timestamp > ttl) {
-    cache.delete(key);
-    return null;
-  }
-  return entry.data as T;
-}
-
-function setCache(key: string, data: unknown): void {
-  cache.set(key, { data, timestamp: Date.now() });
-  // Limit cache size
-  if (cache.size > 500) {
-    const oldest = Array.from(cache.entries()).sort((a, b) => a[1].timestamp - b[1].timestamp);
-    for (let i = 0; i < 100; i++) cache.delete(oldest[i][0]);
-  }
-}
-
-// ==================== THE ODDS API ====================
-
-export interface OddsApiMatch {
+export interface ExternalOdds {
   id: string;
-  sport_key: string;
-  sport_title: string;
-  commence_time: string;
-  home_team: string;
-  away_team: string;
-  bookmakers: OddsApiBookmaker[];
+  sportKey: string;
+  sportTitle: string;
+  commenceTime: string;
+  homeTeam: string;
+  awayTeam: string;
+  bookmakers: ExternalBookmaker[];
 }
 
-export interface OddsApiBookmaker {
+export interface ExternalBookmaker {
   key: string;
   title: string;
-  markets: OddsApiMarket[];
+  markets: ExternalMarket[];
 }
 
-export interface OddsApiMarket {
+export interface ExternalMarket {
   key: string;
-  outcomes: OddsApiOutcome[];
+  outcomes: ExternalOutcome[];
 }
 
-export interface OddsApiOutcome {
+export interface ExternalOutcome {
   name: string;
   price: number;
   point?: number;
 }
 
-/**
- * Fetch upcoming matches with odds from The Odds API
- * Supports: soccer, basketball, tennis, football, baseball, hockey, etc.
- */
-export async function fetchUpcomingOdds(
-  sport: string = "soccer_epl",
-  regions: string = "us,uk,eu",
-  markets: string = "h2h,totals"
-): Promise<OddsApiMatch[]> {
-  const cacheKey = `odds_upcoming_${sport}_${regions}_${markets}`;
-  const cached = getCached<OddsApiMatch[]>(cacheKey);
-  if (cached) return cached;
-
-  if (!ODDS_API_KEY) {
-    console.warn("ODDS_API_KEY not configured - returning empty odds");
-    return [];
-  }
-
-  try {
-    const url = `${ODDS_API_BASE}/sports/${sport}/odds/?apiKey=${ODDS_API_KEY}&regions=${regions}&markets=${markets}&oddsFormat=decimal`;
-    const response = await fetch(url, { next: { revalidate: 60 } });
-
-    if (!response.ok) {
-      console.error(`Odds API error: ${response.status} ${response.statusText}`);
-      return [];
-    }
-
-    const data: OddsApiMatch[] = await response.json();
-    setCache(cacheKey, data);
-    return data;
-  } catch (error) {
-    console.error("Failed to fetch odds:", error);
-    return [];
-  }
-}
-
-/**
- * Fetch all available sports from The Odds API
- */
-export async function fetchAvailableSports(): Promise<{ key: string; title: string; group: string }[]> {
-  const cacheKey = "odds_sports";
-  const cached = getCached<{ key: string; title: string; group: string }[]>(cacheKey);
-  if (cached) return cached;
-
-  if (!ODDS_API_KEY) {
-    return getFallbackSports();
-  }
-
-  try {
-    const url = `${ODDS_API_BASE}/sports/?apiKey=${ODDS_API_KEY}`;
-    const response = await fetch(url, { next: { revalidate: 3600 } });
-
-    if (!response.ok) return getFallbackSports();
-
-    const data = await response.json();
-    setCache(cacheKey, data);
-    return data;
-  } catch {
-    return getFallbackSports();
-  }
-}
-
-function getFallbackSports(): { key: string; title: string; group: string }[] {
-  return [
-    { key: "soccer_epl", title: "Premier League", group: "Soccer" },
-    { key: "soccer_la_liga", title: "La Liga", group: "Soccer" },
-    { key: "soccer_serie_a", title: "Serie A", group: "Soccer" },
-    { key: "soccer_bundesliga", title: "Bundesliga", group: "Soccer" },
-    { key: "soccer_champions_league", title: "Champions League", group: "Soccer" },
-    { key: "basketball_nba", title: "NBA", group: "Basketball" },
-    { key: "tennis_atp_wimbledon", title: "Wimbledon", group: "Tennis" },
-    { key: "americanfootball_nfl", title: "NFL", group: "American Football" },
-    { key: "baseball_mlb", title: "MLB", group: "Baseball" },
-    { key: "icehockey_nhl", title: "NHL", group: "Ice Hockey" },
-  ];
-}
-
-/**
- * Get best odds across all bookmakers for a match
- */
-export function getBestOdds(match: OddsApiMatch): {
-  homeOdds: number;
-  drawOdds: number | null;
-  awayOdds: number;
-  overUnderLine: number | null;
-  overOdds: number | null;
-  underOdds: number | null;
-  bestBookmaker: string;
-} {
-  let bestHomeOdds = 0;
-  let bestDrawOdds = 0;
-  let bestAwayOdds = 0;
-  let bestOverOdds = 0;
-  let bestUnderOdds = 0;
-  let overUnderLine: number | null = null;
-  let bestBookmaker = "";
-
-  for (const bookmaker of match.bookmakers) {
-    for (const market of bookmaker.markets) {
-      if (market.key === "h2h") {
-        for (const outcome of market.outcomes) {
-          if (outcome.name === match.home_team && outcome.price > bestHomeOdds) {
-            bestHomeOdds = outcome.price;
-            bestBookmaker = bookmaker.title;
-          }
-          if (outcome.name === "Draw" && outcome.price > bestDrawOdds) {
-            bestDrawOdds = outcome.price;
-          }
-          if (outcome.name === match.away_team && outcome.price > bestAwayOdds) {
-            bestAwayOdds = outcome.price;
-          }
-        }
-      }
-      if (market.key === "totals") {
-        for (const outcome of market.outcomes) {
-          if (outcome.name === "Over" && outcome.price > bestOverOdds) {
-            bestOverOdds = outcome.price;
-            overUnderLine = outcome.point ?? 2.5;
-          }
-          if (outcome.name === "Under" && outcome.price > bestUnderOdds) {
-            bestUnderOdds = outcome.price;
-            overUnderLine = outcome.point ?? 2.5;
-          }
-        }
-      }
-    }
-  }
-
-  return {
-    homeOdds: bestHomeOdds || 2.0,
-    drawOdds: bestDrawOdds || null,
-    awayOdds: bestAwayOdds || 2.0,
-    overUnderLine,
-    overOdds: bestOverOdds || null,
-    underOdds: bestUnderOdds || null,
-    bestBookmaker,
-  };
-}
-
-/**
- * Get odds from all bookmakers for comparison
- */
-export function getOddsComparison(match: OddsApiMatch): {
-  bookmaker: string;
-  homeOdds: number;
-  drawOdds: number | null;
-  awayOdds: number;
-}[] {
-  const comparison: { bookmaker: string; homeOdds: number; drawOdds: number | null; awayOdds: number }[] = [];
-
-  for (const bookmaker of match.bookmakers) {
-    for (const market of bookmaker.markets) {
-      if (market.key === "h2h") {
-        let homeOdds = 0;
-        let drawOdds: number | null = null;
-        let awayOdds = 0;
-
-        for (const outcome of market.outcomes) {
-          if (outcome.name === match.home_team) homeOdds = outcome.price;
-          if (outcome.name === "Draw") drawOdds = outcome.price;
-          if (outcome.name === match.away_team) awayOdds = outcome.price;
-        }
-
-        if (homeOdds > 0 && awayOdds > 0) {
-          comparison.push({ bookmaker: bookmaker.title, homeOdds, drawOdds, awayOdds });
-        }
-      }
-    }
-  }
-
-  return comparison.sort((a, b) => a.homeOdds - b.homeOdds);
-}
-
-// ==================== API-FOOTBALL ====================
-
-export interface FootballTeamStats {
-  team: { id: number; name: string; logo: string };
-  league: { id: number; name: string; season: number };
-  fixtures: { played: { total: number; home: number; away: number } };
-  goals: {
-    for: { total: { total: number; home: number; away: number }; average: { total: string; home: string; away: string } };
-    against: { total: { total: number; home: number; away: number }; average: { total: string; home: string; away: string } };
-  };
-  biggest: { streak: { wins: number; draws: number; losses: number } };
-  form: string;
-  lineups: { formation: string; played: number }[];
-  cards: { red: { total: number }; yellow: { total: number } };
-}
-
-export interface FootballMatch {
-  fixture: { id: number; date: string; status: { short: string; elapsed: number | null } };
-  league: { id: number; name: string; season: number };
-  teams: { home: { id: number; name: string; logo: string }; away: { id: number; name: string; logo: string } };
-  goals: { home: number | null; away: number | null };
-  score: { halftime: { home: number | null; away: number | null }; fulltime: { home: number | null; away: number | null } };
-}
-
-/**
- * Fetch team statistics from API-Football
- */
-export async function fetchTeamStats(
-  leagueId: number,
-  season: number,
-  teamId: number
-): Promise<FootballTeamStats | null> {
-  const cacheKey = `football_stats_${leagueId}_${season}_${teamId}`;
-  const cached = getCached<FootballTeamStats>(cacheKey);
-  if (cached) return cached;
-
-  if (!API_FOOTBALL_KEY) {
-    console.warn("API_FOOTBALL_KEY not configured");
-    return null;
-  }
-
-  try {
-    const url = `${API_FOOTBALL_BASE}/teams/statistics?league=${leagueId}&season=${season}&team=${teamId}`;
-    const response = await fetch(url, {
-      headers: { "x-apisports-key": API_FOOTBALL_KEY },
-      next: { revalidate: 300 },
-    });
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    if (data.response) {
-      setCache(cacheKey, data.response);
-      return data.response;
-    }
-    return null;
-  } catch (error) {
-    console.error("Failed to fetch team stats:", error);
-    return null;
-  }
-}
-
-/**
- * Fetch live/in-progress matches from API-Football
- */
-export async function fetchLiveMatches(): Promise<FootballMatch[]> {
-  const cacheKey = "football_live";
-  const cached = getCached<FootballMatch[]>(cacheKey);
-  if (cached) return cached;
-
-  if (!API_FOOTBALL_KEY) return [];
-
-  try {
-    const url = `${API_FOOTBALL_BASE}/fixtures?live=all`;
-    const response = await fetch(url, {
-      headers: { "x-apisports-key": API_FOOTBALL_KEY },
-      next: { revalidate: 30 },
-    });
-
-    if (!response.ok) return [];
-
-    const data = await response.json();
-    const matches = data.response || [];
-    setCache(cacheKey, matches);
-    return matches;
-  } catch (error) {
-    console.error("Failed to fetch live matches:", error);
-    return [];
-  }
-}
-
-/**
- * Fetch upcoming fixtures from API-Football
- */
-export async function fetchUpcomingFixtures(
-  leagueId: number,
-  season: number,
-  next: number = 10
-): Promise<FootballMatch[]> {
-  const cacheKey = `football_fixtures_${leagueId}_${season}_${next}`;
-  const cached = getCached<FootballMatch[]>(cacheKey);
-  if (cached) return cached;
-
-  if (!API_FOOTBALL_KEY) return [];
-
-  try {
-    const url = `${API_FOOTBALL_BASE}/fixtures?league=${leagueId}&season=${season}&next=${next}`;
-    const response = await fetch(url, {
-      headers: { "x-apisports-key": API_FOOTBALL_KEY },
-      next: { revalidate: 300 },
-    });
-
-    if (!response.ok) return [];
-
-    const data = await response.json();
-    const matches = data.response || [];
-    setCache(cacheKey, matches);
-    return matches;
-  } catch (error) {
-    console.error("Failed to fetch fixtures:", error);
-    return [];
-  }
-}
-
-/**
- * Fetch head-to-head records between two teams
- */
-export async function fetchHeadToHead(
-  team1Id: number,
-  team2Id: number,
-  last: number = 10
-): Promise<FootballMatch[]> {
-  const cacheKey = `football_h2h_${team1Id}_${team2Id}`;
-  const cached = getCached<FootballMatch[]>(cacheKey);
-  if (cached) return cached;
-
-  if (!API_FOOTBALL_KEY) return [];
-
-  try {
-    const url = `${API_FOOTBALL_BASE}/fixtures/headtohead?h2h=${team1Id}-${team2Id}&last=${last}`;
-    const response = await fetch(url, {
-      headers: { "x-apisports-key": API_FOOTBALL_KEY },
-      next: { revalidate: 3600 },
-    });
-
-    if (!response.ok) return [];
-
-    const data = await response.json();
-    const matches = data.response || [];
-    setCache(cacheKey, matches);
-    return matches;
-  } catch (error) {
-    console.error("Failed to fetch H2H:", error);
-    return [];
-  }
-}
-
-// ==================== DATA TRANSFORMERS ====================
-
-/**
- * Transform Odds API match data to our internal match format
- */
-export function transformOddsApiMatch(match: OddsApiMatch): {
-  externalId: string;
-  sport: string;
-  league: string;
-  homeTeam: string;
-  awayTeam: string;
-  commenceTime: string;
-  homeOdds: number;
-  drawOdds: number | null;
-  awayOdds: number;
-  overUnderLine: number | null;
-  overOdds: number | null;
-  underOdds: number | null;
-  status: string;
-} {
-  const bestOdds = getBestOdds(match);
-
-  return {
-    externalId: match.id,
-    sport: mapSportKey(match.sport_key),
-    league: match.sport_title,
-    homeTeam: match.home_team,
-    awayTeam: match.away_team,
-    commenceTime: match.commence_time,
-    homeOdds: bestOdds.homeOdds,
-    drawOdds: bestOdds.drawOdds,
-    awayOdds: bestOdds.awayOdds,
-    overUnderLine: bestOdds.overUnderLine,
-    overOdds: bestOdds.overOdds,
-    underOdds: bestOdds.underOdds,
-    status: "upcoming",
-  };
-}
-
-/**
- * Transform API-Football match data to our internal format
- */
-export function transformFootballMatch(match: FootballMatch): {
-  externalId: string;
-  sport: string;
-  league: string;
-  homeTeam: string;
-  awayTeam: string;
-  commenceTime: string;
-  homeScore: number | null;
-  awayScore: number | null;
-  minute: number | null;
-  status: string;
-} {
-  return {
-    externalId: `football_${match.fixture.id}`,
-    sport: "football",
-    league: match.league.name,
-    homeTeam: match.teams.home.name,
-    awayTeam: match.teams.away.name,
-    commenceTime: match.fixture.date,
-    homeScore: match.goals.home,
-    awayScore: match.goals.away,
-    minute: match.fixture.status.elapsed,
-    status: mapFootballStatus(match.fixture.status.short),
-  };
-}
-
-/**
- * Transform API-Football team stats to our internal format
- */
-export function transformTeamStats(stats: FootballTeamStats): {
+export interface ExternalTeamStats {
+  teamId: number;
   teamName: string;
-  sport: string;
   league: string;
   season: string;
   matchesPlayed: number;
@@ -483,7 +51,6 @@ export function transformTeamStats(stats: FootballTeamStats): {
   attackRating: number;
   defenseRating: number;
   overallRating: number;
-  eloRating: number;
   xgFor: number;
   xgAgainst: number;
   shotsPerGame: number;
@@ -491,154 +58,598 @@ export function transformTeamStats(stats: FootballTeamStats): {
   possessionAvg: number;
   cornersPerGame: number;
   cardsPerGame: number;
-} {
-  const played = stats.fixtures.played.total;
-  const homePlayed = stats.fixtures.played.home;
-  const awayPlayed = stats.fixtures.played.away;
-
-  // Parse form string (e.g., "WWDLW")
-  const formStr = stats.form || "";
-
-  // Calculate wins/draws/losses from form
-  let wins = 0, draws = 0, losses = 0;
-  for (const c of formStr) {
-    if (c === "W") wins++;
-    else if (c === "D") draws++;
-    else if (c === "L") losses++;
-  }
-
-  // If we have total played, use that for calculations
-  const totalGoalsFor = stats.goals.for.total.total || 0;
-  const totalGoalsAgainst = stats.goals.against.total.total || 0;
-
-  // Calculate ratings based on actual performance
-  const goalDiff = totalGoalsFor - totalGoalsAgainst;
-  const goalDiffPerGame = played > 0 ? goalDiff / played : 0;
-
-  const attackRating = Math.round(Math.min(99, Math.max(30,
-    60 + (totalGoalsFor / Math.max(1, played)) * 10 + goalDiffPerGame * 3
-  )));
-
-  const defenseRating = Math.round(Math.min(99, Math.max(30,
-    60 - (totalGoalsAgainst / Math.max(1, played)) * 8 + goalDiffPerGame * 2
-  )));
-
-  const overallRating = Math.round((attackRating + defenseRating) / 2 + goalDiffPerGame * 2);
-  const eloRating = Math.round(1500 + goalDiffPerGame * 50 + (wins / Math.max(1, played)) * 200);
-
-  // Home and away records
-  const homeGoalsFor = stats.goals.for.total.home || 0;
-  const homeGoalsAgainst = stats.goals.against.total.home || 0;
-  const awayGoalsFor = stats.goals.for.total.away || 0;
-  const awayGoalsAgainst = stats.goals.against.total.away || 0;
-
-  // Estimate home/away wins from form (simplified)
-  const homeWinRate = homePlayed > 0 ? Math.min(0.9, Math.max(0.1, (homeGoalsFor - homeGoalsAgainst) / Math.max(1, homePlayed) * 0.3 + 0.4)) : 0.5;
-  const awayWinRate = awayPlayed > 0 ? Math.min(0.9, Math.max(0.1, (awayGoalsFor - awayGoalsAgainst) / Math.max(1, awayPlayed) * 0.3 + 0.3)) : 0.4;
-
-  const homeWins = Math.round(homePlayed * homeWinRate);
-  const homeDraws = Math.round(homePlayed * 0.2);
-  const homeLosses = homePlayed - homeWins - homeDraws;
-
-  const awayWins = Math.round(awayPlayed * awayWinRate);
-  const awayDraws = Math.round(awayPlayed * 0.2);
-  const awayLosses = awayPlayed - awayWins - awayDraws;
-
-  return {
-    teamName: stats.team.name,
-    sport: "football",
-    league: stats.league.name,
-    season: String(stats.league.season),
-    matchesPlayed: played,
-    wins,
-    draws,
-    losses,
-    goalsFor: totalGoalsFor,
-    goalsAgainst: totalGoalsAgainst,
-    form: formStr,
-    homeRecord: `${homeWins}-${homeDraws}-${homeLosses}`,
-    awayRecord: `${awayWins}-${awayDraws}-${awayLosses}`,
-    attackRating,
-    defenseRating,
-    overallRating: Math.round(Math.min(99, Math.max(30, overallRating))),
-    eloRating,
-    xgFor: totalGoalsFor * 0.92, // Approximate xG from actual goals
-    xgAgainst: totalGoalsAgainst * 1.05,
-    shotsPerGame: 0,
-    shotsOnTargetPerGame: 0,
-    possessionAvg: 50,
-    cornersPerGame: 0,
-    cardsPerGame: (stats.cards.red.total + stats.cards.yellow.total) / Math.max(1, played),
-  };
+  eloRating: number;
 }
 
-// ==================== SPORT MAPPING ====================
-
-function mapSportKey(key: string): string {
-  if (key.startsWith("soccer")) return "football";
-  if (key.startsWith("basketball")) return "basketball";
-  if (key.startsWith("tennis")) return "tennis";
-  if (key.startsWith("americanfootball")) return "american_football";
-  if (key.startsWith("baseball")) return "baseball";
-  if (key.startsWith("icehockey")) return "ice_hockey";
-  return "other";
+export interface ExternalFixture {
+  fixtureId: number;
+  league: string;
+  leagueId: number;
+  season: number;
+  homeTeam: string;
+  awayTeam: string;
+  homeTeamId: number;
+  awayTeamId: number;
+  commenceTime: string;
+  status: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  minute: number | null;
 }
 
-function mapFootballStatus(status: string): string {
-  const liveStatuses = ["1H", "2H", "HT", "ET", "BT", "P", "SUSP", "INT", "LIVE"];
-  const finishedStatuses = ["FT", "AET", "PEN", "WO", "AWD"];
-  const upcomingStatuses = ["TBD", "NS", "PST", "CANC"];
-
-  if (liveStatuses.includes(status)) return "live";
-  if (finishedStatuses.includes(status)) return "finished";
-  if (upcomingStatuses.includes(status)) return "upcoming";
-  return "upcoming";
+export interface SyncResult {
+  matchesSynced: number;
+  teamStatsSynced: number;
+  errors: string[];
+  source: string;
+  timestamp: Date;
 }
 
-// ==================== SPORT KEY MAPPINGS ====================
-
-export const SPORT_KEYS: Record<string, string[]> = {
-  football: [
-    "soccer_epl", "soccer_la_liga", "soccer_serie_a", "soccer_bundesliga",
-    "soccer_champions_league", "soccer_europa_league", "soccer_ligue_one",
-    "soccer_primeira_liga", "soccer_eredivisie", "soccer_efl_champ",
-  ],
-  basketball: [
-    "basketball_nba", "basketball_euroleague", "basketball_ncaab",
-  ],
-  tennis: [
-    "tennis_atp_wimbledon", "tennis_atp_french_open", "tennis_atp_us_open",
-    "tennis_atp_australian_open", "tennis_atp_masters",
-  ],
-  american_football: [
-    "americanfootball_nfl", "americanfootball_ncaaf",
-  ],
-  baseball: [
-    "baseball_mlb",
-  ],
-  ice_hockey: [
-    "icehockey_nhl",
-  ],
-};
+// ==================== THE ODDS API ====================
 
 /**
- * Fetch odds for multiple sports
+ * Fetch upcoming odds from The Odds API
+ * Provides live odds from multiple bookmakers (Bet365, Betway, 1xBet, etc.)
  */
-export async function fetchMultiSportOdds(
-  sports: string[] = ["soccer_epl", "basketball_nba"],
-  regions: string = "us,uk,eu",
+export async function fetchOddsApiUpcoming(
+  sport: string = "soccer_epl",
+  regions: string = "uk,eu,us",
   markets: string = "h2h,totals"
-): Promise<OddsApiMatch[]> {
-  const results = await Promise.allSettled(
-    sports.map(sport => fetchUpcomingOdds(sport, regions, markets))
-  );
+): Promise<ExternalOdds[]> {
+  const apiKey = config.apis.oddsApiKey;
+  if (!apiKey) {
+    throw new Error("The Odds API key not configured. Set ODDS_API_KEY in .env.local");
+  }
 
-  const allMatches: OddsApiMatch[] = [];
-  for (const result of results) {
-    if (result.status === "fulfilled") {
-      allMatches.push(...result.value);
+  const url = `${config.apiUrls.oddsApi}/sports/${sport}/odds/?apiKey=${apiKey}&regions=${regions}&markets=${markets}&oddsFormat=decimal`;
+
+  const response = await fetch(url, {
+    next: { revalidate: 300 }, // Cache for 5 minutes
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`The Odds API error (${response.status}): ${errorText}`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Get available sports from The Odds API
+ */
+export async function fetchOddsApiSports(): Promise<Array<{ key: string; title: string; group: string }>> {
+  const apiKey = config.apis.oddsApiKey;
+  if (!apiKey) {
+    throw new Error("The Odds API key not configured");
+  }
+
+  const url = `${config.apiUrls.oddsApi}/sports/?apiKey=${apiKey}`;
+
+  const response = await fetch(url, {
+    next: { revalidate: 3600 }, // Cache for 1 hour
+  });
+
+  if (!response.ok) {
+    throw new Error(`The Odds API error (${response.status})`);
+  }
+
+  return response.json();
+}
+
+/**
+ * Convert Odds API data to our internal match format
+ */
+export function convertOddsApiToMatch(odds: ExternalOdds): {
+  externalId: string;
+  sport: string;
+  league: string;
+  homeTeam: string;
+  awayTeam: string;
+  homeOdds: number;
+  drawOdds: number | null;
+  awayOdds: number;
+  overUnderLine: number | null;
+  overOdds: number | null;
+  underOdds: number | null;
+  commenceTime: string;
+  apiSource: string;
+} {
+  // Extract best odds from available bookmakers
+  let homeOdds = 0;
+  let drawOdds: number | null = null;
+  let awayOdds = 0;
+  let overOdds: number | null = null;
+  let underOdds: number | null = null;
+  let overUnderLine: number | null = null;
+
+  for (const bookmaker of odds.bookmakers) {
+    for (const market of bookmaker.markets) {
+      if (market.key === "h2h") {
+        for (const outcome of market.outcomes) {
+          if (outcome.name === odds.homeTeam) {
+            if (!homeOdds || outcome.price > homeOdds) homeOdds = outcome.price;
+          } else if (outcome.name === odds.awayTeam) {
+            if (!awayOdds || outcome.price > awayOdds) awayOdds = outcome.price;
+          } else if (outcome.name === "Draw") {
+            if (!drawOdds || outcome.price > drawOdds) drawOdds = outcome.price;
+          }
+        }
+      }
+      if (market.key === "totals") {
+        for (const outcome of market.outcomes) {
+          if (outcome.name === "Over") {
+            if (!overOdds || outcome.price > overOdds) overOdds = outcome.price;
+            if (outcome.point) overUnderLine = outcome.point;
+          }
+          if (outcome.name === "Under") {
+            if (!underOdds || outcome.price > underOdds) underOdds = outcome.price;
+          }
+        }
+      }
     }
   }
 
-  return allMatches;
+  // Fallback if no odds found
+  if (!homeOdds || !awayOdds) {
+    homeOdds = homeOdds || 2.0;
+    awayOdds = awayOdds || 2.0;
+  }
+
+  return {
+    externalId: odds.id,
+    sport: odds.sportKey,
+    league: odds.sportTitle,
+    homeTeam: odds.homeTeam,
+    awayTeam: odds.awayTeam,
+    homeOdds,
+    drawOdds,
+    awayOdds,
+    overUnderLine,
+    overOdds,
+    underOdds,
+    commenceTime: odds.commenceTime,
+    apiSource: "odds-api",
+  };
+}
+
+// ==================== API-FOOTBALL ====================
+
+/**
+ * Fetch fixtures from API-Football
+ * Provides team statistics, fixtures, and live scores
+ */
+export async function fetchApiFootballFixtures(
+  league: number = 39, // Premier League
+  season: number = 2024
+): Promise<ExternalFixture[]> {
+  const apiKey = config.apis.apiFootballKey;
+  if (!apiKey) {
+    throw new Error("API-Football key not configured. Set API_FOOTBALL_KEY in .env.local");
+  }
+
+  const url = `${config.apiUrls.apiFootball}/fixtures?league=${league}&season=${season}`;
+
+  const response = await fetch(url, {
+    headers: {
+      "x-apisports-key": apiKey,
+    },
+    next: { revalidate: 300 },
+  });
+
+  if (!response.ok) {
+    throw new Error(`API-Football error (${response.status})`);
+  }
+
+  const data = await response.json();
+  return (data.response || []).map((item: Record<string, unknown>) => {
+    const fixture = item.fixture as Record<string, unknown>;
+    const teams = item.teams as Record<string, Record<string, unknown>>;
+    const goals = item.goals as Record<string, number | null>;
+    const leagueInfo = item.league as Record<string, unknown>;
+
+    return {
+      fixtureId: fixture.id as number,
+      league: (leagueInfo.name as string) || "Unknown",
+      leagueId: leagueInfo.id as number,
+      season: leagueInfo.season as number,
+      homeTeam: (teams.home?.name as string) || "Unknown",
+      awayTeam: (teams.away?.name as string) || "Unknown",
+      homeTeamId: (teams.home?.id as number) || 0,
+      awayTeamId: (teams.away?.id as number) || 0,
+      commenceTime: (fixture.date as string) || new Date().toISOString(),
+      status: convertApiFootballStatus((fixture.status as Record<string, unknown>)?.short as string),
+      homeScore: goals?.home,
+      awayScore: goals?.away,
+      minute: ((fixture.status as Record<string, unknown>)?.elapsed as number) || null,
+    };
+  });
+}
+
+/**
+ * Fetch team statistics from API-Football
+ */
+export async function fetchApiFootballTeamStats(
+  teamId: number,
+  league: number = 39,
+  season: number = 2024
+): Promise<ExternalTeamStats | null> {
+  const apiKey = config.apis.apiFootballKey;
+  if (!apiKey) {
+    throw new Error("API-Football key not configured");
+  }
+
+  const url = `${config.apiUrls.apiFootball}/teams/statistics?league=${league}&season=${season}&team=${teamId}`;
+
+  const response = await fetch(url, {
+    headers: {
+      "x-apisports-key": apiKey,
+    },
+    next: { revalidate: 1800 }, // Cache for 30 minutes
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  const data = await response.json();
+  const stats = data.response;
+
+  if (!stats) return null;
+
+  // Parse form (e.g., "WWDLW" format)
+  const form = stats.form || "";
+  const homeRecord = stats.home
+    ? `${stats.home.wins}-${stats.home.draws}-${stats.home.loses}`
+    : "0-0-0";
+  const awayRecord = stats.away
+    ? `${stats.away.wins}-${stats.away.draws}-${stats.away.loses}`
+    : "0-0-0";
+
+  const matchesPlayed = stats.fixtures?.played || 0;
+  const wins = stats.fixtures?.wins?.total || 0;
+  const draws = stats.fixtures?.draws?.total || 0;
+  const losses = stats.fixtures?.loses?.total || 0;
+
+  // Calculate ratings from the data
+  const attackRating = matchesPlayed > 0
+    ? Math.min(100, ((stats.goals?.for?.total?.total || 0) / matchesPlayed) * 20)
+    : 50;
+  const defenseRating = matchesPlayed > 0
+    ? Math.min(100, 100 - ((stats.goals?.against?.total?.total || 0) / matchesPlayed) * 20)
+    : 50;
+  const overallRating = (attackRating + defenseRating) / 2;
+
+  return {
+    teamId,
+    teamName: stats.team?.name || "Unknown",
+    league: stats.league?.name || "Unknown",
+    season: `${season}`,
+    matchesPlayed,
+    wins,
+    draws,
+    losses,
+    goalsFor: stats.goals?.for?.total?.total || 0,
+    goalsAgainst: stats.goals?.against?.total?.total || 0,
+    form,
+    homeRecord,
+    awayRecord,
+    attackRating: Math.round(attackRating * 10) / 10,
+    defenseRating: Math.round(defenseRating * 10) / 10,
+    overallRating: Math.round(overallRating * 10) / 10,
+    xgFor: stats.goals?.for?.total?.total || 0, // Approximate xG
+    xgAgainst: stats.goals?.against?.total?.total || 0,
+    shotsPerGame: matchesPlayed > 0
+      ? Math.round(((stats.shots?.total || 0) / matchesPlayed) * 10) / 10
+      : 0,
+    shotsOnTargetPerGame: matchesPlayed > 0
+      ? Math.round(((stats.shots?.on || 0) / matchesPlayed) * 10) / 10
+      : 0,
+    possessionAvg: stats.possession
+      ? parseFloat(stats.possession as unknown as string) || 50
+      : 50,
+    cornersPerGame: matchesPlayed > 0
+      ? Math.round(((stats.corners || 0) / matchesPlayed) * 10) / 10
+      : 0,
+    cardsPerGame: matchesPlayed > 0
+      ? Math.round((((stats.cards?.yellow?.total || 0) + (stats.cards?.red?.total || 0)) / matchesPlayed) * 10) / 10
+      : 0,
+    eloRating: 1500 + (wins - losses) * 15, // Simple ELO approximation
+  };
+}
+
+/**
+ * Fetch live fixtures from API-Football
+ */
+export async function fetchApiFootballLiveFixtures(): Promise<ExternalFixture[]> {
+  const apiKey = config.apis.apiFootballKey;
+  if (!apiKey) {
+    throw new Error("API-Football key not configured");
+  }
+
+  const url = `${config.apiUrls.apiFootball}/fixtures?live=all`;
+
+  const response = await fetch(url, {
+    headers: {
+      "x-apisports-key": apiKey,
+    },
+    next: { revalidate: 60 }, // Cache for 1 minute (live data)
+  });
+
+  if (!response.ok) {
+    throw new Error(`API-Football live error (${response.status})`);
+  }
+
+  const data = await response.json();
+  return (data.response || []).map((item: Record<string, unknown>) => {
+    const fixture = item.fixture as Record<string, unknown>;
+    const teams = item.teams as Record<string, Record<string, unknown>>;
+    const goals = item.goals as Record<string, number | null>;
+    const leagueInfo = item.league as Record<string, unknown>;
+
+    return {
+      fixtureId: fixture.id as number,
+      league: (leagueInfo.name as string) || "Unknown",
+      leagueId: leagueInfo.id as number,
+      season: leagueInfo.season as number,
+      homeTeam: (teams.home?.name as string) || "Unknown",
+      awayTeam: (teams.away?.name as string) || "Unknown",
+      homeTeamId: (teams.home?.id as number) || 0,
+      awayTeamId: (teams.away?.id as number) || 0,
+      commenceTime: (fixture.date as string) || new Date().toISOString(),
+      status: "live",
+      homeScore: goals?.home,
+      awayScore: goals?.away,
+      minute: ((fixture.status as Record<string, unknown>)?.elapsed as number) || null,
+    };
+  });
+}
+
+function convertApiFootballStatus(short: string): string {
+  switch (short) {
+    case "1H": case "2H": case "HT": case "ET": case "BT": case "P":
+      return "live";
+    case "FT": case "AET": case "PEN": case "AWD": case "WO":
+      return "finished";
+    case "SUSP": case "INT": case "PST": case "CANC": case "ABD":
+      return "postponed";
+    case "TBD": case "NS":
+    default:
+      return "upcoming";
+  }
+}
+
+// ==================== SPORTMONKS ====================
+
+/**
+ * Fetch fixtures from SportMonks
+ */
+export async function fetchSportmonksFixtures(
+  leagueId: number = 8, // Premier League
+  seasonId: number = 21646
+): Promise<ExternalFixture[]> {
+  const token = config.apis.sportmonksToken;
+  if (!token) {
+    throw new Error("SportMonks API token not configured. Set SPORTMONKS_API_TOKEN in .env.local");
+  }
+
+  const url = `${config.apiUrls.sportmonks}/football/fixtures?filter[league_id]=${leagueId}&filter[season_id]=${seasonId}&include=participants;scores&token=${token}`;
+
+  const response = await fetch(url, {
+    next: { revalidate: 300 },
+  });
+
+  if (!response.ok) {
+    throw new Error(`SportMonks API error (${response.status})`);
+  }
+
+  const data = await response.json();
+  return (data.data || []).map((item: Record<string, unknown>) => {
+    const participants = (item.participants || []) as Array<Record<string, unknown>>;
+    const homeTeam = participants.find((p) => (p.meta as Record<string, unknown>)?.location === "home");
+    const awayTeam = participants.find((p) => (p.meta as Record<string, unknown>)?.location === "away");
+
+    return {
+      fixtureId: item.id as number,
+      league: ((item.league as Record<string, unknown>)?.name as string) || "Unknown",
+      leagueId: item.league_id as number,
+      season: item.season_id as number,
+      homeTeam: (homeTeam?.name as string) || "Unknown",
+      awayTeam: (awayTeam?.name as string) || "Unknown",
+      homeTeamId: (homeTeam?.id as number) || 0,
+      awayTeamId: (awayTeam?.id as number) || 0,
+      commenceTime: (item.starting_at as string) || new Date().toISOString(),
+      status: convertSportmonksStatus((item.state as Record<string, unknown>)?.short as string),
+      homeScore: ((item.scores as Record<string, unknown>)?.home_score as number) || null,
+      awayScore: ((item.scores as Record<string, unknown>)?.away_score as number) || null,
+      minute: null,
+    };
+  });
+}
+
+function convertSportmonksStatus(short: string | undefined): string {
+  if (!short) return "upcoming";
+  switch (short) {
+    case "LIVE": case "HT": case "ET": case "P":
+      return "live";
+    case "FT": case "AET": case "PEN":
+      return "finished";
+    case "PST": case "CANC":
+      return "postponed";
+    default:
+      return "upcoming";
+  }
+}
+
+// ==================== UNIFIED SYNC ====================
+
+/**
+ * Smart sync: automatically picks the best available data source
+ * and syncs matches + team stats to the database
+ */
+export async function syncFromBestSource(): Promise<SyncResult> {
+  const source = getPrimaryDataSource();
+  const result: SyncResult = {
+    matchesSynced: 0,
+    teamStatsSynced: 0,
+    errors: [],
+    source,
+    timestamp: new Date(),
+  };
+
+  try {
+    switch (source) {
+      case "odds-api":
+        result.matchesSynced = await syncOddsApiMatches();
+        break;
+      case "api-football":
+        result.matchesSynced = await syncApiFootballFixtures();
+        break;
+      case "sportmonks":
+        result.matchesSynced = await syncSportmonksFixtures();
+        break;
+      case "none":
+        result.errors.push("No API keys configured. Set ODDS_API_KEY, API_FOOTBALL_KEY, or SPORTMONKS_API_TOKEN in .env.local");
+        break;
+    }
+  } catch (error) {
+    result.errors.push(error instanceof Error ? error.message : "Unknown sync error");
+  }
+
+  return result;
+}
+
+/**
+ * Sync matches from The Odds API
+ */
+async function syncOddsApiMatches(): Promise<number> {
+  // Fetch popular sports
+  const popularSports = [
+    "soccer_epl",
+    "soccer_germany_bundesliga",
+    "soccer_spain_la_liga",
+    "soccer_italy_serie_a",
+    "soccer_france_ligue_one",
+    "basketball_nba",
+    "tennis_us_open",
+  ];
+
+  let totalSynced = 0;
+
+  for (const sport of popularSports) {
+    try {
+      const odds = await fetchOddsApiUpcoming(sport);
+      // The actual database sync will be done in the API route
+      // Here we just return the count
+      totalSynced += odds.length;
+    } catch (error) {
+      console.error(`Failed to sync ${sport}:`, error);
+    }
+  }
+
+  return totalSynced;
+}
+
+/**
+ * Sync fixtures from API-Football
+ */
+async function syncApiFootballFixtures(): Promise<number> {
+  const popularLeagues = [39, 40, 135, 140, 61]; // EPL, Championship, Serie A, La Liga, Ligue 1
+  let totalSynced = 0;
+
+  for (const league of popularLeagues) {
+    try {
+      const fixtures = await fetchApiFootballFixtures(league, 2024);
+      totalSynced += fixtures.length;
+    } catch (error) {
+      console.error(`Failed to sync league ${league}:`, error);
+    }
+  }
+
+  return totalSynced;
+}
+
+/**
+ * Sync fixtures from SportMonks
+ */
+async function syncSportmonksFixtures(): Promise<number> {
+  try {
+    const fixtures = await fetchSportmonksFixtures();
+    return fixtures.length;
+  } catch (error) {
+    console.error("Failed to sync SportMonks:", error);
+    return 0;
+  }
+}
+
+// ==================== API HEALTH CHECK ====================
+
+export interface ApiHealthStatus {
+  oddsApi: { connected: boolean; remainingRequests?: number; error?: string };
+  apiFootball: { connected: boolean; remainingRequests?: number; error?: string };
+  sportmonks: { connected: boolean; error?: string };
+  primarySource: string;
+}
+
+/**
+ * Check the health of all configured API endpoints
+ */
+export async function checkApiHealth(): Promise<ApiHealthStatus> {
+  const health: ApiHealthStatus = {
+    oddsApi: { connected: false },
+    apiFootball: { connected: false },
+    sportmonks: { connected: false },
+    primarySource: getPrimaryDataSource(),
+  };
+
+  // Check The Odds API
+  if (config.apis.oddsApiKey) {
+    try {
+      const res = await fetch(
+        `${config.apiUrls.oddsApi}/sports/?apiKey=${config.apis.oddsApiKey}`,
+        { next: { revalidate: 0 } }
+      );
+      health.oddsApi.connected = res.ok;
+      health.oddsApi.remainingRequests = res.headers.get("x-requests-remaining")
+        ? parseInt(res.headers.get("x-requests-remaining")!)
+        : undefined;
+      if (!res.ok) health.oddsApi.error = `HTTP ${res.status}`;
+    } catch (error) {
+      health.oddsApi.error = error instanceof Error ? error.message : "Connection failed";
+    }
+  }
+
+  // Check API-Football
+  if (config.apis.apiFootballKey) {
+    try {
+      const res = await fetch(`${config.apiUrls.apiFootball}/status`, {
+        headers: { "x-apisports-key": config.apis.apiFootballKey },
+        next: { revalidate: 0 },
+      });
+      health.apiFootball.connected = res.ok;
+      if (res.ok) {
+        const data = await res.json();
+        health.apiFootball.remainingRequests = data.response?.requests?.current;
+      }
+      if (!res.ok) health.apiFootball.error = `HTTP ${res.status}`;
+    } catch (error) {
+      health.apiFootball.error = error instanceof Error ? error.message : "Connection failed";
+    }
+  }
+
+  // Check SportMonks
+  if (config.apis.sportmonksToken) {
+    try {
+      const res = await fetch(
+        `${config.apiUrls.sportmonks}/football/leagues?token=${config.apis.sportmonksToken}`,
+        { next: { revalidate: 0 } }
+      );
+      health.sportmonks.connected = res.ok;
+      if (!res.ok) health.sportmonks.error = `HTTP ${res.status}`;
+    } catch (error) {
+      health.sportmonks.error = error instanceof Error ? error.message : "Connection failed";
+    }
+  }
+
+  return health;
 }

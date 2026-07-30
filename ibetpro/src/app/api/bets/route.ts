@@ -1,33 +1,44 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { getAuthUser, requireAuth } from "@/lib/session";
+import { analyzeMatch } from "@/lib/ai-engine";
 
-async function getDemoUserId(): Promise<string> {
-  const user = await prisma.user.findFirst({ where: { email: "demo@ibetpro.com" } });
-  return user?.id || "";
-}
-
+// GET /api/bets - List bets for authenticated user
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId") || await getDemoUserId();
-    const status = searchParams.get("status");
-
-    if (!userId) {
-      return NextResponse.json({ error: "No user found" }, { status: 404 });
+    const user = await getAuthUser();
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const where: Record<string, unknown> = { userId };
+    const { searchParams } = new URL(request.url);
+    const status = searchParams.get("status");
+    const limit = searchParams.get("limit");
+
+    const where: Record<string, unknown> = { userId: user.id };
     if (status) where.status = status;
 
     const bets = await prisma.bet.findMany({
       where,
       include: {
-        match: true,
-        bettingAccount: true,
+        match: {
+          select: {
+            homeTeam: true,
+            awayTeam: true,
+            sport: true,
+            league: true,
+            status: true,
+            homeScore: true,
+            awayScore: true,
+            minute: true,
+          },
+        },
+        bettingAccount: {
+          select: { platform: true },
+        },
       },
-      orderBy: {
-        placedAt: "desc",
-      },
+      orderBy: { placedAt: "desc" },
+      ...(limit ? { take: parseInt(limit, 10) } : {}),
     });
 
     return NextResponse.json(bets);
@@ -37,217 +48,188 @@ export async function GET(request: NextRequest) {
   }
 }
 
+// POST /api/bets - Place a new bet
 export async function POST(request: NextRequest) {
   try {
+    const userId = await requireAuth();
+
     const body = await request.json();
     const {
-      userId,
-      bettingAccountId,
       matchId,
+      bettingAccountId,
       betType,
       selection,
       odds,
       stake,
-      isAutoPlaced = false,
+      isAutoPlaced,
       aiConfidence,
-      aiReasoning,
-      aiModelUsed,
-      kellyStake,
-      valueEdge,
-      riskScore,
     } = body;
 
-    const uid = userId || await getDemoUserId();
-
-    if (!uid || !bettingAccountId || !matchId || !betType || !selection || !odds || !stake) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    // Validate required fields
+    if (!matchId || !betType || !selection || !odds || !stake) {
+      return NextResponse.json(
+        { error: "Match ID, bet type, selection, odds, and stake are required" },
+        { status: 400 }
+      );
     }
 
-    // Validate stake against user's bankroll
-    const user = await prisma.user.findUnique({
-      where: { id: uid },
-      include: { settings: true },
+    // Get user settings for validation
+    const userSettings = await prisma.userSettings.findUnique({
+      where: { userId },
     });
-    if (user && stake > user.bankroll * 0.10) {
-      return NextResponse.json({
-        error: `Stake exceeds 10% of bankroll. Maximum allowed: $${Math.round(user.bankroll * 0.10 * 100) / 100}`,
-        maxStake: Math.round(user.bankroll * 0.10 * 100) / 100,
-      }, { status: 400 });
+
+    // Validate stake against settings
+    const maxBet = userSettings?.maxBetAmount || 200;
+    const dailyLimit = userSettings?.dailyBetLimit || 500;
+
+    if (stake > maxBet) {
+      return NextResponse.json(
+        { error: `Stake exceeds maximum bet amount of $${maxBet}` },
+        { status: 400 }
+      );
     }
 
-    const potentialWin = Math.round(odds * stake * 100) / 100;
+    // Check daily bet limit
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todayBets = await prisma.bet.aggregate({
+      where: {
+        userId,
+        placedAt: { gte: today },
+        status: { in: ["pending", "won", "lost"] },
+      },
+      _sum: { stake: true },
+    });
 
-    // Calculate commission on profit
-    const potentialProfit = potentialWin - stake;
-    const commissionRate = user?.settings?.commissionRate || 0.10;
-    const commission = potentialProfit > 0 ? Math.round(potentialProfit * commissionRate * 100) / 100 : 0;
+    if ((todayBets._sum.stake || 0) + stake > dailyLimit) {
+      return NextResponse.json(
+        { error: `Daily bet limit of $${dailyLimit} would be exceeded` },
+        { status: 400 }
+      );
+    }
+
+    // Validate bankroll (max 10% per bet)
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (user && stake > user.bankroll * 0.1) {
+      return NextResponse.json(
+        { error: `Stake cannot exceed 10% of bankroll ($${(user.bankroll * 0.1).toFixed(2)})` },
+        { status: 400 }
+      );
+    }
+
+    // Get or create betting account
+    let account = bettingAccountId
+      ? await prisma.bettingAccount.findUnique({ where: { id: bettingAccountId } })
+      : null;
+
+    if (!account) {
+      // Find first connected account
+      account = await prisma.bettingAccount.findFirst({
+        where: { userId, isConnected: true },
+      });
+    }
+
+    if (!account) {
+      // Create a default account
+      account = await prisma.bettingAccount.create({
+        data: {
+          userId,
+          platform: "manual",
+          accountId: `manual-${userId.slice(0, 8)}`,
+          accountName: "Manual Entry",
+          isConnected: true,
+          balance: user?.bankroll || 1000,
+        },
+      });
+    }
+
+    // Get match for AI analysis
+    const match = await prisma.match.findUnique({ where: { id: matchId } });
+    const homeTeamStats = match
+      ? await prisma.teamStats.findFirst({ where: { teamName: match.homeTeam, sport: match.sport } })
+      : null;
+    const awayTeamStats = match
+      ? await prisma.teamStats.findFirst({ where: { teamName: match.awayTeam, sport: match.sport } })
+      : null;
+
+    // Run AI analysis if auto-placed
+    let aiReasoning = "";
+    let kellyStake = 0;
+    let valueEdge = 0;
+    let riskScore = 50;
+
+    if (isAutoPlaced && match) {
+      const prediction = analyzeMatch(
+        {
+          homeTeam: match.homeTeam,
+          awayTeam: match.awayTeam,
+          sport: match.sport,
+          league: match.league,
+          homeOdds: match.homeOdds,
+          drawOdds: match.drawOdds ?? undefined,
+          awayOdds: match.awayOdds,
+          status: match.status,
+        },
+        homeTeamStats,
+        awayTeamStats,
+        user?.bankroll || 1000
+      );
+
+      aiReasoning = prediction.analysis;
+      kellyStake = prediction.kellyStake.recommendedStake;
+      valueEdge = prediction.valueBets.length > 0 ? prediction.valueBets[0].edge : 0;
+      riskScore = prediction.riskScore;
+    }
+
+    // Create the bet
+    const potentialWin = odds * stake;
 
     const bet = await prisma.bet.create({
       data: {
-        userId: uid,
-        bettingAccountId,
+        userId,
+        bettingAccountId: account.id,
         matchId,
         betType,
         selection,
         odds,
         stake,
         potentialWin,
-        commission,
-        isAutoPlaced,
+        status: "pending",
+        isAutoPlaced: isAutoPlaced || false,
         aiConfidence: aiConfidence || 0,
         aiReasoning: aiReasoning || null,
-        aiModelUsed: aiModelUsed || "ensemble",
-        kellyStake: kellyStake || 0,
-        valueEdge: valueEdge || 0,
-        riskScore: riskScore || 50,
-      },
-      include: {
-        match: true,
-        bettingAccount: true,
+        aiModelUsed: "ensemble",
+        kellyStake,
+        valueEdge,
+        riskScore,
       },
     });
 
     // Create transaction
     await prisma.transaction.create({
       data: {
-        userId: uid,
+        userId,
         type: "bet_placed",
         amount: -stake,
         currency: "USD",
         status: "completed",
-        description: `${bet.match?.homeTeam || "Match"} vs ${bet.match?.awayTeam || "Opponent"} - ${selection}`,
+        description: `Bet on ${selection} @ ${odds} - ${match?.homeTeam || "Unknown"} vs ${match?.awayTeam || "Unknown"}`,
         betId: bet.id,
       },
     });
 
     // Update user balance
-    if (user) {
-      await prisma.user.update({
-        where: { id: uid },
-        data: { balance: { decrement: stake } },
-      });
-    }
+    await prisma.user.update({
+      where: { id: userId },
+      data: { balance: { decrement: stake } },
+    });
 
     return NextResponse.json(bet, { status: 201 });
   } catch (error) {
-    console.error("Error creating bet:", error);
-    return NextResponse.json({ error: "Failed to create bet" }, { status: 500 });
-  }
-}
-
-/**
- * Settle a bet - called when a match finishes
- */
-export async function PUT(request: NextRequest) {
-  try {
-    const body = await request.json();
-    const { betId, status, profit } = body;
-
-    if (!betId || !status) {
-      return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    if (error instanceof Error && error.message === "Authentication required") {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
-
-    const bet = await prisma.bet.findUnique({
-      where: { id: betId },
-      include: { user: { include: { settings: true } } },
-    });
-
-    if (!bet) {
-      return NextResponse.json({ error: "Bet not found" }, { status: 404 });
-    }
-
-    const commissionRate = bet.user.settings?.commissionRate || 0.10;
-    const actualProfit = profit || (status === "won" ? bet.potentialWin - bet.stake : 0);
-    const commission = actualProfit > 0 ? Math.round(actualProfit * commissionRate * 100) / 100 : 0;
-    const netProfit = actualProfit - commission;
-
-    // Update bet
-    const updatedBet = await prisma.bet.update({
-      where: { id: betId },
-      data: {
-        status,
-        profit: netProfit,
-        commission,
-        settledAt: new Date(),
-      },
-    });
-
-    // Update user stats
-    if (status === "won") {
-      await prisma.user.update({
-        where: { id: bet.userId },
-        data: {
-          balance: { increment: bet.stake + netProfit },
-          totalProfit: { increment: actualProfit },
-          commissionPaid: { increment: commission },
-        },
-      });
-
-      // Create transaction for winnings
-      await prisma.transaction.create({
-        data: {
-          userId: bet.userId,
-          type: "bet_won",
-          amount: netProfit,
-          currency: "USD",
-          status: "completed",
-          description: `Bet won - ${bet.selection}`,
-          betId: bet.id,
-        },
-      });
-
-      // Create commission transaction
-      if (commission > 0) {
-        await prisma.transaction.create({
-          data: {
-            userId: bet.userId,
-            type: "commission",
-            amount: commission,
-            currency: "USD",
-            status: "completed",
-            description: `${Math.round(commissionRate * 100)}% commission on profit`,
-            betId: bet.id,
-          },
-        });
-
-        // Credit commission to admin
-        const admin = await prisma.user.findFirst({ where: { role: "admin" } });
-        if (admin) {
-          await prisma.user.update({
-            where: { id: admin.id },
-            data: {
-              balance: { increment: commission },
-              totalProfit: { increment: commission },
-            },
-          });
-        }
-      }
-    } else if (status === "lost") {
-      await prisma.user.update({
-        where: { id: bet.userId },
-        data: {
-          totalLoss: { increment: bet.stake },
-        },
-      });
-    } else if (status === "cashed_out") {
-      const cashoutAmount = bet.cashoutAmount || bet.stake * 0.5;
-      const cashoutProfit = cashoutAmount - bet.stake;
-      const cashoutCommission = cashoutProfit > 0 ? Math.round(cashoutProfit * commissionRate * 100) / 100 : 0;
-
-      await prisma.user.update({
-        where: { id: bet.userId },
-        data: {
-          balance: { increment: cashoutAmount - cashoutCommission },
-          totalProfit: cashoutProfit > 0 ? { increment: cashoutProfit } : undefined,
-          totalLoss: cashoutProfit < 0 ? { increment: Math.abs(cashoutProfit) } : undefined,
-          commissionPaid: cashoutCommission > 0 ? { increment: cashoutCommission } : undefined,
-        },
-      });
-    }
-
-    return NextResponse.json(updatedBet);
-  } catch (error) {
-    console.error("Error settling bet:", error);
-    return NextResponse.json({ error: "Failed to settle bet" }, { status: 500 });
+    console.error("Error placing bet:", error);
+    return NextResponse.json({ error: "Failed to place bet" }, { status: 500 });
   }
 }

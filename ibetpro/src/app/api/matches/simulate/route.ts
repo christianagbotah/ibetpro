@@ -1,10 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-
-async function getDemoUserId(): Promise<string> {
-  const user = await prisma.user.findFirst({ where: { email: "demo@ibetpro.com" } });
-  return user?.id || "";
-}
+import { getAuthUser } from "@/lib/session";
 
 // Simple Poisson random number generator
 function poissonRandom(lambda: number): number {
@@ -20,6 +16,11 @@ function poissonRandom(lambda: number): number {
 
 export async function POST(request: NextRequest) {
   try {
+    const user = await getAuthUser();
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+
     const body = await request.json();
     const { matchId } = body;
 
@@ -45,7 +46,7 @@ export async function POST(request: NextRequest) {
     const currentMinute = (match.minute ?? 0) + advance;
 
     // Determine max minutes based on sport
-    const isFootball = match.sport === "football";
+    const isFootball = match.sport === "football" || match.sport.startsWith("soccer");
     const isBasketball = match.sport === "basketball";
     const maxMinutes = isFootball ? 90 : isBasketball ? 48 : 180;
 
@@ -54,26 +55,22 @@ export async function POST(request: NextRequest) {
     let newStatus = match.status;
     const events: string[] = [];
 
-    // Calculate goal probability based on odds (approximate expected goals)
+    // Calculate goal probability based on odds
     const homeImplied = 1 / match.homeOdds;
     const awayImplied = 1 / match.awayOdds;
 
-    // Expected goals per minute (simplified)
     const homeGoalRate = (homeImplied * 2.5) / maxMinutes;
     const awayGoalRate = (awayImplied * 2.5) / maxMinutes;
 
-    // For each minute advanced, check if a goal is scored
     for (let m = 0; m < advance; m++) {
       const minute = (match.minute ?? 0) + m + 1;
 
-      // Home team goal probability
       const homeGoals = poissonRandom(homeGoalRate);
       if (homeGoals > 0) {
-        homeScore += 1; // Cap at 1 goal per minute
+        homeScore += 1;
         events.push(`${minute}' - Goal! ${match.homeTeam} scores! (${homeScore}-${awayScore})`);
       }
 
-      // Away team goal probability
       const awayGoals = poissonRandom(awayGoalRate);
       if (awayGoals > 0) {
         awayScore += 1;
@@ -81,13 +78,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Check if match should end
     if (currentMinute >= maxMinutes) {
       newStatus = "finished";
       events.push(`Full Time! ${match.homeTeam} ${homeScore} - ${awayScore} ${match.awayTeam}`);
     }
 
-    // Update match
     const updatedMatch = await prisma.match.update({
       where: { id: matchId },
       data: {
@@ -101,8 +96,6 @@ export async function POST(request: NextRequest) {
 
     // If match is finished, settle bets
     if (newStatus === "finished") {
-      const userId = await getDemoUserId();
-
       for (const bet of match.bets) {
         if (bet.status !== "pending") continue;
 
@@ -126,7 +119,6 @@ export async function POST(request: NextRequest) {
           },
         });
 
-        // Create settlement transaction
         if (betWon) {
           await prisma.transaction.create({
             data: {
@@ -154,16 +146,15 @@ export async function POST(request: NextRequest) {
             },
           });
 
-          // Update user commission paid
-          if (userId) {
-            await prisma.user.update({
-              where: { id: bet.userId },
-              data: {
-                totalProfit: { increment: profit - commission },
-                commissionPaid: { increment: commission },
-              },
-            });
-          }
+          // Update user profit and commission
+          await prisma.user.update({
+            where: { id: bet.userId },
+            data: {
+              totalProfit: { increment: profit - commission },
+              commissionPaid: { increment: commission },
+              balance: { increment: bet.odds * bet.stake - commission },
+            },
+          });
         } else {
           await prisma.transaction.create({
             data: {
@@ -177,14 +168,12 @@ export async function POST(request: NextRequest) {
             },
           });
 
-          if (userId) {
-            await prisma.user.update({
-              where: { id: bet.userId },
-              data: {
-                totalLoss: { increment: bet.stake },
-              },
-            });
-          }
+          await prisma.user.update({
+            where: { id: bet.userId },
+            data: {
+              totalLoss: { increment: bet.stake },
+            },
+          });
         }
       }
     }

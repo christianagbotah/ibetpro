@@ -69,7 +69,7 @@ interface UserStats {
 
 export default function DashboardPage() {
   const { data: matches, loading: matchesLoading } = usePolling<Match[]>("/api/matches", 30000, []);
-  const { data: bets, loading: betsLoading } = useFetch<Bet[]>("/api/bets?userId=demo-user", []);
+  const { data: bets, loading: betsLoading } = useFetch<Bet[]>("/api/bets", []);
   const { data: stats, loading: statsLoading } = useFetch<UserStats>("/api/stats/user", {
     balance: 0,
     totalProfit: 0,
