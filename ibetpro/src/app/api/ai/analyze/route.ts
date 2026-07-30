@@ -1,15 +1,27 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import { getAuthUser } from "@/lib/session";
+import { checkRateLimit, rateLimitHeaders, RATE_LIMITS } from "@/lib/rate-limit";
+import { validateInput, analyzeMatchSchema } from "@/lib/validation";
 import { analyzeMatch, calculatePoissonProbabilities, calculateOverUnderProbabilities, calculateKellyCriterion, generateDetailedAnalysis } from "@/lib/ai-engine";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { matchId, bankroll } = body;
-
-    if (!matchId) {
-      return NextResponse.json({ error: "Match ID is required" }, { status: 400 });
+    const user = await getAuthUser();
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
+
+    const rateLimit = checkRateLimit(user.id, RATE_LIMITS.ai);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Rate limit exceeded", retryAfter: rateLimit.retryAfter }, { status: 429, headers: rateLimitHeaders(rateLimit) });
+    }
+
+    const body = await request.json();
+    const validation = validateInput(analyzeMatchSchema, body);
+    if (!validation.success) return validation.error;
+
+    const { matchId, forceRefresh } = validation.data;
 
     const match = await prisma.match.findUnique({
       where: { id: matchId },
@@ -18,6 +30,10 @@ export async function POST(request: NextRequest) {
     if (!match) {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
+
+    // Get user's bankroll for Kelly criterion
+    const dbUser = await prisma.user.findUnique({ where: { id: user.id } });
+    const bankroll = dbUser?.bankroll || 1000;
 
     // Get team stats
     const homeTeamStats = await prisma.teamStats.findFirst({
@@ -108,6 +124,24 @@ export async function POST(request: NextRequest) {
       awayStatsForAI,
       bankroll || 1000
     );
+
+    // If not forcing refresh and match already has AI analysis, return cached
+    if (!forceRefresh && match.aiConfidence && match.aiConfidence > 0) {
+      return NextResponse.json({
+        matchId,
+        prediction: {
+          homeWinProb: match.aiHomeWinProb,
+          drawProb: match.aiDrawProb,
+          awayWinProb: match.aiAwayWinProb,
+          confidence: match.aiConfidence,
+          recommended: match.aiRecommended,
+          analysis: match.aiAnalysis,
+          riskScore: match.aiRiskScore,
+          riskLevel: match.aiRiskLevel,
+        },
+        cached: true,
+      }, { headers: rateLimitHeaders(rateLimit) });
+    }
 
     // Calculate Poisson probabilities
     const poissonResult = calculatePoissonProbabilities(homeStatsForAI, awayStatsForAI);

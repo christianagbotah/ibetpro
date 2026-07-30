@@ -1,6 +1,9 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, requireAuth } from "@/lib/session";
+import { checkRateLimit, rateLimitHeaders, RATE_LIMITS } from "@/lib/rate-limit";
+import { validateInput, createAccountSchema, deleteAccountSchema } from "@/lib/validation";
+import { verifyPlatformConnection } from "@/lib/betting-platforms";
 
 // GET /api/accounts - List betting accounts for authenticated user
 export async function GET() {
@@ -10,12 +13,17 @@ export async function GET() {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
+    const rateLimit = checkRateLimit(user.id, RATE_LIMITS.standard);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429, headers: rateLimitHeaders(rateLimit) });
+    }
+
     const accounts = await prisma.bettingAccount.findMany({
       where: { userId: user.id },
       orderBy: { createdAt: "desc" },
     });
 
-    return NextResponse.json(accounts);
+    return NextResponse.json(accounts, { headers: rateLimitHeaders(rateLimit) });
   } catch (error) {
     console.error("Error fetching accounts:", error);
     return NextResponse.json({ error: "Failed to fetch accounts" }, { status: 500 });
@@ -27,34 +35,31 @@ export async function POST(request: NextRequest) {
   try {
     const userId = await requireAuth();
 
-    const body = await request.json();
-    const { platform, accountName, accountId, accessToken, refreshToken } = body;
-
-    if (!platform || !accountName) {
-      return NextResponse.json(
-        { error: "Platform and account name are required" },
-        { status: 400 }
-      );
+    const rateLimit = checkRateLimit(userId, RATE_LIMITS.standard);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429, headers: rateLimitHeaders(rateLimit) });
     }
 
-    // Validate platform
-    const supportedPlatforms = [
-      "bet365", "betway", "1xbet", "sportybet", "stake", "pinnacle", "manual"
-    ];
+    const body = await request.json();
+    const validation = validateInput(createAccountSchema, body);
+    if (!validation.success) return validation.error;
 
-    if (!supportedPlatforms.includes(platform.toLowerCase())) {
-      return NextResponse.json(
-        { error: `Unsupported platform. Supported: ${supportedPlatforms.join(", ")}` },
-        { status: 400 }
-      );
+    const { platform, accountName, accountId, accessToken, refreshToken, balance, currency } = validation.data;
+
+    // Verify the platform connection if access token provided
+    if (accessToken) {
+      const connectionResult = await verifyPlatformConnection(platform, accessToken);
+      if (!connectionResult.connected) {
+        return NextResponse.json(
+          { error: `Platform connection failed: ${connectionResult.error}` },
+          { status: 400 }
+        );
+      }
     }
 
     // Check if account already exists for this platform
     const existing = await prisma.bettingAccount.findFirst({
-      where: {
-        userId,
-        platform: platform.toLowerCase(),
-      },
+      where: { userId, platform },
     });
 
     if (existing) {
@@ -67,19 +72,19 @@ export async function POST(request: NextRequest) {
     const account = await prisma.bettingAccount.create({
       data: {
         userId,
-        platform: platform.toLowerCase(),
-        accountId: accountId || `${platform.toLowerCase()}-${Date.now()}`,
+        platform,
+        accountId: accountId || `${platform}-${Date.now()}`,
         accountName,
         accessToken: accessToken || null,
         refreshToken: refreshToken || null,
-        balance: 0,
-        currency: "USD",
-        isConnected: true,
-        lastSyncedAt: new Date(),
+        balance: balance ?? 0,
+        currency: currency ?? "USD",
+        isConnected: !!accessToken,
+        lastSyncedAt: accessToken ? new Date() : null,
       },
     });
 
-    return NextResponse.json(account, { status: 201 });
+    return NextResponse.json(account, { status: 201, headers: rateLimitHeaders(rateLimit) });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
@@ -93,6 +98,12 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const userId = await requireAuth();
+
+    const rateLimit = checkRateLimit(userId, RATE_LIMITS.standard);
+    if (!rateLimit.allowed) {
+      return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429, headers: rateLimitHeaders(rateLimit) });
+    }
+
     const { searchParams } = new URL(request.url);
     const accountId = searchParams.get("id");
 
@@ -109,12 +120,24 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Account not found" }, { status: 404 });
     }
 
+    // Check for active bets on this account
+    const activeBets = await prisma.bet.count({
+      where: { bettingAccountId: accountId, status: "pending" },
+    });
+
+    if (activeBets > 0) {
+      return NextResponse.json(
+        { error: `Cannot disconnect: ${activeBets} active bets on this account` },
+        { status: 400 }
+      );
+    }
+
     await prisma.bettingAccount.update({
       where: { id: accountId },
       data: { isConnected: false },
     });
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { headers: rateLimitHeaders(rateLimit) });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
