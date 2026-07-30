@@ -1,18 +1,17 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { getAuthUser, isAdmin } from "@/lib/session";
+import { getAuthUser } from "@/lib/session";
+import { validateInput, syncSchema } from "@/lib/validation";
 import {
   fetchOddsApiUpcoming,
   convertOddsApiToMatch,
   fetchApiFootballFixtures,
   fetchApiFootballLiveFixtures,
-  fetchApiFootballTeamStats,
   checkApiHealth,
-  syncFromBestSource,
 } from "@/lib/external-apis";
 import { config } from "@/lib/config";
 
-// POST /api/sync - Sync data from external APIs
+// POST /api/sync - Sync data from external APIs with zod validation
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser();
@@ -21,7 +20,10 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { source } = body; // "odds-api", "api-football", "auto"
+    const validation = validateInput(syncSchema, body);
+    if (!validation.success) return validation.error;
+
+    const { source } = validation.data;
 
     let matchesSynced = 0;
     let teamStatsSynced = 0;
@@ -186,7 +188,7 @@ async function syncApiFootballData(): Promise<{ matches: number; teamStats: numb
             league: fixture.league,
             homeTeam: fixture.homeTeam,
             awayTeam: fixture.awayTeam,
-            homeOdds: 2.0, // Placeholder odds — will be updated by Odds API sync
+            homeOdds: 2.0,
             awayOdds: 2.0,
             commenceTime: new Date(fixture.commenceTime),
             status: fixture.status,
@@ -224,7 +226,7 @@ async function syncApiFootballData(): Promise<{ matches: number; teamStats: numb
           league: fixture.league,
           homeTeam: fixture.homeTeam,
           awayTeam: fixture.awayTeam,
-          homeOdds: 2.0, // Placeholder — will be updated by Odds API sync
+          homeOdds: 2.0,
           awayOdds: 2.0,
           commenceTime: new Date(fixture.commenceTime),
           status: "live",

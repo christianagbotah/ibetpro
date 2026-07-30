@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/session";
+import { validateInput, updateSettingsSchema } from "@/lib/validation";
 
 // GET /api/settings - Get current user's settings
 export async function GET() {
@@ -44,7 +45,7 @@ export async function GET() {
   }
 }
 
-// PUT /api/settings - Update user settings
+// PUT /api/settings - Update user settings with zod validation
 export async function PUT(request: NextRequest) {
   try {
     const user = await getAuthUser();
@@ -53,29 +54,10 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
+    const validation = validateInput(updateSettingsSchema, body);
+    if (!validation.success) return validation.error;
 
-    const allowedFields = [
-      "autoBettingEnabled",
-      "maxBetAmount",
-      "minOddsThreshold",
-      "maxOddsThreshold",
-      "riskLevel",
-      "autoCashoutEnabled",
-      "cashoutThreshold",
-      "commissionRate",
-      "preferredSports",
-      "notificationsEnabled",
-      "dailyBetLimit",
-      "kellyFraction",
-      "minEdgeThreshold",
-    ];
-
-    const data: Record<string, unknown> = {};
-    for (const field of allowedFields) {
-      if (body[field] !== undefined) {
-        data[field] = body[field];
-      }
-    }
+    const data = validation.data;
 
     const settings = await prisma.userSettings.upsert({
       where: { userId: user.id },

@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, requireAuth } from "@/lib/session";
 import { checkRateLimit, rateLimitHeaders, RATE_LIMITS } from "@/lib/rate-limit";
 import { validateInput, createAccountSchema, deleteAccountSchema } from "@/lib/validation";
-import { verifyPlatformConnection } from "@/lib/betting-platforms";
+import { verifyPlatformConnection, syncPlatformAccount } from "@/lib/betting-platforms";
 
 // GET /api/accounts - List betting accounts for authenticated user
 export async function GET() {
@@ -47,6 +47,9 @@ export async function POST(request: NextRequest) {
     const { platform, accountName, accountId, accessToken, refreshToken, balance, currency } = validation.data;
 
     // Verify the platform connection if access token provided
+    let isConnected = false;
+    let syncedBalance = balance ?? 0;
+
     if (accessToken) {
       const connectionResult = await verifyPlatformConnection(platform, accessToken);
       if (!connectionResult.connected) {
@@ -54,6 +57,17 @@ export async function POST(request: NextRequest) {
           { error: `Platform connection failed: ${connectionResult.error}` },
           { status: 400 }
         );
+      }
+      isConnected = true;
+
+      // Try to sync balance from the platform
+      try {
+        const syncResult = await syncPlatformAccount(platform, accessToken);
+        if (syncResult.balance > 0) {
+          syncedBalance = syncResult.balance;
+        }
+      } catch {
+        // Balance sync failed — use provided balance
       }
     }
 
@@ -77,10 +91,10 @@ export async function POST(request: NextRequest) {
         accountName,
         accessToken: accessToken || null,
         refreshToken: refreshToken || null,
-        balance: balance ?? 0,
+        balance: syncedBalance,
         currency: currency ?? "USD",
-        isConnected: !!accessToken,
-        lastSyncedAt: accessToken ? new Date() : null,
+        isConnected,
+        lastSyncedAt: isConnected ? new Date() : null,
       },
     });
 

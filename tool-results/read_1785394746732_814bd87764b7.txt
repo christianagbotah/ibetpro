@@ -1,0 +1,1312 @@
+     1→// ============================================================================
+     2→// iBetPro Production AI Engine v2.0
+     3→// Multi-model prediction system with Poisson, ELO, Monte Carlo, Kelly Criterion
+     4→// All defaults are configurable via config.ts / environment variables
+     5→// ============================================================================
+     6→
+     7→import { config } from "@/lib/config";
+     8→
+     9→// ==================== TYPE DEFINITIONS ====================
+    10→
+    11→interface TeamStatsData {
+    12→  teamName: string;
+    13→  sport: string;
+    14→  league: string;
+    15→  matchesPlayed: number;
+    16→  wins: number;
+    17→  draws: number;
+    18→  losses: number;
+    19→  goalsFor: number;
+    20→  goalsAgainst: number;
+    21→  form: string | null;
+    22→  homeRecord: string | null;
+    23→  awayRecord: string | null;
+    24→  attackRating: number;
+    25→  defenseRating: number;
+    26→  overallRating: number;
+    27→  keyPlayers: string | null;
+    28→  xgFor: number;
+    29→  xgAgainst: number;
+    30→  eloRating: number;
+    31→  shotsPerGame: number;
+    32→  shotsOnTargetPerGame: number;
+    33→  possessionAvg: number;
+    34→  cornersPerGame: number;
+    35→  cardsPerGame: number;
+    36→}
+    37→
+    38→interface MatchData {
+    39→  homeTeam: string;
+    40→  awayTeam: string;
+    41→  sport: string;
+    42→  league: string;
+    43→  homeOdds: number;
+    44→  drawOdds?: number;
+    45→  awayOdds: number;
+    46→  overUnderLine?: number;
+    47→  overOdds?: number;
+    48→  underOdds?: number;
+    49→  homeScore?: number;
+    50→  awayScore?: number;
+    51→  minute?: number;
+    52→  status: string;
+    53→}
+    54→
+    55→interface Prediction {
+    56→  homeWinProb: number;
+    57→  drawProb: number;
+    58→  awayWinProb: number;
+    59→  confidence: number;
+    60→  recommended: "home" | "away" | "draw" | "over" | "under";
+    61→  analysis: string;
+    62→  modelResults: ModelResult[];
+    63→  valueBets: ValueBet[];
+    64→  kellyStake: KellyResult;
+    65→  riskScore: number;
+    66→  riskLevel: "low" | "medium" | "high";
+    67→}
+    68→
+    69→interface ModelResult {
+    70→  modelName: string;
+    71→  homeWinProb: number;
+    72→  drawProb: number;
+    73→  awayWinProb: number;
+    74→  weight: number;
+    75→  confidence: number;
+    76→}
+    77→
+    78→interface ValueBet {
+    79→  selection: string;
+    80→  aiProb: number;
+    81→  impliedProb: number;
+    82→  odds: number;
+    83→  edge: number;
+    84→  kellyFraction: number;
+    85→  expectedValue: number;
+    86→}
+    87→
+    88→interface KellyResult {
+    89→  fraction: number;
+    90→  recommendedStake: number;
+    91→  maxStake: number;
+    92→  expectedValue: number;
+    93→  riskOfRuin: number;
+    94→}
+    95→
+    96→interface CashoutRecommendation {
+    97→  shouldCashout: boolean;
+    98→  cashoutAmount: number;
+    99→  reasoning: string;
+   100→  urgency: "low" | "medium" | "high";
+   101→  probabilityOfWinning: number;
+   102→  expectedValueIfHold: number;
+   103→  expectedValueIfCashout: number;
+   104→}
+   105→
+   106→interface DetailedAnalysis {
+   107→  keyFactors: string[];
+   108→  strengths: { team: string; points: string[] };
+   109→  weaknesses: { team: string; points: string[] };
+   110→  valueBet: { selection: string; reason: string; edge: number };
+   111→  riskAssessment: { level: "low" | "medium" | "high"; score: number; factors: string[] };
+   112→  modelConsensus: { agreement: number; dominantModel: string; spread: number };
+   113→  xgAnalysis: { homeXg: number; awayXg: number; totalExpected: number };
+   114→}
+   115→
+   116→interface PoissonResult {
+   117→  expectedHomeGoals: number;
+   118→  expectedAwayGoals: number;
+   119→  homeWinProb: number;
+   120→  drawProb: number;
+   121→  awayWinProb: number;
+   122→  scoreProbabilities: Record<string, number>;
+   123→  overUnderProbabilities: { line: number; overProb: number; underProb: number }[];
+   124→}
+   125→
+   126→interface OverUnderResult {
+   127→  line: number;
+   128→  overProb: number;
+   129→  underProb: number;
+   130→  recommendation: "over" | "under";
+   131→  value: number;
+   132→}
+   133→
+   134→interface MonteCarloResult {
+   135→  homeWinProb: number;
+   136→  drawProb: number;
+   137→  awayWinProb: number;
+   138→  avgHomeGoals: number;
+   139→  avgAwayGoals: number;
+   140→  mostLikelyScore: string;
+   141→  confidenceInterval: { low: number; high: number };
+   142→}
+   143→
+   144→// ==================== MATH UTILITIES ====================
+   145→
+   146→// Seeded PRNG for reproducible Monte Carlo simulations
+   147→class SeededRandom {
+   148→  private seed: number;
+   149→  constructor(seed: number) {
+   150→    this.seed = seed;
+   151→  }
+   152→  next(): number {
+   153→    // Mulberry32 — fast, good distribution
+   154→    this.seed |= 0;
+   155→    this.seed = (this.seed + 0x6d2b79f5) | 0;
+   156→    let t = Math.imul(this.seed ^ (this.seed >>> 15), 1 | this.seed);
+   157→    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+   158→    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+   159→  }
+   160→}
+   161→
+   162→function createRng(seed?: number): SeededRandom {
+   163→  return new SeededRandom(seed ?? Date.now());
+   164→}
+   165→
+   166→function factorial(n: number): number {
+   167→  if (n <= 1) return 1;
+   168→  let result = 1;
+   169→  for (let i = 2; i <= n; i++) result *= i;
+   170→  return result;
+   171→}
+   172→
+   173→function poissonProbability(lambda: number, k: number): number {
+   174→  return (Math.pow(lambda, k) * Math.exp(-lambda)) / factorial(k);
+   175→}
+   176→
+   177→function normalCDF(x: number): number {
+   178→  const a1 = 0.254829592;
+   179→  const a2 = -0.284496736;
+   180→  const a3 = 1.421413741;
+   181→  const a4 = -1.453152027;
+   182→  const a5 = 1.061405429;
+   183→  const p = 0.3275911;
+   184→  const sign = x < 0 ? -1 : 1;
+   185→  x = Math.abs(x) / Math.sqrt(2);
+   186→  const t = 1.0 / (1.0 + p * x);
+   187→  const y = 1.0 - ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t * Math.exp(-x * x);
+   188→  return 0.5 * (1.0 + sign * y);
+   189→}
+   190→
+   191→function gaussianRandom(mean: number = 0, stdev: number = 1, rng?: SeededRandom): number {
+   192→  const u1 = rng ? rng.next() : Math.random();
+   193→  const u2 = rng ? rng.next() : Math.random();
+   194→  const z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
+   195→  return z * stdev + mean;
+   196→}
+   197→
+   198→// ==================== FORM & RECORD PARSING ====================
+   199→
+   200→function parseForm(form: string | null): number {
+   201→  if (!form) return 0.5;
+   202→  const chars = form.replace(/[^WDL]/g, "").split("");
+   203→  if (chars.length === 0) return 0.5;
+   204→  let score = 0;
+   205→  let totalWeight = 0;
+   206→  // Recent matches weighted more heavily
+   207→  for (let i = 0; i < chars.length; i++) {
+   208→    const weight = 1 + (i / chars.length) * 0.5; // More recent = higher weight
+   209→    if (chars[i] === "W") score += 1 * weight;
+   210→    else if (chars[i] === "D") score += 0.4 * weight;
+   211→    totalWeight += weight;
+   212→  }
+   213→  return totalWeight > 0 ? score / totalWeight : 0.5;
+   214→}
+   215→
+   216→function parseRecord(record: string | null): { wins: number; draws: number; losses: number; rate: number } {
+   217→  if (!record) return { wins: 0, draws: 0, losses: 0, rate: 0.5 };
+   218→  const parts = record.split("-").map(Number);
+   219→  if (parts.length < 3 || parts.some(isNaN)) return { wins: 0, draws: 0, losses: 0, rate: 0.5 };
+   220→  const [wins, draws, losses] = parts;
+   221→  const total = wins + draws + losses;
+   222→  return { wins, draws, losses, rate: total > 0 ? (wins + draws * 0.4) / total : 0.5 };
+   223→}
+   224→
+   225→// ==================== ELO RATING SYSTEM ====================
+   226→
+   227→function calculateEloProbability(homeElo: number, awayElo: number, isHome: boolean = true): number {
+   228→  // Home advantage bonus of 65 Elo points (well-established in football analytics)
+   229→  const homeAdvantage = isHome ? config.ai.eloHomeAdvantage : 0;
+   230→  const eloDiff = (homeElo + homeAdvantage) - awayElo;
+   231→  return 1 / (1 + Math.pow(10, -eloDiff / 400));
+   232→}
+   233→
+   234→function calculateEloDrawProbability(homeElo: number, awayElo: number): number {
+   235→  // Draw probability is highest when teams are close in rating
+   236→  const eloDiff = Math.abs(homeElo - awayElo);
+   237→  // Base draw probability ~26% for football, decreasing with rating gap
+   238→  const baseDrawProb = config.ai.baseDrawProb;
+   239→  const gapPenalty = eloDiff / 1000; // Larger gap = fewer draws
+   240→  return Math.max(0.12, Math.min(0.35, baseDrawProb - gapPenalty));
+   241→}
+   242→
+   243→function predictWithElo(homeElo: number, awayElo: number): { homeWin: number; draw: number; awayWin: number } {
+   244→  const homeWinRaw = calculateEloProbability(homeElo, awayElo, true);
+   245→  const drawProb = calculateEloDrawProbability(homeElo, awayElo);
+   246→  const awayWinRaw = 1 - homeWinRaw;
+   247→
+   248→  // Adjust for draw probability
+   249→  const remaining = 1 - drawProb;
+   250→  const homeWin = homeWinRaw * remaining;
+   251→  const awayWin = awayWinRaw * remaining;
+   252→
+   253→  return { homeWin, draw: drawProb, awayWin };
+   254→}
+   255→
+   256→// ==================== POISSON MODEL ====================
+   257→
+   258→export function calculatePoissonProbabilities(
+   259→  homeStats: TeamStatsData | null,
+   260→  awayStats: TeamStatsData | null,
+   261→  leagueAvgGoals: number = config.ai.leagueAvgGoals
+   262→): PoissonResult {
+   263→  let expectedHomeGoals = leagueAvgGoals;
+   264→  let expectedAwayGoals = leagueAvgGoals;
+   265→
+   266→  if (homeStats && awayStats) {
+   267→    // Calculate attack strength and defense weakness relative to league average
+   268→    const homeAttackStrength = homeStats.goalsFor / Math.max(1, homeStats.matchesPlayed) / leagueAvgGoals;
+   269→    const awayDefenseStrength = awayStats.goalsAgainst / Math.max(1, awayStats.matchesPlayed) / leagueAvgGoals;
+   270→    const awayAttackStrength = awayStats.goalsFor / Math.max(1, awayStats.matchesPlayed) / leagueAvgGoals;
+   271→    const homeDefenseStrength = homeStats.goalsAgainst / Math.max(1, homeStats.matchesPlayed) / leagueAvgGoals;
+   272→
+   273→    // Use xG data if available for more accurate expected goals
+   274→    const homeXgPerGame = homeStats.xgFor > 0 ? homeStats.xgFor / Math.max(1, homeStats.matchesPlayed) : 0;
+   275→    const awayXgPerGame = awayStats.xgFor > 0 ? awayStats.xgFor / Math.max(1, awayStats.matchesPlayed) : 0;
+   276→
+   277→    // Blend actual goals and xG for more robust estimation
+   278→    const homeGoalRate = homeStats.goalsFor / Math.max(1, homeStats.matchesPlayed);
+   279→    const awayGoalRate = awayStats.goalsFor / Math.max(1, awayStats.matchesPlayed);
+   280→
+   281→    const homeAttackRate = homeXgPerGame > 0 ? (homeGoalRate * 0.6 + homeXgPerGame * 0.4) : homeGoalRate;
+   282→    const awayAttackRate = awayXgPerGame > 0 ? (awayGoalRate * 0.6 + awayXgPerGame * 0.4) : awayGoalRate;
+   283→
+   284→    // Expected goals = attack strength * opponent defense weakness * league avg
+   285→    expectedHomeGoals = homeAttackStrength * awayDefenseStrength * leagueAvgGoals;
+   286→    expectedAwayGoals = awayAttackStrength * homeDefenseStrength * leagueAvgGoals;
+   287→
+   288→    // Override with blended xG model if available
+   289→    if (homeXgPerGame > 0 || awayXgPerGame > 0) {
+   290→      const homeConcedeRate = homeStats.goalsAgainst / Math.max(1, homeStats.matchesPlayed);
+   291→      const awayConcedeRate = awayStats.goalsAgainst / Math.max(1, awayStats.matchesPlayed);
+   292→      const homeXgAgainst = homeStats.xgAgainst > 0 ? homeStats.xgAgainst / Math.max(1, homeStats.matchesPlayed) : homeConcedeRate;
+   293→      const awayXgAgainst = awayStats.xgAgainst > 0 ? awayStats.xgAgainst / Math.max(1, awayStats.matchesPlayed) : awayConcedeRate;
+   294→
+   295→      // Blend Poisson expected with xG model
+   296→      const xgHomeExpected = (homeAttackRate + awayXgAgainst) / 2;
+   297→      const xgAwayExpected = (awayAttackRate + homeXgAgainst) / 2;
+   298→
+   299→      expectedHomeGoals = expectedHomeGoals * 0.4 + xgHomeExpected * 0.6;
+   300→      expectedAwayGoals = expectedAwayGoals * 0.4 + xgAwayExpected * 0.6;
+   301→    }
+   302→
+   303→    // Home advantage boost (configurable via AI_HOME_ADV_MULT / AI_AWAY_PEN_MULT)
+   304→    expectedHomeGoals *= config.ai.homeAdvantageMultiplier;
+   305→    expectedAwayGoals *= config.ai.awayPenaltyMultiplier;
+   306→  }
+   307→
+   308→  // Ensure reasonable bounds
+   309→  expectedHomeGoals = Math.max(0.3, Math.min(4.0, expectedHomeGoals));
+   310→  expectedAwayGoals = Math.max(0.2, Math.min(3.5, expectedAwayGoals));
+   311→
+   312→  // Calculate score matrix (0-7 goals each)
+   313→  const maxGoals = 7;
+   314→  const scoreProbabilities: Record<string, number> = {};
+   315→  let homeWinProb = 0;
+   316→  let drawProb = 0;
+   317→  let awayWinProb = 0;
+   318→
+   319→  for (let i = 0; i <= maxGoals; i++) {
+   320→    for (let j = 0; j <= maxGoals; j++) {
+   321→      const prob = poissonProbability(expectedHomeGoals, i) * poissonProbability(expectedAwayGoals, j);
+   322→      const key = `${i}-${j}`;
+   323→      scoreProbabilities[key] = Math.round(prob * 10000) / 10000;
+   324→
+   325→      if (i > j) homeWinProb += prob;
+   326→      else if (i === j) drawProb += prob;
+   327→      else awayWinProb += prob;
+   328→    }
+   329→  }
+   330→
+   331→  // Normalize (account for probabilities beyond maxGoals)
+   332→  const total = homeWinProb + drawProb + awayWinProb;
+   333→  homeWinProb /= total;
+   334→  drawProb /= total;
+   335→  awayWinProb /= total;
+   336→
+   337→  // Calculate over/under probabilities for common lines
+   338→  const overUnderProbabilities: { line: number; overProb: number; underProb: number }[] = [];
+   339→  for (const line of [0.5, 1.5, 2.5, 3.5, 4.5]) {
+   340→    let underProb = 0;
+   341→    const totalExpected = expectedHomeGoals + expectedAwayGoals;
+   342→
+   343→    for (let i = 0; i <= 8; i++) {
+   344→      const prob = poissonProbability(totalExpected, i);
+   345→      if (i < line) {
+   346→        underProb += prob;
+   347→      }
+   348→    }
+   349→
+   350→    overUnderProbabilities.push({
+   351→      line,
+   352→      overProb: Math.round((1 - underProb) * 100) / 100,
+   353→      underProb: Math.round(underProb * 100) / 100,
+   354→    });
+   355→  }
+   356→
+   357→  return {
+   358→    expectedHomeGoals: Math.round(expectedHomeGoals * 100) / 100,
+   359→    expectedAwayGoals: Math.round(expectedAwayGoals * 100) / 100,
+   360→    homeWinProb: Math.round(homeWinProb * 100) / 100,
+   361→    drawProb: Math.round(drawProb * 100) / 100,
+   362→    awayWinProb: Math.round(awayWinProb * 100) / 100,
+   363→    scoreProbabilities,
+   364→    overUnderProbabilities,
+   365→  };
+   366→}
+   367→
+   368→// ==================== MONTE CARLO SIMULATION ====================
+   369→
+   370→function runMonteCarloSimulation(
+   371→  expectedHomeGoals: number,
+   372→  expectedAwayGoals: number,
+   373→  iterations: number = config.ai.monteCarloIterations
+   374→): MonteCarloResult {
+   375→  // Use seeded PRNG for reproducibility
+   376→  const rng = createRng();
+   377→
+   378→  let homeWins = 0;
+   379→  let draws = 0;
+   380→  let awayWins = 0;
+   381→  let totalHomeGoals = 0;
+   382→  let totalAwayGoals = 0;
+   383→  const scoreCounts: Record<string, number> = {};
+   384→
+   385→  for (let i = 0; i < iterations; i++) {
+   386→    // Simulate goals using Poisson with seeded random variation
+   387→    const homeGoals = poissonRandom(expectedHomeGoals, rng);
+   388→    const awayGoals = poissonRandom(expectedAwayGoals, rng);
+   389→
+   390→    totalHomeGoals += homeGoals;
+   391→    totalAwayGoals += awayGoals;
+   392→
+   393→    const scoreKey = `${homeGoals}-${awayGoals}`;
+   394→    scoreCounts[scoreKey] = (scoreCounts[scoreKey] || 0) + 1;
+   395→
+   396→    if (homeGoals > awayGoals) homeWins++;
+   397→    else if (homeGoals === awayGoals) draws++;
+   398→    else awayWins++;
+   399→  }
+   400→
+   401→  // Find most likely score
+   402→  let mostLikelyScore = "1-0";
+   403→  let maxCount = 0;
+   404→  for (const [score, count] of Object.entries(scoreCounts)) {
+   405→    if (count > maxCount) {
+   406→      maxCount = count;
+   407→      mostLikelyScore = score;
+   408→    }
+   409→  }
+   410→
+   411→  // Calculate confidence interval for total goals
+   412→  const totalGoals = [];
+   413→  for (let i = 0; i < iterations; i++) {
+   414→    totalGoals.push(poissonRandom(expectedHomeGoals, rng) + poissonRandom(expectedAwayGoals, rng));
+   415→  }
+   416→  totalGoals.sort((a, b) => a - b);
+   417→  const lowIdx = Math.floor(iterations * 0.1);
+   418→  const highIdx = Math.floor(iterations * 0.9);
+   419→
+   420→  return {
+   421→    homeWinProb: Math.round((homeWins / iterations) * 100) / 100,
+   422→    drawProb: Math.round((draws / iterations) * 100) / 100,
+   423→    awayWinProb: Math.round((awayWins / iterations) * 100) / 100,
+   424→    avgHomeGoals: Math.round((totalHomeGoals / iterations) * 100) / 100,
+   425→    avgAwayGoals: Math.round((totalAwayGoals / iterations) * 100) / 100,
+   426→    mostLikelyScore,
+   427→    confidenceInterval: {
+   428→      low: totalGoals[lowIdx] || 1,
+   429→      high: totalGoals[highIdx] || 4,
+   430→    },
+   431→  };
+   432→}
+   433→
+   434→function poissonRandom(lambda: number, rng?: SeededRandom): number {
+   435→  const L = Math.exp(-lambda);
+   436→  let k = 0;
+   437→  let p = 1;
+   438→  do {
+   439→    k++;
+   440→    p *= rng ? rng.next() : Math.random();
+   441→  } while (p > L);
+   442→  return k - 1;
+   443→}
+   444→
+   445→// ==================== KELLY CRITERION ====================
+   446→
+   447→export function calculateKellyCriterion(
+   448→  probability: number,
+   449→  odds: number,
+   450→  bankroll: number = 1000,
+   451→  fractionalKelly: number = config.ai.kellyFraction // Use quarter-Kelly for safety
+   452→): KellyResult {
+   453→  const b = odds - 1; // Net odds
+   454→  const q = 1 - probability; // Probability of losing
+   455→
+   456→  // Full Kelly fraction
+   457→  const fullKelly = (b * probability - q) / b;
+   458→
+   459→  // If negative, no bet should be placed
+   460→  if (fullKelly <= 0) {
+   461→    return {
+   462→      fraction: 0,
+   463→      recommendedStake: 0,
+   464→      maxStake: 0,
+   465→      expectedValue: 0,
+   466→      riskOfRuin: 0,
+   467→    };
+   468→  }
+   469→
+   470→  // Apply fractional Kelly for risk management
+   471→  const adjustedFraction = fullKelly * fractionalKelly;
+   472→
+   473→  // Cap at 10% of bankroll for safety
+   474→  const cappedFraction = Math.min(adjustedFraction, 0.10);
+   475→
+   476→  // Expected value
+   477→  const expectedValue = probability * b - q;
+   478→
+   479→  // Risk of ruin approximation (simplified)
+   480→  const riskOfRuin = Math.pow(q / probability, Math.floor(bankroll / (cappedFraction * bankroll)));
+   481→
+   482→  return {
+   483→    fraction: Math.round(cappedFraction * 10000) / 10000,
+   484→    recommendedStake: Math.round(cappedFraction * bankroll * 100) / 100,
+   485→    maxStake: Math.round(Math.min(fullKelly * bankroll, bankroll * 0.10) * 100) / 100,
+   486→    expectedValue: Math.round(expectedValue * 1000) / 1000,
+   487→    riskOfRuin: Math.round(Math.min(riskOfRuin, 1) * 10000) / 10000,
+   488→  };
+   489→}
+   490→
+   491→// ==================== OVER/UNDER ANALYSIS ====================
+   492→
+   493→export function calculateOverUnderProbabilities(
+   494→  expectedGoals: number,
+   495→  line: number
+   496→): OverUnderResult {
+   497→  let underProb = 0;
+   498→  const maxGoals = 8;
+   499→
+   500→  for (let i = 0; i <= maxGoals; i++) {
+   501→    const prob = poissonProbability(expectedGoals, i);
+   502→    if (i < line) {
+   503→      underProb += prob;
+   504→    }
+   505→  }
+   506→
+   507→  const overProb = 1 - underProb;
+   508→  const recommendation = overProb > underProb ? "over" : "under";
+   509→  const value = Math.abs(overProb - underProb);
+   510→
+   511→  return {
+   512→    line,
+   513→    overProb: Math.round(overProb * 100) / 100,
+   514→    underProb: Math.round(underProb * 100) / 100,
+   515→    recommendation,
+   516→    value: Math.round(value * 100) / 100,
+   517→  };
+   518→}
+   519→
+   520→// ==================== VALUE BET DETECTION ====================
+   521→
+   522→function detectValueBets(
+   523→  match: MatchData,
+   524→  prediction: { homeWinProb: number; drawProb: number; awayWinProb: number },
+   525→  bankroll: number = 1000
+   526→): ValueBet[] {
+   527→  const valueBets: ValueBet[] = [];
+   528→
+   529→  // Home win value
+   530→  const homeImplied = 1 / match.homeOdds;
+   531→  const homeEdge = prediction.homeWinProb - homeImplied;
+   532→  if (homeEdge > 0.03) { // Minimum 3% edge
+   533→    const kelly = calculateKellyCriterion(prediction.homeWinProb, match.homeOdds, bankroll);
+   534→    valueBets.push({
+   535→      selection: `${match.homeTeam} Win`,
+   536→      aiProb: prediction.homeWinProb,
+   537→      impliedProb: homeImplied,
+   538→      odds: match.homeOdds,
+   539→      edge: Math.round(homeEdge * 100) / 100,
+   540→      kellyFraction: kelly.fraction,
+   541→      expectedValue: kelly.expectedValue,
+   542→    });
+   543→  }
+   544→
+   545→  // Away win value
+   546→  const awayImplied = 1 / match.awayOdds;
+   547→  const awayEdge = prediction.awayWinProb - awayImplied;
+   548→  if (awayEdge > 0.03) {
+   549→    const kelly = calculateKellyCriterion(prediction.awayWinProb, match.awayOdds, bankroll);
+   550→    valueBets.push({
+   551→      selection: `${match.awayTeam} Win`,
+   552→      aiProb: prediction.awayWinProb,
+   553→      impliedProb: awayImplied,
+   554→      odds: match.awayOdds,
+   555→      edge: Math.round(awayEdge * 100) / 100,
+   556→      kellyFraction: kelly.fraction,
+   557→      expectedValue: kelly.expectedValue,
+   558→    });
+   559→  }
+   560→
+   561→  // Draw value
+   562→  if (match.drawOdds) {
+   563→    const drawImplied = 1 / match.drawOdds;
+   564→    const drawEdge = prediction.drawProb - drawImplied;
+   565→    if (drawEdge > 0.03) {
+   566→      const kelly = calculateKellyCriterion(prediction.drawProb, match.drawOdds, bankroll);
+   567→      valueBets.push({
+   568→        selection: "Draw",
+   569→        aiProb: prediction.drawProb,
+   570→        impliedProb: drawImplied,
+   571→        odds: match.drawOdds,
+   572→        edge: Math.round(drawEdge * 100) / 100,
+   573→        kellyFraction: kelly.fraction,
+   574→        expectedValue: kelly.expectedValue,
+   575→      });
+   576→    }
+   577→  }
+   578→
+   579→  // Over/Under value
+   580→  if (match.overUnderLine && match.overOdds && match.underOdds) {
+   581→    const overImplied = 1 / match.overOdds;
+   582→    const underImplied = 1 / match.underOdds;
+   583→    // Use Poisson model for over/under
+   584→    const totalExpected = config.ai.overUnderExpected; // Will be overridden by actual expected goals
+   585→    const overProb = 1 - normalCDF((match.overUnderLine - totalExpected) / Math.sqrt(totalExpected));
+   586→    const underProb = 1 - overProb;
+   587→
+   588→    const overEdge = overProb - overImplied;
+   589→    const underEdge = underProb - underImplied;
+   590→
+   591→    if (overEdge > 0.03) {
+   592→      const kelly = calculateKellyCriterion(overProb, match.overOdds, bankroll);
+   593→      valueBets.push({
+   594→        selection: `Over ${match.overUnderLine}`,
+   595→        aiProb: Math.round(overProb * 100) / 100,
+   596→        impliedProb: overImplied,
+   597→        odds: match.overOdds,
+   598→        edge: Math.round(overEdge * 100) / 100,
+   599→        kellyFraction: kelly.fraction,
+   600→        expectedValue: kelly.expectedValue,
+   601→      });
+   602→    }
+   603→    if (underEdge > 0.03) {
+   604→      const kelly = calculateKellyCriterion(underProb, match.underOdds, bankroll);
+   605→      valueBets.push({
+   606→        selection: `Under ${match.overUnderLine}`,
+   607→        aiProb: Math.round(underProb * 100) / 100,
+   608→        impliedProb: underImplied,
+   609→        odds: match.underOdds,
+   610→        edge: Math.round(underEdge * 100) / 100,
+   611→        kellyFraction: kelly.fraction,
+   612→        expectedValue: kelly.expectedValue,
+   613→      });
+   614→    }
+   615→  }
+   616→
+   617→  return valueBets.sort((a, b) => b.edge - a.edge);
+   618→}
+   619→
+   620→// ==================== MAIN ANALYSIS ENGINE ====================
+   621→
+   622→export function analyzeMatch(
+   623→  match: MatchData,
+   624→  homeTeamStats?: TeamStatsData | null,
+   625→  awayTeamStats?: TeamStatsData | null,
+   626→  bankroll: number = 1000
+   627→): Prediction {
+   628→  const modelResults: ModelResult[] = [];
+   629→
+   630→  // ---- MODEL 1: Bookmaker Odds Implied Probability ----
+   631→  const homeImplied = 1 / match.homeOdds;
+   632→  const awayImplied = 1 / match.awayOdds;
+   633→  const drawImplied = match.drawOdds ? 1 / match.drawOdds : 0.25;
+   634→  const totalImplied = homeImplied + drawImplied + awayImplied;
+   635→  const margin = 1 / totalImplied;
+   636→
+   637→  const oddsModelHome = homeImplied * margin;
+   638→  const oddsModelDraw = drawImplied * margin;
+   639→  const oddsModelAway = awayImplied * margin;
+   640→
+   641→  modelResults.push({
+   642→    modelName: "Bookmaker Odds Model",
+   643→    homeWinProb: oddsModelHome,
+   644→    drawProb: oddsModelDraw,
+   645→    awayWinProb: oddsModelAway,
+   646→    weight: 0.25,
+   647→    confidence: 0.6,
+   648→  });
+   649→
+   650→  // ---- MODEL 2: Poisson Distribution Model ----
+   651→  const poissonResult = calculatePoissonProbabilities(homeTeamStats ?? null, awayTeamStats ?? null);
+   652→
+   653→  modelResults.push({
+   654→    modelName: "Poisson Distribution",
+   655→    homeWinProb: poissonResult.homeWinProb,
+   656→    drawProb: poissonResult.drawProb,
+   657→    awayWinProb: poissonResult.awayWinProb,
+   658→    weight: 0.30,
+   659→    confidence: homeTeamStats && awayTeamStats ? 0.8 : 0.5,
+   660→  });
+   661→
+   662→  // ---- MODEL 3: ELO Rating Model ----
+   663→  const homeElo = homeTeamStats?.eloRating || config.ai.defaultElo;
+   664→  const awayElo = awayTeamStats?.eloRating || config.ai.defaultElo;
+   665→  const eloResult = predictWithElo(homeElo, awayElo);
+   666→
+   667→  modelResults.push({
+   668→    modelName: "ELO Rating System",
+   669→    homeWinProb: eloResult.homeWin,
+   670→    drawProb: eloResult.draw,
+   671→    awayWinProb: eloResult.awayWin,
+   672→    weight: 0.25,
+   673→    confidence: homeTeamStats && awayTeamStats ? 0.75 : 0.4,
+   674→  });
+   675→
+   676→  // ---- MODEL 4: Monte Carlo Simulation ----
+   677→  const mcResult = runMonteCarloSimulation(
+   678→    poissonResult.expectedHomeGoals,
+   679→    poissonResult.expectedAwayGoals,
+   680→    10000
+   681→  );
+   682→
+   683→  modelResults.push({
+   684→    modelName: "Monte Carlo Simulation",
+   685→    homeWinProb: mcResult.homeWinProb,
+   686→    drawProb: mcResult.drawProb,
+   687→    awayWinProb: mcResult.awayWinProb,
+   688→    weight: 0.20,
+   689→    confidence: 0.7,
+   690→  });
+   691→
+   692→  // ---- ENSEMBLE: Weighted Average of All Models ----
+   693→  let totalWeight = 0;
+   694→  let ensembleHome = 0;
+   695→  let ensembleDraw = 0;
+   696→  let ensembleAway = 0;
+   697→
+   698→  for (const model of modelResults) {
+   699→    // Adjust weight based on confidence and data availability
+   700→    const adjustedWeight = model.weight * model.confidence;
+   701→    ensembleHome += model.homeWinProb * adjustedWeight;
+   702→    ensembleDraw += model.drawProb * adjustedWeight;
+   703→    ensembleAway += model.awayWinProb * adjustedWeight;
+   704→    totalWeight += adjustedWeight;
+   705→  }
+   706→
+   707→  if (totalWeight > 0) {
+   708→    ensembleHome /= totalWeight;
+   709→    ensembleDraw /= totalWeight;
+   710→    ensembleAway /= totalWeight;
+   711→  }
+   712→
+   713→  // ---- FORM-BASED ADJUSTMENTS ----
+   714→  if (homeTeamStats && awayTeamStats) {
+   715→    const homeForm = parseForm(homeTeamStats.form);
+   716→    const awayForm = parseForm(awayTeamStats.form);
+   717→    const formAdjust = (homeForm - awayForm) * 0.04;
+   718→
+   719→    // Home/away record adjustment
+   720→    const homeHomeRecord = parseRecord(homeTeamStats.homeRecord);
+   721→    const awayAwayRecord = parseRecord(awayTeamStats.awayRecord);
+   722→    const recordAdjust = (homeHomeRecord.rate - awayAwayRecord.rate) * 0.03;
+   723→
+   724→    // Attack vs defense matchup
+   725→    const attackDefenseFactor = ((homeTeamStats.attackRating - awayTeamStats.defenseRating) -
+   726→      (awayTeamStats.attackRating - homeTeamStats.defenseRating)) / 200;
+   727→
+   728→    // Apply adjustments
+   729→    ensembleHome += formAdjust + recordAdjust + attackDefenseFactor * 0.05;
+   730→    ensembleAway -= formAdjust + recordAdjust + attackDefenseFactor * 0.05;
+   731→
+   732→    // xG-based adjustment if available
+   733→    if (homeTeamStats.xgFor > 0 && awayTeamStats.xgFor > 0) {
+   734→      const homeXgRate = homeTeamStats.xgFor / Math.max(1, homeTeamStats.matchesPlayed);
+   735→      const awayXgRate = awayTeamStats.xgFor / Math.max(1, awayTeamStats.matchesPlayed);
+   736→      const xgDiff = (homeXgRate - awayXgRate) * 0.05;
+   737→      ensembleHome += xgDiff;
+   738→      ensembleAway -= xgDiff;
+   739→    }
+   740→  }
+   741→
+   742→  // ---- Normalize ----
+   743→  ensembleHome = Math.max(0.03, ensembleHome);
+   744→  ensembleDraw = Math.max(0.03, ensembleDraw);
+   745→  ensembleAway = Math.max(0.03, ensembleAway);
+   746→
+   747→  const normTotal = ensembleHome + ensembleDraw + ensembleAway;
+   748→  ensembleHome /= normTotal;
+   749→  ensembleDraw /= normTotal;
+   750→  ensembleAway /= normTotal;
+   751→
+   752→  // ---- Determine Recommendation ----
+   753→  let recommended: Prediction["recommended"] = "home";
+   754→  let maxProb = ensembleHome;
+   755→
+   756→  if (ensembleAway > maxProb) {
+   757→    recommended = "away";
+   758→    maxProb = ensembleAway;
+   759→  }
+   760→  if (ensembleDraw > maxProb && match.sport === "football") {
+   761→    recommended = "draw";
+   762→    maxProb = ensembleDraw;
+   763→  }
+   764→
+   765→  // Check if over/under is better value
+   766→  if (match.overUnderLine && match.sport === "football") {
+   767→    const totalExpected = poissonResult.expectedHomeGoals + poissonResult.expectedAwayGoals;
+   768→    const ouResult = calculateOverUnderProbabilities(totalExpected, match.overUnderLine);
+   769→    const ouValue = Math.abs(ouResult.overProb - (match.overOdds ? 1 / match.overOdds : 0.5));
+   770→    const matchWinnerValue = Math.abs(maxProb - (recommended === "home" ? 1 / match.homeOdds : 1 / match.awayOdds));
+   771→
+   772→    if (ouValue > matchWinnerValue && ouValue > 0.08) {
+   773→      recommended = ouResult.recommendation as "over" | "under";
+   774→    }
+   775→  }
+   776→
+   777→  // ---- Calculate Confidence ----
+   778→  const modelAgreement = 1 - Math.sqrt(
+   779→    modelResults.reduce((sum, m) => {
+   780→      return sum + Math.pow(m.homeWinProb - ensembleHome, 2) +
+   781→        Math.pow(m.drawProb - ensembleDraw, 2) +
+   782→        Math.pow(m.awayWinProb - ensembleAway, 2);
+   783→    }, 0) / modelResults.length
+   784→  );
+   785→
+   786→  const confidence = Math.max(0.3, Math.min(0.95,
+   787→    maxProb * 0.6 + modelAgreement * 0.3 + (homeTeamStats && awayTeamStats ? 0.1 : 0)
+   788→  ));
+   789→
+   790→  // ---- Risk Assessment ----
+   791→  let riskScore = 50;
+   792→  if (confidence < 0.5) riskScore += 25;
+   793→  if (confidence > 0.7) riskScore -= 20;
+   794→  if (Math.abs(ensembleHome - ensembleAway) < 0.1) riskScore += 15;
+   795→  if (match.homeOdds > 3.0 || match.awayOdds > 3.0) riskScore += 10;
+   796→  if (!homeTeamStats || !awayTeamStats) riskScore += 20;
+   797→  if (modelAgreement < 0.7) riskScore += 10;
+   798→  riskScore = Math.max(0, Math.min(100, riskScore));
+   799→
+   800→  const riskLevel: "low" | "medium" | "high" =
+   801→    riskScore <= 35 ? "low" : riskScore <= 65 ? "medium" : "high";
+   802→
+   803→  // ---- Value Bets ----
+   804→  const valueBets = detectValueBets(
+   805→    match,
+   806→    { homeWinProb: ensembleHome, drawProb: ensembleDraw, awayWinProb: ensembleAway },
+   807→    bankroll
+   808→  );
+   809→
+   810→  // ---- Kelly Criterion for main recommendation ----
+   811→  const recOdds = recommended === "home" ? match.homeOdds :
+   812→    recommended === "away" ? match.awayOdds :
+   813→    match.drawOdds || 3.0;
+   814→  const recProb = recommended === "home" ? ensembleHome :
+   815→    recommended === "away" ? ensembleAway :
+   816→    ensembleDraw;
+   817→  const kellyStake = calculateKellyCriterion(recProb, recOdds, bankroll);
+   818→
+   819→  // ---- Generate Analysis Text ----
+   820→  const analysis = generateAnalysisText(match, {
+   821→    homeWinProb: ensembleHome,
+   822→    drawProb: ensembleDraw,
+   823→    awayWinProb: ensembleAway,
+   824→    confidence,
+   825→    recommended,
+   826→    analysis: "",
+   827→    modelResults,
+   828→    valueBets,
+   829→    kellyStake,
+   830→    riskScore,
+   831→    riskLevel,
+   832→  }, homeTeamStats, awayTeamStats, poissonResult, mcResult);
+   833→
+   834→  return {
+   835→    homeWinProb: Math.round(ensembleHome * 100) / 100,
+   836→    drawProb: Math.round(ensembleDraw * 100) / 100,
+   837→    awayWinProb: Math.round(ensembleAway * 100) / 100,
+   838→    confidence: Math.round(confidence * 100) / 100,
+   839→    recommended,
+   840→    analysis,
+   841→    modelResults: modelResults.map(m => ({
+   842→      ...m,
+   843→      homeWinProb: Math.round(m.homeWinProb * 100) / 100,
+   844→      drawProb: Math.round(m.drawProb * 100) / 100,
+   845→      awayWinProb: Math.round(m.awayWinProb * 100) / 100,
+   846→    })),
+   847→    valueBets,
+   848→    kellyStake,
+   849→    riskScore,
+   850→    riskLevel,
+   851→  };
+   852→}
+   853→
+   854→// ==================== ANALYSIS TEXT GENERATION ====================
+   855→
+   856→function generateAnalysisText(
+   857→  match: MatchData,
+   858→  prediction: Prediction,
+   859→  homeStats?: TeamStatsData | null,
+   860→  awayStats?: TeamStatsData | null,
+   861→  poissonResult?: PoissonResult,
+   862→  mcResult?: MonteCarloResult
+   863→): string {
+   864→  const parts: string[] = [];
+   865→
+   866→  // Model consensus
+   867→  const modelCount = prediction.modelResults.length;
+   868→  const agreeingModels = prediction.modelResults.filter(m => {
+   869→    const maxP = Math.max(m.homeWinProb, m.drawProb, m.awayWinProb);
+   870→    if (maxP === m.homeWinProb && prediction.recommended === "home") return true;
+   871→    if (maxP === m.awayWinProb && prediction.recommended === "away") return true;
+   872→    if (maxP === m.drawProb && prediction.recommended === "draw") return true;
+   873→    return false;
+   874→  }).length;
+   875→
+   876→  parts.push(`Multi-model analysis (${modelCount} models, ${agreeingModels} agree): ` +
+   877→    `Home ${Math.round(prediction.homeWinProb * 100)}% | Draw ${Math.round(prediction.drawProb * 100)}% | Away ${Math.round(prediction.awayWinProb * 100)}%.`);
+   878→
+   879→  // Poisson insights
+   880→  if (poissonResult) {
+   881→    parts.push(`Poisson model expects ${poissonResult.expectedHomeGoals}-${poissonResult.expectedAwayGoals} ` +
+   882→      `(total ${Math.round((poissonResult.expectedHomeGoals + poissonResult.expectedAwayGoals) * 10) / 10} goals).`);
+   883→  }
+   884→
+   885→  // Monte Carlo insights
+   886→  if (mcResult) {
+   887→    parts.push(`Monte Carlo simulation (10,000 iterations): Most likely score ${mcResult.mostLikelyScore}, ` +
+   888→      `total goals range ${mcResult.confidenceInterval.low}-${mcResult.confidenceInterval.high}.`);
+   889→  }
+   890→
+   891→  // Team stats analysis
+   892→  if (homeStats && awayStats) {
+   893→    // Form
+   894→    const homeForm = homeStats.form || "N/A";
+   895→    const awayForm = awayStats.form || "N/A";
+   896→    parts.push(`Form: ${match.homeTeam} (${homeForm}) vs ${match.awayTeam} (${awayForm}).`);
+   897→
+   898→    // Rating comparison
+   899→    const ratingDiff = homeStats.overallRating - awayStats.overallRating;
+   900→    if (Math.abs(ratingDiff) > 5) {
+   901→      parts.push(`${ratingDiff > 0 ? match.homeTeam : match.awayTeam} has a ${Math.abs(ratingDiff)}-point rating advantage.`);
+   902→    }
+   903→
+   904→    // ELO
+   905→    if (homeStats.eloRating > 0 && awayStats.eloRating > 0) {
+   906→      parts.push(`ELO ratings: ${match.homeTeam} (${homeStats.eloRating}) vs ${match.awayTeam} (${awayStats.eloRating}).`);
+   907→    }
+   908→
+   909→    // xG
+   910→    if (homeStats.xgFor > 0 && awayStats.xgFor > 0) {
+   911→      const homeXgPerGame = Math.round(homeStats.xgFor / Math.max(1, homeStats.matchesPlayed) * 100) / 100;
+   912→      const awayXgPerGame = Math.round(awayStats.xgFor / Math.max(1, awayStats.matchesPlayed) * 100) / 100;
+   913→      parts.push(`xG per game: ${match.homeTeam} (${homeXgPerGame}) vs ${match.awayTeam} (${awayXgPerGame}).`);
+   914→    }
+   915→
+   916→    // Attack vs defense
+   917→    if (homeStats.attackRating > awayStats.defenseRating + 10) {
+   918→      parts.push(`${match.homeTeam}'s attack (${homeStats.attackRating}) significantly exceeds ${match.awayTeam}'s defense (${awayStats.defenseRating}).`);
+   919→    }
+   920→    if (awayStats.attackRating > homeStats.defenseRating + 10) {
+   921→      parts.push(`${match.awayTeam}'s attack (${awayStats.attackRating}) significantly exceeds ${match.homeTeam}'s defense (${homeStats.defenseRating}).`);
+   922→    }
+   923→  }
+   924→
+   925→  // Value bet info
+   926→  if (prediction.valueBets.length > 0) {
+   927→    const topValue = prediction.valueBets[0];
+   928→    parts.push(`Best value: ${topValue.selection} with ${Math.round(topValue.edge * 100)}% edge ` +
+   929→      `(AI: ${Math.round(topValue.aiProb * 100)}% vs implied: ${Math.round(topValue.impliedProb * 100)}%).`);
+   930→  }
+   931→
+   932→  // Kelly recommendation
+   933→  if (prediction.kellyStake.recommendedStake > 0) {
+   934→    parts.push(`Kelly Criterion recommends $${prediction.kellyStake.recommendedStake} stake ` +
+   935→      `(${Math.round(prediction.kellyStake.fraction * 100)}% of bankroll).`);
+   936→  }
+   937→
+   938→  // Risk
+   939→  parts.push(`Risk level: ${prediction.riskLevel.toUpperCase()} (${prediction.riskScore}/100). ` +
+   940→    `Confidence: ${Math.round(prediction.confidence * 100)}%.`);
+   941→
+   942→  return parts.join(" ");
+   943→}
+   944→
+   945→// ==================== CASHOUT ENGINE ====================
+   946→
+   947→export function shouldCashout(
+   948→  bet: {
+   949→    selection: string;
+   950→    odds: number;
+   951→    stake: number;
+   952→    potentialWin: number;
+   953→    status: string;
+   954→  },
+   955→  currentMatchState: {
+   956→    homeScore: number;
+   957→    awayScore: number;
+   958→    minute: number;
+   959→    homeTeam: string;
+   960→    awayTeam: string;
+   961→    sport: string;
+   962→  },
+   963→  homeTeamStats?: TeamStatsData | null,
+   964→  awayTeamStats?: TeamStatsData | null
+   965→): CashoutRecommendation {
+   966→  const { stake, potentialWin, odds } = bet;
+   967→  const { homeScore, awayScore, minute, sport } = currentMatchState;
+   968→
+   969→  const isFootball = sport === "football";
+   970→  const isBasketball = sport === "basketball";
+   971→  const isTennis = sport === "tennis";
+   972→  const totalMinutes = isFootball ? 90 : isBasketball ? 48 : isTennis ? 180 : 90;
+   973→  const progress = minute / totalMinutes;
+   974→
+   975→  // Determine if the bet is currently winning
+   976→  const selectionIsHome = bet.selection === currentMatchState.homeTeam;
+   977→  const selectionIsAway = bet.selection === currentMatchState.awayTeam;
+   978→  const currentLead = selectionIsHome
+   979→    ? homeScore - awayScore
+   980→    : selectionIsAway
+   981→    ? awayScore - homeScore
+   982→    : 0;
+   983→
+   984→  // Calculate probability of current result holding
+   985→  let probabilityOfWinning = 0.5;
+   986→
+   987→  if (currentLead > 0) {
+   988→    // Bet is winning - calculate probability of holding
+   989→    if (isFootball) {
+   990→      // Football: use Poisson model for remaining time
+   991→      const remainingMins = 90 - minute;
+   992→      const goalRate = remainingMins / 90 * config.ai.goalRatePerMatch; // Configurable average goals per match
+   993→      const probOfConceding = 1 - Math.exp(-goalRate * 0.4); // Approximate
+   994→
+   995→      if (currentLead >= 2) {
+   996→        probabilityOfWinning = 0.85 + (progress * 0.10);
+   997→      } else if (currentLead === 1) {
+   998→        probabilityOfWinning = 0.55 + (progress * 0.25);
+   999→      }
+  1000→
+  1001→      // Adjust for team quality
+  1002→      if (homeTeamStats && awayTeamStats) {
+  1003→        const defendingTeam = selectionIsHome ? homeTeamStats : awayTeamStats;
+  1004→        const attackingTeam = selectionIsHome ? awayTeamStats : homeTeamStats;
+  1005→        if (defendingTeam.defenseRating > 75) probabilityOfWinning += 0.05;
+  1006→        if (attackingTeam.attackRating < 65) probabilityOfWinning += 0.05;
+  1007→      }
+  1008→    } else if (isBasketball) {
+  1009→      // Basketball: use normal distribution approximation
+  1010→      const remainingPossessions = (48 - minute) / 48 * 100;
+  1011→      const standardDev = Math.sqrt(remainingPossessions) * 0.4;
+  1012→      probabilityOfWinning = normalCDF(currentLead / Math.max(1, standardDev));
+  1013→    } else if (isTennis) {
+  1014→      // Tennis: simpler model based on lead and sets
+  1015→      probabilityOfWinning = 0.5 + currentLead * 0.15 + progress * 0.2;
+  1016→    }
+  1017→
+  1018→    probabilityOfWinning = Math.min(0.98, probabilityOfWinning);
+  1019→  } else if (currentLead === 0) {
+  1020→    // Draw - bet is at risk
+  1021→    probabilityOfWinning = 0.3 - progress * 0.1;
+  1022→  } else {
+  1023→    // Losing
+  1024→    probabilityOfWinning = Math.max(0.02, 0.2 - Math.abs(currentLead) * 0.08);
+  1025→  }
+  1026→
+  1027→  // Calculate expected values
+  1028→  const profitIfWin = potentialWin - stake;
+  1029→  const fairCashout = probabilityOfWinning * profitIfWin + (1 - probabilityOfWinning) * 0;
+  1030→
+  1031→  // Bookmaker cashout is typically 80-90% of fair value
+  1032→  const bookmakerCashout = fairCashout * config.ai.cashoutBookmakerMargin;
+  1033→
+  1034→  // Expected value if holding
+  1035→  const expectedValueIfHold = probabilityOfWinning * profitIfWin - (1 - probabilityOfWinning) * stake;
+  1036→  // Expected value if cashing out (after bookmaker margin)
+  1037→  const expectedValueIfCashout = bookmakerCashout - stake;
+  1038→
+  1039→  let cashoutAmount = stake + bookmakerCashout;
+  1040→  let shouldCashout = false;
+  1041→  let urgency: CashoutRecommendation["urgency"] = "low";
+  1042→
+  1043→  // Cashout decision logic
+  1044→  if (currentLead > 0) {
+  1045→    // Currently winning
+  1046→    if (progress > 0.75 && currentLead >= 1) {
+  1047→      // Late in game, winning - strong cashout case
+  1048→      shouldCashout = true;
+  1049→      urgency = "medium";
+  1050→      if (progress > 0.85) urgency = "low"; // Very late, less urgency needed
+  1051→    } else if (progress > 0.5 && currentLead >= 2) {
+  1052→      // Comfortable lead, second half
+  1053→      shouldCashout = true;
+  1054→      urgency = "low";
+  1055→    } else if (expectedValueIfCashout > expectedValueIfHold * 0.9 && progress > 0.6) {
+  1056→      // Cashout value is close to hold value with less risk
+  1057→      shouldCashout = true;
+  1058→      urgency = "medium";
+  1059→    }
+  1060→
+  1061→    // Minimum cashout should be above stake
+  1062→    if (cashoutAmount < stake * 1.05) {
+  1063→      shouldCashout = false;
+  1064→    }
+  1065→  } else if (currentLead === 0) {
+  1066→    // Draw
+  1067→    if (progress > 0.7) {
+  1068→      shouldCashout = true;
+  1069→      urgency = "high";
+  1070→      cashoutAmount = stake * config.ai.cashoutDrawStakeRatio;
+  1071→    }
+  1072→  } else {
+  1073→    // Losing
+  1074→    if (progress > 0.5) {
+  1075→      shouldCashout = true;
+  1076→      urgency = "high";
+  1077→      cashoutAmount = stake * config.ai.cashoutLosingStakeRatio;
+  1078→    }
+  1079→  }
+  1080→
+  1081→  // Generate reasoning
+  1082→  const reasoning = generateCashoutReasoning(
+  1083→    bet, currentMatchState, shouldCashout, cashoutAmount, urgency,
+  1084→    probabilityOfWinning, expectedValueIfHold, expectedValueIfCashout
+  1085→  );
+  1086→
+  1087→  return {
+  1088→    shouldCashout,
+  1089→    cashoutAmount: Math.round(cashoutAmount * 100) / 100,
+  1090→    reasoning,
+  1091→    urgency,
+  1092→    probabilityOfWinning: Math.round(probabilityOfWinning * 100) / 100,
+  1093→    expectedValueIfHold: Math.round(expectedValueIfHold * 100) / 100,
+  1094→    expectedValueIfCashout: Math.round(expectedValueIfCashout * 100) / 100,
+  1095→  };
+  1096→}
+  1097→
+  1098→function generateCashoutReasoning(
+  1099→  bet: { selection: string; odds: number; stake: number; potentialWin: number },
+  1100→  match: { homeScore: number; awayScore: number; minute: number; homeTeam: string; awayTeam: string; sport: string },
+  1101→  shouldCashout: boolean,
+  1102→  cashoutAmount: number,
+  1103→  urgency: string,
+  1104→  probOfWinning: number,
+  1105→  evHold: number,
+  1106→  evCashout: number
+  1107→): string {
+  1108→  const selectionIsHome = bet.selection === match.homeTeam;
+  1109→  const currentLead = selectionIsHome
+  1110→    ? match.homeScore - match.awayScore
+  1111→    : match.awayScore - match.homeScore;
+  1112→
+  1113→  if (shouldCashout) {
+  1114→    if (currentLead > 0) {
+  1115→      return `Your bet on ${bet.selection} is winning (${match.homeScore}-${match.awayScore} at ${match.minute}'). ` +
+  1116→        `Win probability: ${Math.round(probOfWinning * 100)}%. Cashout of $${Math.round(cashoutAmount * 100) / 100} secures ` +
+  1117→        `$${Math.round((cashoutAmount - bet.stake) * 100) / 100} profit. EV hold: $${Math.round(evHold * 100) / 100} vs EV cashout: $${Math.round(evCashout * 100) / 100}. ` +
+  1118→        `${urgency === "high" ? "ACT NOW - position could deteriorate!" : "Moderate urgency - consider cashing out soon."}`;
+  1119→    } else if (currentLead === 0) {
+  1120→      return `Match is drawn (${match.homeScore}-${match.awayScore} at ${match.minute}'). ` +
+  1121→        `Win probability: ${Math.round(probOfWinning * 100)}%. Cashout to recover $${Math.round(cashoutAmount * 100) / 100}. ` +
+  1122→        `High urgency - your bet is at significant risk.`;
+  1123→    } else {
+  1124→      return `${bet.selection} is losing (${match.homeScore}-${match.awayScore} at ${match.minute}'). ` +
+  1125→        `Win probability: ${Math.round(probOfWinning * 100)}%. Cashout to recover $${Math.round(cashoutAmount * 100) / 100}. ` +
+  1126→        `Recovery unlikely at this stage.`;
+  1127→    }
+  1128→  } else {
+  1129→    if (currentLead > 0) {
+  1130→      return `Your bet on ${bet.selection} is winning (${match.homeScore}-${match.awayScore} at ${match.minute}'). ` +
+  1131→        `Win probability: ${Math.round(probOfWinning * 100)}%. No cashout recommended - let it ride for maximum profit. ` +
+  1132→        `EV hold ($${Math.round(evHold * 100) / 100}) exceeds EV cashout ($${Math.round(evCashout * 100) / 100}).`;
+  1133→    }
+  1134→    return `Match is level at ${match.homeScore}-${match.awayScore}. ` +
+  1135→      `Win probability: ${Math.round(probOfWinning * 100)}%. Hold position - ` +
+  1136→      `sufficient time remains for the match to turn in your favor.`;
+  1137→  }
+  1138→}
+  1139→
+  1140→// ==================== DETAILED ANALYSIS GENERATOR ====================
+  1141→
+  1142→export function generateDetailedAnalysis(
+  1143→  match: MatchData,
+  1144→  homeStats: TeamStatsData | null,
+  1145→  awayStats: TeamStatsData | null,
+  1146→  prediction: Prediction
+  1147→): DetailedAnalysis {
+  1148→  const keyFactors: string[] = [];
+  1149→  const homeStrengths: string[] = [];
+  1150→  const homeWeaknesses: string[] = [];
+  1151→  const awayStrengths: string[] = [];
+  1152→  const awayWeaknesses: string[] = [];
+  1153→  const riskFactors: string[] = [];
+  1154→
+  1155→  if (homeStats && awayStats) {
+  1156→    // Rating differential
+  1157→    const ratingDiff = homeStats.overallRating - awayStats.overallRating;
+  1158→    if (Math.abs(ratingDiff) > 10) {
+  1159→      keyFactors.push(
+  1160→        `${ratingDiff > 0 ? match.homeTeam : match.awayTeam} has a significant rating advantage (${Math.abs(ratingDiff)} points)`
+  1161→      );
+  1162→    }
+  1163→
+  1164→    // Form analysis
+  1165→    if (homeStats.form && awayStats.form) {
+  1166→      const homeFormScore = parseForm(homeStats.form);
+  1167→      const awayFormScore = parseForm(awayStats.form);
+  1168→      if (Math.abs(homeFormScore - awayFormScore) > 0.3) {
+  1169→        keyFactors.push(
+  1170→          `${homeFormScore > awayFormScore ? match.homeTeam : match.awayTeam} is in significantly better form`
+  1171→        );
+  1172→      }
+  1173→    }
+  1174→
+  1175→    // Home advantage
+  1176→    keyFactors.push(`${match.homeTeam} has home advantage`);
+  1177→
+  1178→    // ELO difference
+  1179→    if (homeStats.eloRating > 0 && awayStats.eloRating > 0) {
+  1180→      const eloDiff = Math.abs(homeStats.eloRating - awayStats.eloRating);
+  1181→      if (eloDiff > 100) {
+  1182→        keyFactors.push(`Significant ELO gap (${eloDiff} points) between teams`);
+  1183→      }
+  1184→    }
+  1185→
+  1186→    // Attack vs defense matchup
+  1187→    if (homeStats.attackRating > awayStats.defenseRating + 10) {
+  1188→      keyFactors.push(`${match.homeTeam}'s strong attack (${homeStats.attackRating}) vs ${match.awayTeam}'s weaker defense (${awayStats.defenseRating})`);
+  1189→    }
+  1190→    if (awayStats.attackRating > homeStats.defenseRating + 10) {
+  1191→      keyFactors.push(`${match.awayTeam}'s strong attack (${awayStats.attackRating}) vs ${match.homeTeam}'s weaker defense (${homeStats.defenseRating})`);
+  1192→    }
+  1193→
+  1194→    // xG insights
+  1195→    if (homeStats.xgFor > 0 && awayStats.xgFor > 0) {
+  1196→      const homeXgPerGame = homeStats.xgFor / Math.max(1, homeStats.matchesPlayed);
+  1197→      const awayXgPerGame = awayStats.xgFor / Math.max(1, awayStats.matchesPlayed);
+  1198→      if (Math.abs(homeXgPerGame - awayXgPerGame) > 0.5) {
+  1199→        keyFactors.push(`xG differential: ${homeXgPerGame > awayXgPerGame ? match.homeTeam : match.awayTeam} generates significantly more expected goals`);
+  1200→      }
+  1201→    }
+  1202→
+  1203→    // Strengths
+  1204→    if (homeStats.attackRating > 75) homeStrengths.push(`Strong attack (${homeStats.attackRating})`);
+  1205→    if (homeStats.defenseRating > 75) homeStrengths.push(`Solid defense (${homeStats.defenseRating})`);
+  1206→    if (homeStats.form && parseForm(homeStats.form) > 0.7) homeStrengths.push(`Excellent recent form (${homeStats.form})`);
+  1207→    if (homeStats.homeRecord) {
+  1208→      const homeRec = parseRecord(homeStats.homeRecord);
+  1209→      if (homeRec.rate > 0.65) homeStrengths.push(`Strong home record (${homeStats.homeRecord})`);
+  1210→    }
+  1211→    if (homeStats.eloRating > 1600) homeStrengths.push(`High ELO rating (${homeStats.eloRating})`);
+  1212→    if (homeStats.xgFor > 0 && homeStats.xgFor / Math.max(1, homeStats.matchesPlayed) > 1.8) {
+  1213→      homeStrengths.push(`High xG output (${(homeStats.xgFor / Math.max(1, homeStats.matchesPlayed)).toFixed(2)} per game)`);
+  1214→    }
+  1215→
+  1216→    if (awayStats.attackRating > 75) awayStrengths.push(`Strong attack (${awayStats.attackRating})`);
+  1217→    if (awayStats.defenseRating > 75) awayStrengths.push(`Solid defense (${awayStats.defenseRating})`);
+  1218→    if (awayStats.form && parseForm(awayStats.form) > 0.7) awayStrengths.push(`Excellent recent form (${awayStats.form})`);
+  1219→    if (awayStats.awayRecord) {
+  1220→      const awayRec = parseRecord(awayStats.awayRecord);
+  1221→      if (awayRec.rate > 0.55) awayStrengths.push(`Strong away record (${awayStats.awayRecord})`);
+  1222→    }
+  1223→    if (awayStats.eloRating > 1600) awayStrengths.push(`High ELO rating (${awayStats.eloRating})`);
+  1224→
+  1225→    // Weaknesses
+  1226→    if (homeStats.defenseRating < 55) homeWeaknesses.push(`Weak defense (${homeStats.defenseRating})`);
+  1227→    if (homeStats.form && parseForm(homeStats.form) < 0.4) homeWeaknesses.push(`Poor recent form (${homeStats.form})`);
+  1228→    if (homeStats.losses > homeStats.wins) homeWeaknesses.push(`More losses than wins this season`);
+  1229→    if (homeStats.xgAgainst > 0 && homeStats.xgAgainst / Math.max(1, homeStats.matchesPlayed) > 1.5) {
+  1230→      homeWeaknesses.push(`High xG conceded (${(homeStats.xgAgainst / Math.max(1, homeStats.matchesPlayed)).toFixed(2)} per game)`);
+  1231→    }
+  1232→
+  1233→    if (awayStats.defenseRating < 55) awayWeaknesses.push(`Weak defense (${awayStats.defenseRating})`);
+  1234→    if (awayStats.form && parseForm(awayStats.form) < 0.4) awayWeaknesses.push(`Poor recent form (${awayStats.form})`);
+  1235→    if (awayStats.losses > awayStats.wins) awayWeaknesses.push(`More losses than wins this season`);
+  1236→  } else {
+  1237→    keyFactors.push("Limited team statistics available - analysis based on odds and model consensus");
+  1238→    riskFactors.push("No team stats available for deep analysis");
+  1239→  }
+  1240→
+  1241→  // Value bet
+  1242→  const recTeam = prediction.recommended === "home" ? match.homeTeam
+  1243→    : prediction.recommended === "away" ? match.awayTeam
+  1244→    : prediction.recommended === "draw" ? "Draw"
+  1245→    : prediction.recommended === "over" ? `Over ${match.overUnderLine || 2.5}`
+  1246→    : `Under ${match.overUnderLine || 2.5}`;
+  1247→  const recOdds = prediction.recommended === "home" ? match.homeOdds
+  1248→    : prediction.recommended === "away" ? match.awayOdds
+  1249→    : match.drawOdds || 3.0;
+  1250→  const recProb = prediction.recommended === "home" ? prediction.homeWinProb
+  1251→    : prediction.recommended === "away" ? prediction.awayWinProb
+  1252→    : prediction.drawProb;
+  1253→  const edge = recProb - (1 / recOdds);
+  1254→
+  1255→  // Model consensus
+  1256→  const modelAgreement = prediction.modelResults.filter(m => {
+  1257→    const maxP = Math.max(m.homeWinProb, m.drawProb, m.awayWinProb);
+  1258→    if (maxP === m.homeWinProb && prediction.recommended === "home") return true;
+  1259→    if (maxP === m.awayWinProb && prediction.recommended === "away") return true;
+  1260→    if (maxP === m.drawProb && prediction.recommended === "draw") return true;
+  1261→    return false;
+  1262→  }).length;
+  1263→  const agreementPct = modelAgreement / prediction.modelResults.length;
+  1264→
+  1265→  // Risk factors
+  1266→  if (prediction.riskScore > 60) riskFactors.push("High uncertainty in prediction");
+  1267→  if (Math.abs(prediction.homeWinProb - prediction.awayWinProb) < 0.1) riskFactors.push("Teams are closely matched");
+  1268→  if (prediction.confidence < 0.5) riskFactors.push("Low AI confidence level");
+  1269→  if (agreementPct < 0.5) riskFactors.push("Models disagree on outcome");
+  1270→  if (!homeStats || !awayStats) riskFactors.push("Insufficient team data for deep analysis");
+  1271→
+  1272→  // xG analysis
+  1273→  const homeXg = homeStats?.xgFor ? homeStats.xgFor / Math.max(1, homeStats.matchesPlayed) : 0;
+  1274→  const awayXg = awayStats?.xgFor ? awayStats.xgFor / Math.max(1, awayStats.matchesPlayed) : 0;
+  1275→
+  1276→  return {
+  1277→    keyFactors: keyFactors.length > 0 ? keyFactors : ["Standard match analysis"],
+  1278→    strengths: { team: match.homeTeam, points: homeStrengths.length > 0 ? homeStrengths : ["Average performance"] },
+  1279→    weaknesses: { team: match.homeTeam, points: homeWeaknesses.length > 0 ? homeWeaknesses : ["No significant weaknesses identified"] },
+  1280→    valueBet: {
+  1281→      selection: recTeam,
+  1282→      reason: edge > 0.05
+  1283→        ? `AI detects ${Math.round(edge * 100)}% edge over bookmaker odds. ${recTeam} has ${Math.round(recProb * 100)}% probability vs ${Math.round((1 / recOdds) * 100)}% implied. Kelly Criterion suggests $${prediction.kellyStake.recommendedStake} stake.`
+  1284→        : `Marginal value on ${recTeam}. Kelly Criterion suggests minimal or no stake. Proceed with caution.`,
+  1285→      edge: Math.round(edge * 100) / 100,
+  1286→    },
+  1287→    riskAssessment: {
+  1288→      level: prediction.riskLevel,
+  1289→      score: prediction.riskScore,
+  1290→      factors: riskFactors.length > 0 ? riskFactors : ["Standard risk level"],
+  1291→    },
+  1292→    modelConsensus: {
+  1293→      agreement: Math.round(agreementPct * 100) / 100,
+  1294→      dominantModel: prediction.modelResults.sort((a, b) => b.weight - a.weight)[0]?.modelName || "Unknown",
+  1295→      spread: Math.round(Math.abs(prediction.homeWinProb - prediction.awayWinProb) * 100) / 100,
+  1296→    },
+  1297→    xgAnalysis: {
+  1298→      homeXg: Math.round(homeXg * 100) / 100,
+  1299→      awayXg: Math.round(awayXg * 100) / 100,
+  1300→      totalExpected: Math.round((homeXg + awayXg) * 100) / 100,
+  1301→    },
+  1302→  };
+  1303→}
+  1304→
+  1305→// ==================== ODDS VALUE CALCULATION ====================
+  1306→
+  1307→export function calculateOddsValue(aiProb: number, bookmakerOdds: number): number {
+  1308→  const impliedProb = 1 / bookmakerOdds;
+  1309→  const value = aiProb - impliedProb;
+  1310→  return Math.round(value * 100) / 100;
+  1311→}
+  1312→

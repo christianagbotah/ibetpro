@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser, isAdmin } from "@/lib/session";
+import { validateInput, updateAdminSettingsSchema } from "@/lib/validation";
 
 // GET /api/admin - Get admin settings
 export async function GET() {
@@ -27,7 +28,7 @@ export async function GET() {
   }
 }
 
-// PUT /api/admin - Update admin settings
+// PUT /api/admin - Update admin settings with zod validation
 export async function PUT(request: NextRequest) {
   try {
     const user = await getAuthUser();
@@ -41,35 +42,23 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const settings = await prisma.adminSettings.findFirst();
+    const validation = validateInput(updateAdminSettingsSchema, body);
+    if (!validation.success) return validation.error;
 
+    const data = validation.data;
+
+    const settings = await prisma.adminSettings.findFirst();
     if (!settings) {
       return NextResponse.json({ error: "Admin settings not found" }, { status: 404 });
     }
 
-    const allowedFields = [
-      "defaultCommissionRate",
-      "platformName",
-      "maintenanceMode",
-      "maxUsers",
-      "autoApproveAccounts",
-      "oddsApiKey",
-      "apiFootballKey",
-    ];
-
-    const data: Record<string, unknown> = {};
-    for (const field of allowedFields) {
-      if (body[field] !== undefined) {
-        data[field] = body[field];
-      }
-    }
-
     // Validate commission rate bounds
     if (data.defaultCommissionRate !== undefined) {
-      const rate = data.defaultCommissionRate as number;
-      if (rate < settings.minCommissionRate || rate > settings.maxCommissionRate) {
+      const minRate = data.minCommissionRate ?? settings.minCommissionRate;
+      const maxRate = data.maxCommissionRate ?? settings.maxCommissionRate;
+      if (data.defaultCommissionRate < minRate || data.defaultCommissionRate > maxRate) {
         return NextResponse.json(
-          { error: `Commission rate must be between ${Math.round(settings.minCommissionRate * 100)}% and ${Math.round(settings.maxCommissionRate * 100)}%` },
+          { error: `Commission rate must be between ${Math.round(minRate * 100)}% and ${Math.round(maxRate * 100)}%` },
           { status: 400 }
         );
       }
