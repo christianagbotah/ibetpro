@@ -139,3 +139,46 @@ Stage Summary:
 - Settings and admin pages save to database
 - Login/register flow works
 - 30 files changed, 2555 insertions, 1161 deletions
+
+---
+Task ID: 5
+Agent: Main
+Task: Production features - auth route, middleware, notifications, error handling
+
+Work Log:
+- Fixed Prisma client generation (npm install + prisma generate)
+- Added NextAuth API route handler at /api/auth/[...nextauth]/route.ts
+- Added auth middleware (src/middleware.ts) for route protection
+  - Redirects unauthenticated users to /login with callbackUrl
+  - Protects admin routes for admin-role users only
+  - Allows public routes (login, API auth) without auth
+- Added notification system:
+  - Created /api/notifications endpoint (won/lost bets, auto-bets, cashout alerts)
+  - Redesigned header with notification dropdown panel
+  - Shows unread count badge on bell icon
+  - Auto-refreshes every 60 seconds
+  - Click outside to dismiss
+- Added error handling:
+  - Created ErrorBoundary component (src/components/error-boundary.tsx)
+  - Created global error.tsx page
+  - Created custom 404 not-found.tsx page
+- Enhanced login page:
+  - Split-screen layout with feature showcase on left
+  - Feature cards: 4-Model Ensemble, Kelly Criterion, Auto-Betting, Real-Time Cashout
+  - Suspense boundary for useSearchParams
+  - Callback URL redirect after login
+  - Auto-redirect if already authenticated
+- Updated AppShell to skip sidebar/header on login page
+- Fixed Avatar size prop in sidebar (className="h-8 w-8" instead of size="sm")
+- Added .env.local with development defaults
+- Updated config.ts with dev fallback for NEXTAUTH_SECRET and ADMIN_PASSWORD
+- Build succeeds with 33 routes (0 errors)
+- Pushed to GitHub (commit bb955b5)
+
+Stage Summary:
+- NextAuth route handler enables full login flow
+- Middleware protects all routes and enforces admin access
+- Notification system with real-time dropdown
+- Error boundary and 404 page for production resilience
+- Polished login page with feature showcase
+- 11 files changed, 756 insertions, 110 deletions
