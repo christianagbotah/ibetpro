@@ -96,3 +96,46 @@ Stage Summary:
 - Analysis page shows full 4-model ensemble results
 - Admin page has API key configuration and sync controls
 - Token removed from git history, push protection satisfied
+
+---
+Task ID: 4
+Agent: Main
+Task: Production configuration - real auth, API integration, no dummy data
+
+Work Log:
+- Installed NextAuth.js v4 for credentials-based authentication
+- Created .env.local with all production environment variables
+- Created src/lib/config.ts for centralized environment access
+- Created src/lib/auth.ts with NextAuth configuration (credentials provider)
+- Created src/lib/session.ts with getAuthUser(), requireAuth(), isAdmin() helpers
+- Created src/components/auth/auth-provider.tsx (AuthContext + useAuth hook)
+- Created login page at /login with sign in and register forms
+- Created /api/auth/register route for user registration
+- Created /api/settings route that GET/PUT saves to database
+- Created /api/admin route that GET/PUT saves API keys and commission rate
+- Created /api/sync route for pulling live data from external APIs
+- Updated external-apis.ts with real API integration:
+  - The Odds API (live odds from multiple bookmakers)
+  - API-Football (team stats, fixtures, live scores)
+  - SportMonks (alternative football data source)
+  - Health check endpoint for all APIs
+  - Smart sync that picks best available data source
+- Removed all getDemoUserId() calls from API routes
+- Removed hardcoded "demo-user" from frontend pages
+- Removed hardcoded profit data from profits page
+- Updated all API routes to use real authentication (getAuthUser)
+- Updated dashboard, accounts, profits, settings, admin pages for production
+- Updated header with auth status and balance display
+- Updated sidebar with user info and login link
+- Added AuthProvider to root layout
+- Seed now only creates admin settings + admin user (no demo user)
+- Build succeeds clean with 27 routes
+- Pushed to GitHub (commit cb9ac1b)
+
+Stage Summary:
+- Full NextAuth.js authentication system
+- Real API integration layer (3 data sources)
+- All dummy data removed
+- Settings and admin pages save to database
+- Login/register flow works
+- 30 files changed, 2555 insertions, 1161 deletions
