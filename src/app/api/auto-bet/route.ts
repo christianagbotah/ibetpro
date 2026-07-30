@@ -1,10 +1,11 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-import { analyzeMatch, shouldAutoBet, checkRiskLimits, isWithinBetSchedule } from "@/lib/ai-engine";
+import { analyzeMatch, shouldAutoBet, checkRiskLimits, isWithinBetSchedule } from "@/lib/ai-engine-v2";
+import { placeBetOnBroker, calculateCommission } from "@/lib/broker-integration";
 
 /**
- * Auto-Bet Bot Engine
- * POST /api/auto-bet - Scans matches and places bets automatically based on AI analysis + user settings
+ * Auto-Bet Bot Engine v2
+ * POST /api/auto-bet - Scans matches and places bets automatically using broker allocation
  * GET /api/auto-bet - Get bot status and recent activity
  */
 export async function POST(request: NextRequest) {
@@ -64,14 +65,27 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: riskCheck.reason, betsPlaced: 0 });
     }
 
-    // Get betting account
+    // Get connected betting account with allocation
     const bettingAccount = await prisma.bettingAccount.findFirst({
       where: { userId, isConnected: true },
+      orderBy: { allocatedAmount: "desc" },
     });
 
     if (!bettingAccount) {
-      return NextResponse.json({ error: "No connected betting account found", betsPlaced: 0 });
+      return NextResponse.json({ error: "No connected betting account found. Please connect a broker and set allocation.", betsPlaced: 0 });
     }
+
+    // Check allocation
+    if (bettingAccount.allocatedAmount <= 0) {
+      return NextResponse.json({ error: "No allocation set. Please allocate funds from your broker account.", betsPlaced: 0 });
+    }
+
+    // Check active allocation
+    const activeAllocation = await prisma.allocation.findFirst({
+      where: { userId, bettingAccountId: bettingAccount.id, status: "active" },
+    });
+
+    const availableAllocation = activeAllocation?.remainingAmount || bettingAccount.allocatedAmount;
 
     // Check daily bet limit
     const todayStart = new Date();
@@ -96,7 +110,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Daily bet limit reached", betsPlaced: 0 });
     }
 
-    const remainingDailyLimit = settings.dailyBetLimit - dailyStake;
+    const remainingDailyLimit = Math.min(
+      settings.dailyBetLimit - dailyStake,
+      availableAllocation
+    );
+
+    if (remainingDailyLimit < 5) {
+      return NextResponse.json({ error: "Insufficient allocation or daily limit remaining", betsPlaced: 0 });
+    }
 
     // Get upcoming matches that haven't been bet on yet
     const existingBetMatchIds = todayBets.map((b) => b.matchId);
@@ -122,6 +143,7 @@ export async function POST(request: NextRequest) {
       stake: number;
       confidence: number;
       reasoning: string;
+      brokerBetId?: string;
     }> = [];
     const accumulatorLegs: Array<{
       matchId: string;
@@ -206,7 +228,7 @@ export async function POST(request: NextRequest) {
 
       if (betTypes.includes("single")) {
         const stake = Math.min(
-          prediction.kellyStake || settings.maxBetAmount * 0.5,
+          autoBetCheck.suggestedStake || settings.maxBetAmount * 0.5,
           settings.maxBetAmount,
           remainingDailyLimit - betsPlaced.reduce((s, b) => s + b.stake, 0)
         );
@@ -221,6 +243,19 @@ export async function POST(request: NextRequest) {
 
         const potentialWin = Math.round(stake * recOdds * 100) / 100;
 
+        // Place bet on broker
+        const brokerResult = await placeBetOnBroker(
+          bettingAccount.platform,
+          bettingAccount.accessToken || "",
+          {
+            matchId: match.id,
+            selection,
+            odds: recOdds,
+            stake,
+            betType: "single",
+          }
+        );
+
         const bet = await prisma.bet.create({
           data: {
             userId,
@@ -234,10 +269,31 @@ export async function POST(request: NextRequest) {
             isAutoPlaced: true,
             aiConfidence: prediction.confidence,
             aiReasoning: prediction.analysis,
-            aiModelUsed: "ensemble",
+            aiModelUsed: "v2_ensemble",
             kellyStake: prediction.kellyStake,
             valueEdge: prediction.valueEdge,
             riskScore: prediction.riskScore,
+          },
+        });
+
+        // Update allocation
+        if (activeAllocation) {
+          await prisma.allocation.update({
+            where: { id: activeAllocation.id },
+            data: {
+              usedAmount: { increment: stake },
+              remainingAmount: { decrement: stake },
+            },
+          });
+        }
+
+        // Update betting account
+        await prisma.bettingAccount.update({
+          where: { id: bettingAccount.id },
+          data: {
+            allocatedAmount: { decrement: stake },
+            lastBetPlacedAt: new Date(),
+            totalBrokerBets: { increment: 1 },
           },
         });
 
@@ -248,7 +304,7 @@ export async function POST(request: NextRequest) {
             amount: -stake,
             currency: "USD",
             status: "completed",
-            description: `Auto-bet: ${match.homeTeam} vs ${match.awayTeam} - ${selection} @ ${recOdds}`,
+            description: `Auto-bet via ${bettingAccount.platform}: ${match.homeTeam} vs ${match.awayTeam} - ${selection} @ ${recOdds}`,
             betId: bet.id,
           },
         });
@@ -258,6 +314,7 @@ export async function POST(request: NextRequest) {
           data: { balance: { decrement: stake } },
         });
 
+        // Update match AI data
         await prisma.match.update({
           where: { id: match.id },
           data: {
@@ -279,7 +336,15 @@ export async function POST(request: NextRequest) {
             action: "bet_placed",
             matchId: match.id,
             betId: bet.id,
-            details: JSON.stringify({ stake, odds: recOdds, selection, potentialWin }),
+            details: JSON.stringify({
+              stake,
+              odds: recOdds,
+              selection,
+              potentialWin,
+              broker: bettingAccount.platform,
+              brokerBetId: brokerResult.brokerBetId,
+              allocationUsed: stake,
+            }),
             reasoning: autoBetCheck.reason,
             confidence: prediction.confidence,
             profitImpact: -stake,
@@ -293,6 +358,7 @@ export async function POST(request: NextRequest) {
           stake,
           confidence: prediction.confidence,
           reasoning: autoBetCheck.reason,
+          brokerBetId: brokerResult.brokerBetId,
         });
       }
 
@@ -314,7 +380,8 @@ export async function POST(request: NextRequest) {
     if (accumulatorLegs.length >= 2 && accumulatorLegs.length <= settings.maxAccumulatorLegs) {
       const accaStake = Math.min(
         settings.maxBetAmount * 0.3,
-        remainingDailyLimit - betsPlaced.reduce((s, b) => s + b.stake, 0)
+        remainingDailyLimit - betsPlaced.reduce((s, b) => s + b.stake, 0),
+        availableAllocation * 0.3
       );
 
       if (accaStake >= 5) {
@@ -361,13 +428,33 @@ export async function POST(request: NextRequest) {
               isAutoPlaced: true,
               aiConfidence: leg.prediction.confidence,
               aiReasoning: leg.prediction.analysis,
-              aiModelUsed: "ensemble",
+              aiModelUsed: "v2_ensemble",
               kellyStake: leg.prediction.kellyStake,
               valueEdge: leg.prediction.valueEdge,
               riskScore: leg.prediction.riskScore,
             },
           });
         }
+
+        // Update allocation
+        if (activeAllocation) {
+          await prisma.allocation.update({
+            where: { id: activeAllocation.id },
+            data: {
+              usedAmount: { increment: accaStake },
+              remainingAmount: { decrement: accaStake },
+            },
+          });
+        }
+
+        await prisma.bettingAccount.update({
+          where: { id: bettingAccount.id },
+          data: {
+            allocatedAmount: { decrement: accaStake },
+            lastBetPlacedAt: new Date(),
+            totalBrokerBets: { increment: 1 },
+          },
+        });
 
         await prisma.transaction.create({
           data: {
@@ -376,7 +463,7 @@ export async function POST(request: NextRequest) {
             amount: -accaStake,
             currency: "USD",
             status: "completed",
-            description: `Auto-bet: ${accumulatorLegs.length}-leg accumulator @ ${totalOdds.toFixed(2)}${bonusPercent > 0 ? ` (+${bonusPercent}% bonus)` : ""}`,
+            description: `Auto-bet via ${bettingAccount.platform}: ${accumulatorLegs.length}-leg accumulator @ ${totalOdds.toFixed(2)}${bonusPercent > 0 ? ` (+${bonusPercent}% bonus)` : ""}`,
             accumulatorId: accumulator.id,
           },
         });
@@ -396,6 +483,7 @@ export async function POST(request: NextRequest) {
               totalOdds,
               stake: accaStake,
               bonusPercent,
+              broker: bettingAccount.platform,
               legMatches: accumulatorLegs.map((l) => `${l.match.homeTeam} vs ${l.match.awayTeam}`).join(", "),
             }),
             reasoning: `Created ${accumulatorLegs.length}-leg accumulator with total odds ${totalOdds.toFixed(2)}${bonusPercent > 0 ? ` and ${bonusPercent}% bonus` : ""}`,
@@ -420,6 +508,9 @@ export async function POST(request: NextRequest) {
       bets: betsPlaced,
       dailyStake: dailyStake + betsPlaced.reduce((s, b) => s + b.stake, 0),
       remainingDailyLimit: remainingDailyLimit - betsPlaced.reduce((s, b) => s + b.stake, 0),
+      broker: bettingAccount.platform,
+      allocationUsed: betsPlaced.reduce((s, b) => s + b.stake, 0),
+      remainingAllocation: (activeAllocation?.remainingAmount || bettingAccount.allocatedAmount) - betsPlaced.reduce((s, b) => s + b.stake, 0),
     });
   } catch (error) {
     console.error("Auto-bet error:", error);
@@ -459,7 +550,7 @@ export async function GET(request: NextRequest) {
         isAutoPlaced: true,
         placedAt: { gte: todayStart },
       },
-      include: { match: true },
+      include: { match: true, bettingAccount: true },
     });
 
     const todayAutoBets = todayBets.length;
@@ -467,6 +558,20 @@ export async function GET(request: NextRequest) {
     const todayAutoProfit = todayBets
       .filter((b) => b.status === "won" || b.status === "cashed_out")
       .reduce((sum, b) => sum + (b.profit || 0), 0);
+
+    // Get allocation info
+    const activeAllocation = await prisma.allocation.findFirst({
+      where: { userId, status: "active" },
+      include: { bettingAccount: true },
+    });
+
+    // Get commission info
+    const todayCommission = await prisma.commissionLedger.findMany({
+      where: {
+        userId,
+        createdAt: { gte: todayStart },
+      },
+    });
 
     return NextResponse.json({
       status: user.settings.autoBettingEnabled ? "active" : "inactive",
@@ -478,6 +583,7 @@ export async function GET(request: NextRequest) {
         profitTargetDaily: user.settings.profitTargetDaily,
         betTypes: user.settings.betTypes,
         maxAccumulatorLegs: user.settings.maxAccumulatorLegs,
+        waitFullSettlement: user.settings.waitFullSettlement,
       },
       todayStats: {
         betsPlaced: todayAutoBets,
@@ -485,6 +591,20 @@ export async function GET(request: NextRequest) {
         profit: todayAutoProfit,
         dailyPnl: user.dailyPnl,
         weeklyPnl: user.weeklyPnl,
+      },
+      allocation: activeAllocation ? {
+        id: activeAllocation.id,
+        amount: activeAllocation.amount,
+        usedAmount: activeAllocation.usedAmount,
+        remainingAmount: activeAllocation.remainingAmount,
+        profitFromAlloc: activeAllocation.profitFromAlloc,
+        commissionFromAlloc: activeAllocation.commissionFromAlloc,
+        broker: activeAllocation.bettingAccount.platform,
+      } : null,
+      commission: {
+        todayTotal: todayCommission.reduce((s, c) => s + c.commissionAmount, 0),
+        todayPending: todayCommission.filter((c) => c.status === "pending").reduce((s, c) => s + c.commissionAmount, 0),
+        todayTransferred: todayCommission.filter((c) => c.status === "transferred").reduce((s, c) => s + c.commissionAmount, 0),
       },
       recentLogs,
     });

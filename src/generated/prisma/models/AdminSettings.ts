@@ -31,6 +31,7 @@ export type AdminSettingsAvgAggregateOutputType = {
   minCommissionRate: number | null
   maxCommissionRate: number | null
   maxUsers: number | null
+  minimumCommissionPayout: number | null
 }
 
 export type AdminSettingsSumAggregateOutputType = {
@@ -38,6 +39,7 @@ export type AdminSettingsSumAggregateOutputType = {
   minCommissionRate: number | null
   maxCommissionRate: number | null
   maxUsers: number | null
+  minimumCommissionPayout: number | null
 }
 
 export type AdminSettingsMinAggregateOutputType = {
@@ -52,6 +54,11 @@ export type AdminSettingsMinAggregateOutputType = {
   oddsApiKey: string | null
   apiFootballKey: string | null
   accumulatorBonusThresholds: string | null
+  adminWalletAddress: string | null
+  adminBankName: string | null
+  adminAccountNumber: string | null
+  autoCommissionTransfer: boolean | null
+  minimumCommissionPayout: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -68,6 +75,11 @@ export type AdminSettingsMaxAggregateOutputType = {
   oddsApiKey: string | null
   apiFootballKey: string | null
   accumulatorBonusThresholds: string | null
+  adminWalletAddress: string | null
+  adminBankName: string | null
+  adminAccountNumber: string | null
+  autoCommissionTransfer: boolean | null
+  minimumCommissionPayout: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -84,6 +96,11 @@ export type AdminSettingsCountAggregateOutputType = {
   oddsApiKey: number
   apiFootballKey: number
   accumulatorBonusThresholds: number
+  adminWalletAddress: number
+  adminBankName: number
+  adminAccountNumber: number
+  autoCommissionTransfer: number
+  minimumCommissionPayout: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -95,6 +112,7 @@ export type AdminSettingsAvgAggregateInputType = {
   minCommissionRate?: true
   maxCommissionRate?: true
   maxUsers?: true
+  minimumCommissionPayout?: true
 }
 
 export type AdminSettingsSumAggregateInputType = {
@@ -102,6 +120,7 @@ export type AdminSettingsSumAggregateInputType = {
   minCommissionRate?: true
   maxCommissionRate?: true
   maxUsers?: true
+  minimumCommissionPayout?: true
 }
 
 export type AdminSettingsMinAggregateInputType = {
@@ -116,6 +135,11 @@ export type AdminSettingsMinAggregateInputType = {
   oddsApiKey?: true
   apiFootballKey?: true
   accumulatorBonusThresholds?: true
+  adminWalletAddress?: true
+  adminBankName?: true
+  adminAccountNumber?: true
+  autoCommissionTransfer?: true
+  minimumCommissionPayout?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -132,6 +156,11 @@ export type AdminSettingsMaxAggregateInputType = {
   oddsApiKey?: true
   apiFootballKey?: true
   accumulatorBonusThresholds?: true
+  adminWalletAddress?: true
+  adminBankName?: true
+  adminAccountNumber?: true
+  autoCommissionTransfer?: true
+  minimumCommissionPayout?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -148,6 +177,11 @@ export type AdminSettingsCountAggregateInputType = {
   oddsApiKey?: true
   apiFootballKey?: true
   accumulatorBonusThresholds?: true
+  adminWalletAddress?: true
+  adminBankName?: true
+  adminAccountNumber?: true
+  autoCommissionTransfer?: true
+  minimumCommissionPayout?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -251,6 +285,11 @@ export type AdminSettingsGroupByOutputType = {
   oddsApiKey: string | null
   apiFootballKey: string | null
   accumulatorBonusThresholds: string | null
+  adminWalletAddress: string | null
+  adminBankName: string | null
+  adminAccountNumber: string | null
+  autoCommissionTransfer: boolean
+  minimumCommissionPayout: number
   createdAt: Date
   updatedAt: Date
   _count: AdminSettingsCountAggregateOutputType | null
@@ -290,6 +329,11 @@ export type AdminSettingsWhereInput = {
   oddsApiKey?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
   apiFootballKey?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
   accumulatorBonusThresholds?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
+  adminWalletAddress?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
+  adminBankName?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
+  adminAccountNumber?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
+  autoCommissionTransfer?: Prisma.BoolFilter<"AdminSettings"> | boolean
+  minimumCommissionPayout?: Prisma.FloatFilter<"AdminSettings"> | number
   createdAt?: Prisma.DateTimeFilter<"AdminSettings"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"AdminSettings"> | Date | string
 }
@@ -306,6 +350,11 @@ export type AdminSettingsOrderByWithRelationInput = {
   oddsApiKey?: Prisma.SortOrderInput | Prisma.SortOrder
   apiFootballKey?: Prisma.SortOrderInput | Prisma.SortOrder
   accumulatorBonusThresholds?: Prisma.SortOrderInput | Prisma.SortOrder
+  adminWalletAddress?: Prisma.SortOrderInput | Prisma.SortOrder
+  adminBankName?: Prisma.SortOrderInput | Prisma.SortOrder
+  adminAccountNumber?: Prisma.SortOrderInput | Prisma.SortOrder
+  autoCommissionTransfer?: Prisma.SortOrder
+  minimumCommissionPayout?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -325,6 +374,11 @@ export type AdminSettingsWhereUniqueInput = Prisma.AtLeast<{
   oddsApiKey?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
   apiFootballKey?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
   accumulatorBonusThresholds?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
+  adminWalletAddress?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
+  adminBankName?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
+  adminAccountNumber?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
+  autoCommissionTransfer?: Prisma.BoolFilter<"AdminSettings"> | boolean
+  minimumCommissionPayout?: Prisma.FloatFilter<"AdminSettings"> | number
   createdAt?: Prisma.DateTimeFilter<"AdminSettings"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"AdminSettings"> | Date | string
 }, "id">
@@ -341,6 +395,11 @@ export type AdminSettingsOrderByWithAggregationInput = {
   oddsApiKey?: Prisma.SortOrderInput | Prisma.SortOrder
   apiFootballKey?: Prisma.SortOrderInput | Prisma.SortOrder
   accumulatorBonusThresholds?: Prisma.SortOrderInput | Prisma.SortOrder
+  adminWalletAddress?: Prisma.SortOrderInput | Prisma.SortOrder
+  adminBankName?: Prisma.SortOrderInput | Prisma.SortOrder
+  adminAccountNumber?: Prisma.SortOrderInput | Prisma.SortOrder
+  autoCommissionTransfer?: Prisma.SortOrder
+  minimumCommissionPayout?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.AdminSettingsCountOrderByAggregateInput
@@ -365,6 +424,11 @@ export type AdminSettingsScalarWhereWithAggregatesInput = {
   oddsApiKey?: Prisma.StringNullableWithAggregatesFilter<"AdminSettings"> | string | null
   apiFootballKey?: Prisma.StringNullableWithAggregatesFilter<"AdminSettings"> | string | null
   accumulatorBonusThresholds?: Prisma.StringNullableWithAggregatesFilter<"AdminSettings"> | string | null
+  adminWalletAddress?: Prisma.StringNullableWithAggregatesFilter<"AdminSettings"> | string | null
+  adminBankName?: Prisma.StringNullableWithAggregatesFilter<"AdminSettings"> | string | null
+  adminAccountNumber?: Prisma.StringNullableWithAggregatesFilter<"AdminSettings"> | string | null
+  autoCommissionTransfer?: Prisma.BoolWithAggregatesFilter<"AdminSettings"> | boolean
+  minimumCommissionPayout?: Prisma.FloatWithAggregatesFilter<"AdminSettings"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"AdminSettings"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"AdminSettings"> | Date | string
 }
@@ -381,6 +445,11 @@ export type AdminSettingsCreateInput = {
   oddsApiKey?: string | null
   apiFootballKey?: string | null
   accumulatorBonusThresholds?: string | null
+  adminWalletAddress?: string | null
+  adminBankName?: string | null
+  adminAccountNumber?: string | null
+  autoCommissionTransfer?: boolean
+  minimumCommissionPayout?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -397,6 +466,11 @@ export type AdminSettingsUncheckedCreateInput = {
   oddsApiKey?: string | null
   apiFootballKey?: string | null
   accumulatorBonusThresholds?: string | null
+  adminWalletAddress?: string | null
+  adminBankName?: string | null
+  adminAccountNumber?: string | null
+  autoCommissionTransfer?: boolean
+  minimumCommissionPayout?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -413,6 +487,11 @@ export type AdminSettingsUpdateInput = {
   oddsApiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   apiFootballKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accumulatorBonusThresholds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adminWalletAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adminBankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adminAccountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  autoCommissionTransfer?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minimumCommissionPayout?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -429,6 +508,11 @@ export type AdminSettingsUncheckedUpdateInput = {
   oddsApiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   apiFootballKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accumulatorBonusThresholds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adminWalletAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adminBankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adminAccountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  autoCommissionTransfer?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minimumCommissionPayout?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -445,6 +529,11 @@ export type AdminSettingsCreateManyInput = {
   oddsApiKey?: string | null
   apiFootballKey?: string | null
   accumulatorBonusThresholds?: string | null
+  adminWalletAddress?: string | null
+  adminBankName?: string | null
+  adminAccountNumber?: string | null
+  autoCommissionTransfer?: boolean
+  minimumCommissionPayout?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -461,6 +550,11 @@ export type AdminSettingsUpdateManyMutationInput = {
   oddsApiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   apiFootballKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accumulatorBonusThresholds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adminWalletAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adminBankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adminAccountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  autoCommissionTransfer?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minimumCommissionPayout?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -477,6 +571,11 @@ export type AdminSettingsUncheckedUpdateManyInput = {
   oddsApiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   apiFootballKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   accumulatorBonusThresholds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adminWalletAddress?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adminBankName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  adminAccountNumber?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  autoCommissionTransfer?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  minimumCommissionPayout?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -493,6 +592,11 @@ export type AdminSettingsCountOrderByAggregateInput = {
   oddsApiKey?: Prisma.SortOrder
   apiFootballKey?: Prisma.SortOrder
   accumulatorBonusThresholds?: Prisma.SortOrder
+  adminWalletAddress?: Prisma.SortOrder
+  adminBankName?: Prisma.SortOrder
+  adminAccountNumber?: Prisma.SortOrder
+  autoCommissionTransfer?: Prisma.SortOrder
+  minimumCommissionPayout?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -502,6 +606,7 @@ export type AdminSettingsAvgOrderByAggregateInput = {
   minCommissionRate?: Prisma.SortOrder
   maxCommissionRate?: Prisma.SortOrder
   maxUsers?: Prisma.SortOrder
+  minimumCommissionPayout?: Prisma.SortOrder
 }
 
 export type AdminSettingsMaxOrderByAggregateInput = {
@@ -516,6 +621,11 @@ export type AdminSettingsMaxOrderByAggregateInput = {
   oddsApiKey?: Prisma.SortOrder
   apiFootballKey?: Prisma.SortOrder
   accumulatorBonusThresholds?: Prisma.SortOrder
+  adminWalletAddress?: Prisma.SortOrder
+  adminBankName?: Prisma.SortOrder
+  adminAccountNumber?: Prisma.SortOrder
+  autoCommissionTransfer?: Prisma.SortOrder
+  minimumCommissionPayout?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -532,6 +642,11 @@ export type AdminSettingsMinOrderByAggregateInput = {
   oddsApiKey?: Prisma.SortOrder
   apiFootballKey?: Prisma.SortOrder
   accumulatorBonusThresholds?: Prisma.SortOrder
+  adminWalletAddress?: Prisma.SortOrder
+  adminBankName?: Prisma.SortOrder
+  adminAccountNumber?: Prisma.SortOrder
+  autoCommissionTransfer?: Prisma.SortOrder
+  minimumCommissionPayout?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -541,6 +656,7 @@ export type AdminSettingsSumOrderByAggregateInput = {
   minCommissionRate?: Prisma.SortOrder
   maxCommissionRate?: Prisma.SortOrder
   maxUsers?: Prisma.SortOrder
+  minimumCommissionPayout?: Prisma.SortOrder
 }
 
 
@@ -557,6 +673,11 @@ export type AdminSettingsSelect<ExtArgs extends runtime.Types.Extensions.Interna
   oddsApiKey?: boolean
   apiFootballKey?: boolean
   accumulatorBonusThresholds?: boolean
+  adminWalletAddress?: boolean
+  adminBankName?: boolean
+  adminAccountNumber?: boolean
+  autoCommissionTransfer?: boolean
+  minimumCommissionPayout?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["adminSettings"]>
@@ -573,6 +694,11 @@ export type AdminSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Types
   oddsApiKey?: boolean
   apiFootballKey?: boolean
   accumulatorBonusThresholds?: boolean
+  adminWalletAddress?: boolean
+  adminBankName?: boolean
+  adminAccountNumber?: boolean
+  autoCommissionTransfer?: boolean
+  minimumCommissionPayout?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["adminSettings"]>
@@ -589,6 +715,11 @@ export type AdminSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types
   oddsApiKey?: boolean
   apiFootballKey?: boolean
   accumulatorBonusThresholds?: boolean
+  adminWalletAddress?: boolean
+  adminBankName?: boolean
+  adminAccountNumber?: boolean
+  autoCommissionTransfer?: boolean
+  minimumCommissionPayout?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["adminSettings"]>
@@ -605,11 +736,16 @@ export type AdminSettingsSelectScalar = {
   oddsApiKey?: boolean
   apiFootballKey?: boolean
   accumulatorBonusThresholds?: boolean
+  adminWalletAddress?: boolean
+  adminBankName?: boolean
+  adminAccountNumber?: boolean
+  autoCommissionTransfer?: boolean
+  minimumCommissionPayout?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type AdminSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "defaultCommissionRate" | "minCommissionRate" | "maxCommissionRate" | "platformName" | "maintenanceMode" | "maxUsers" | "autoApproveAccounts" | "oddsApiKey" | "apiFootballKey" | "accumulatorBonusThresholds" | "createdAt" | "updatedAt", ExtArgs["result"]["adminSettings"]>
+export type AdminSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "defaultCommissionRate" | "minCommissionRate" | "maxCommissionRate" | "platformName" | "maintenanceMode" | "maxUsers" | "autoApproveAccounts" | "oddsApiKey" | "apiFootballKey" | "accumulatorBonusThresholds" | "adminWalletAddress" | "adminBankName" | "adminAccountNumber" | "autoCommissionTransfer" | "minimumCommissionPayout" | "createdAt" | "updatedAt", ExtArgs["result"]["adminSettings"]>
 
 export type $AdminSettingsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "AdminSettings"
@@ -626,6 +762,11 @@ export type $AdminSettingsPayload<ExtArgs extends runtime.Types.Extensions.Inter
     oddsApiKey: string | null
     apiFootballKey: string | null
     accumulatorBonusThresholds: string | null
+    adminWalletAddress: string | null
+    adminBankName: string | null
+    adminAccountNumber: string | null
+    autoCommissionTransfer: boolean
+    minimumCommissionPayout: number
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["adminSettings"]>
@@ -1062,6 +1203,11 @@ export interface AdminSettingsFieldRefs {
   readonly oddsApiKey: Prisma.FieldRef<"AdminSettings", 'String'>
   readonly apiFootballKey: Prisma.FieldRef<"AdminSettings", 'String'>
   readonly accumulatorBonusThresholds: Prisma.FieldRef<"AdminSettings", 'String'>
+  readonly adminWalletAddress: Prisma.FieldRef<"AdminSettings", 'String'>
+  readonly adminBankName: Prisma.FieldRef<"AdminSettings", 'String'>
+  readonly adminAccountNumber: Prisma.FieldRef<"AdminSettings", 'String'>
+  readonly autoCommissionTransfer: Prisma.FieldRef<"AdminSettings", 'Boolean'>
+  readonly minimumCommissionPayout: Prisma.FieldRef<"AdminSettings", 'Float'>
   readonly createdAt: Prisma.FieldRef<"AdminSettings", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"AdminSettings", 'DateTime'>
 }

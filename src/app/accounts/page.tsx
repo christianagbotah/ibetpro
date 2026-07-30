@@ -1,129 +1,53 @@
 "use client";
 
+import { useState } from "react";
 import { useFetch } from "@/lib/hooks";
-import { AccountCard } from "@/components/accounts/account-card";
-import { ConnectDialog } from "@/components/accounts/connect-dialog";
-import { Card, CardContent } from "@/components/ui/card";
-import { DollarSign, Wallet, Link2 } from "lucide-react";
-
-interface Account {
-  id: string;
-  platform: string;
-  accountName: string;
-  balance: number;
-  currency: string;
-  isConnected: boolean;
-  lastSyncedAt: string | null;
-}
+import { BrokerConnect } from "@/components/broker/broker-connect";
+import { AllocationManager } from "@/components/broker/allocation-manager";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Link2, Wallet } from "lucide-react";
 
 export default function AccountsPage() {
-  const { data: accounts, loading, refetch } = useFetch<Account[]>("/api/accounts", []);
-
-  const handleSync = async () => {
-    // Simulate sync - in a real app, this would call an API
-    refetch();
-  };
-
-  const handleConnect = async (platform: string, accountName: string) => {
-    try {
-      const res = await fetch("/api/accounts", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          platform,
-          accountName,
-        }),
-      });
-      if (res.ok) {
-        refetch();
-      }
-    } catch (error) {
-      console.error("Failed to connect account:", error);
-    }
-  };
-
-  const totalBalance = accounts.reduce((sum, a) => sum + a.balance, 0);
-  const connectedCount = accounts.filter((a) => a.isConnected).length;
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          Loading accounts...
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">Betting Accounts</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Manage your connected betting platforms
-          </p>
-        </div>
-        <ConnectDialog onConnect={handleConnect} />
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">Broker Accounts</h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Connect your betting platform, set allocations, and let the AI bot place bets using your
+          allocated funds. No deposits needed - the bot uses your broker account directly.
+        </p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        <Card className="bg-card border-border">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-              <DollarSign className="h-5 w-5 text-primary" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total Balance</p>
-              <p className="text-lg font-bold text-foreground">
-                ${totalBalance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-400/10">
-              <Wallet className="h-5 w-5 text-amber-400" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Total Accounts</p>
-              <p className="text-lg font-bold text-foreground">{accounts.length}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-border">
-          <CardContent className="p-4 flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-emerald-400/10">
-              <Link2 className="h-5 w-5 text-emerald-400" />
-            </div>
-            <div>
-              <p className="text-xs text-muted-foreground">Connected</p>
-              <p className="text-lg font-bold text-foreground">
-                {connectedCount}/{accounts.length}
-              </p>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="rounded-lg bg-primary/5 border border-primary/10 p-4">
+        <h3 className="text-sm font-medium text-foreground mb-1">How It Works</h3>
+        <ol className="text-xs text-muted-foreground space-y-1.5">
+          <li>1. <strong>Connect</strong> your broker/betting platform (Sportybet, 1xBet, Bet9ja, etc.)</li>
+          <li>2. <strong>Allocate</strong> funds from your broker account for the AI bot to use</li>
+          <li>3. The AI bot <strong>places bets</strong> directly on your broker account using your allocation</li>
+          <li>4. The bot <strong>monitors</strong> live matches and cashes out if needed, or waits for full settlement</li>
+          <li>5. On profit, a <strong>commission</strong> is automatically deducted and sent to admin</li>
+          <li>6. Your <strong>net profit</strong> stays in your broker account</li>
+        </ol>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {accounts.map((account) => (
-          <AccountCard key={account.id} account={account} onSync={handleSync} />
-        ))}
-      </div>
+      <Tabs defaultValue="brokers">
+        <TabsList>
+          <TabsTrigger value="brokers" className="flex items-center gap-1.5">
+            <Link2 className="h-3.5 w-3.5" /> Brokers
+          </TabsTrigger>
+          <TabsTrigger value="allocation" className="flex items-center gap-1.5">
+            <Wallet className="h-3.5 w-3.5" /> Allocation
+          </TabsTrigger>
+        </TabsList>
 
-      {accounts.length === 0 && (
-        <Card className="bg-card border-border">
-          <CardContent className="p-8 text-center">
-            <Wallet className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-            <p className="text-sm text-muted-foreground">
-              No betting accounts connected yet. Connect your first account to get started.
-            </p>
-          </CardContent>
-        </Card>
-      )}
+        <TabsContent value="brokers">
+          <BrokerConnect />
+        </TabsContent>
+
+        <TabsContent value="allocation">
+          <AllocationManager />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }

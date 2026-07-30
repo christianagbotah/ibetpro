@@ -28,10 +28,18 @@ export type AggregateBettingAccount = {
 
 export type BettingAccountAvgAggregateOutputType = {
   balance: number | null
+  allocatedAmount: number | null
+  maxAllocation: number | null
+  totalBrokerBets: number | null
+  totalBrokerProfit: number | null
 }
 
 export type BettingAccountSumAggregateOutputType = {
   balance: number | null
+  allocatedAmount: number | null
+  maxAllocation: number | null
+  totalBrokerBets: number | null
+  totalBrokerProfit: number | null
 }
 
 export type BettingAccountMinAggregateOutputType = {
@@ -46,6 +54,17 @@ export type BettingAccountMinAggregateOutputType = {
   currency: string | null
   isConnected: boolean | null
   lastSyncedAt: Date | null
+  brokerType: string | null
+  brokerRegion: string | null
+  brokerUserId: string | null
+  allocatedAmount: number | null
+  maxAllocation: number | null
+  allocationLock: boolean | null
+  sessionToken: string | null
+  sessionExpiry: Date | null
+  lastBetPlacedAt: Date | null
+  totalBrokerBets: number | null
+  totalBrokerProfit: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -62,6 +81,17 @@ export type BettingAccountMaxAggregateOutputType = {
   currency: string | null
   isConnected: boolean | null
   lastSyncedAt: Date | null
+  brokerType: string | null
+  brokerRegion: string | null
+  brokerUserId: string | null
+  allocatedAmount: number | null
+  maxAllocation: number | null
+  allocationLock: boolean | null
+  sessionToken: string | null
+  sessionExpiry: Date | null
+  lastBetPlacedAt: Date | null
+  totalBrokerBets: number | null
+  totalBrokerProfit: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -78,6 +108,17 @@ export type BettingAccountCountAggregateOutputType = {
   currency: number
   isConnected: number
   lastSyncedAt: number
+  brokerType: number
+  brokerRegion: number
+  brokerUserId: number
+  allocatedAmount: number
+  maxAllocation: number
+  allocationLock: number
+  sessionToken: number
+  sessionExpiry: number
+  lastBetPlacedAt: number
+  totalBrokerBets: number
+  totalBrokerProfit: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -86,10 +127,18 @@ export type BettingAccountCountAggregateOutputType = {
 
 export type BettingAccountAvgAggregateInputType = {
   balance?: true
+  allocatedAmount?: true
+  maxAllocation?: true
+  totalBrokerBets?: true
+  totalBrokerProfit?: true
 }
 
 export type BettingAccountSumAggregateInputType = {
   balance?: true
+  allocatedAmount?: true
+  maxAllocation?: true
+  totalBrokerBets?: true
+  totalBrokerProfit?: true
 }
 
 export type BettingAccountMinAggregateInputType = {
@@ -104,6 +153,17 @@ export type BettingAccountMinAggregateInputType = {
   currency?: true
   isConnected?: true
   lastSyncedAt?: true
+  brokerType?: true
+  brokerRegion?: true
+  brokerUserId?: true
+  allocatedAmount?: true
+  maxAllocation?: true
+  allocationLock?: true
+  sessionToken?: true
+  sessionExpiry?: true
+  lastBetPlacedAt?: true
+  totalBrokerBets?: true
+  totalBrokerProfit?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -120,6 +180,17 @@ export type BettingAccountMaxAggregateInputType = {
   currency?: true
   isConnected?: true
   lastSyncedAt?: true
+  brokerType?: true
+  brokerRegion?: true
+  brokerUserId?: true
+  allocatedAmount?: true
+  maxAllocation?: true
+  allocationLock?: true
+  sessionToken?: true
+  sessionExpiry?: true
+  lastBetPlacedAt?: true
+  totalBrokerBets?: true
+  totalBrokerProfit?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -136,6 +207,17 @@ export type BettingAccountCountAggregateInputType = {
   currency?: true
   isConnected?: true
   lastSyncedAt?: true
+  brokerType?: true
+  brokerRegion?: true
+  brokerUserId?: true
+  allocatedAmount?: true
+  maxAllocation?: true
+  allocationLock?: true
+  sessionToken?: true
+  sessionExpiry?: true
+  lastBetPlacedAt?: true
+  totalBrokerBets?: true
+  totalBrokerProfit?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -239,6 +321,17 @@ export type BettingAccountGroupByOutputType = {
   currency: string
   isConnected: boolean
   lastSyncedAt: Date | null
+  brokerType: string | null
+  brokerRegion: string | null
+  brokerUserId: string | null
+  allocatedAmount: number
+  maxAllocation: number
+  allocationLock: boolean
+  sessionToken: string | null
+  sessionExpiry: Date | null
+  lastBetPlacedAt: Date | null
+  totalBrokerBets: number
+  totalBrokerProfit: number
   createdAt: Date
   updatedAt: Date
   _count: BettingAccountCountAggregateOutputType | null
@@ -278,10 +371,23 @@ export type BettingAccountWhereInput = {
   currency?: Prisma.StringFilter<"BettingAccount"> | string
   isConnected?: Prisma.BoolFilter<"BettingAccount"> | boolean
   lastSyncedAt?: Prisma.DateTimeNullableFilter<"BettingAccount"> | Date | string | null
+  brokerType?: Prisma.StringNullableFilter<"BettingAccount"> | string | null
+  brokerRegion?: Prisma.StringNullableFilter<"BettingAccount"> | string | null
+  brokerUserId?: Prisma.StringNullableFilter<"BettingAccount"> | string | null
+  allocatedAmount?: Prisma.FloatFilter<"BettingAccount"> | number
+  maxAllocation?: Prisma.FloatFilter<"BettingAccount"> | number
+  allocationLock?: Prisma.BoolFilter<"BettingAccount"> | boolean
+  sessionToken?: Prisma.StringNullableFilter<"BettingAccount"> | string | null
+  sessionExpiry?: Prisma.DateTimeNullableFilter<"BettingAccount"> | Date | string | null
+  lastBetPlacedAt?: Prisma.DateTimeNullableFilter<"BettingAccount"> | Date | string | null
+  totalBrokerBets?: Prisma.IntFilter<"BettingAccount"> | number
+  totalBrokerProfit?: Prisma.FloatFilter<"BettingAccount"> | number
   createdAt?: Prisma.DateTimeFilter<"BettingAccount"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"BettingAccount"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   bets?: Prisma.BetListRelationFilter
+  allocations?: Prisma.AllocationListRelationFilter
+  commissions?: Prisma.CommissionLedgerListRelationFilter
 }
 
 export type BettingAccountOrderByWithRelationInput = {
@@ -296,10 +402,23 @@ export type BettingAccountOrderByWithRelationInput = {
   currency?: Prisma.SortOrder
   isConnected?: Prisma.SortOrder
   lastSyncedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  brokerType?: Prisma.SortOrderInput | Prisma.SortOrder
+  brokerRegion?: Prisma.SortOrderInput | Prisma.SortOrder
+  brokerUserId?: Prisma.SortOrderInput | Prisma.SortOrder
+  allocatedAmount?: Prisma.SortOrder
+  maxAllocation?: Prisma.SortOrder
+  allocationLock?: Prisma.SortOrder
+  sessionToken?: Prisma.SortOrderInput | Prisma.SortOrder
+  sessionExpiry?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastBetPlacedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  totalBrokerBets?: Prisma.SortOrder
+  totalBrokerProfit?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
   bets?: Prisma.BetOrderByRelationAggregateInput
+  allocations?: Prisma.AllocationOrderByRelationAggregateInput
+  commissions?: Prisma.CommissionLedgerOrderByRelationAggregateInput
 }
 
 export type BettingAccountWhereUniqueInput = Prisma.AtLeast<{
@@ -317,10 +436,23 @@ export type BettingAccountWhereUniqueInput = Prisma.AtLeast<{
   currency?: Prisma.StringFilter<"BettingAccount"> | string
   isConnected?: Prisma.BoolFilter<"BettingAccount"> | boolean
   lastSyncedAt?: Prisma.DateTimeNullableFilter<"BettingAccount"> | Date | string | null
+  brokerType?: Prisma.StringNullableFilter<"BettingAccount"> | string | null
+  brokerRegion?: Prisma.StringNullableFilter<"BettingAccount"> | string | null
+  brokerUserId?: Prisma.StringNullableFilter<"BettingAccount"> | string | null
+  allocatedAmount?: Prisma.FloatFilter<"BettingAccount"> | number
+  maxAllocation?: Prisma.FloatFilter<"BettingAccount"> | number
+  allocationLock?: Prisma.BoolFilter<"BettingAccount"> | boolean
+  sessionToken?: Prisma.StringNullableFilter<"BettingAccount"> | string | null
+  sessionExpiry?: Prisma.DateTimeNullableFilter<"BettingAccount"> | Date | string | null
+  lastBetPlacedAt?: Prisma.DateTimeNullableFilter<"BettingAccount"> | Date | string | null
+  totalBrokerBets?: Prisma.IntFilter<"BettingAccount"> | number
+  totalBrokerProfit?: Prisma.FloatFilter<"BettingAccount"> | number
   createdAt?: Prisma.DateTimeFilter<"BettingAccount"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"BettingAccount"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   bets?: Prisma.BetListRelationFilter
+  allocations?: Prisma.AllocationListRelationFilter
+  commissions?: Prisma.CommissionLedgerListRelationFilter
 }, "id">
 
 export type BettingAccountOrderByWithAggregationInput = {
@@ -335,6 +467,17 @@ export type BettingAccountOrderByWithAggregationInput = {
   currency?: Prisma.SortOrder
   isConnected?: Prisma.SortOrder
   lastSyncedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  brokerType?: Prisma.SortOrderInput | Prisma.SortOrder
+  brokerRegion?: Prisma.SortOrderInput | Prisma.SortOrder
+  brokerUserId?: Prisma.SortOrderInput | Prisma.SortOrder
+  allocatedAmount?: Prisma.SortOrder
+  maxAllocation?: Prisma.SortOrder
+  allocationLock?: Prisma.SortOrder
+  sessionToken?: Prisma.SortOrderInput | Prisma.SortOrder
+  sessionExpiry?: Prisma.SortOrderInput | Prisma.SortOrder
+  lastBetPlacedAt?: Prisma.SortOrderInput | Prisma.SortOrder
+  totalBrokerBets?: Prisma.SortOrder
+  totalBrokerProfit?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.BettingAccountCountOrderByAggregateInput
@@ -359,6 +502,17 @@ export type BettingAccountScalarWhereWithAggregatesInput = {
   currency?: Prisma.StringWithAggregatesFilter<"BettingAccount"> | string
   isConnected?: Prisma.BoolWithAggregatesFilter<"BettingAccount"> | boolean
   lastSyncedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"BettingAccount"> | Date | string | null
+  brokerType?: Prisma.StringNullableWithAggregatesFilter<"BettingAccount"> | string | null
+  brokerRegion?: Prisma.StringNullableWithAggregatesFilter<"BettingAccount"> | string | null
+  brokerUserId?: Prisma.StringNullableWithAggregatesFilter<"BettingAccount"> | string | null
+  allocatedAmount?: Prisma.FloatWithAggregatesFilter<"BettingAccount"> | number
+  maxAllocation?: Prisma.FloatWithAggregatesFilter<"BettingAccount"> | number
+  allocationLock?: Prisma.BoolWithAggregatesFilter<"BettingAccount"> | boolean
+  sessionToken?: Prisma.StringNullableWithAggregatesFilter<"BettingAccount"> | string | null
+  sessionExpiry?: Prisma.DateTimeNullableWithAggregatesFilter<"BettingAccount"> | Date | string | null
+  lastBetPlacedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"BettingAccount"> | Date | string | null
+  totalBrokerBets?: Prisma.IntWithAggregatesFilter<"BettingAccount"> | number
+  totalBrokerProfit?: Prisma.FloatWithAggregatesFilter<"BettingAccount"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"BettingAccount"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"BettingAccount"> | Date | string
 }
@@ -374,10 +528,23 @@ export type BettingAccountCreateInput = {
   currency?: string
   isConnected?: boolean
   lastSyncedAt?: Date | string | null
+  brokerType?: string | null
+  brokerRegion?: string | null
+  brokerUserId?: string | null
+  allocatedAmount?: number
+  maxAllocation?: number
+  allocationLock?: boolean
+  sessionToken?: string | null
+  sessionExpiry?: Date | string | null
+  lastBetPlacedAt?: Date | string | null
+  totalBrokerBets?: number
+  totalBrokerProfit?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutBettingAccountsInput
   bets?: Prisma.BetCreateNestedManyWithoutBettingAccountInput
+  allocations?: Prisma.AllocationCreateNestedManyWithoutBettingAccountInput
+  commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutBettingAccountInput
 }
 
 export type BettingAccountUncheckedCreateInput = {
@@ -392,9 +559,22 @@ export type BettingAccountUncheckedCreateInput = {
   currency?: string
   isConnected?: boolean
   lastSyncedAt?: Date | string | null
+  brokerType?: string | null
+  brokerRegion?: string | null
+  brokerUserId?: string | null
+  allocatedAmount?: number
+  maxAllocation?: number
+  allocationLock?: boolean
+  sessionToken?: string | null
+  sessionExpiry?: Date | string | null
+  lastBetPlacedAt?: Date | string | null
+  totalBrokerBets?: number
+  totalBrokerProfit?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   bets?: Prisma.BetUncheckedCreateNestedManyWithoutBettingAccountInput
+  allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutBettingAccountInput
+  commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutBettingAccountInput
 }
 
 export type BettingAccountUpdateInput = {
@@ -408,10 +588,23 @@ export type BettingAccountUpdateInput = {
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   isConnected?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  brokerType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerRegion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  allocatedAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  maxAllocation?: Prisma.FloatFieldUpdateOperationsInput | number
+  allocationLock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sessionToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastBetPlacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  totalBrokerBets?: Prisma.IntFieldUpdateOperationsInput | number
+  totalBrokerProfit?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutBettingAccountsNestedInput
   bets?: Prisma.BetUpdateManyWithoutBettingAccountNestedInput
+  allocations?: Prisma.AllocationUpdateManyWithoutBettingAccountNestedInput
+  commissions?: Prisma.CommissionLedgerUpdateManyWithoutBettingAccountNestedInput
 }
 
 export type BettingAccountUncheckedUpdateInput = {
@@ -426,9 +619,22 @@ export type BettingAccountUncheckedUpdateInput = {
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   isConnected?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  brokerType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerRegion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  allocatedAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  maxAllocation?: Prisma.FloatFieldUpdateOperationsInput | number
+  allocationLock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sessionToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastBetPlacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  totalBrokerBets?: Prisma.IntFieldUpdateOperationsInput | number
+  totalBrokerProfit?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bets?: Prisma.BetUncheckedUpdateManyWithoutBettingAccountNestedInput
+  allocations?: Prisma.AllocationUncheckedUpdateManyWithoutBettingAccountNestedInput
+  commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutBettingAccountNestedInput
 }
 
 export type BettingAccountCreateManyInput = {
@@ -443,6 +649,17 @@ export type BettingAccountCreateManyInput = {
   currency?: string
   isConnected?: boolean
   lastSyncedAt?: Date | string | null
+  brokerType?: string | null
+  brokerRegion?: string | null
+  brokerUserId?: string | null
+  allocatedAmount?: number
+  maxAllocation?: number
+  allocationLock?: boolean
+  sessionToken?: string | null
+  sessionExpiry?: Date | string | null
+  lastBetPlacedAt?: Date | string | null
+  totalBrokerBets?: number
+  totalBrokerProfit?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -458,6 +675,17 @@ export type BettingAccountUpdateManyMutationInput = {
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   isConnected?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  brokerType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerRegion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  allocatedAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  maxAllocation?: Prisma.FloatFieldUpdateOperationsInput | number
+  allocationLock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sessionToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastBetPlacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  totalBrokerBets?: Prisma.IntFieldUpdateOperationsInput | number
+  totalBrokerProfit?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -474,6 +702,17 @@ export type BettingAccountUncheckedUpdateManyInput = {
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   isConnected?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  brokerType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerRegion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  allocatedAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  maxAllocation?: Prisma.FloatFieldUpdateOperationsInput | number
+  allocationLock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sessionToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastBetPlacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  totalBrokerBets?: Prisma.IntFieldUpdateOperationsInput | number
+  totalBrokerProfit?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -500,12 +739,27 @@ export type BettingAccountCountOrderByAggregateInput = {
   currency?: Prisma.SortOrder
   isConnected?: Prisma.SortOrder
   lastSyncedAt?: Prisma.SortOrder
+  brokerType?: Prisma.SortOrder
+  brokerRegion?: Prisma.SortOrder
+  brokerUserId?: Prisma.SortOrder
+  allocatedAmount?: Prisma.SortOrder
+  maxAllocation?: Prisma.SortOrder
+  allocationLock?: Prisma.SortOrder
+  sessionToken?: Prisma.SortOrder
+  sessionExpiry?: Prisma.SortOrder
+  lastBetPlacedAt?: Prisma.SortOrder
+  totalBrokerBets?: Prisma.SortOrder
+  totalBrokerProfit?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type BettingAccountAvgOrderByAggregateInput = {
   balance?: Prisma.SortOrder
+  allocatedAmount?: Prisma.SortOrder
+  maxAllocation?: Prisma.SortOrder
+  totalBrokerBets?: Prisma.SortOrder
+  totalBrokerProfit?: Prisma.SortOrder
 }
 
 export type BettingAccountMaxOrderByAggregateInput = {
@@ -520,6 +774,17 @@ export type BettingAccountMaxOrderByAggregateInput = {
   currency?: Prisma.SortOrder
   isConnected?: Prisma.SortOrder
   lastSyncedAt?: Prisma.SortOrder
+  brokerType?: Prisma.SortOrder
+  brokerRegion?: Prisma.SortOrder
+  brokerUserId?: Prisma.SortOrder
+  allocatedAmount?: Prisma.SortOrder
+  maxAllocation?: Prisma.SortOrder
+  allocationLock?: Prisma.SortOrder
+  sessionToken?: Prisma.SortOrder
+  sessionExpiry?: Prisma.SortOrder
+  lastBetPlacedAt?: Prisma.SortOrder
+  totalBrokerBets?: Prisma.SortOrder
+  totalBrokerProfit?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -536,12 +801,27 @@ export type BettingAccountMinOrderByAggregateInput = {
   currency?: Prisma.SortOrder
   isConnected?: Prisma.SortOrder
   lastSyncedAt?: Prisma.SortOrder
+  brokerType?: Prisma.SortOrder
+  brokerRegion?: Prisma.SortOrder
+  brokerUserId?: Prisma.SortOrder
+  allocatedAmount?: Prisma.SortOrder
+  maxAllocation?: Prisma.SortOrder
+  allocationLock?: Prisma.SortOrder
+  sessionToken?: Prisma.SortOrder
+  sessionExpiry?: Prisma.SortOrder
+  lastBetPlacedAt?: Prisma.SortOrder
+  totalBrokerBets?: Prisma.SortOrder
+  totalBrokerProfit?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type BettingAccountSumOrderByAggregateInput = {
   balance?: Prisma.SortOrder
+  allocatedAmount?: Prisma.SortOrder
+  maxAllocation?: Prisma.SortOrder
+  totalBrokerBets?: Prisma.SortOrder
+  totalBrokerProfit?: Prisma.SortOrder
 }
 
 export type BettingAccountScalarRelationFilter = {
@@ -609,6 +889,34 @@ export type BettingAccountUpdateOneRequiredWithoutBetsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.BettingAccountUpdateToOneWithWhereWithoutBetsInput, Prisma.BettingAccountUpdateWithoutBetsInput>, Prisma.BettingAccountUncheckedUpdateWithoutBetsInput>
 }
 
+export type BettingAccountCreateNestedOneWithoutAllocationsInput = {
+  create?: Prisma.XOR<Prisma.BettingAccountCreateWithoutAllocationsInput, Prisma.BettingAccountUncheckedCreateWithoutAllocationsInput>
+  connectOrCreate?: Prisma.BettingAccountCreateOrConnectWithoutAllocationsInput
+  connect?: Prisma.BettingAccountWhereUniqueInput
+}
+
+export type BettingAccountUpdateOneRequiredWithoutAllocationsNestedInput = {
+  create?: Prisma.XOR<Prisma.BettingAccountCreateWithoutAllocationsInput, Prisma.BettingAccountUncheckedCreateWithoutAllocationsInput>
+  connectOrCreate?: Prisma.BettingAccountCreateOrConnectWithoutAllocationsInput
+  upsert?: Prisma.BettingAccountUpsertWithoutAllocationsInput
+  connect?: Prisma.BettingAccountWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.BettingAccountUpdateToOneWithWhereWithoutAllocationsInput, Prisma.BettingAccountUpdateWithoutAllocationsInput>, Prisma.BettingAccountUncheckedUpdateWithoutAllocationsInput>
+}
+
+export type BettingAccountCreateNestedOneWithoutCommissionsInput = {
+  create?: Prisma.XOR<Prisma.BettingAccountCreateWithoutCommissionsInput, Prisma.BettingAccountUncheckedCreateWithoutCommissionsInput>
+  connectOrCreate?: Prisma.BettingAccountCreateOrConnectWithoutCommissionsInput
+  connect?: Prisma.BettingAccountWhereUniqueInput
+}
+
+export type BettingAccountUpdateOneRequiredWithoutCommissionsNestedInput = {
+  create?: Prisma.XOR<Prisma.BettingAccountCreateWithoutCommissionsInput, Prisma.BettingAccountUncheckedCreateWithoutCommissionsInput>
+  connectOrCreate?: Prisma.BettingAccountCreateOrConnectWithoutCommissionsInput
+  upsert?: Prisma.BettingAccountUpsertWithoutCommissionsInput
+  connect?: Prisma.BettingAccountWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.BettingAccountUpdateToOneWithWhereWithoutCommissionsInput, Prisma.BettingAccountUpdateWithoutCommissionsInput>, Prisma.BettingAccountUncheckedUpdateWithoutCommissionsInput>
+}
+
 export type BettingAccountCreateWithoutUserInput = {
   id?: string
   platform: string
@@ -620,9 +928,22 @@ export type BettingAccountCreateWithoutUserInput = {
   currency?: string
   isConnected?: boolean
   lastSyncedAt?: Date | string | null
+  brokerType?: string | null
+  brokerRegion?: string | null
+  brokerUserId?: string | null
+  allocatedAmount?: number
+  maxAllocation?: number
+  allocationLock?: boolean
+  sessionToken?: string | null
+  sessionExpiry?: Date | string | null
+  lastBetPlacedAt?: Date | string | null
+  totalBrokerBets?: number
+  totalBrokerProfit?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   bets?: Prisma.BetCreateNestedManyWithoutBettingAccountInput
+  allocations?: Prisma.AllocationCreateNestedManyWithoutBettingAccountInput
+  commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutBettingAccountInput
 }
 
 export type BettingAccountUncheckedCreateWithoutUserInput = {
@@ -636,9 +957,22 @@ export type BettingAccountUncheckedCreateWithoutUserInput = {
   currency?: string
   isConnected?: boolean
   lastSyncedAt?: Date | string | null
+  brokerType?: string | null
+  brokerRegion?: string | null
+  brokerUserId?: string | null
+  allocatedAmount?: number
+  maxAllocation?: number
+  allocationLock?: boolean
+  sessionToken?: string | null
+  sessionExpiry?: Date | string | null
+  lastBetPlacedAt?: Date | string | null
+  totalBrokerBets?: number
+  totalBrokerProfit?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   bets?: Prisma.BetUncheckedCreateNestedManyWithoutBettingAccountInput
+  allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutBettingAccountInput
+  commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutBettingAccountInput
 }
 
 export type BettingAccountCreateOrConnectWithoutUserInput = {
@@ -681,6 +1015,17 @@ export type BettingAccountScalarWhereInput = {
   currency?: Prisma.StringFilter<"BettingAccount"> | string
   isConnected?: Prisma.BoolFilter<"BettingAccount"> | boolean
   lastSyncedAt?: Prisma.DateTimeNullableFilter<"BettingAccount"> | Date | string | null
+  brokerType?: Prisma.StringNullableFilter<"BettingAccount"> | string | null
+  brokerRegion?: Prisma.StringNullableFilter<"BettingAccount"> | string | null
+  brokerUserId?: Prisma.StringNullableFilter<"BettingAccount"> | string | null
+  allocatedAmount?: Prisma.FloatFilter<"BettingAccount"> | number
+  maxAllocation?: Prisma.FloatFilter<"BettingAccount"> | number
+  allocationLock?: Prisma.BoolFilter<"BettingAccount"> | boolean
+  sessionToken?: Prisma.StringNullableFilter<"BettingAccount"> | string | null
+  sessionExpiry?: Prisma.DateTimeNullableFilter<"BettingAccount"> | Date | string | null
+  lastBetPlacedAt?: Prisma.DateTimeNullableFilter<"BettingAccount"> | Date | string | null
+  totalBrokerBets?: Prisma.IntFilter<"BettingAccount"> | number
+  totalBrokerProfit?: Prisma.FloatFilter<"BettingAccount"> | number
   createdAt?: Prisma.DateTimeFilter<"BettingAccount"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"BettingAccount"> | Date | string
 }
@@ -696,9 +1041,22 @@ export type BettingAccountCreateWithoutBetsInput = {
   currency?: string
   isConnected?: boolean
   lastSyncedAt?: Date | string | null
+  brokerType?: string | null
+  brokerRegion?: string | null
+  brokerUserId?: string | null
+  allocatedAmount?: number
+  maxAllocation?: number
+  allocationLock?: boolean
+  sessionToken?: string | null
+  sessionExpiry?: Date | string | null
+  lastBetPlacedAt?: Date | string | null
+  totalBrokerBets?: number
+  totalBrokerProfit?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutBettingAccountsInput
+  allocations?: Prisma.AllocationCreateNestedManyWithoutBettingAccountInput
+  commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutBettingAccountInput
 }
 
 export type BettingAccountUncheckedCreateWithoutBetsInput = {
@@ -713,8 +1071,21 @@ export type BettingAccountUncheckedCreateWithoutBetsInput = {
   currency?: string
   isConnected?: boolean
   lastSyncedAt?: Date | string | null
+  brokerType?: string | null
+  brokerRegion?: string | null
+  brokerUserId?: string | null
+  allocatedAmount?: number
+  maxAllocation?: number
+  allocationLock?: boolean
+  sessionToken?: string | null
+  sessionExpiry?: Date | string | null
+  lastBetPlacedAt?: Date | string | null
+  totalBrokerBets?: number
+  totalBrokerProfit?: number
   createdAt?: Date | string
   updatedAt?: Date | string
+  allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutBettingAccountInput
+  commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutBettingAccountInput
 }
 
 export type BettingAccountCreateOrConnectWithoutBetsInput = {
@@ -744,9 +1115,22 @@ export type BettingAccountUpdateWithoutBetsInput = {
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   isConnected?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  brokerType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerRegion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  allocatedAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  maxAllocation?: Prisma.FloatFieldUpdateOperationsInput | number
+  allocationLock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sessionToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastBetPlacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  totalBrokerBets?: Prisma.IntFieldUpdateOperationsInput | number
+  totalBrokerProfit?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutBettingAccountsNestedInput
+  allocations?: Prisma.AllocationUpdateManyWithoutBettingAccountNestedInput
+  commissions?: Prisma.CommissionLedgerUpdateManyWithoutBettingAccountNestedInput
 }
 
 export type BettingAccountUncheckedUpdateWithoutBetsInput = {
@@ -761,8 +1145,285 @@ export type BettingAccountUncheckedUpdateWithoutBetsInput = {
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   isConnected?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  brokerType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerRegion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  allocatedAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  maxAllocation?: Prisma.FloatFieldUpdateOperationsInput | number
+  allocationLock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sessionToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastBetPlacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  totalBrokerBets?: Prisma.IntFieldUpdateOperationsInput | number
+  totalBrokerProfit?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  allocations?: Prisma.AllocationUncheckedUpdateManyWithoutBettingAccountNestedInput
+  commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutBettingAccountNestedInput
+}
+
+export type BettingAccountCreateWithoutAllocationsInput = {
+  id?: string
+  platform: string
+  accountId: string
+  accountName: string
+  accessToken?: string | null
+  refreshToken?: string | null
+  balance?: number
+  currency?: string
+  isConnected?: boolean
+  lastSyncedAt?: Date | string | null
+  brokerType?: string | null
+  brokerRegion?: string | null
+  brokerUserId?: string | null
+  allocatedAmount?: number
+  maxAllocation?: number
+  allocationLock?: boolean
+  sessionToken?: string | null
+  sessionExpiry?: Date | string | null
+  lastBetPlacedAt?: Date | string | null
+  totalBrokerBets?: number
+  totalBrokerProfit?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  user: Prisma.UserCreateNestedOneWithoutBettingAccountsInput
+  bets?: Prisma.BetCreateNestedManyWithoutBettingAccountInput
+  commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutBettingAccountInput
+}
+
+export type BettingAccountUncheckedCreateWithoutAllocationsInput = {
+  id?: string
+  userId: string
+  platform: string
+  accountId: string
+  accountName: string
+  accessToken?: string | null
+  refreshToken?: string | null
+  balance?: number
+  currency?: string
+  isConnected?: boolean
+  lastSyncedAt?: Date | string | null
+  brokerType?: string | null
+  brokerRegion?: string | null
+  brokerUserId?: string | null
+  allocatedAmount?: number
+  maxAllocation?: number
+  allocationLock?: boolean
+  sessionToken?: string | null
+  sessionExpiry?: Date | string | null
+  lastBetPlacedAt?: Date | string | null
+  totalBrokerBets?: number
+  totalBrokerProfit?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bets?: Prisma.BetUncheckedCreateNestedManyWithoutBettingAccountInput
+  commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutBettingAccountInput
+}
+
+export type BettingAccountCreateOrConnectWithoutAllocationsInput = {
+  where: Prisma.BettingAccountWhereUniqueInput
+  create: Prisma.XOR<Prisma.BettingAccountCreateWithoutAllocationsInput, Prisma.BettingAccountUncheckedCreateWithoutAllocationsInput>
+}
+
+export type BettingAccountUpsertWithoutAllocationsInput = {
+  update: Prisma.XOR<Prisma.BettingAccountUpdateWithoutAllocationsInput, Prisma.BettingAccountUncheckedUpdateWithoutAllocationsInput>
+  create: Prisma.XOR<Prisma.BettingAccountCreateWithoutAllocationsInput, Prisma.BettingAccountUncheckedCreateWithoutAllocationsInput>
+  where?: Prisma.BettingAccountWhereInput
+}
+
+export type BettingAccountUpdateToOneWithWhereWithoutAllocationsInput = {
+  where?: Prisma.BettingAccountWhereInput
+  data: Prisma.XOR<Prisma.BettingAccountUpdateWithoutAllocationsInput, Prisma.BettingAccountUncheckedUpdateWithoutAllocationsInput>
+}
+
+export type BettingAccountUpdateWithoutAllocationsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  platform?: Prisma.StringFieldUpdateOperationsInput | string
+  accountId?: Prisma.StringFieldUpdateOperationsInput | string
+  accountName?: Prisma.StringFieldUpdateOperationsInput | string
+  accessToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refreshToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  balance?: Prisma.FloatFieldUpdateOperationsInput | number
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  isConnected?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  brokerType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerRegion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  allocatedAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  maxAllocation?: Prisma.FloatFieldUpdateOperationsInput | number
+  allocationLock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sessionToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastBetPlacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  totalBrokerBets?: Prisma.IntFieldUpdateOperationsInput | number
+  totalBrokerProfit?: Prisma.FloatFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user?: Prisma.UserUpdateOneRequiredWithoutBettingAccountsNestedInput
+  bets?: Prisma.BetUpdateManyWithoutBettingAccountNestedInput
+  commissions?: Prisma.CommissionLedgerUpdateManyWithoutBettingAccountNestedInput
+}
+
+export type BettingAccountUncheckedUpdateWithoutAllocationsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  platform?: Prisma.StringFieldUpdateOperationsInput | string
+  accountId?: Prisma.StringFieldUpdateOperationsInput | string
+  accountName?: Prisma.StringFieldUpdateOperationsInput | string
+  accessToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refreshToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  balance?: Prisma.FloatFieldUpdateOperationsInput | number
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  isConnected?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  brokerType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerRegion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  allocatedAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  maxAllocation?: Prisma.FloatFieldUpdateOperationsInput | number
+  allocationLock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sessionToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastBetPlacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  totalBrokerBets?: Prisma.IntFieldUpdateOperationsInput | number
+  totalBrokerProfit?: Prisma.FloatFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bets?: Prisma.BetUncheckedUpdateManyWithoutBettingAccountNestedInput
+  commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutBettingAccountNestedInput
+}
+
+export type BettingAccountCreateWithoutCommissionsInput = {
+  id?: string
+  platform: string
+  accountId: string
+  accountName: string
+  accessToken?: string | null
+  refreshToken?: string | null
+  balance?: number
+  currency?: string
+  isConnected?: boolean
+  lastSyncedAt?: Date | string | null
+  brokerType?: string | null
+  brokerRegion?: string | null
+  brokerUserId?: string | null
+  allocatedAmount?: number
+  maxAllocation?: number
+  allocationLock?: boolean
+  sessionToken?: string | null
+  sessionExpiry?: Date | string | null
+  lastBetPlacedAt?: Date | string | null
+  totalBrokerBets?: number
+  totalBrokerProfit?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  user: Prisma.UserCreateNestedOneWithoutBettingAccountsInput
+  bets?: Prisma.BetCreateNestedManyWithoutBettingAccountInput
+  allocations?: Prisma.AllocationCreateNestedManyWithoutBettingAccountInput
+}
+
+export type BettingAccountUncheckedCreateWithoutCommissionsInput = {
+  id?: string
+  userId: string
+  platform: string
+  accountId: string
+  accountName: string
+  accessToken?: string | null
+  refreshToken?: string | null
+  balance?: number
+  currency?: string
+  isConnected?: boolean
+  lastSyncedAt?: Date | string | null
+  brokerType?: string | null
+  brokerRegion?: string | null
+  brokerUserId?: string | null
+  allocatedAmount?: number
+  maxAllocation?: number
+  allocationLock?: boolean
+  sessionToken?: string | null
+  sessionExpiry?: Date | string | null
+  lastBetPlacedAt?: Date | string | null
+  totalBrokerBets?: number
+  totalBrokerProfit?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bets?: Prisma.BetUncheckedCreateNestedManyWithoutBettingAccountInput
+  allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutBettingAccountInput
+}
+
+export type BettingAccountCreateOrConnectWithoutCommissionsInput = {
+  where: Prisma.BettingAccountWhereUniqueInput
+  create: Prisma.XOR<Prisma.BettingAccountCreateWithoutCommissionsInput, Prisma.BettingAccountUncheckedCreateWithoutCommissionsInput>
+}
+
+export type BettingAccountUpsertWithoutCommissionsInput = {
+  update: Prisma.XOR<Prisma.BettingAccountUpdateWithoutCommissionsInput, Prisma.BettingAccountUncheckedUpdateWithoutCommissionsInput>
+  create: Prisma.XOR<Prisma.BettingAccountCreateWithoutCommissionsInput, Prisma.BettingAccountUncheckedCreateWithoutCommissionsInput>
+  where?: Prisma.BettingAccountWhereInput
+}
+
+export type BettingAccountUpdateToOneWithWhereWithoutCommissionsInput = {
+  where?: Prisma.BettingAccountWhereInput
+  data: Prisma.XOR<Prisma.BettingAccountUpdateWithoutCommissionsInput, Prisma.BettingAccountUncheckedUpdateWithoutCommissionsInput>
+}
+
+export type BettingAccountUpdateWithoutCommissionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  platform?: Prisma.StringFieldUpdateOperationsInput | string
+  accountId?: Prisma.StringFieldUpdateOperationsInput | string
+  accountName?: Prisma.StringFieldUpdateOperationsInput | string
+  accessToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refreshToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  balance?: Prisma.FloatFieldUpdateOperationsInput | number
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  isConnected?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  brokerType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerRegion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  allocatedAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  maxAllocation?: Prisma.FloatFieldUpdateOperationsInput | number
+  allocationLock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sessionToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastBetPlacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  totalBrokerBets?: Prisma.IntFieldUpdateOperationsInput | number
+  totalBrokerProfit?: Prisma.FloatFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user?: Prisma.UserUpdateOneRequiredWithoutBettingAccountsNestedInput
+  bets?: Prisma.BetUpdateManyWithoutBettingAccountNestedInput
+  allocations?: Prisma.AllocationUpdateManyWithoutBettingAccountNestedInput
+}
+
+export type BettingAccountUncheckedUpdateWithoutCommissionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  platform?: Prisma.StringFieldUpdateOperationsInput | string
+  accountId?: Prisma.StringFieldUpdateOperationsInput | string
+  accountName?: Prisma.StringFieldUpdateOperationsInput | string
+  accessToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  refreshToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  balance?: Prisma.FloatFieldUpdateOperationsInput | number
+  currency?: Prisma.StringFieldUpdateOperationsInput | string
+  isConnected?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  brokerType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerRegion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  allocatedAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  maxAllocation?: Prisma.FloatFieldUpdateOperationsInput | number
+  allocationLock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sessionToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastBetPlacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  totalBrokerBets?: Prisma.IntFieldUpdateOperationsInput | number
+  totalBrokerProfit?: Prisma.FloatFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bets?: Prisma.BetUncheckedUpdateManyWithoutBettingAccountNestedInput
+  allocations?: Prisma.AllocationUncheckedUpdateManyWithoutBettingAccountNestedInput
 }
 
 export type BettingAccountCreateManyUserInput = {
@@ -776,6 +1437,17 @@ export type BettingAccountCreateManyUserInput = {
   currency?: string
   isConnected?: boolean
   lastSyncedAt?: Date | string | null
+  brokerType?: string | null
+  brokerRegion?: string | null
+  brokerUserId?: string | null
+  allocatedAmount?: number
+  maxAllocation?: number
+  allocationLock?: boolean
+  sessionToken?: string | null
+  sessionExpiry?: Date | string | null
+  lastBetPlacedAt?: Date | string | null
+  totalBrokerBets?: number
+  totalBrokerProfit?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -791,9 +1463,22 @@ export type BettingAccountUpdateWithoutUserInput = {
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   isConnected?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  brokerType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerRegion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  allocatedAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  maxAllocation?: Prisma.FloatFieldUpdateOperationsInput | number
+  allocationLock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sessionToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastBetPlacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  totalBrokerBets?: Prisma.IntFieldUpdateOperationsInput | number
+  totalBrokerProfit?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bets?: Prisma.BetUpdateManyWithoutBettingAccountNestedInput
+  allocations?: Prisma.AllocationUpdateManyWithoutBettingAccountNestedInput
+  commissions?: Prisma.CommissionLedgerUpdateManyWithoutBettingAccountNestedInput
 }
 
 export type BettingAccountUncheckedUpdateWithoutUserInput = {
@@ -807,9 +1492,22 @@ export type BettingAccountUncheckedUpdateWithoutUserInput = {
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   isConnected?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  brokerType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerRegion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  allocatedAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  maxAllocation?: Prisma.FloatFieldUpdateOperationsInput | number
+  allocationLock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sessionToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastBetPlacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  totalBrokerBets?: Prisma.IntFieldUpdateOperationsInput | number
+  totalBrokerProfit?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bets?: Prisma.BetUncheckedUpdateManyWithoutBettingAccountNestedInput
+  allocations?: Prisma.AllocationUncheckedUpdateManyWithoutBettingAccountNestedInput
+  commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutBettingAccountNestedInput
 }
 
 export type BettingAccountUncheckedUpdateManyWithoutUserInput = {
@@ -823,6 +1521,17 @@ export type BettingAccountUncheckedUpdateManyWithoutUserInput = {
   currency?: Prisma.StringFieldUpdateOperationsInput | string
   isConnected?: Prisma.BoolFieldUpdateOperationsInput | boolean
   lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  brokerType?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerRegion?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  brokerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  allocatedAmount?: Prisma.FloatFieldUpdateOperationsInput | number
+  maxAllocation?: Prisma.FloatFieldUpdateOperationsInput | number
+  allocationLock?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  sessionToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sessionExpiry?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastBetPlacedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  totalBrokerBets?: Prisma.IntFieldUpdateOperationsInput | number
+  totalBrokerProfit?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -834,10 +1543,14 @@ export type BettingAccountUncheckedUpdateManyWithoutUserInput = {
 
 export type BettingAccountCountOutputType = {
   bets: number
+  allocations: number
+  commissions: number
 }
 
 export type BettingAccountCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   bets?: boolean | BettingAccountCountOutputTypeCountBetsArgs
+  allocations?: boolean | BettingAccountCountOutputTypeCountAllocationsArgs
+  commissions?: boolean | BettingAccountCountOutputTypeCountCommissionsArgs
 }
 
 /**
@@ -857,6 +1570,20 @@ export type BettingAccountCountOutputTypeCountBetsArgs<ExtArgs extends runtime.T
   where?: Prisma.BetWhereInput
 }
 
+/**
+ * BettingAccountCountOutputType without action
+ */
+export type BettingAccountCountOutputTypeCountAllocationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AllocationWhereInput
+}
+
+/**
+ * BettingAccountCountOutputType without action
+ */
+export type BettingAccountCountOutputTypeCountCommissionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.CommissionLedgerWhereInput
+}
+
 
 export type BettingAccountSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -870,10 +1597,23 @@ export type BettingAccountSelect<ExtArgs extends runtime.Types.Extensions.Intern
   currency?: boolean
   isConnected?: boolean
   lastSyncedAt?: boolean
+  brokerType?: boolean
+  brokerRegion?: boolean
+  brokerUserId?: boolean
+  allocatedAmount?: boolean
+  maxAllocation?: boolean
+  allocationLock?: boolean
+  sessionToken?: boolean
+  sessionExpiry?: boolean
+  lastBetPlacedAt?: boolean
+  totalBrokerBets?: boolean
+  totalBrokerProfit?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   bets?: boolean | Prisma.BettingAccount$betsArgs<ExtArgs>
+  allocations?: boolean | Prisma.BettingAccount$allocationsArgs<ExtArgs>
+  commissions?: boolean | Prisma.BettingAccount$commissionsArgs<ExtArgs>
   _count?: boolean | Prisma.BettingAccountCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["bettingAccount"]>
 
@@ -889,6 +1629,17 @@ export type BettingAccountSelectCreateManyAndReturn<ExtArgs extends runtime.Type
   currency?: boolean
   isConnected?: boolean
   lastSyncedAt?: boolean
+  brokerType?: boolean
+  brokerRegion?: boolean
+  brokerUserId?: boolean
+  allocatedAmount?: boolean
+  maxAllocation?: boolean
+  allocationLock?: boolean
+  sessionToken?: boolean
+  sessionExpiry?: boolean
+  lastBetPlacedAt?: boolean
+  totalBrokerBets?: boolean
+  totalBrokerProfit?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -906,6 +1657,17 @@ export type BettingAccountSelectUpdateManyAndReturn<ExtArgs extends runtime.Type
   currency?: boolean
   isConnected?: boolean
   lastSyncedAt?: boolean
+  brokerType?: boolean
+  brokerRegion?: boolean
+  brokerUserId?: boolean
+  allocatedAmount?: boolean
+  maxAllocation?: boolean
+  allocationLock?: boolean
+  sessionToken?: boolean
+  sessionExpiry?: boolean
+  lastBetPlacedAt?: boolean
+  totalBrokerBets?: boolean
+  totalBrokerProfit?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -923,14 +1685,27 @@ export type BettingAccountSelectScalar = {
   currency?: boolean
   isConnected?: boolean
   lastSyncedAt?: boolean
+  brokerType?: boolean
+  brokerRegion?: boolean
+  brokerUserId?: boolean
+  allocatedAmount?: boolean
+  maxAllocation?: boolean
+  allocationLock?: boolean
+  sessionToken?: boolean
+  sessionExpiry?: boolean
+  lastBetPlacedAt?: boolean
+  totalBrokerBets?: boolean
+  totalBrokerProfit?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type BettingAccountOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "platform" | "accountId" | "accountName" | "accessToken" | "refreshToken" | "balance" | "currency" | "isConnected" | "lastSyncedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["bettingAccount"]>
+export type BettingAccountOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "platform" | "accountId" | "accountName" | "accessToken" | "refreshToken" | "balance" | "currency" | "isConnected" | "lastSyncedAt" | "brokerType" | "brokerRegion" | "brokerUserId" | "allocatedAmount" | "maxAllocation" | "allocationLock" | "sessionToken" | "sessionExpiry" | "lastBetPlacedAt" | "totalBrokerBets" | "totalBrokerProfit" | "createdAt" | "updatedAt", ExtArgs["result"]["bettingAccount"]>
 export type BettingAccountInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   bets?: boolean | Prisma.BettingAccount$betsArgs<ExtArgs>
+  allocations?: boolean | Prisma.BettingAccount$allocationsArgs<ExtArgs>
+  commissions?: boolean | Prisma.BettingAccount$commissionsArgs<ExtArgs>
   _count?: boolean | Prisma.BettingAccountCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type BettingAccountIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -945,6 +1720,8 @@ export type $BettingAccountPayload<ExtArgs extends runtime.Types.Extensions.Inte
   objects: {
     user: Prisma.$UserPayload<ExtArgs>
     bets: Prisma.$BetPayload<ExtArgs>[]
+    allocations: Prisma.$AllocationPayload<ExtArgs>[]
+    commissions: Prisma.$CommissionLedgerPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -958,6 +1735,17 @@ export type $BettingAccountPayload<ExtArgs extends runtime.Types.Extensions.Inte
     currency: string
     isConnected: boolean
     lastSyncedAt: Date | null
+    brokerType: string | null
+    brokerRegion: string | null
+    brokerUserId: string | null
+    allocatedAmount: number
+    maxAllocation: number
+    allocationLock: boolean
+    sessionToken: string | null
+    sessionExpiry: Date | null
+    lastBetPlacedAt: Date | null
+    totalBrokerBets: number
+    totalBrokerProfit: number
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["bettingAccount"]>
@@ -1356,6 +2144,8 @@ export interface Prisma__BettingAccountClient<T, Null = never, ExtArgs extends r
   readonly [Symbol.toStringTag]: "PrismaPromise"
   user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   bets<T extends Prisma.BettingAccount$betsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.BettingAccount$betsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BetPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  allocations<T extends Prisma.BettingAccount$allocationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.BettingAccount$allocationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AllocationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  commissions<T extends Prisma.BettingAccount$commissionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.BettingAccount$commissionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CommissionLedgerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1396,6 +2186,17 @@ export interface BettingAccountFieldRefs {
   readonly currency: Prisma.FieldRef<"BettingAccount", 'String'>
   readonly isConnected: Prisma.FieldRef<"BettingAccount", 'Boolean'>
   readonly lastSyncedAt: Prisma.FieldRef<"BettingAccount", 'DateTime'>
+  readonly brokerType: Prisma.FieldRef<"BettingAccount", 'String'>
+  readonly brokerRegion: Prisma.FieldRef<"BettingAccount", 'String'>
+  readonly brokerUserId: Prisma.FieldRef<"BettingAccount", 'String'>
+  readonly allocatedAmount: Prisma.FieldRef<"BettingAccount", 'Float'>
+  readonly maxAllocation: Prisma.FieldRef<"BettingAccount", 'Float'>
+  readonly allocationLock: Prisma.FieldRef<"BettingAccount", 'Boolean'>
+  readonly sessionToken: Prisma.FieldRef<"BettingAccount", 'String'>
+  readonly sessionExpiry: Prisma.FieldRef<"BettingAccount", 'DateTime'>
+  readonly lastBetPlacedAt: Prisma.FieldRef<"BettingAccount", 'DateTime'>
+  readonly totalBrokerBets: Prisma.FieldRef<"BettingAccount", 'Int'>
+  readonly totalBrokerProfit: Prisma.FieldRef<"BettingAccount", 'Float'>
   readonly createdAt: Prisma.FieldRef<"BettingAccount", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"BettingAccount", 'DateTime'>
 }
@@ -1818,6 +2619,54 @@ export type BettingAccount$betsArgs<ExtArgs extends runtime.Types.Extensions.Int
   take?: number
   skip?: number
   distinct?: Prisma.BetScalarFieldEnum | Prisma.BetScalarFieldEnum[]
+}
+
+/**
+ * BettingAccount.allocations
+ */
+export type BettingAccount$allocationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Allocation
+   */
+  select?: Prisma.AllocationSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Allocation
+   */
+  omit?: Prisma.AllocationOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AllocationInclude<ExtArgs> | null
+  where?: Prisma.AllocationWhereInput
+  orderBy?: Prisma.AllocationOrderByWithRelationInput | Prisma.AllocationOrderByWithRelationInput[]
+  cursor?: Prisma.AllocationWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AllocationScalarFieldEnum | Prisma.AllocationScalarFieldEnum[]
+}
+
+/**
+ * BettingAccount.commissions
+ */
+export type BettingAccount$commissionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the CommissionLedger
+   */
+  select?: Prisma.CommissionLedgerSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the CommissionLedger
+   */
+  omit?: Prisma.CommissionLedgerOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CommissionLedgerInclude<ExtArgs> | null
+  where?: Prisma.CommissionLedgerWhereInput
+  orderBy?: Prisma.CommissionLedgerOrderByWithRelationInput | Prisma.CommissionLedgerOrderByWithRelationInput[]
+  cursor?: Prisma.CommissionLedgerWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.CommissionLedgerScalarFieldEnum | Prisma.CommissionLedgerScalarFieldEnum[]
 }
 
 /**

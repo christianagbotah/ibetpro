@@ -60,7 +60,10 @@ export const ModelName = {
   Accumulator: 'Accumulator',
   BotLog: 'BotLog',
   Transaction: 'Transaction',
-  AdminSettings: 'AdminSettings'
+  AdminSettings: 'AdminSettings',
+  Allocation: 'Allocation',
+  CommissionLedger: 'CommissionLedger',
+  AIModelPerformance: 'AIModelPerformance'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -144,6 +147,17 @@ export const BettingAccountScalarFieldEnum = {
   currency: 'currency',
   isConnected: 'isConnected',
   lastSyncedAt: 'lastSyncedAt',
+  brokerType: 'brokerType',
+  brokerRegion: 'brokerRegion',
+  brokerUserId: 'brokerUserId',
+  allocatedAmount: 'allocatedAmount',
+  maxAllocation: 'maxAllocation',
+  allocationLock: 'allocationLock',
+  sessionToken: 'sessionToken',
+  sessionExpiry: 'sessionExpiry',
+  lastBetPlacedAt: 'lastBetPlacedAt',
+  totalBrokerBets: 'totalBrokerBets',
+  totalBrokerProfit: 'totalBrokerProfit',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -329,11 +343,81 @@ export const AdminSettingsScalarFieldEnum = {
   oddsApiKey: 'oddsApiKey',
   apiFootballKey: 'apiFootballKey',
   accumulatorBonusThresholds: 'accumulatorBonusThresholds',
+  adminWalletAddress: 'adminWalletAddress',
+  adminBankName: 'adminBankName',
+  adminAccountNumber: 'adminAccountNumber',
+  autoCommissionTransfer: 'autoCommissionTransfer',
+  minimumCommissionPayout: 'minimumCommissionPayout',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type AdminSettingsScalarFieldEnum = (typeof AdminSettingsScalarFieldEnum)[keyof typeof AdminSettingsScalarFieldEnum]
+
+
+export const AllocationScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  bettingAccountId: 'bettingAccountId',
+  amount: 'amount',
+  previousAmount: 'previousAmount',
+  status: 'status',
+  usedAmount: 'usedAmount',
+  remainingAmount: 'remainingAmount',
+  profitFromAlloc: 'profitFromAlloc',
+  commissionFromAlloc: 'commissionFromAlloc',
+  activatedAt: 'activatedAt',
+  releasedAt: 'releasedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AllocationScalarFieldEnum = (typeof AllocationScalarFieldEnum)[keyof typeof AllocationScalarFieldEnum]
+
+
+export const CommissionLedgerScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  bettingAccountId: 'bettingAccountId',
+  betId: 'betId',
+  accumulatorId: 'accumulatorId',
+  grossProfit: 'grossProfit',
+  commissionRate: 'commissionRate',
+  commissionAmount: 'commissionAmount',
+  netProfit: 'netProfit',
+  status: 'status',
+  transferRef: 'transferRef',
+  transferredAt: 'transferredAt',
+  failureReason: 'failureReason',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CommissionLedgerScalarFieldEnum = (typeof CommissionLedgerScalarFieldEnum)[keyof typeof CommissionLedgerScalarFieldEnum]
+
+
+export const AIModelPerformanceScalarFieldEnum = {
+  id: 'id',
+  modelVersion: 'modelVersion',
+  totalPredictions: 'totalPredictions',
+  correctPredictions: 'correctPredictions',
+  accuracyRate: 'accuracyRate',
+  avgConfidence: 'avgConfidence',
+  avgValueEdge: 'avgValueEdge',
+  totalProfit: 'totalProfit',
+  totalLoss: 'totalLoss',
+  roi: 'roi',
+  sharpeRatio: 'sharpeRatio',
+  maxDrawdown: 'maxDrawdown',
+  sport: 'sport',
+  period: 'period',
+  periodStart: 'periodStart',
+  periodEnd: 'periodEnd',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AIModelPerformanceScalarFieldEnum = (typeof AIModelPerformanceScalarFieldEnum)[keyof typeof AIModelPerformanceScalarFieldEnum]
 
 
 export const SortOrder = {

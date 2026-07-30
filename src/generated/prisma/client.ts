@@ -91,3 +91,18 @@ export type Transaction = Prisma.TransactionModel
  * 
  */
 export type AdminSettings = Prisma.AdminSettingsModel
+/**
+ * Model Allocation
+ * 
+ */
+export type Allocation = Prisma.AllocationModel
+/**
+ * Model CommissionLedger
+ * 
+ */
+export type CommissionLedger = Prisma.CommissionLedgerModel
+/**
+ * Model AIModelPerformance
+ * 
+ */
+export type AIModelPerformance = Prisma.AIModelPerformanceModel

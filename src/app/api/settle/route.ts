@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { calculateCommission, transferCommissionToAdmin } from "@/lib/broker-integration";
 
 /**
  * Bet Settlement Engine
@@ -40,7 +41,7 @@ export async function POST(request: NextRequest) {
 
     const unsettledBets = await prisma.bet.findMany({
       where: whereClause,
-      include: { match: true },
+      include: { match: true, bettingAccount: true },
     });
 
     if (unsettledBets.length === 0) {
@@ -152,10 +153,73 @@ export async function POST(request: NextRequest) {
               amount: -commission,
               currency: "USD",
               status: "completed",
-              description: `Commission on winning bet: ${match.homeTeam} vs ${match.awayTeam}`,
+              description: `Commission ${Math.round(commissionRate * 100)}% on $${grossProfit.toFixed(2)} profit: ${match.homeTeam} vs ${match.awayTeam}`,
               betId: bet.id,
             },
           });
+
+          // Create commission ledger entry for auto-transfer to admin
+          if (bet.bettingAccountId) {
+            await prisma.commissionLedger.create({
+              data: {
+                userId,
+                bettingAccountId: bet.bettingAccountId,
+                betId: bet.id,
+                accumulatorId: bet.accumulatorId,
+                grossProfit,
+                commissionRate,
+                commissionAmount: commission,
+                netProfit,
+                status: "pending",
+              },
+            });
+
+            // Update allocation
+            const activeAllocation = await prisma.allocation.findFirst({
+              where: { userId, bettingAccountId: bet.bettingAccountId, status: "active" },
+            });
+            if (activeAllocation) {
+              await prisma.allocation.update({
+                where: { id: activeAllocation.id },
+                data: {
+                  remainingAmount: { increment: bet.potentialWin },
+                  profitFromAlloc: { increment: grossProfit },
+                  commissionFromAlloc: { increment: commission },
+                },
+              });
+            }
+
+            // Update betting account broker profit
+            await prisma.bettingAccount.update({
+              where: { id: bet.bettingAccountId },
+              data: {
+                allocatedAmount: { increment: bet.potentialWin },
+                totalBrokerProfit: { increment: netProfit },
+              },
+            });
+
+            // Try auto-transfer commission to admin
+            const adminSettings = await prisma.adminSettings.findFirst();
+            if (adminSettings?.autoCommissionTransfer && adminSettings.adminWalletAddress && bet.bettingAccount?.accessToken) {
+              const transferResult = await transferCommissionToAdmin(
+                bet.bettingAccount.platform,
+                bet.bettingAccount.accessToken,
+                commission,
+                adminSettings.adminWalletAddress,
+                `settle_${bet.id}`
+              );
+              if (transferResult.success) {
+                await prisma.commissionLedger.updateMany({
+                  where: { betId: bet.id, status: "pending" },
+                  data: {
+                    status: "transferred",
+                    transferRef: transferResult.transferRef,
+                    transferredAt: new Date(),
+                  },
+                });
+              }
+            }
+          }
         }
 
         // Log

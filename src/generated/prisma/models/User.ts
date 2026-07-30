@@ -326,6 +326,8 @@ export type UserWhereInput = {
   settings?: Prisma.XOR<Prisma.UserSettingsNullableScalarRelationFilter, Prisma.UserSettingsWhereInput> | null
   accumulators?: Prisma.AccumulatorListRelationFilter
   botLogs?: Prisma.BotLogListRelationFilter
+  allocations?: Prisma.AllocationListRelationFilter
+  commissions?: Prisma.CommissionLedgerListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -350,6 +352,8 @@ export type UserOrderByWithRelationInput = {
   settings?: Prisma.UserSettingsOrderByWithRelationInput
   accumulators?: Prisma.AccumulatorOrderByRelationAggregateInput
   botLogs?: Prisma.BotLogOrderByRelationAggregateInput
+  allocations?: Prisma.AllocationOrderByRelationAggregateInput
+  commissions?: Prisma.CommissionLedgerOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -377,6 +381,8 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   settings?: Prisma.XOR<Prisma.UserSettingsNullableScalarRelationFilter, Prisma.UserSettingsWhereInput> | null
   accumulators?: Prisma.AccumulatorListRelationFilter
   botLogs?: Prisma.BotLogListRelationFilter
+  allocations?: Prisma.AllocationListRelationFilter
+  commissions?: Prisma.CommissionLedgerListRelationFilter
 }, "id" | "email">
 
 export type UserOrderByWithAggregationInput = {
@@ -445,6 +451,8 @@ export type UserCreateInput = {
   settings?: Prisma.UserSettingsCreateNestedOneWithoutUserInput
   accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
   botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -469,6 +477,8 @@ export type UserUncheckedCreateInput = {
   settings?: Prisma.UserSettingsUncheckedCreateNestedOneWithoutUserInput
   accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
   botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserUpdateInput = {
@@ -493,6 +503,8 @@ export type UserUpdateInput = {
   settings?: Prisma.UserSettingsUpdateOneWithoutUserNestedInput
   accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
   botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -517,6 +529,8 @@ export type UserUncheckedUpdateInput = {
   settings?: Prisma.UserSettingsUncheckedUpdateOneWithoutUserNestedInput
   accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
   botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -756,6 +770,34 @@ export type UserUpdateOneRequiredWithoutTransactionsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutTransactionsInput, Prisma.UserUpdateWithoutTransactionsInput>, Prisma.UserUncheckedUpdateWithoutTransactionsInput>
 }
 
+export type UserCreateNestedOneWithoutAllocationsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAllocationsInput, Prisma.UserUncheckedCreateWithoutAllocationsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAllocationsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutAllocationsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAllocationsInput, Prisma.UserUncheckedCreateWithoutAllocationsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAllocationsInput
+  upsert?: Prisma.UserUpsertWithoutAllocationsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAllocationsInput, Prisma.UserUpdateWithoutAllocationsInput>, Prisma.UserUncheckedUpdateWithoutAllocationsInput>
+}
+
+export type UserCreateNestedOneWithoutCommissionsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutCommissionsInput, Prisma.UserUncheckedCreateWithoutCommissionsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCommissionsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutCommissionsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutCommissionsInput, Prisma.UserUncheckedCreateWithoutCommissionsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutCommissionsInput
+  upsert?: Prisma.UserUpsertWithoutCommissionsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutCommissionsInput, Prisma.UserUpdateWithoutCommissionsInput>, Prisma.UserUncheckedUpdateWithoutCommissionsInput>
+}
+
 export type UserCreateWithoutSettingsInput = {
   id?: string
   email: string
@@ -777,6 +819,8 @@ export type UserCreateWithoutSettingsInput = {
   transactions?: Prisma.TransactionCreateNestedManyWithoutUserInput
   accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
   botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSettingsInput = {
@@ -800,6 +844,8 @@ export type UserUncheckedCreateWithoutSettingsInput = {
   transactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutUserInput
   accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
   botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSettingsInput = {
@@ -839,6 +885,8 @@ export type UserUpdateWithoutSettingsInput = {
   transactions?: Prisma.TransactionUpdateManyWithoutUserNestedInput
   accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
   botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSettingsInput = {
@@ -862,6 +910,8 @@ export type UserUncheckedUpdateWithoutSettingsInput = {
   transactions?: Prisma.TransactionUncheckedUpdateManyWithoutUserNestedInput
   accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
   botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutBettingAccountsInput = {
@@ -885,6 +935,8 @@ export type UserCreateWithoutBettingAccountsInput = {
   settings?: Prisma.UserSettingsCreateNestedOneWithoutUserInput
   accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
   botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutBettingAccountsInput = {
@@ -908,6 +960,8 @@ export type UserUncheckedCreateWithoutBettingAccountsInput = {
   settings?: Prisma.UserSettingsUncheckedCreateNestedOneWithoutUserInput
   accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
   botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutBettingAccountsInput = {
@@ -947,6 +1001,8 @@ export type UserUpdateWithoutBettingAccountsInput = {
   settings?: Prisma.UserSettingsUpdateOneWithoutUserNestedInput
   accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
   botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutBettingAccountsInput = {
@@ -970,6 +1026,8 @@ export type UserUncheckedUpdateWithoutBettingAccountsInput = {
   settings?: Prisma.UserSettingsUncheckedUpdateOneWithoutUserNestedInput
   accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
   botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutBetsInput = {
@@ -993,6 +1051,8 @@ export type UserCreateWithoutBetsInput = {
   settings?: Prisma.UserSettingsCreateNestedOneWithoutUserInput
   accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
   botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutBetsInput = {
@@ -1016,6 +1076,8 @@ export type UserUncheckedCreateWithoutBetsInput = {
   settings?: Prisma.UserSettingsUncheckedCreateNestedOneWithoutUserInput
   accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
   botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutBetsInput = {
@@ -1055,6 +1117,8 @@ export type UserUpdateWithoutBetsInput = {
   settings?: Prisma.UserSettingsUpdateOneWithoutUserNestedInput
   accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
   botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutBetsInput = {
@@ -1078,6 +1142,8 @@ export type UserUncheckedUpdateWithoutBetsInput = {
   settings?: Prisma.UserSettingsUncheckedUpdateOneWithoutUserNestedInput
   accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
   botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutAccumulatorsInput = {
@@ -1101,6 +1167,8 @@ export type UserCreateWithoutAccumulatorsInput = {
   transactions?: Prisma.TransactionCreateNestedManyWithoutUserInput
   settings?: Prisma.UserSettingsCreateNestedOneWithoutUserInput
   botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutAccumulatorsInput = {
@@ -1124,6 +1192,8 @@ export type UserUncheckedCreateWithoutAccumulatorsInput = {
   transactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutUserInput
   settings?: Prisma.UserSettingsUncheckedCreateNestedOneWithoutUserInput
   botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutAccumulatorsInput = {
@@ -1163,6 +1233,8 @@ export type UserUpdateWithoutAccumulatorsInput = {
   transactions?: Prisma.TransactionUpdateManyWithoutUserNestedInput
   settings?: Prisma.UserSettingsUpdateOneWithoutUserNestedInput
   botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAccumulatorsInput = {
@@ -1186,6 +1258,8 @@ export type UserUncheckedUpdateWithoutAccumulatorsInput = {
   transactions?: Prisma.TransactionUncheckedUpdateManyWithoutUserNestedInput
   settings?: Prisma.UserSettingsUncheckedUpdateOneWithoutUserNestedInput
   botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutBotLogsInput = {
@@ -1209,6 +1283,8 @@ export type UserCreateWithoutBotLogsInput = {
   transactions?: Prisma.TransactionCreateNestedManyWithoutUserInput
   settings?: Prisma.UserSettingsCreateNestedOneWithoutUserInput
   accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutBotLogsInput = {
@@ -1232,6 +1308,8 @@ export type UserUncheckedCreateWithoutBotLogsInput = {
   transactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutUserInput
   settings?: Prisma.UserSettingsUncheckedCreateNestedOneWithoutUserInput
   accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutBotLogsInput = {
@@ -1271,6 +1349,8 @@ export type UserUpdateWithoutBotLogsInput = {
   transactions?: Prisma.TransactionUpdateManyWithoutUserNestedInput
   settings?: Prisma.UserSettingsUpdateOneWithoutUserNestedInput
   accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutBotLogsInput = {
@@ -1294,6 +1374,8 @@ export type UserUncheckedUpdateWithoutBotLogsInput = {
   transactions?: Prisma.TransactionUncheckedUpdateManyWithoutUserNestedInput
   settings?: Prisma.UserSettingsUncheckedUpdateOneWithoutUserNestedInput
   accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutTransactionsInput = {
@@ -1317,6 +1399,8 @@ export type UserCreateWithoutTransactionsInput = {
   settings?: Prisma.UserSettingsCreateNestedOneWithoutUserInput
   accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
   botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutTransactionsInput = {
@@ -1340,6 +1424,8 @@ export type UserUncheckedCreateWithoutTransactionsInput = {
   settings?: Prisma.UserSettingsUncheckedCreateNestedOneWithoutUserInput
   accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
   botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutTransactionsInput = {
@@ -1379,6 +1465,8 @@ export type UserUpdateWithoutTransactionsInput = {
   settings?: Prisma.UserSettingsUpdateOneWithoutUserNestedInput
   accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
   botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutTransactionsInput = {
@@ -1402,6 +1490,240 @@ export type UserUncheckedUpdateWithoutTransactionsInput = {
   settings?: Prisma.UserSettingsUncheckedUpdateOneWithoutUserNestedInput
   accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
   botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutAllocationsInput = {
+  id?: string
+  email: string
+  name: string
+  passwordHash: string
+  avatar?: string | null
+  role?: string
+  balance?: number
+  totalProfit?: number
+  totalLoss?: number
+  commissionPaid?: number
+  bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
+  bets?: Prisma.BetCreateNestedManyWithoutUserInput
+  transactions?: Prisma.TransactionCreateNestedManyWithoutUserInput
+  settings?: Prisma.UserSettingsCreateNestedOneWithoutUserInput
+  accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
+  botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutAllocationsInput = {
+  id?: string
+  email: string
+  name: string
+  passwordHash: string
+  avatar?: string | null
+  role?: string
+  balance?: number
+  totalProfit?: number
+  totalLoss?: number
+  commissionPaid?: number
+  bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
+  bets?: Prisma.BetUncheckedCreateNestedManyWithoutUserInput
+  transactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutUserInput
+  settings?: Prisma.UserSettingsUncheckedCreateNestedOneWithoutUserInput
+  accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
+  botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutAllocationsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutAllocationsInput, Prisma.UserUncheckedCreateWithoutAllocationsInput>
+}
+
+export type UserUpsertWithoutAllocationsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutAllocationsInput, Prisma.UserUncheckedUpdateWithoutAllocationsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutAllocationsInput, Prisma.UserUncheckedCreateWithoutAllocationsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutAllocationsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutAllocationsInput, Prisma.UserUncheckedUpdateWithoutAllocationsInput>
+}
+
+export type UserUpdateWithoutAllocationsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  balance?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalProfit?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
+  commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
+  bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
+  bets?: Prisma.BetUpdateManyWithoutUserNestedInput
+  transactions?: Prisma.TransactionUpdateManyWithoutUserNestedInput
+  settings?: Prisma.UserSettingsUpdateOneWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutAllocationsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  balance?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalProfit?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
+  commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
+  bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
+  bets?: Prisma.BetUncheckedUpdateManyWithoutUserNestedInput
+  transactions?: Prisma.TransactionUncheckedUpdateManyWithoutUserNestedInput
+  settings?: Prisma.UserSettingsUncheckedUpdateOneWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutCommissionsInput = {
+  id?: string
+  email: string
+  name: string
+  passwordHash: string
+  avatar?: string | null
+  role?: string
+  balance?: number
+  totalProfit?: number
+  totalLoss?: number
+  commissionPaid?: number
+  bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
+  bets?: Prisma.BetCreateNestedManyWithoutUserInput
+  transactions?: Prisma.TransactionCreateNestedManyWithoutUserInput
+  settings?: Prisma.UserSettingsCreateNestedOneWithoutUserInput
+  accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
+  botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutCommissionsInput = {
+  id?: string
+  email: string
+  name: string
+  passwordHash: string
+  avatar?: string | null
+  role?: string
+  balance?: number
+  totalProfit?: number
+  totalLoss?: number
+  commissionPaid?: number
+  bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
+  bets?: Prisma.BetUncheckedCreateNestedManyWithoutUserInput
+  transactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutUserInput
+  settings?: Prisma.UserSettingsUncheckedCreateNestedOneWithoutUserInput
+  accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
+  botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutCommissionsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutCommissionsInput, Prisma.UserUncheckedCreateWithoutCommissionsInput>
+}
+
+export type UserUpsertWithoutCommissionsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutCommissionsInput, Prisma.UserUncheckedUpdateWithoutCommissionsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutCommissionsInput, Prisma.UserUncheckedCreateWithoutCommissionsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutCommissionsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutCommissionsInput, Prisma.UserUncheckedUpdateWithoutCommissionsInput>
+}
+
+export type UserUpdateWithoutCommissionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  balance?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalProfit?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
+  commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
+  bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
+  bets?: Prisma.BetUpdateManyWithoutUserNestedInput
+  transactions?: Prisma.TransactionUpdateManyWithoutUserNestedInput
+  settings?: Prisma.UserSettingsUpdateOneWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutCommissionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  balance?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalProfit?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
+  commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
+  bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
+  bets?: Prisma.BetUncheckedUpdateManyWithoutUserNestedInput
+  transactions?: Prisma.TransactionUncheckedUpdateManyWithoutUserNestedInput
+  settings?: Prisma.UserSettingsUncheckedUpdateOneWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
 }
 
 
@@ -1415,6 +1737,8 @@ export type UserCountOutputType = {
   transactions: number
   accumulators: number
   botLogs: number
+  allocations: number
+  commissions: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1423,6 +1747,8 @@ export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.I
   transactions?: boolean | UserCountOutputTypeCountTransactionsArgs
   accumulators?: boolean | UserCountOutputTypeCountAccumulatorsArgs
   botLogs?: boolean | UserCountOutputTypeCountBotLogsArgs
+  allocations?: boolean | UserCountOutputTypeCountAllocationsArgs
+  commissions?: boolean | UserCountOutputTypeCountCommissionsArgs
 }
 
 /**
@@ -1470,6 +1796,20 @@ export type UserCountOutputTypeCountBotLogsArgs<ExtArgs extends runtime.Types.Ex
   where?: Prisma.BotLogWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountAllocationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AllocationWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountCommissionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.CommissionLedgerWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1493,6 +1833,8 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   settings?: boolean | Prisma.User$settingsArgs<ExtArgs>
   accumulators?: boolean | Prisma.User$accumulatorsArgs<ExtArgs>
   botLogs?: boolean | Prisma.User$botLogsArgs<ExtArgs>
+  allocations?: boolean | Prisma.User$allocationsArgs<ExtArgs>
+  commissions?: boolean | Prisma.User$commissionsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -1558,6 +1900,8 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   settings?: boolean | Prisma.User$settingsArgs<ExtArgs>
   accumulators?: boolean | Prisma.User$accumulatorsArgs<ExtArgs>
   botLogs?: boolean | Prisma.User$botLogsArgs<ExtArgs>
+  allocations?: boolean | Prisma.User$allocationsArgs<ExtArgs>
+  commissions?: boolean | Prisma.User$commissionsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -1572,6 +1916,8 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     settings: Prisma.$UserSettingsPayload<ExtArgs> | null
     accumulators: Prisma.$AccumulatorPayload<ExtArgs>[]
     botLogs: Prisma.$BotLogPayload<ExtArgs>[]
+    allocations: Prisma.$AllocationPayload<ExtArgs>[]
+    commissions: Prisma.$CommissionLedgerPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1989,6 +2335,8 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   settings<T extends Prisma.User$settingsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$settingsArgs<ExtArgs>>): Prisma.Prisma__UserSettingsClient<runtime.Types.Result.GetResult<Prisma.$UserSettingsPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   accumulators<T extends Prisma.User$accumulatorsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$accumulatorsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AccumulatorPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   botLogs<T extends Prisma.User$botLogsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$botLogsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BotLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  allocations<T extends Prisma.User$allocationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$allocationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AllocationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  commissions<T extends Prisma.User$commissionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$commissionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CommissionLedgerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2560,6 +2908,54 @@ export type User$botLogsArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
   take?: number
   skip?: number
   distinct?: Prisma.BotLogScalarFieldEnum | Prisma.BotLogScalarFieldEnum[]
+}
+
+/**
+ * User.allocations
+ */
+export type User$allocationsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Allocation
+   */
+  select?: Prisma.AllocationSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Allocation
+   */
+  omit?: Prisma.AllocationOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AllocationInclude<ExtArgs> | null
+  where?: Prisma.AllocationWhereInput
+  orderBy?: Prisma.AllocationOrderByWithRelationInput | Prisma.AllocationOrderByWithRelationInput[]
+  cursor?: Prisma.AllocationWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AllocationScalarFieldEnum | Prisma.AllocationScalarFieldEnum[]
+}
+
+/**
+ * User.commissions
+ */
+export type User$commissionsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the CommissionLedger
+   */
+  select?: Prisma.CommissionLedgerSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the CommissionLedger
+   */
+  omit?: Prisma.CommissionLedgerOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CommissionLedgerInclude<ExtArgs> | null
+  where?: Prisma.CommissionLedgerWhereInput
+  orderBy?: Prisma.CommissionLedgerOrderByWithRelationInput | Prisma.CommissionLedgerOrderByWithRelationInput[]
+  cursor?: Prisma.CommissionLedgerWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.CommissionLedgerScalarFieldEnum | Prisma.CommissionLedgerScalarFieldEnum[]
 }
 
 /**

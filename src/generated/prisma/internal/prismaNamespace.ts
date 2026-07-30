@@ -406,7 +406,10 @@ export const ModelName = {
   Accumulator: 'Accumulator',
   BotLog: 'BotLog',
   Transaction: 'Transaction',
-  AdminSettings: 'AdminSettings'
+  AdminSettings: 'AdminSettings',
+  Allocation: 'Allocation',
+  CommissionLedger: 'CommissionLedger',
+  AIModelPerformance: 'AIModelPerformance'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -422,7 +425,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userSettings" | "bettingAccount" | "match" | "teamStats" | "bet" | "accumulator" | "botLog" | "transaction" | "adminSettings"
+    modelProps: "user" | "userSettings" | "bettingAccount" | "match" | "teamStats" | "bet" | "accumulator" | "botLog" | "transaction" | "adminSettings" | "allocation" | "commissionLedger" | "aIModelPerformance"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1166,6 +1169,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Allocation: {
+      payload: Prisma.$AllocationPayload<ExtArgs>
+      fields: Prisma.AllocationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AllocationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AllocationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AllocationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AllocationPayload>
+        }
+        findFirst: {
+          args: Prisma.AllocationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AllocationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AllocationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AllocationPayload>
+        }
+        findMany: {
+          args: Prisma.AllocationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AllocationPayload>[]
+        }
+        create: {
+          args: Prisma.AllocationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AllocationPayload>
+        }
+        createMany: {
+          args: Prisma.AllocationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AllocationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AllocationPayload>[]
+        }
+        delete: {
+          args: Prisma.AllocationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AllocationPayload>
+        }
+        update: {
+          args: Prisma.AllocationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AllocationPayload>
+        }
+        deleteMany: {
+          args: Prisma.AllocationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AllocationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AllocationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AllocationPayload>[]
+        }
+        upsert: {
+          args: Prisma.AllocationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AllocationPayload>
+        }
+        aggregate: {
+          args: Prisma.AllocationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAllocation>
+        }
+        groupBy: {
+          args: Prisma.AllocationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AllocationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AllocationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AllocationCountAggregateOutputType> | number
+        }
+      }
+    }
+    CommissionLedger: {
+      payload: Prisma.$CommissionLedgerPayload<ExtArgs>
+      fields: Prisma.CommissionLedgerFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.CommissionLedgerFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CommissionLedgerPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.CommissionLedgerFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CommissionLedgerPayload>
+        }
+        findFirst: {
+          args: Prisma.CommissionLedgerFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CommissionLedgerPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.CommissionLedgerFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CommissionLedgerPayload>
+        }
+        findMany: {
+          args: Prisma.CommissionLedgerFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CommissionLedgerPayload>[]
+        }
+        create: {
+          args: Prisma.CommissionLedgerCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CommissionLedgerPayload>
+        }
+        createMany: {
+          args: Prisma.CommissionLedgerCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.CommissionLedgerCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CommissionLedgerPayload>[]
+        }
+        delete: {
+          args: Prisma.CommissionLedgerDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CommissionLedgerPayload>
+        }
+        update: {
+          args: Prisma.CommissionLedgerUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CommissionLedgerPayload>
+        }
+        deleteMany: {
+          args: Prisma.CommissionLedgerDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.CommissionLedgerUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.CommissionLedgerUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CommissionLedgerPayload>[]
+        }
+        upsert: {
+          args: Prisma.CommissionLedgerUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$CommissionLedgerPayload>
+        }
+        aggregate: {
+          args: Prisma.CommissionLedgerAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateCommissionLedger>
+        }
+        groupBy: {
+          args: Prisma.CommissionLedgerGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CommissionLedgerGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.CommissionLedgerCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.CommissionLedgerCountAggregateOutputType> | number
+        }
+      }
+    }
+    AIModelPerformance: {
+      payload: Prisma.$AIModelPerformancePayload<ExtArgs>
+      fields: Prisma.AIModelPerformanceFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AIModelPerformanceFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AIModelPerformancePayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AIModelPerformanceFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AIModelPerformancePayload>
+        }
+        findFirst: {
+          args: Prisma.AIModelPerformanceFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AIModelPerformancePayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AIModelPerformanceFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AIModelPerformancePayload>
+        }
+        findMany: {
+          args: Prisma.AIModelPerformanceFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AIModelPerformancePayload>[]
+        }
+        create: {
+          args: Prisma.AIModelPerformanceCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AIModelPerformancePayload>
+        }
+        createMany: {
+          args: Prisma.AIModelPerformanceCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AIModelPerformanceCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AIModelPerformancePayload>[]
+        }
+        delete: {
+          args: Prisma.AIModelPerformanceDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AIModelPerformancePayload>
+        }
+        update: {
+          args: Prisma.AIModelPerformanceUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AIModelPerformancePayload>
+        }
+        deleteMany: {
+          args: Prisma.AIModelPerformanceDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AIModelPerformanceUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AIModelPerformanceUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AIModelPerformancePayload>[]
+        }
+        upsert: {
+          args: Prisma.AIModelPerformanceUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AIModelPerformancePayload>
+        }
+        aggregate: {
+          args: Prisma.AIModelPerformanceAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAIModelPerformance>
+        }
+        groupBy: {
+          args: Prisma.AIModelPerformanceGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AIModelPerformanceGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AIModelPerformanceCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AIModelPerformanceCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1270,6 +1495,17 @@ export const BettingAccountScalarFieldEnum = {
   currency: 'currency',
   isConnected: 'isConnected',
   lastSyncedAt: 'lastSyncedAt',
+  brokerType: 'brokerType',
+  brokerRegion: 'brokerRegion',
+  brokerUserId: 'brokerUserId',
+  allocatedAmount: 'allocatedAmount',
+  maxAllocation: 'maxAllocation',
+  allocationLock: 'allocationLock',
+  sessionToken: 'sessionToken',
+  sessionExpiry: 'sessionExpiry',
+  lastBetPlacedAt: 'lastBetPlacedAt',
+  totalBrokerBets: 'totalBrokerBets',
+  totalBrokerProfit: 'totalBrokerProfit',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -1455,11 +1691,81 @@ export const AdminSettingsScalarFieldEnum = {
   oddsApiKey: 'oddsApiKey',
   apiFootballKey: 'apiFootballKey',
   accumulatorBonusThresholds: 'accumulatorBonusThresholds',
+  adminWalletAddress: 'adminWalletAddress',
+  adminBankName: 'adminBankName',
+  adminAccountNumber: 'adminAccountNumber',
+  autoCommissionTransfer: 'autoCommissionTransfer',
+  minimumCommissionPayout: 'minimumCommissionPayout',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
 
 export type AdminSettingsScalarFieldEnum = (typeof AdminSettingsScalarFieldEnum)[keyof typeof AdminSettingsScalarFieldEnum]
+
+
+export const AllocationScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  bettingAccountId: 'bettingAccountId',
+  amount: 'amount',
+  previousAmount: 'previousAmount',
+  status: 'status',
+  usedAmount: 'usedAmount',
+  remainingAmount: 'remainingAmount',
+  profitFromAlloc: 'profitFromAlloc',
+  commissionFromAlloc: 'commissionFromAlloc',
+  activatedAt: 'activatedAt',
+  releasedAt: 'releasedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AllocationScalarFieldEnum = (typeof AllocationScalarFieldEnum)[keyof typeof AllocationScalarFieldEnum]
+
+
+export const CommissionLedgerScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  bettingAccountId: 'bettingAccountId',
+  betId: 'betId',
+  accumulatorId: 'accumulatorId',
+  grossProfit: 'grossProfit',
+  commissionRate: 'commissionRate',
+  commissionAmount: 'commissionAmount',
+  netProfit: 'netProfit',
+  status: 'status',
+  transferRef: 'transferRef',
+  transferredAt: 'transferredAt',
+  failureReason: 'failureReason',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type CommissionLedgerScalarFieldEnum = (typeof CommissionLedgerScalarFieldEnum)[keyof typeof CommissionLedgerScalarFieldEnum]
+
+
+export const AIModelPerformanceScalarFieldEnum = {
+  id: 'id',
+  modelVersion: 'modelVersion',
+  totalPredictions: 'totalPredictions',
+  correctPredictions: 'correctPredictions',
+  accuracyRate: 'accuracyRate',
+  avgConfidence: 'avgConfidence',
+  avgValueEdge: 'avgValueEdge',
+  totalProfit: 'totalProfit',
+  totalLoss: 'totalLoss',
+  roi: 'roi',
+  sharpeRatio: 'sharpeRatio',
+  maxDrawdown: 'maxDrawdown',
+  sport: 'sport',
+  period: 'period',
+  periodStart: 'periodStart',
+  periodEnd: 'periodEnd',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AIModelPerformanceScalarFieldEnum = (typeof AIModelPerformanceScalarFieldEnum)[keyof typeof AIModelPerformanceScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1679,6 +1985,9 @@ export type GlobalOmitConfig = {
   botLog?: Prisma.BotLogOmit
   transaction?: Prisma.TransactionOmit
   adminSettings?: Prisma.AdminSettingsOmit
+  allocation?: Prisma.AllocationOmit
+  commissionLedger?: Prisma.CommissionLedgerOmit
+  aIModelPerformance?: Prisma.AIModelPerformanceOmit
 }
 
 /* Types for Logging */

@@ -17,6 +17,8 @@ import {
   Dice5,
   History,
   LogIn,
+  Link2,
+  DollarSign,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -30,8 +32,9 @@ const navItems = [
   { href: "/betting", label: "Betting", icon: Zap },
   { href: "/monitor", label: "Monitor", icon: Monitor },
   { href: "/history", label: "History", icon: History },
-  { href: "/accounts", label: "Accounts", icon: Wallet },
+  { href: "/accounts", label: "Brokers", icon: Link2 },
   { href: "/profits", label: "Profits", icon: TrendingUp },
+  { href: "/commission", label: "Commission", icon: DollarSign },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

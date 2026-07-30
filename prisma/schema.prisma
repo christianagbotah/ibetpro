@@ -30,6 +30,8 @@ model User {
   settings        UserSettings?
   accumulators    Accumulator[]
   botLogs         BotLog[]
+  allocations     Allocation[]
+  commissions     CommissionLedger[]
 }
 
 model UserSettings {
@@ -68,22 +70,36 @@ model UserSettings {
 }
 
 model BettingAccount {
-  id           String   @id @default(cuid())
-  userId       String
-  platform     String
-  accountId    String
-  accountName  String
-  accessToken  String?
-  refreshToken String?
-  balance      Float    @default(0)
-  currency     String   @default("USD")
-  isConnected  Boolean  @default(false)
-  lastSyncedAt DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  id              String   @id @default(cuid())
+  userId          String
+  platform        String
+  accountId       String
+  accountName     String
+  accessToken     String?
+  refreshToken    String?
+  balance         Float    @default(0)
+  currency        String   @default("USD")
+  isConnected     Boolean  @default(false)
+  lastSyncedAt    DateTime?
+  // Broker integration fields
+  brokerType      String?  @default("manual") // "manual" | "oauth" | "api_key" | "web_session"
+  brokerRegion    String?  // "ng" | "ke" | "gh" | "uk" | "eu" | "global"
+  brokerUserId    String?  // user ID on the broker platform
+  allocatedAmount Float    @default(0) // amount allocated by user for auto-betting
+  maxAllocation   Float    @default(0) // max allocation the user has ever set
+  allocationLock  Boolean  @default(false) // if true, allocation is locked during active bets
+  sessionToken    String?  // active broker session token
+  sessionExpiry   DateTime? // when the broker session expires
+  lastBetPlacedAt DateTime? // last time a bet was placed via this broker
+  totalBrokerBets Int      @default(0) // total bets placed through this broker
+  totalBrokerProfit Float  @default(0) // total profit made through this broker
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
 
-  user User  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bets Bet[]
+  user        User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bets        Bet[]
+  allocations Allocation[]
+  commissions CommissionLedger[]
 }
 
 model Match {
@@ -284,6 +300,90 @@ model AdminSettings {
   oddsApiKey            String? @default("")
   apiFootballKey        String? @default("")
   accumulatorBonusThresholds String? @default("[]") // JSON: [{legs: 4, bonus: 5}, {legs: 5, bonus: 10}, {legs: 6, bonus: 20}]
+  // Admin wallet for commission collection
+  adminWalletAddress    String? @default("") // payment address for commission
+  adminBankName         String? @default("")
+  adminAccountNumber    String? @default("")
+  autoCommissionTransfer Boolean @default(true) // auto-transfer commission to admin
+  minimumCommissionPayout Float @default(10) // minimum commission before auto-transfer
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
+}
+
+// Allocation tracking - how much the user has allocated from their broker
+model Allocation {
+  id              String   @id @default(cuid())
+  userId          String
+  bettingAccountId String
+  amount          Float    // amount allocated
+  previousAmount  Float    @default(0) // previous allocation for audit
+  status          String   @default("active") // "active" | "released" | "locked" | "partial"
+  usedAmount      Float    @default(0) // how much of allocation has been used for bets
+  remainingAmount Float    @default(0) // how much is still available
+  profitFromAlloc Float    @default(0) // profit generated from this allocation
+  commissionFromAlloc Float @default(0) // commission generated from this allocation
+  activatedAt     DateTime @default(now())
+  releasedAt      DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bettingAccount BettingAccount @relation(fields: [bettingAccountId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([bettingAccountId])
+  @@index([status])
+}
+
+// Commission ledger - tracks all commission deductions and transfers to admin
+model CommissionLedger {
+  id              String   @id @default(cuid())
+  userId          String
+  bettingAccountId String
+  betId           String?
+  accumulatorId   String?
+  grossProfit     Float    @default(0) // profit before commission
+  commissionRate  Float    @default(0.10) // commission rate at time of deduction
+  commissionAmount Float   @default(0) // amount deducted
+  netProfit       Float    @default(0) // profit after commission
+  status          String   @default("pending") // "pending" | "transferred" | "failed" | "refunded"
+  transferRef     String?  // reference for the transfer to admin
+  transferredAt   DateTime? // when commission was transferred to admin
+  failureReason   String?  // reason if transfer failed
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bettingAccount BettingAccount @relation(fields: [bettingAccountId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([bettingAccountId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+// AI Model performance tracking
+model AIModelPerformance {
+  id              String   @id @default(cuid())
+  modelVersion    String   @default("v2_ensemble")
+  totalPredictions Int     @default(0)
+  correctPredictions Int   @default(0)
+  accuracyRate    Float    @default(0)
+  avgConfidence   Float    @default(0)
+  avgValueEdge    Float    @default(0)
+  totalProfit     Float    @default(0)
+  totalLoss       Float    @default(0)
+  roi             Float    @default(0)
+  sharpeRatio     Float    @default(0)
+  maxDrawdown     Float    @default(0)
+  sport           String   @default("all")
+  period          String   @default("daily") // "daily" | "weekly" | "monthly"
+  periodStart     DateTime
+  periodEnd       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([modelVersion])
+  @@index([sport])
+  @@index([period])
 }
