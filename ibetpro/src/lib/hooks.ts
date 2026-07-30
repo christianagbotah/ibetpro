@@ -169,3 +169,116 @@ export function usePolling<T>(
 
   return { data, loading, refetch };
 }
+
+// ==================== SSE REAL-TIME HOOK ====================
+
+interface SSEEventData {
+  event: string;
+  data: unknown;
+  id?: string;
+  timestamp: number;
+}
+
+/**
+ * useSSE - Hook to consume Server-Sent Events for real-time updates
+ * Connects to /api/events and dispatches events to handlers
+ */
+export function useSSE(
+  handlers: Partial<Record<string, (data: unknown) => void>>,
+  deps: unknown[] = []
+): {
+  connected: boolean;
+  lastEvent: SSEEventData | null;
+} {
+  const [connected, setConnected] = useState(false);
+  const [lastEvent, setLastEvent] = useState<SSEEventData | null>(null);
+  const handlersRef = useRef(handlers);
+  handlersRef.current = handlers;
+
+  useEffect(() => {
+    let eventSource: EventSource | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    function connect() {
+      eventSource = new EventSource("/api/events");
+
+      eventSource.addEventListener("connected", (e) => {
+        setConnected(true);
+        try {
+          const data = JSON.parse(e.data);
+          handlersRef.current.connected?.(data);
+        } catch { /* ignore parse errors */ }
+      });
+
+      eventSource.addEventListener("heartbeat", () => {
+        // Keep-alive, no action needed
+      });
+
+      eventSource.addEventListener("match_update", (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          setLastEvent({ event: "match_update", data, timestamp: Date.now() });
+          handlersRef.current.match_update?.(data);
+        } catch { /* ignore */ }
+      });
+
+      eventSource.addEventListener("cashout", (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          setLastEvent({ event: "cashout", data, timestamp: Date.now() });
+          handlersRef.current.cashout?.(data);
+        } catch { /* ignore */ }
+      });
+
+      eventSource.addEventListener("cashout_opportunity", (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          setLastEvent({ event: "cashout_opportunity", data, timestamp: Date.now() });
+          handlersRef.current.cashout_opportunity?.(data);
+        } catch { /* ignore */ }
+      });
+
+      eventSource.addEventListener("odds_change", (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          setLastEvent({ event: "odds_change", data, timestamp: Date.now() });
+          handlersRef.current.odds_change?.(data);
+        } catch { /* ignore */ }
+      });
+
+      eventSource.addEventListener("auto_bet_placed", (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          setLastEvent({ event: "auto_bet_placed", data, timestamp: Date.now() });
+          handlersRef.current.auto_bet_placed?.(data);
+        } catch { /* ignore */ }
+      });
+
+      eventSource.addEventListener("balance_update", (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          setLastEvent({ event: "balance_update", data, timestamp: Date.now() });
+          handlersRef.current.balance_update?.(data);
+        } catch { /* ignore */ }
+      });
+
+      eventSource.onerror = () => {
+        setConnected(false);
+        eventSource?.close();
+        // Reconnect after 5 seconds
+        reconnectTimer = setTimeout(connect, 5000);
+      };
+    }
+
+    connect();
+
+    return () => {
+      eventSource?.close();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      setConnected(false);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, deps);
+
+  return { connected, lastEvent };
+}

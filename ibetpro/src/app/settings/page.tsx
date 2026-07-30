@@ -1,25 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useAuth } from "@/components/auth/auth-provider";
+import { useState, useCallback } from "react";
+import { useFetch } from "@/lib/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
+import { Input } from "@/components/ui/input";
 import {
-  Zap,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Shield,
-  Bell,
-  Percent,
-  User,
+  Zap,
+  DollarSign,
+  Target,
   Save,
   Loader2,
+  CheckCircle2,
+  Brain,
+  AlertTriangle,
 } from "lucide-react";
 
 interface UserSettings {
+  id: string;
   autoBettingEnabled: boolean;
   maxBetAmount: number;
   minOddsThreshold: number;
@@ -28,16 +35,16 @@ interface UserSettings {
   autoCashoutEnabled: boolean;
   cashoutThreshold: number;
   commissionRate: number;
-  dailyBetLimit: number;
   preferredSports: string;
   notificationsEnabled: boolean;
+  dailyBetLimit: number;
   kellyFraction: number;
   minEdgeThreshold: number;
 }
 
 export default function SettingsPage() {
-  const { user, isAuthenticated } = useAuth();
-  const [settings, setSettings] = useState<UserSettings>({
+  const { data: settings, loading, refetch } = useFetch<UserSettings>("/api/settings", {
+    id: "",
     autoBettingEnabled: false,
     maxBetAmount: 200,
     minOddsThreshold: 1.5,
@@ -46,92 +53,65 @@ export default function SettingsPage() {
     autoCashoutEnabled: true,
     cashoutThreshold: 0.7,
     commissionRate: 0.10,
-    dailyBetLimit: 500,
     preferredSports: "football,basketball,tennis",
     notificationsEnabled: true,
+    dailyBetLimit: 500,
     kellyFraction: 0.25,
     minEdgeThreshold: 0.03,
   });
+
+  const [form, setForm] = useState<Partial<UserSettings>>({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [loading, setLoading] = useState(true);
+  const [runningAutoBet, setRunningAutoBet] = useState(false);
+  const [autoBetResult, setAutoBetResult] = useState<string | null>(null);
 
-  // Load settings from API
-  useEffect(() => {
-    if (!isAuthenticated) return;
+  const currentSettings = { ...settings, ...form };
 
-    async function loadSettings() {
-      try {
-        const res = await fetch("/api/settings");
-        if (res.ok) {
-          const data = await res.json();
-          setSettings({
-            autoBettingEnabled: data.autoBettingEnabled ?? false,
-            maxBetAmount: data.maxBetAmount ?? 200,
-            minOddsThreshold: data.minOddsThreshold ?? 1.5,
-            maxOddsThreshold: data.maxOddsThreshold ?? 5.0,
-            riskLevel: data.riskLevel ?? "medium",
-            autoCashoutEnabled: data.autoCashoutEnabled ?? true,
-            cashoutThreshold: data.cashoutThreshold ?? 0.7,
-            commissionRate: data.commissionRate ?? 0.10,
-            dailyBetLimit: data.dailyBetLimit ?? 500,
-            preferredSports: data.preferredSports ?? "football,basketball,tennis",
-            notificationsEnabled: data.notificationsEnabled ?? true,
-            kellyFraction: data.kellyFraction ?? 0.25,
-            minEdgeThreshold: data.minEdgeThreshold ?? 0.03,
-          });
-        }
-      } catch (error) {
-        console.error("Failed to load settings:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadSettings();
-  }, [isAuthenticated]);
-
-  const handleSave = async () => {
+  const handleSave = useCallback(async () => {
     setSaving(true);
+    setSaved(false);
     try {
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(form),
       });
-
       if (res.ok) {
         setSaved(true);
-        setTimeout(() => setSaved(false), 2000);
+        setForm({});
+        refetch();
+        setTimeout(() => setSaved(false), 3000);
       }
-    } catch (error) {
-      console.error("Failed to save settings:", error);
+    } catch {
+      // Handle error silently
     } finally {
       setSaving(false);
     }
-  };
+  }, [form, refetch]);
 
-  const riskLevels = [
-    { value: "low", label: "Low", color: "text-emerald-400", desc: "Conservative bets only" },
-    { value: "medium", label: "Medium", color: "text-amber-400", desc: "Balanced approach" },
-    { value: "high", label: "High", color: "text-red-400", desc: "Aggressive strategy" },
-  ];
-
-  const sportsOptions = [
-    { id: "football", label: "Football" },
-    { id: "basketball", label: "Basketball" },
-    { id: "tennis", label: "Tennis" },
-    { id: "hockey", label: "Hockey" },
-    { id: "baseball", label: "Baseball" },
-  ];
-
-  const toggleSport = (sport: string) => {
-    const current = settings.preferredSports.split(",");
-    const updated = current.includes(sport)
-      ? current.filter((s) => s !== sport)
-      : [...current, sport];
-    setSettings({ ...settings, preferredSports: updated.join(",") });
-  };
+  const handleRunAutoBet = useCallback(async () => {
+    setRunningAutoBet(true);
+    setAutoBetResult(null);
+    try {
+      const res = await fetch("/api/auto-bet", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setAutoBetResult(
+          `Scanned ${data.summary.matchesAnalyzed} matches, placed ${data.summary.betsPlaced} bets, skipped ${data.summary.betsSkipped}, ${data.summary.errors} errors.`
+        );
+      } else {
+        setAutoBetResult(`Error: ${data.error}`);
+      }
+    } catch {
+      setAutoBetResult("Failed to run auto-bet engine.");
+    } finally {
+      setRunningAutoBet(false);
+    }
+  }, []);
 
   if (loading) {
     return (
@@ -145,145 +125,86 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold text-foreground">Settings</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Configure your betting preferences and account settings
+          Configure your auto-betting, risk management, and AI preferences
         </p>
       </div>
 
-      {/* Auto-Betting Settings */}
-      <Card className="bg-card border-border">
+      {/* Auto-Bet Engine */}
+      <Card className="bg-card border-primary/20">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <Zap className="h-4 w-4 text-primary" />
-            Auto-Betting
+            Auto-Betting Engine
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
             <div>
-              <Label className="text-sm font-medium">Enable Auto-Betting</Label>
-              <p className="text-xs text-muted-foreground">
-                Allow AI to automatically place bets based on your criteria
-              </p>
+              <p className="text-sm font-medium text-foreground">Auto-Betting</p>
+              <p className="text-xs text-muted-foreground">Let AI scan matches and place bets automatically</p>
             </div>
-            <Switch
-              checked={settings.autoBettingEnabled}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, autoBettingEnabled: checked as boolean })
-              }
-            />
-          </div>
-
-          <Separator />
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm font-medium">Max Bet Amount</Label>
-              <Input
-                type="number"
-                value={settings.maxBetAmount}
-                onChange={(e) =>
-                  setSettings({ ...settings, maxBetAmount: parseFloat(e.target.value) || 0 })
-                }
-                className="bg-secondary border-border mt-1"
+            <button
+              onClick={() => setForm({ ...form, autoBettingEnabled: !currentSettings.autoBettingEnabled })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                currentSettings.autoBettingEnabled ? "bg-primary" : "bg-secondary"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  currentSettings.autoBettingEnabled ? "translate-x-6" : "translate-x-1"
+                }`}
               />
-            </div>
-            <div>
-              <Label className="text-sm font-medium">Daily Bet Limit</Label>
-              <Input
-                type="number"
-                value={settings.dailyBetLimit}
-                onChange={(e) =>
-                  setSettings({ ...settings, dailyBetLimit: parseFloat(e.target.value) || 0 })
-                }
-                className="bg-secondary border-border mt-1"
-              />
-            </div>
+            </button>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label className="text-sm font-medium">Min Odds Threshold</Label>
+              <label className="text-xs text-muted-foreground">Max Bet Amount ($)</label>
               <Input
                 type="number"
-                step="0.1"
-                value={settings.minOddsThreshold}
-                onChange={(e) =>
-                  setSettings({ ...settings, minOddsThreshold: parseFloat(e.target.value) || 0 })
-                }
+                value={currentSettings.maxBetAmount}
+                onChange={(e) => setForm({ ...form, maxBetAmount: parseFloat(e.target.value) || 0 })}
                 className="bg-secondary border-border mt-1"
               />
             </div>
             <div>
-              <Label className="text-sm font-medium">Max Odds Threshold</Label>
+              <label className="text-xs text-muted-foreground">Daily Bet Limit ($)</label>
               <Input
                 type="number"
-                step="0.1"
-                value={settings.maxOddsThreshold}
-                onChange={(e) =>
-                  setSettings({ ...settings, maxOddsThreshold: parseFloat(e.target.value) || 0 })
-                }
+                value={currentSettings.dailyBetLimit}
+                onChange={(e) => setForm({ ...form, dailyBetLimit: parseFloat(e.target.value) || 0 })}
                 className="bg-secondary border-border mt-1"
               />
             </div>
           </div>
 
-          {/* Preferred Sports */}
-          <div>
-            <Label className="text-sm font-medium">Preferred Sports</Label>
-            <div className="flex flex-wrap gap-2 mt-2">
-              {sportsOptions.map((sport) => {
-                const isSelected = settings.preferredSports.split(",").includes(sport.id);
-                return (
-                  <button
-                    key={sport.id}
-                    onClick={() => toggleSport(sport.id)}
-                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                      isSelected
-                        ? "bg-primary/10 text-primary border border-primary/30"
-                        : "bg-secondary/50 text-muted-foreground border border-border"
-                    }`}
-                  >
-                    {sport.label}
-                  </button>
-                );
-              })}
-            </div>
+          <div className="flex items-center gap-3">
+            <Button
+              onClick={handleRunAutoBet}
+              disabled={runningAutoBet || !currentSettings.autoBettingEnabled}
+              className="bg-primary hover:bg-primary/90"
+            >
+              {runningAutoBet ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : (
+                <Brain className="h-4 w-4 mr-2" />
+              )}
+              {runningAutoBet ? "Running AI Scan..." : "Run Auto-Bet Now"}
+            </Button>
+            {!currentSettings.autoBettingEnabled && (
+              <p className="text-xs text-muted-foreground">Enable auto-betting first</p>
+            )}
           </div>
 
-          {/* Kelly Criterion */}
-          <Separator />
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="text-sm font-medium">Kelly Fraction</Label>
-              <Input
-                type="number"
-                step="0.05"
-                value={settings.kellyFraction}
-                onChange={(e) =>
-                  setSettings({ ...settings, kellyFraction: parseFloat(e.target.value) || 0.25 })
-                }
-                className="bg-secondary border-border mt-1"
-              />
-              <p className="text-[10px] text-muted-foreground mt-1">Quarter-Kelly (0.25) recommended</p>
+          {autoBetResult && (
+            <div className="p-3 rounded-lg bg-primary/10 border border-primary/20 text-sm text-foreground">
+              {autoBetResult}
             </div>
-            <div>
-              <Label className="text-sm font-medium">Min Edge Threshold</Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={settings.minEdgeThreshold}
-                onChange={(e) =>
-                  setSettings({ ...settings, minEdgeThreshold: parseFloat(e.target.value) || 0.03 })
-                }
-                className="bg-secondary border-border mt-1"
-              />
-              <p className="text-[10px] text-muted-foreground mt-1">Minimum 3% edge to place bet</p>
-            </div>
-          </div>
+          )}
         </CardContent>
       </Card>
 
@@ -296,157 +217,196 @@ export default function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div>
-            <Label className="text-sm font-medium mb-2 block">Risk Level</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {riskLevels.map((level) => (
-                <button
-                  key={level.value}
-                  onClick={() => setSettings({ ...settings, riskLevel: level.value })}
-                  className={`rounded-lg border p-3 text-center transition-all ${
-                    settings.riskLevel === level.value
-                      ? "border-primary bg-primary/10"
-                      : "border-border bg-secondary/50 hover:border-border"
-                  }`}
-                >
-                  <div className={`text-sm font-medium ${level.color}`}>{level.label}</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">{level.desc}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label className="text-sm font-medium">Auto Cashout</Label>
-              <p className="text-xs text-muted-foreground">
-                Automatically cashout when threshold is reached
-              </p>
+              <label className="text-xs text-muted-foreground">Risk Level</label>
+              <Select
+                value={currentSettings.riskLevel}
+                onValueChange={(v) => { if (v) setForm({ ...form, riskLevel: v }); }}
+              >
+                <SelectTrigger className="bg-secondary border-border mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="low">Low (Conservative)</SelectItem>
+                  <SelectItem value="medium">Medium (Balanced)</SelectItem>
+                  <SelectItem value="high">High (Aggressive)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-            <Switch
-              checked={settings.autoCashoutEnabled}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, autoCashoutEnabled: checked as boolean })
-              }
-            />
-          </div>
-
-          {settings.autoCashoutEnabled && (
             <div>
-              <Label className="text-sm font-medium">
-                Cashout Threshold: {Math.round(settings.cashoutThreshold * 100)}%
-              </Label>
-              <input
-                type="range"
-                min="20"
-                max="90"
-                step="5"
-                value={settings.cashoutThreshold * 100}
-                onChange={(e) =>
-                  setSettings({ ...settings, cashoutThreshold: parseInt(e.target.value) / 100 })
-                }
-                className="w-full h-1.5 rounded-full bg-secondary appearance-none cursor-pointer mt-2 accent-primary"
+              <label className="text-xs text-muted-foreground">Kelly Fraction</label>
+              <Input
+                type="number"
+                step="0.01"
+                value={currentSettings.kellyFraction}
+                onChange={(e) => setForm({ ...form, kellyFraction: parseFloat(e.target.value) || 0.25 })}
+                className="bg-secondary border-border mt-1"
               />
-              <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-                <span>20%</span>
-                <span>50%</span>
-                <span>90%</span>
-              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">0.25 = Quarter Kelly (recommended)</p>
             </div>
-          )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-xs text-muted-foreground">Min Odds Threshold</label>
+              <Input
+                type="number"
+                step="0.1"
+                value={currentSettings.minOddsThreshold}
+                onChange={(e) => setForm({ ...form, minOddsThreshold: parseFloat(e.target.value) || 1.0 })}
+                className="bg-secondary border-border mt-1"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Max Odds Threshold</label>
+              <Input
+                type="number"
+                step="0.1"
+                value={currentSettings.maxOddsThreshold}
+                onChange={(e) => setForm({ ...form, maxOddsThreshold: parseFloat(e.target.value) || 5.0 })}
+                className="bg-secondary border-border mt-1"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="text-xs text-muted-foreground">Min Value Edge (AI will skip bets below this)</label>
+            <Input
+              type="number"
+              step="0.01"
+              value={currentSettings.minEdgeThreshold}
+              onChange={(e) => setForm({ ...form, minEdgeThreshold: parseFloat(e.target.value) || 0.03 })}
+              className="bg-secondary border-border mt-1"
+            />
+            <p className="text-[10px] text-muted-foreground mt-1">0.03 = 3% minimum edge (recommended)</p>
+          </div>
         </CardContent>
       </Card>
 
-      {/* Notifications */}
+      {/* Cashout Settings */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Bell className="h-4 w-4 text-primary" />
-            Notifications
+            <DollarSign className="h-4 w-4 text-emerald-400" />
+            Auto-Cashout
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
             <div>
-              <Label className="text-sm font-medium">Enable Notifications</Label>
-              <p className="text-xs text-muted-foreground">
-                Get notified about bet results, cashout opportunities, and AI recommendations
-              </p>
+              <p className="text-sm font-medium text-foreground">Auto-Cashout</p>
+              <p className="text-xs text-muted-foreground">Automatically cashout when AI recommends</p>
             </div>
-            <Switch
-              checked={settings.notificationsEnabled}
-              onCheckedChange={(checked) =>
-                setSettings({ ...settings, notificationsEnabled: checked as boolean })
-              }
+            <button
+              onClick={() => setForm({ ...form, autoCashoutEnabled: !currentSettings.autoCashoutEnabled })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                currentSettings.autoCashoutEnabled ? "bg-emerald-500" : "bg-secondary"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  currentSettings.autoCashoutEnabled ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+
+          <div>
+            <label className="text-xs text-muted-foreground">Cashout Threshold</label>
+            <Input
+              type="number"
+              step="0.05"
+              value={currentSettings.cashoutThreshold}
+              onChange={(e) => setForm({ ...form, cashoutThreshold: parseFloat(e.target.value) || 0.7 })}
+              className="bg-secondary border-border mt-1"
             />
+            <p className="text-[10px] text-muted-foreground mt-1">0.7 = Cashout when 70% of potential profit is secured</p>
           </div>
         </CardContent>
       </Card>
 
-      {/* Commission Info */}
+      {/* Commission & Preferences */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
-            <Percent className="h-4 w-4 text-amber-400" />
-            Commission Rate
+            <Target className="h-4 w-4 text-primary" />
+            Commission & Preferences
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-4">
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
             <div>
-              <p className="text-sm font-medium text-foreground">Your Commission Rate</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                This rate is applied to all winning bets
-              </p>
+              <label className="text-xs text-muted-foreground">Commission Rate</label>
+              <div className="flex items-center gap-2 mt-1">
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={currentSettings.commissionRate}
+                  disabled
+                  className="bg-secondary border-border"
+                />
+                <Badge className="bg-amber-400/10 text-amber-400 text-[10px]">
+                  {(currentSettings.commissionRate * 100).toFixed(0)}%
+                </Badge>
+              </div>
+              <p className="text-[10px] text-muted-foreground mt-1">Set by admin — deducted from profits</p>
             </div>
-            <Badge variant="secondary" className="bg-amber-400/10 text-amber-400 text-lg px-3 py-1">
-              {(settings.commissionRate * 100).toFixed(0)}%
-            </Badge>
+            <div>
+              <label className="text-xs text-muted-foreground">Preferred Sports</label>
+              <Input
+                value={currentSettings.preferredSports}
+                onChange={(e) => setForm({ ...form, preferredSports: e.target.value })}
+                className="bg-secondary border-border mt-1"
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Comma-separated: football,basketball,tennis</p>
+            </div>
           </div>
-        </CardContent>
-      </Card>
 
-      {/* Account Info */}
-      <Card className="bg-card border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <User className="h-4 w-4 text-primary" />
-            Account
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex items-center justify-between">
-            <Label className="text-sm text-muted-foreground">Name</Label>
-            <span className="text-sm text-foreground">{user?.name || "N/A"}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <Label className="text-sm text-muted-foreground">Email</Label>
-            <span className="text-sm text-foreground">{user?.email || "N/A"}</span>
-          </div>
-          <div className="flex items-center justify-between">
-            <Label className="text-sm text-muted-foreground">Role</Label>
-            <Badge variant="secondary">{user?.role || "user"}</Badge>
+          <div className="flex items-center justify-between p-3 rounded-lg bg-secondary/50">
+            <div>
+              <p className="text-sm font-medium text-foreground">Notifications</p>
+              <p className="text-xs text-muted-foreground">Receive alerts for bet results and cashout opportunities</p>
+            </div>
+            <button
+              onClick={() => setForm({ ...form, notificationsEnabled: !currentSettings.notificationsEnabled })}
+              className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                currentSettings.notificationsEnabled ? "bg-primary" : "bg-secondary"
+              }`}
+            >
+              <span
+                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                  currentSettings.notificationsEnabled ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
           </div>
         </CardContent>
       </Card>
 
       {/* Save Button */}
-      <Button
-        className="w-full bg-primary text-primary-foreground hover:bg-primary/80 h-10"
-        onClick={handleSave}
-        disabled={saving}
-      >
-        {saving ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : saved ? (
-          "Settings Saved!"
-        ) : (
-          <Save className="h-4 w-4" />
+      <div className="flex items-center gap-3">
+        <Button
+          onClick={handleSave}
+          disabled={saving || Object.keys(form).length === 0}
+          className="bg-primary hover:bg-primary/90"
+        >
+          {saving ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : saved ? (
+            <CheckCircle2 className="h-4 w-4 mr-2" />
+          ) : (
+            <Save className="h-4 w-4 mr-2" />
+          )}
+          {saving ? "Saving..." : saved ? "Saved!" : "Save Settings"}
+        </Button>
+        {Object.keys(form).length > 0 && !saved && (
+          <p className="text-xs text-amber-400 flex items-center gap-1">
+            <AlertTriangle className="h-3 w-3" />
+            Unsaved changes
+          </p>
         )}
-        {saving ? "Saving..." : saved ? "Saved!" : "Save Settings"}
-      </Button>
+      </div>
     </div>
   );
 }
