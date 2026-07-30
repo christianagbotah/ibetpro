@@ -1,11 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-import { analyzeMatch } from "@/lib/ai-engine";
+import { analyzeMatch, calculatePoissonProbabilities, calculateOverUnderProbabilities, calculateKellyCriterion, generateDetailedAnalysis } from "@/lib/ai-engine";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { matchId } = body;
+    const { matchId, bankroll } = body;
 
     if (!matchId) {
       return NextResponse.json({ error: "Match ID is required" }, { status: 400 });
@@ -34,7 +34,62 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Run AI analysis
+    // Transform team stats for AI engine
+    const homeStatsForAI = homeTeamStats ? {
+      teamName: homeTeamStats.teamName,
+      sport: homeTeamStats.sport,
+      league: homeTeamStats.league,
+      matchesPlayed: homeTeamStats.matchesPlayed,
+      wins: homeTeamStats.wins,
+      draws: homeTeamStats.draws,
+      losses: homeTeamStats.losses,
+      goalsFor: homeTeamStats.goalsFor,
+      goalsAgainst: homeTeamStats.goalsAgainst,
+      form: homeTeamStats.form,
+      homeRecord: homeTeamStats.homeRecord,
+      awayRecord: homeTeamStats.awayRecord,
+      attackRating: homeTeamStats.attackRating,
+      defenseRating: homeTeamStats.defenseRating,
+      overallRating: homeTeamStats.overallRating,
+      keyPlayers: homeTeamStats.keyPlayers,
+      xgFor: homeTeamStats.xgFor,
+      xgAgainst: homeTeamStats.xgAgainst,
+      eloRating: homeTeamStats.eloRating,
+      shotsPerGame: homeTeamStats.shotsPerGame,
+      shotsOnTargetPerGame: homeTeamStats.shotsOnTargetPerGame,
+      possessionAvg: homeTeamStats.possessionAvg,
+      cornersPerGame: homeTeamStats.cornersPerGame,
+      cardsPerGame: homeTeamStats.cardsPerGame,
+    } : null;
+
+    const awayStatsForAI = awayTeamStats ? {
+      teamName: awayTeamStats.teamName,
+      sport: awayTeamStats.sport,
+      league: awayTeamStats.league,
+      matchesPlayed: awayTeamStats.matchesPlayed,
+      wins: awayTeamStats.wins,
+      draws: awayTeamStats.draws,
+      losses: awayTeamStats.losses,
+      goalsFor: awayTeamStats.goalsFor,
+      goalsAgainst: awayTeamStats.goalsAgainst,
+      form: awayTeamStats.form,
+      homeRecord: awayTeamStats.homeRecord,
+      awayRecord: awayTeamStats.awayRecord,
+      attackRating: awayTeamStats.attackRating,
+      defenseRating: awayTeamStats.defenseRating,
+      overallRating: awayTeamStats.overallRating,
+      keyPlayers: awayTeamStats.keyPlayers,
+      xgFor: awayTeamStats.xgFor,
+      xgAgainst: awayTeamStats.xgAgainst,
+      eloRating: awayTeamStats.eloRating,
+      shotsPerGame: awayTeamStats.shotsPerGame,
+      shotsOnTargetPerGame: awayTeamStats.shotsOnTargetPerGame,
+      possessionAvg: awayTeamStats.possessionAvg,
+      cornersPerGame: awayTeamStats.cornersPerGame,
+      cardsPerGame: awayTeamStats.cardsPerGame,
+    } : null;
+
+    // Run multi-model AI analysis
     const prediction = analyzeMatch(
       {
         homeTeam: match.homeTeam,
@@ -44,10 +99,43 @@ export async function POST(request: NextRequest) {
         homeOdds: match.homeOdds,
         drawOdds: match.drawOdds ?? undefined,
         awayOdds: match.awayOdds,
+        overUnderLine: match.overUnderLine ?? undefined,
+        overOdds: match.overOdds ?? undefined,
+        underOdds: match.underOdds ?? undefined,
         status: match.status,
       },
-      homeTeamStats,
-      awayTeamStats
+      homeStatsForAI,
+      awayStatsForAI,
+      bankroll || 1000
+    );
+
+    // Calculate Poisson probabilities
+    const poissonResult = calculatePoissonProbabilities(homeStatsForAI, awayStatsForAI);
+
+    // Calculate over/under probabilities
+    const totalExpected = poissonResult.expectedHomeGoals + poissonResult.expectedAwayGoals;
+    const overUnderResult = match.overUnderLine
+      ? calculateOverUnderProbabilities(totalExpected, match.overUnderLine)
+      : null;
+
+    // Generate detailed analysis
+    const detailedAnalysis = generateDetailedAnalysis(
+      {
+        homeTeam: match.homeTeam,
+        awayTeam: match.awayTeam,
+        sport: match.sport,
+        league: match.league,
+        homeOdds: match.homeOdds,
+        drawOdds: match.drawOdds ?? undefined,
+        awayOdds: match.awayOdds,
+        overUnderLine: match.overUnderLine ?? undefined,
+        overOdds: match.overOdds ?? undefined,
+        underOdds: match.underOdds ?? undefined,
+        status: match.status,
+      },
+      homeStatsForAI,
+      awayStatsForAI,
+      prediction
     );
 
     // Update match with AI analysis
@@ -60,14 +148,21 @@ export async function POST(request: NextRequest) {
         aiConfidence: prediction.confidence,
         aiRecommended: prediction.recommended,
         aiAnalysis: prediction.analysis,
+        aiRiskScore: prediction.riskScore,
+        aiRiskLevel: prediction.riskLevel,
+        aiValueEdge: prediction.valueBets.length > 0 ? prediction.valueBets[0].edge : 0,
+        aiKellyStake: prediction.kellyStake.recommendedStake,
       },
     });
 
     return NextResponse.json({
       matchId,
       prediction,
-      homeTeamStats,
-      awayTeamStats,
+      poissonResult,
+      overUnderResult,
+      detailedAnalysis,
+      homeTeamStats: homeStatsForAI,
+      awayTeamStats: awayStatsForAI,
     });
   } catch (error) {
     console.error("Error analyzing match:", error);

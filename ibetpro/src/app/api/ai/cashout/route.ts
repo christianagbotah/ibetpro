@@ -28,7 +28,71 @@ export async function POST(request: NextRequest) {
 
     const match = bet.match;
 
-    // Run cashout analysis
+    // Get team stats for better cashout analysis
+    const homeTeamStats = await prisma.teamStats.findFirst({
+      where: { teamName: match.homeTeam, sport: match.sport },
+    });
+
+    const awayTeamStats = await prisma.teamStats.findFirst({
+      where: { teamName: match.awayTeam, sport: match.sport },
+    });
+
+    // Transform team stats for AI engine
+    const homeStatsForAI = homeTeamStats ? {
+      teamName: homeTeamStats.teamName,
+      sport: homeTeamStats.sport,
+      league: homeTeamStats.league,
+      matchesPlayed: homeTeamStats.matchesPlayed,
+      wins: homeTeamStats.wins,
+      draws: homeTeamStats.draws,
+      losses: homeTeamStats.losses,
+      goalsFor: homeTeamStats.goalsFor,
+      goalsAgainst: homeTeamStats.goalsAgainst,
+      form: homeTeamStats.form,
+      homeRecord: homeTeamStats.homeRecord,
+      awayRecord: homeTeamStats.awayRecord,
+      attackRating: homeTeamStats.attackRating,
+      defenseRating: homeTeamStats.defenseRating,
+      overallRating: homeTeamStats.overallRating,
+      keyPlayers: homeTeamStats.keyPlayers,
+      xgFor: homeTeamStats.xgFor,
+      xgAgainst: homeTeamStats.xgAgainst,
+      eloRating: homeTeamStats.eloRating,
+      shotsPerGame: homeTeamStats.shotsPerGame,
+      shotsOnTargetPerGame: homeTeamStats.shotsOnTargetPerGame,
+      possessionAvg: homeTeamStats.possessionAvg,
+      cornersPerGame: homeTeamStats.cornersPerGame,
+      cardsPerGame: homeTeamStats.cardsPerGame,
+    } : null;
+
+    const awayStatsForAI = awayTeamStats ? {
+      teamName: awayTeamStats.teamName,
+      sport: awayTeamStats.sport,
+      league: awayTeamStats.league,
+      matchesPlayed: awayTeamStats.matchesPlayed,
+      wins: awayTeamStats.wins,
+      draws: awayTeamStats.draws,
+      losses: awayTeamStats.losses,
+      goalsFor: awayTeamStats.goalsFor,
+      goalsAgainst: awayTeamStats.goalsAgainst,
+      form: awayTeamStats.form,
+      homeRecord: awayTeamStats.homeRecord,
+      awayRecord: awayTeamStats.awayRecord,
+      attackRating: awayTeamStats.attackRating,
+      defenseRating: awayTeamStats.defenseRating,
+      overallRating: awayTeamStats.overallRating,
+      keyPlayers: awayTeamStats.keyPlayers,
+      xgFor: awayTeamStats.xgFor,
+      xgAgainst: awayTeamStats.xgAgainst,
+      eloRating: awayTeamStats.eloRating,
+      shotsPerGame: awayTeamStats.shotsPerGame,
+      shotsOnTargetPerGame: awayTeamStats.shotsOnTargetPerGame,
+      possessionAvg: awayTeamStats.possessionAvg,
+      cornersPerGame: awayTeamStats.cornersPerGame,
+      cardsPerGame: awayTeamStats.cardsPerGame,
+    } : null;
+
+    // Run enhanced cashout analysis
     const cashoutRecommendation = shouldCashout(
       {
         selection: bet.selection,
@@ -44,7 +108,9 @@ export async function POST(request: NextRequest) {
         homeTeam: match.homeTeam,
         awayTeam: match.awayTeam,
         sport: match.sport,
-      }
+      },
+      homeStatsForAI,
+      awayStatsForAI
     );
 
     // Update bet with cashout amount

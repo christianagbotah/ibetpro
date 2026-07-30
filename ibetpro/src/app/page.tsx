@@ -7,7 +7,7 @@ import { ActiveBets } from "@/components/dashboard/active-bets";
 import { ProfitChart } from "@/components/dashboard/profit-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Brain, Sparkles, Zap, Radio, TrendingUp, DollarSign, Activity, ArrowRight } from "lucide-react";
+import { Brain, Sparkles, Zap, Radio, TrendingUp, DollarSign, Activity, ArrowRight, Shield, AlertTriangle } from "lucide-react";
 import Link from "next/link";
 
 interface Match {
@@ -26,6 +26,9 @@ interface Match {
   commenceTime: string;
   aiRecommended: string | null;
   aiConfidence: number | null;
+  aiRiskLevel: string | null;
+  aiValueEdge: number | null;
+  apiSource: string | null;
 }
 
 interface Bet {
@@ -40,6 +43,9 @@ interface Bet {
   aiConfidence: number | null;
   aiReasoning: string | null;
   profit: number | null;
+  commission: number | null;
+  valueEdge: number | null;
+  riskScore: number | null;
   placedAt: string;
   match?: {
     homeTeam: string;
@@ -53,10 +59,24 @@ interface Bet {
   };
 }
 
+interface UserStats {
+  balance: number;
+  totalProfit: number;
+  totalLoss: number;
+  commissionPaid: number;
+  bankroll: number;
+}
+
 export default function DashboardPage() {
-  // Use polling for live match updates every 30 seconds
   const { data: matches, loading: matchesLoading } = usePolling<Match[]>("/api/matches", 30000, []);
   const { data: bets, loading: betsLoading } = useFetch<Bet[]>("/api/bets?userId=demo-user", []);
+  const { data: stats, loading: statsLoading } = useFetch<UserStats>("/api/stats/user", {
+    balance: 0,
+    totalProfit: 0,
+    totalLoss: 0,
+    commissionPaid: 0,
+    bankroll: 1000,
+  });
 
   const loading = matchesLoading || betsLoading;
 
@@ -71,7 +91,6 @@ export default function DashboardPage() {
     );
   }
 
-  const user = { balance: 5000, totalProfit: 2847.5, totalLoss: 1235, commissionPaid: 284.75 };
   const activeBets = bets.filter((b) => b.status === "pending").length;
   const wonBets = bets.filter((b) => b.status === "won").length;
   const totalBets = bets.filter((b) => b.status === "won" || b.status === "lost").length;
@@ -82,19 +101,24 @@ export default function DashboardPage() {
     .sort((a, b) => (b.aiConfidence || 0) - (a.aiConfidence || 0))
     .slice(0, 3);
 
-  // Live matches count
   const liveMatches = matches.filter((m) => m.status === "live");
 
-  // Recent activity feed
+  // Value bets - matches with high edge
+  const valueBets = matches
+    .filter((m) => m.aiValueEdge && m.aiValueEdge > 0.05 && m.status === "upcoming")
+    .sort((a, b) => (b.aiValueEdge || 0) - (a.aiValueEdge || 0))
+    .slice(0, 3);
+
   const recentSettled = bets
     .filter((b) => b.status === "won" || b.status === "lost" || b.status === "cashed_out")
     .sort((a, b) => new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime())
     .slice(0, 5);
 
-  // Commission summary
   const totalCommission = bets
     .filter((b) => b.status === "won")
-    .reduce((sum, b) => sum + (b.profit || 0) * 0.10, 0);
+    .reduce((sum, b) => sum + (b.commission || 0), 0);
+
+  const netProfit = stats.totalProfit - stats.totalLoss - stats.commissionPaid;
 
   return (
     <div className="space-y-6">
@@ -102,23 +126,31 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Welcome back, Alex! Here&apos;s your betting overview.
+            iBetPro AI-Powered Betting Intelligence
           </p>
         </div>
-        {liveMatches.length > 0 && (
-          <Badge className="bg-red-500/20 text-red-400 border-red-500/30 px-3 py-1.5">
-            <span className="relative flex h-2 w-2 mr-2">
-              <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
-            </span>
-            {liveMatches.length} Live
-          </Badge>
-        )}
+        <div className="flex items-center gap-2">
+          {matches.length === 0 && (
+            <Badge className="bg-amber-500/20 text-amber-400 border-amber-500/30 px-3 py-1.5">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              No API keys configured
+            </Badge>
+          )}
+          {liveMatches.length > 0 && (
+            <Badge className="bg-red-500/20 text-red-400 border-red-500/30 px-3 py-1.5">
+              <span className="relative flex h-2 w-2 mr-2">
+                <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+              </span>
+              {liveMatches.length} Live
+            </Badge>
+          )}
+        </div>
       </div>
 
       <StatsCards
-        balance={user.balance}
-        profit={user.totalProfit - user.totalLoss}
+        balance={stats.balance}
+        profit={netProfit}
         activeBets={activeBets}
         winRate={winRate}
       />
@@ -141,7 +173,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-foreground">AI Analysis</p>
-                    <p className="text-xs text-muted-foreground">Run predictions on upcoming matches</p>
+                    <p className="text-xs text-muted-foreground">Multi-model predictions</p>
                   </div>
                   <ArrowRight className="h-4 w-4 text-primary" />
                 </div>
@@ -151,11 +183,11 @@ export default function DashboardPage() {
               <div className="rounded-lg bg-amber-400/5 border border-amber-400/10 p-4 hover:bg-amber-400/10 transition-colors cursor-pointer">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-400/10">
-                    <Zap className="h-5 w-5 text-amber-400" />
+                    <Shield className="h-5 w-5 text-amber-400" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">Place Bets</p>
-                    <p className="text-xs text-muted-foreground">Automated & manual betting</p>
+                    <p className="text-sm font-medium text-foreground">Smart Betting</p>
+                    <p className="text-xs text-muted-foreground">Kelly Criterion staking</p>
                   </div>
                   <ArrowRight className="h-4 w-4 text-amber-400" />
                 </div>
@@ -169,7 +201,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="flex-1">
                     <p className="text-sm font-medium text-foreground">Live Monitor</p>
-                    <p className="text-xs text-muted-foreground">Track live matches & cashouts</p>
+                    <p className="text-xs text-muted-foreground">Real-time cashout engine</p>
                   </div>
                   <ArrowRight className="h-4 w-4 text-red-500" />
                 </div>
@@ -186,7 +218,92 @@ export default function DashboardPage() {
 
       <ProfitChart />
 
-      {/* Recent Activity & Commission Summary */}
+      {/* Value Bets & Commission Summary */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Value Bets */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Sparkles className="h-4 w-4 text-amber-400" />
+              Value Bets Detected
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {valueBets.length === 0 ? (
+              <div className="text-center py-6">
+                <p className="text-sm text-muted-foreground">
+                  {matches.length === 0
+                    ? "Connect API keys in Admin settings to detect value bets"
+                    : "No value bets detected. Run AI analysis on matches first."}
+                </p>
+              </div>
+            ) : (
+              valueBets.map((match) => (
+                <Link key={match.id} href={`/matches/${match.id}`} className="block">
+                  <div className="rounded-lg bg-emerald-400/5 border border-emerald-400/10 p-3 hover:bg-emerald-400/10 transition-colors cursor-pointer">
+                    <div className="flex items-center justify-between mb-1">
+                      <p className="text-sm font-medium text-foreground">
+                        {match.homeTeam} vs {match.awayTeam}
+                      </p>
+                      <Badge className="bg-emerald-400/20 text-emerald-400 border-emerald-400/30 text-[10px]">
+                        {Math.round((match.aiValueEdge || 0) * 100)}% edge
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      AI recommends: <span className="text-emerald-400 font-medium">{match.aiRecommended === "home" ? match.homeTeam : match.aiRecommended === "away" ? match.awayTeam : match.aiRecommended}</span>
+                      {" "}&middot; Confidence: {Math.round((match.aiConfidence || 0) * 100)}%
+                      {" "}&middot; Risk: {match.aiRiskLevel || "medium"}
+                    </p>
+                  </div>
+                </Link>
+              ))
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Commission Summary */}
+        <Card className="bg-card border-border">
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <DollarSign className="h-4 w-4 text-amber-400" />
+              Commission Summary
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="rounded-lg bg-secondary/50 p-4">
+                <p className="text-xs text-muted-foreground">Total Commission Paid</p>
+                <p className="text-xl font-bold text-amber-400 mt-1">
+                  ${stats.commissionPaid.toFixed(2)}
+                </p>
+              </div>
+              <div className="rounded-lg bg-secondary/50 p-4">
+                <p className="text-xs text-muted-foreground">Commission Rate</p>
+                <p className="text-xl font-bold text-foreground mt-1">10%</p>
+              </div>
+              <div className="rounded-lg bg-secondary/50 p-4">
+                <p className="text-xs text-muted-foreground">Session Commission</p>
+                <p className="text-xl font-bold text-amber-400 mt-1">
+                  ${totalCommission.toFixed(2)}
+                </p>
+              </div>
+              <div className="rounded-lg bg-secondary/50 p-4">
+                <p className="text-xs text-muted-foreground">Net After Commission</p>
+                <p className={`text-xl font-bold mt-1 ${netProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                  ${netProfit.toFixed(2)}
+                </p>
+              </div>
+            </div>
+            <div className="rounded-lg bg-amber-400/5 border border-amber-400/10 p-3">
+              <p className="text-xs text-muted-foreground">
+                10% commission is deducted from winning bet profits. This fee covers platform maintenance and AI model improvements.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Recent Activity & AI Recommendations */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activity Feed */}
         <Card className="bg-card border-border">
@@ -199,7 +316,7 @@ export default function DashboardPage() {
           <CardContent className="space-y-3 max-h-64 overflow-y-auto">
             {recentSettled.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
-                No recent activity
+                No recent activity. Place bets to see results here.
               </p>
             ) : (
               recentSettled.map((bet) => (
@@ -211,18 +328,16 @@ export default function DashboardPage() {
                     <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
                       bet.status === "won" ? "bg-emerald-400/10" : "bg-red-400/10"
                     }`}>
-                      {bet.status === "won" ? (
-                        <TrendingUp className="h-4 w-4 text-emerald-400" />
-                      ) : (
-                        <TrendingUp className="h-4 w-4 text-red-400 rotate-180" />
-                      )}
+                      <TrendingUp className={`h-4 w-4 ${
+                        bet.status === "won" ? "text-emerald-400" : "text-red-400 rotate-180"
+                      }`} />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">
                         {bet.match?.homeTeam} vs {bet.match?.awayTeam}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        {bet.selection} @ {bet.odds}
+                        {bet.selection} @ {bet.odds} {bet.commission ? `(-$${bet.commission.toFixed(2)} comm)` : ""}
                       </p>
                     </div>
                   </div>
@@ -242,88 +357,61 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Commission Summary */}
+        {/* AI Recommendations */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
-              <DollarSign className="h-4 w-4 text-amber-400" />
-              Commission Summary
+              <Brain className="h-4 w-4 text-primary" />
+              AI Recommendations
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="rounded-lg bg-secondary/50 p-4">
-                <p className="text-xs text-muted-foreground">Total Commission Paid</p>
-                <p className="text-xl font-bold text-amber-400 mt-1">
-                  ${user.commissionPaid.toFixed(2)}
+          <CardContent>
+            <div className="grid grid-cols-1 gap-3">
+              {recommendations.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  {matches.length === 0
+                    ? "Connect API keys in Admin settings to get AI recommendations"
+                    : "No AI recommendations available. Run analysis on matches."}
                 </p>
-              </div>
-              <div className="rounded-lg bg-secondary/50 p-4">
-                <p className="text-xs text-muted-foreground">Commission Rate</p>
-                <p className="text-xl font-bold text-foreground mt-1">10%</p>
-              </div>
-              <div className="rounded-lg bg-secondary/50 p-4">
-                <p className="text-xs text-muted-foreground">Commission This Session</p>
-                <p className="text-xl font-bold text-amber-400 mt-1">
-                  ${totalCommission.toFixed(2)}
-                </p>
-              </div>
-              <div className="rounded-lg bg-secondary/50 p-4">
-                <p className="text-xs text-muted-foreground">Net After Commission</p>
-                <p className="text-xl font-bold text-emerald-400 mt-1">
-                  ${(user.totalProfit - user.totalLoss - user.commissionPaid).toFixed(2)}
-                </p>
-              </div>
-            </div>
-            <div className="rounded-lg bg-amber-400/5 border border-amber-400/10 p-3">
-              <p className="text-xs text-muted-foreground">
-                10% commission is deducted from winning bet profits. This fee covers platform maintenance and AI model improvements.
-              </p>
+              ) : (
+                recommendations.map((match) => (
+                  <Link key={match.id} href={`/matches/${match.id}`} className="block">
+                    <div className="rounded-lg bg-secondary/50 p-3 border border-primary/10 hover:bg-secondary transition-colors cursor-pointer">
+                      <div className="flex items-center justify-between mb-2">
+                        <Badge variant="secondary" className="text-[10px]">
+                          {match.sport}
+                        </Badge>
+                        <div className="flex items-center gap-2">
+                          <Badge className={`text-[10px] ${
+                            match.aiRiskLevel === "low" ? "bg-emerald-400/20 text-emerald-400 border-emerald-400/30" :
+                            match.aiRiskLevel === "high" ? "bg-red-400/20 text-red-400 border-red-400/30" :
+                            "bg-amber-400/20 text-amber-400 border-amber-400/30"
+                          }`}>
+                            {match.aiRiskLevel || "medium"} risk
+                          </Badge>
+                          <div className="flex items-center gap-1">
+                            <Brain className="h-3 w-3 text-primary" />
+                            <span className="text-xs font-bold text-primary">
+                              {Math.round((match.aiConfidence || 0) * 100)}%
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-sm font-medium text-foreground">
+                        {match.homeTeam} vs {match.awayTeam}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        AI recommends: <span className="text-primary font-medium">{match.aiRecommended === "home" ? match.homeTeam : match.aiRecommended === "away" ? match.awayTeam : match.aiRecommended}</span>
+                        {match.aiValueEdge ? ` (${Math.round(match.aiValueEdge * 100)}% edge)` : ""}
+                      </p>
+                    </div>
+                  </Link>
+                ))
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
-
-      <Card className="bg-card border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base">
-            <Sparkles className="h-4 w-4 text-amber-400" />
-            AI Recommendations
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            {recommendations.map((match) => (
-              <Link key={match.id} href={`/matches/${match.id}`} className="block">
-                <div className="rounded-lg bg-secondary/50 p-3 border border-primary/10 hover:bg-secondary transition-colors cursor-pointer">
-                  <div className="flex items-center justify-between mb-2">
-                    <Badge variant="secondary" className="text-[10px]">
-                      {match.sport}
-                    </Badge>
-                    <div className="flex items-center gap-1">
-                      <Brain className="h-3 w-3 text-primary" />
-                      <span className="text-xs font-bold text-primary">
-                        {Math.round((match.aiConfidence || 0) * 100)}%
-                      </span>
-                    </div>
-                  </div>
-                  <p className="text-sm font-medium text-foreground">
-                    {match.homeTeam} vs {match.awayTeam}
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    AI recommends: <span className="text-primary font-medium">{match.aiRecommended === "home" ? match.homeTeam : match.aiRecommended === "away" ? match.awayTeam : match.aiRecommended}</span>
-                  </p>
-                </div>
-              </Link>
-            ))}
-            {recommendations.length === 0 && (
-              <p className="text-sm text-muted-foreground col-span-3 text-center py-4">
-                No AI recommendations available
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }
