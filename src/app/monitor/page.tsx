@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { usePolling } from "@/lib/hooks";
+import { usePolling, useFetch } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Radio, Eye, DollarSign, Clock, Zap, Volume2, VolumeX, Play, TrendingUp } from "lucide-react";
+import { Radio, Eye, DollarSign, Clock, Zap, Volume2, VolumeX, Play, TrendingUp, RefreshCw, Layers, Brain } from "lucide-react";
+import { useAuth } from "@/components/auth/auth-provider";
 import Link from "next/link";
 
 interface LiveMatch {
@@ -41,6 +42,8 @@ interface ActiveBet {
   isAutoPlaced: boolean;
   aiConfidence: number | null;
   aiReasoning: string | null;
+  accumulatorId: string | null;
+  partialCashoutAmount: number | null;
   match?: {
     id: string;
     homeTeam: string;
@@ -57,8 +60,11 @@ interface ActiveBet {
 interface CashoutRec {
   shouldCashout: boolean;
   cashoutAmount: number;
+  partialCashoutAmount: number;
   reasoning: string;
   urgency: "low" | "medium" | "high";
+  waitOrCashout: "wait" | "cashout_partial" | "cashout_full" | "wait_for_settlement";
+  settlementProbability: number;
 }
 
 interface MatchEvent {
@@ -69,7 +75,7 @@ interface MatchEvent {
 
 export default function MonitorPage() {
   const { addToast } = useToast();
-  // Use polling for live match updates every 15 seconds
+  const { user } = useAuth();
   const { data: allMatches, loading: matchesLoading, refetch: refetchMatches } = usePolling<LiveMatch[]>("/api/matches", 15000, []);
   const { data: bets, loading: betsLoading, refetch: refetchBets } = usePolling<ActiveBet[]>("/api/bets?status=pending", 15000, []);
   const [cashoutRecs, setCashoutRecs] = useState<Record<string, CashoutRec>>({});
@@ -77,6 +83,7 @@ export default function MonitorPage() {
   const [soundEnabled, setSoundEnabled] = useState(false);
   const [simulating, setSimulating] = useState<string | null>(null);
   const [matchEvents, setMatchEvents] = useState<MatchEvent[]>([]);
+  const [autoSettleRunning, setAutoSettleRunning] = useState(false);
 
   const loading = matchesLoading || betsLoading;
 
@@ -89,11 +96,7 @@ export default function MonitorPage() {
       for (const bet of liveBets) {
         if (cancelled) break;
         try {
-          const res = await fetch("/api/ai/cashout", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ betId: bet.id }),
-          });
+          const res = await fetch(`/api/cashout?betId=${bet.id}`);
           if (res.ok && !cancelled) {
             const result = await res.json();
             setCashoutRecs((prev) => ({
@@ -116,10 +119,26 @@ export default function MonitorPage() {
     };
   }, [bets, cashedOutBets]);
 
-  const handleCashout = useCallback(async (betId: string) => {
+  const handleCashout = useCallback(async (betId: string, type: "full" | "partial" = "full") => {
     setCashedOutBets((prev) => new Set(prev).add(betId));
-    addToast("success", "Cashout initiated successfully!");
-  }, [addToast]);
+    try {
+      const res = await fetch("/api/cashout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ betId, cashoutType: type }),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        addToast("success", `${type === "partial" ? "Partial" : "Full"} cashout: $${result.amount?.toFixed(2)}`);
+      } else {
+        const data = await res.json();
+        addToast("error", data.error || "Cashout failed");
+      }
+    } catch {
+      addToast("error", "Cashout failed");
+    }
+    refetchBets();
+  }, [addToast, refetchBets]);
 
   const handleSimulate = useCallback(async (matchId: string) => {
     setSimulating(matchId);
@@ -154,10 +173,37 @@ export default function MonitorPage() {
     }
   }, [addToast, refetchMatches, refetchBets]);
 
+  const handleAutoSettle = useCallback(async () => {
+    if (!user?.id) return;
+    setAutoSettleRunning(true);
+    try {
+      const res = await fetch("/api/settle", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: user.id }),
+      });
+      if (res.ok) {
+        const result = await res.json();
+        if (result.settled > 0) {
+          addToast("success", `Settled ${result.settled} bet(s). Profit: $${result.totalProfit?.toFixed(2)}`);
+        } else {
+          addToast("info", "No bets to settle");
+        }
+        refetchBets();
+      }
+    } catch {
+      addToast("error", "Settlement failed");
+    } finally {
+      setAutoSettleRunning(false);
+    }
+  }, [user?.id, addToast, refetchBets]);
+
   const liveMatches = allMatches.filter((m) => m.status === "live" || m.status === "upcoming");
   const liveMatchesList = liveMatches.filter((m) => m.status === "live");
   const upcomingMatchesList = liveMatches.filter((m) => m.status === "upcoming");
   const activeBets = bets.filter((b) => !cashedOutBets.has(b.id));
+  const accumulatorBets = activeBets.filter((b) => b.accumulatorId);
+  const singleBets = activeBets.filter((b) => !b.accumulatorId);
 
   if (loading) {
     return (
@@ -180,24 +226,33 @@ export default function MonitorPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          {/* Sound Notification Toggle */}
           <Button
             variant="outline"
             size="sm"
             onClick={() => setSoundEnabled(!soundEnabled)}
             className={`${soundEnabled ? "border-primary/30 text-primary" : "border-border text-muted-foreground"}`}
           >
-            {soundEnabled ? (
-              <Volume2 className="h-4 w-4 mr-1.5" />
-            ) : (
-              <VolumeX className="h-4 w-4 mr-1.5" />
-            )}
+            {soundEnabled ? <Volume2 className="h-4 w-4 mr-1.5" /> : <VolumeX className="h-4 w-4 mr-1.5" />}
             {soundEnabled ? "Sound On" : "Sound Off"}
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleAutoSettle}
+            disabled={autoSettleRunning}
+            className="border-emerald-400/30 text-emerald-400 hover:bg-emerald-400/10"
+          >
+            {autoSettleRunning ? (
+              <div className="h-4 w-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4 mr-1.5" />
+            )}
+            Settle Bets
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
         <Card className="bg-card border-border">
           <CardContent className="p-3 flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-500/10">
@@ -217,6 +272,17 @@ export default function MonitorPage() {
             <div>
               <p className="text-xs text-muted-foreground">Active Bets</p>
               <p className="text-lg font-bold text-foreground">{activeBets.length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="bg-card border-border">
+          <CardContent className="p-3 flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-400/10">
+              <Layers className="h-4 w-4 text-purple-400" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Accumulators</p>
+              <p className="text-lg font-bold text-foreground">{accumulatorBets.length}</p>
             </div>
           </CardContent>
         </Card>
@@ -327,7 +393,7 @@ export default function MonitorPage() {
                   {match.aiRecommended && (
                     <div className="mt-3 rounded bg-primary/5 border border-primary/10 p-2">
                       <div className="flex items-center gap-1">
-                        <Zap className="h-3 w-3 text-primary" />
+                        <Brain className="h-3 w-3 text-primary" />
                         <span className="text-[10px] text-muted-foreground">AI recommends:</span>
                         <span className="text-xs font-medium text-primary">
                           {match.aiRecommended === "home" ? match.homeTeam : match.aiRecommended === "away" ? match.awayTeam : match.aiRecommended}
@@ -390,6 +456,7 @@ export default function MonitorPage() {
                   isSelectedOnLiveMatch &&
                   ((bet.selection === bet.match?.homeTeam && (bet.match?.homeScore ?? 0) > (bet.match?.awayScore ?? 0)) ||
                     (bet.selection === bet.match?.awayTeam && (bet.match?.awayScore ?? 0) > (bet.match?.homeScore ?? 0)));
+                const isAcca = !!bet.accumulatorId;
 
                 return (
                   <div
@@ -399,6 +466,8 @@ export default function MonitorPage() {
                         ? isWinning
                           ? "border-emerald-400/20 bg-emerald-400/5"
                           : "border-red-400/20 bg-red-400/5"
+                        : isAcca
+                        ? "border-purple-400/20 bg-purple-400/5"
                         : "border-border bg-secondary/50"
                     }`}
                   >
@@ -407,6 +476,12 @@ export default function MonitorPage() {
                         {bet.isAutoPlaced && (
                           <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20">
                             AI
+                          </Badge>
+                        )}
+                        {isAcca && (
+                          <Badge className="text-[10px] bg-purple-400/10 text-purple-400 border-purple-400/20">
+                            <Layers className="h-3 w-3 mr-0.5" />
+                            Acca
                           </Badge>
                         )}
                         <span className="text-sm font-medium text-foreground">
@@ -450,10 +525,19 @@ export default function MonitorPage() {
                     {cashoutRec && (
                       <div className="mt-2 rounded-lg bg-secondary/50 p-3">
                         <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs text-muted-foreground">Cashout Offer</span>
-                          <span className="text-sm font-bold text-amber-400">
-                            ${cashoutRec.cashoutAmount.toFixed(2)}
+                          <span className="text-xs text-muted-foreground">
+                            {cashoutRec.waitOrCashout === "wait_for_settlement" ? "Settlement" : "Cashout Offer"}
                           </span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-bold text-amber-400">
+                              ${cashoutRec.cashoutAmount.toFixed(2)}
+                            </span>
+                            {cashoutRec.settlementProbability > 0 && (
+                              <Badge variant="secondary" className="text-[10px]">
+                                {Math.round(cashoutRec.settlementProbability * 100)}% win
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         {/* Cashout progress bar */}
                         <div className="h-1.5 rounded-full bg-secondary overflow-hidden mb-2">
@@ -463,6 +547,8 @@ export default function MonitorPage() {
                                 ? "bg-red-500"
                                 : cashoutRec.urgency === "medium"
                                 ? "bg-amber-400"
+                                : cashoutRec.waitOrCashout === "wait_for_settlement"
+                                ? "bg-emerald-400"
                                 : "bg-primary"
                             }`}
                             style={{ width: `${Math.min((cashoutRec.cashoutAmount / bet.potentialWin) * 100, 100)}%` }}
@@ -471,16 +557,35 @@ export default function MonitorPage() {
                         <p className="text-[10px] text-muted-foreground mb-2">
                           {cashoutRec.reasoning}
                         </p>
-                        {cashoutRec.shouldCashout && (
-                          <Button
-                            size="xs"
-                            className="bg-amber-400 text-black hover:bg-amber-400/80 w-full"
-                            onClick={() => handleCashout(bet.id)}
-                          >
-                            <DollarSign className="h-3 w-3" />
-                            Cashout Now
-                          </Button>
-                        )}
+                        {/* Action buttons */}
+                        <div className="flex gap-2">
+                          {cashoutRec.shouldCashout && cashoutRec.waitOrCashout === "cashout_partial" && cashoutRec.partialCashoutAmount > 0 && (
+                            <Button
+                              size="xs"
+                              className="flex-1 bg-primary text-primary-foreground hover:bg-primary/80"
+                              onClick={() => handleCashout(bet.id, "partial")}
+                            >
+                              <DollarSign className="h-3 w-3" />
+                              Partial ${cashoutRec.partialCashoutAmount.toFixed(2)}
+                            </Button>
+                          )}
+                          {cashoutRec.shouldCashout && cashoutRec.waitOrCashout !== "wait_for_settlement" && (
+                            <Button
+                              size="xs"
+                              className="flex-1 bg-amber-400 text-black hover:bg-amber-400/80"
+                              onClick={() => handleCashout(bet.id, "full")}
+                            >
+                              <DollarSign className="h-3 w-3" />
+                              Cashout ${cashoutRec.cashoutAmount.toFixed(2)}
+                            </Button>
+                          )}
+                          {cashoutRec.waitOrCashout === "wait_for_settlement" && (
+                            <div className="flex items-center gap-2 text-xs text-emerald-400 w-full">
+                              <TrendingUp className="h-3 w-3" />
+                              <span>Waiting for full settlement for maximum payout</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     )}
 

@@ -51,6 +51,7 @@ export type AdminSettingsMinAggregateOutputType = {
   autoApproveAccounts: boolean | null
   oddsApiKey: string | null
   apiFootballKey: string | null
+  accumulatorBonusThresholds: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -66,6 +67,7 @@ export type AdminSettingsMaxAggregateOutputType = {
   autoApproveAccounts: boolean | null
   oddsApiKey: string | null
   apiFootballKey: string | null
+  accumulatorBonusThresholds: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -81,6 +83,7 @@ export type AdminSettingsCountAggregateOutputType = {
   autoApproveAccounts: number
   oddsApiKey: number
   apiFootballKey: number
+  accumulatorBonusThresholds: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -112,6 +115,7 @@ export type AdminSettingsMinAggregateInputType = {
   autoApproveAccounts?: true
   oddsApiKey?: true
   apiFootballKey?: true
+  accumulatorBonusThresholds?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -127,6 +131,7 @@ export type AdminSettingsMaxAggregateInputType = {
   autoApproveAccounts?: true
   oddsApiKey?: true
   apiFootballKey?: true
+  accumulatorBonusThresholds?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -142,6 +147,7 @@ export type AdminSettingsCountAggregateInputType = {
   autoApproveAccounts?: true
   oddsApiKey?: true
   apiFootballKey?: true
+  accumulatorBonusThresholds?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -244,6 +250,7 @@ export type AdminSettingsGroupByOutputType = {
   autoApproveAccounts: boolean
   oddsApiKey: string | null
   apiFootballKey: string | null
+  accumulatorBonusThresholds: string | null
   createdAt: Date
   updatedAt: Date
   _count: AdminSettingsCountAggregateOutputType | null
@@ -282,6 +289,7 @@ export type AdminSettingsWhereInput = {
   autoApproveAccounts?: Prisma.BoolFilter<"AdminSettings"> | boolean
   oddsApiKey?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
   apiFootballKey?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
+  accumulatorBonusThresholds?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
   createdAt?: Prisma.DateTimeFilter<"AdminSettings"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"AdminSettings"> | Date | string
 }
@@ -297,6 +305,7 @@ export type AdminSettingsOrderByWithRelationInput = {
   autoApproveAccounts?: Prisma.SortOrder
   oddsApiKey?: Prisma.SortOrderInput | Prisma.SortOrder
   apiFootballKey?: Prisma.SortOrderInput | Prisma.SortOrder
+  accumulatorBonusThresholds?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -315,6 +324,7 @@ export type AdminSettingsWhereUniqueInput = Prisma.AtLeast<{
   autoApproveAccounts?: Prisma.BoolFilter<"AdminSettings"> | boolean
   oddsApiKey?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
   apiFootballKey?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
+  accumulatorBonusThresholds?: Prisma.StringNullableFilter<"AdminSettings"> | string | null
   createdAt?: Prisma.DateTimeFilter<"AdminSettings"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"AdminSettings"> | Date | string
 }, "id">
@@ -330,6 +340,7 @@ export type AdminSettingsOrderByWithAggregationInput = {
   autoApproveAccounts?: Prisma.SortOrder
   oddsApiKey?: Prisma.SortOrderInput | Prisma.SortOrder
   apiFootballKey?: Prisma.SortOrderInput | Prisma.SortOrder
+  accumulatorBonusThresholds?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.AdminSettingsCountOrderByAggregateInput
@@ -353,6 +364,7 @@ export type AdminSettingsScalarWhereWithAggregatesInput = {
   autoApproveAccounts?: Prisma.BoolWithAggregatesFilter<"AdminSettings"> | boolean
   oddsApiKey?: Prisma.StringNullableWithAggregatesFilter<"AdminSettings"> | string | null
   apiFootballKey?: Prisma.StringNullableWithAggregatesFilter<"AdminSettings"> | string | null
+  accumulatorBonusThresholds?: Prisma.StringNullableWithAggregatesFilter<"AdminSettings"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"AdminSettings"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"AdminSettings"> | Date | string
 }
@@ -368,6 +380,7 @@ export type AdminSettingsCreateInput = {
   autoApproveAccounts?: boolean
   oddsApiKey?: string | null
   apiFootballKey?: string | null
+  accumulatorBonusThresholds?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -383,6 +396,7 @@ export type AdminSettingsUncheckedCreateInput = {
   autoApproveAccounts?: boolean
   oddsApiKey?: string | null
   apiFootballKey?: string | null
+  accumulatorBonusThresholds?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -398,6 +412,7 @@ export type AdminSettingsUpdateInput = {
   autoApproveAccounts?: Prisma.BoolFieldUpdateOperationsInput | boolean
   oddsApiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   apiFootballKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accumulatorBonusThresholds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -413,6 +428,7 @@ export type AdminSettingsUncheckedUpdateInput = {
   autoApproveAccounts?: Prisma.BoolFieldUpdateOperationsInput | boolean
   oddsApiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   apiFootballKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accumulatorBonusThresholds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -428,6 +444,7 @@ export type AdminSettingsCreateManyInput = {
   autoApproveAccounts?: boolean
   oddsApiKey?: string | null
   apiFootballKey?: string | null
+  accumulatorBonusThresholds?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -443,6 +460,7 @@ export type AdminSettingsUpdateManyMutationInput = {
   autoApproveAccounts?: Prisma.BoolFieldUpdateOperationsInput | boolean
   oddsApiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   apiFootballKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accumulatorBonusThresholds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -458,6 +476,7 @@ export type AdminSettingsUncheckedUpdateManyInput = {
   autoApproveAccounts?: Prisma.BoolFieldUpdateOperationsInput | boolean
   oddsApiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   apiFootballKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accumulatorBonusThresholds?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -473,6 +492,7 @@ export type AdminSettingsCountOrderByAggregateInput = {
   autoApproveAccounts?: Prisma.SortOrder
   oddsApiKey?: Prisma.SortOrder
   apiFootballKey?: Prisma.SortOrder
+  accumulatorBonusThresholds?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -495,6 +515,7 @@ export type AdminSettingsMaxOrderByAggregateInput = {
   autoApproveAccounts?: Prisma.SortOrder
   oddsApiKey?: Prisma.SortOrder
   apiFootballKey?: Prisma.SortOrder
+  accumulatorBonusThresholds?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -510,6 +531,7 @@ export type AdminSettingsMinOrderByAggregateInput = {
   autoApproveAccounts?: Prisma.SortOrder
   oddsApiKey?: Prisma.SortOrder
   apiFootballKey?: Prisma.SortOrder
+  accumulatorBonusThresholds?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -534,6 +556,7 @@ export type AdminSettingsSelect<ExtArgs extends runtime.Types.Extensions.Interna
   autoApproveAccounts?: boolean
   oddsApiKey?: boolean
   apiFootballKey?: boolean
+  accumulatorBonusThresholds?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["adminSettings"]>
@@ -549,6 +572,7 @@ export type AdminSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Types
   autoApproveAccounts?: boolean
   oddsApiKey?: boolean
   apiFootballKey?: boolean
+  accumulatorBonusThresholds?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["adminSettings"]>
@@ -564,6 +588,7 @@ export type AdminSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types
   autoApproveAccounts?: boolean
   oddsApiKey?: boolean
   apiFootballKey?: boolean
+  accumulatorBonusThresholds?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["adminSettings"]>
@@ -579,11 +604,12 @@ export type AdminSettingsSelectScalar = {
   autoApproveAccounts?: boolean
   oddsApiKey?: boolean
   apiFootballKey?: boolean
+  accumulatorBonusThresholds?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type AdminSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "defaultCommissionRate" | "minCommissionRate" | "maxCommissionRate" | "platformName" | "maintenanceMode" | "maxUsers" | "autoApproveAccounts" | "oddsApiKey" | "apiFootballKey" | "createdAt" | "updatedAt", ExtArgs["result"]["adminSettings"]>
+export type AdminSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "defaultCommissionRate" | "minCommissionRate" | "maxCommissionRate" | "platformName" | "maintenanceMode" | "maxUsers" | "autoApproveAccounts" | "oddsApiKey" | "apiFootballKey" | "accumulatorBonusThresholds" | "createdAt" | "updatedAt", ExtArgs["result"]["adminSettings"]>
 
 export type $AdminSettingsPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "AdminSettings"
@@ -599,6 +625,7 @@ export type $AdminSettingsPayload<ExtArgs extends runtime.Types.Extensions.Inter
     autoApproveAccounts: boolean
     oddsApiKey: string | null
     apiFootballKey: string | null
+    accumulatorBonusThresholds: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["adminSettings"]>
@@ -1034,6 +1061,7 @@ export interface AdminSettingsFieldRefs {
   readonly autoApproveAccounts: Prisma.FieldRef<"AdminSettings", 'Boolean'>
   readonly oddsApiKey: Prisma.FieldRef<"AdminSettings", 'String'>
   readonly apiFootballKey: Prisma.FieldRef<"AdminSettings", 'String'>
+  readonly accumulatorBonusThresholds: Prisma.FieldRef<"AdminSettings", 'String'>
   readonly createdAt: Prisma.FieldRef<"AdminSettings", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"AdminSettings", 'DateTime'>
 }

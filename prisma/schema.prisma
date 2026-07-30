@@ -19,6 +19,8 @@ model User {
   totalLoss      Float    @default(0)
   commissionPaid Float    @default(0)
   bankroll       Float    @default(1000)
+  dailyPnl       Float    @default(0)
+  weeklyPnl      Float    @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -26,6 +28,8 @@ model User {
   bets            Bet[]
   transactions    Transaction[]
   settings        UserSettings?
+  accumulators    Accumulator[]
+  botLogs         BotLog[]
 }
 
 model UserSettings {
@@ -44,6 +48,19 @@ model UserSettings {
   dailyBetLimit        Float   @default(500)
   kellyFraction        Float   @default(0.25)
   minEdgeThreshold     Float   @default(0.03)
+  // Enhanced auto-bet settings
+  betTypes             String  @default("single,accumulator") // "single" | "accumulator" | "single,accumulator"
+  maxAccumulatorLegs   Int     @default(5)
+  minAiConfidence      Float   @default(0.6)
+  stopLossDaily        Float   @default(200)
+  stopLossWeekly       Float   @default(500)
+  profitTargetDaily    Float   @default(300)
+  profitTargetWeekly   Float   @default(1000)
+  betScheduleStart     String  @default("08:00") // HH:mm - only place bets after this time
+  betScheduleEnd       String  @default("22:00") // HH:mm - only place bets before this time
+  partialCashoutEnabled Boolean @default(true)
+  partialCashoutPercent Float  @default(0.5) // 50% partial cashout
+  waitFullSettlement   Boolean @default(true) // wait for full match settlement for cashout
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -149,14 +166,17 @@ model Bet {
   userId          String
   bettingAccountId String
   matchId         String
-  betType         String
+  accumulatorId   String?   // link to accumulator if part of one
+  betType         String    // "single" | "accumulator_leg" | "over_under" | "both_teams_score"
   selection       String
   odds            Float
   stake           Float
   potentialWin    Float
-  status          String    @default("pending")
+  status          String    @default("pending") // "pending" | "won" | "lost" | "cashed_out" | "partial_cashout" | "void" | "cancelled"
   cashoutAmount   Float?
   cashoutOdds     Float?
+  partialCashoutAmount Float?  // amount already cashed out
+  partialCashoutPercent Float? // percentage of stake cashed out
   profit          Float?
   commission      Float?
   isAutoPlaced    Boolean   @default(false)
@@ -166,6 +186,7 @@ model Bet {
   kellyStake      Float?    @default(0)
   valueEdge       Float?    @default(0)
   riskScore       Float?    @default(50)
+  settlementReason String?  // "match_finished" | "cashout" | "partial_cashout" | "void_match"
   placedAt        DateTime  @default(now())
   settledAt       DateTime?
   cashedOutAt     DateTime?
@@ -175,22 +196,74 @@ model Bet {
   user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   bettingAccount BettingAccount @relation(fields: [bettingAccountId], references: [id], onDelete: Cascade)
   match          Match         @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  accumulator    Accumulator?  @relation(fields: [accumulatorId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([userId, status])
   @@index([matchId])
   @@index([status])
+  @@index([accumulatorId])
+}
+
+model Accumulator {
+  id              String   @id @default(cuid())
+  userId          String
+  totalOdds       Float    // combined odds of all legs
+  stake           Float
+  potentialWin    Float
+  status          String   @default("pending") // "pending" | "won" | "lost" | "cashed_out" | "partial_cashout"
+  cashoutAmount   Float?
+  completedLegs   Int      @default(0)
+  totalLegs       Int
+  isAutoPlaced    Boolean  @default(false)
+  bonusPercent    Float?   @default(0) // accumulator bonus
+  profit          Float?
+  commission      Float?
+  placedAt        DateTime @default(now())
+  settledAt       DateTime?
+  cashedOutAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bets  Bet[]
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([status])
+}
+
+model BotLog {
+  id          String   @id @default(cuid())
+  userId      String
+  action      String   // "bet_placed" | "bet_skipped" | "cashout_executed" | "cashout_skipped" | "bet_settled" | "accumulator_created" | "stop_loss_hit" | "profit_target_hit" | "schedule_blocked"
+  matchId     String?
+  betId       String?
+  accumulatorId String?
+  details     String?  // JSON string with additional context
+  reasoning   String?  // AI reasoning for the decision
+  confidence  Float?   @default(0)
+  profitImpact Float?  @default(0) // how much this decision affected profit
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, createdAt])
+  @@index([action])
+  @@index([createdAt])
 }
 
 model Transaction {
   id          String   @id @default(cuid())
   userId      String
-  type        String
+  type        String   // "bet_placed" | "bet_won" | "bet_lost" | "cashout" | "partial_cashout" | "commission" | "deposit" | "withdrawal" | "accumulator_bonus"
   amount      Float
   currency    String   @default("USD")
   status      String   @default("completed")
   description String?
   betId       String?
+  accumulatorId String?
   createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -210,6 +283,7 @@ model AdminSettings {
   autoApproveAccounts   Boolean @default(true)
   oddsApiKey            String? @default("")
   apiFootballKey        String? @default("")
+  accumulatorBonusThresholds String? @default("[]") // JSON: [{legs: 4, bonus: 5}, {legs: 5, bonus: 10}, {legs: 6, bonus: 20}]
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }

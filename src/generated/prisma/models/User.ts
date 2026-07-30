@@ -32,6 +32,8 @@ export type UserAvgAggregateOutputType = {
   totalLoss: number | null
   commissionPaid: number | null
   bankroll: number | null
+  dailyPnl: number | null
+  weeklyPnl: number | null
 }
 
 export type UserSumAggregateOutputType = {
@@ -40,6 +42,8 @@ export type UserSumAggregateOutputType = {
   totalLoss: number | null
   commissionPaid: number | null
   bankroll: number | null
+  dailyPnl: number | null
+  weeklyPnl: number | null
 }
 
 export type UserMinAggregateOutputType = {
@@ -54,6 +58,8 @@ export type UserMinAggregateOutputType = {
   totalLoss: number | null
   commissionPaid: number | null
   bankroll: number | null
+  dailyPnl: number | null
+  weeklyPnl: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -70,6 +76,8 @@ export type UserMaxAggregateOutputType = {
   totalLoss: number | null
   commissionPaid: number | null
   bankroll: number | null
+  dailyPnl: number | null
+  weeklyPnl: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -86,6 +94,8 @@ export type UserCountAggregateOutputType = {
   totalLoss: number
   commissionPaid: number
   bankroll: number
+  dailyPnl: number
+  weeklyPnl: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -98,6 +108,8 @@ export type UserAvgAggregateInputType = {
   totalLoss?: true
   commissionPaid?: true
   bankroll?: true
+  dailyPnl?: true
+  weeklyPnl?: true
 }
 
 export type UserSumAggregateInputType = {
@@ -106,6 +118,8 @@ export type UserSumAggregateInputType = {
   totalLoss?: true
   commissionPaid?: true
   bankroll?: true
+  dailyPnl?: true
+  weeklyPnl?: true
 }
 
 export type UserMinAggregateInputType = {
@@ -120,6 +134,8 @@ export type UserMinAggregateInputType = {
   totalLoss?: true
   commissionPaid?: true
   bankroll?: true
+  dailyPnl?: true
+  weeklyPnl?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -136,6 +152,8 @@ export type UserMaxAggregateInputType = {
   totalLoss?: true
   commissionPaid?: true
   bankroll?: true
+  dailyPnl?: true
+  weeklyPnl?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -152,6 +170,8 @@ export type UserCountAggregateInputType = {
   totalLoss?: true
   commissionPaid?: true
   bankroll?: true
+  dailyPnl?: true
+  weeklyPnl?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -255,6 +275,8 @@ export type UserGroupByOutputType = {
   totalLoss: number
   commissionPaid: number
   bankroll: number
+  dailyPnl: number
+  weeklyPnl: number
   createdAt: Date
   updatedAt: Date
   _count: UserCountAggregateOutputType | null
@@ -294,12 +316,16 @@ export type UserWhereInput = {
   totalLoss?: Prisma.FloatFilter<"User"> | number
   commissionPaid?: Prisma.FloatFilter<"User"> | number
   bankroll?: Prisma.FloatFilter<"User"> | number
+  dailyPnl?: Prisma.FloatFilter<"User"> | number
+  weeklyPnl?: Prisma.FloatFilter<"User"> | number
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
   bettingAccounts?: Prisma.BettingAccountListRelationFilter
   bets?: Prisma.BetListRelationFilter
   transactions?: Prisma.TransactionListRelationFilter
   settings?: Prisma.XOR<Prisma.UserSettingsNullableScalarRelationFilter, Prisma.UserSettingsWhereInput> | null
+  accumulators?: Prisma.AccumulatorListRelationFilter
+  botLogs?: Prisma.BotLogListRelationFilter
 }
 
 export type UserOrderByWithRelationInput = {
@@ -314,12 +340,16 @@ export type UserOrderByWithRelationInput = {
   totalLoss?: Prisma.SortOrder
   commissionPaid?: Prisma.SortOrder
   bankroll?: Prisma.SortOrder
+  dailyPnl?: Prisma.SortOrder
+  weeklyPnl?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   bettingAccounts?: Prisma.BettingAccountOrderByRelationAggregateInput
   bets?: Prisma.BetOrderByRelationAggregateInput
   transactions?: Prisma.TransactionOrderByRelationAggregateInput
   settings?: Prisma.UserSettingsOrderByWithRelationInput
+  accumulators?: Prisma.AccumulatorOrderByRelationAggregateInput
+  botLogs?: Prisma.BotLogOrderByRelationAggregateInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -337,12 +367,16 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   totalLoss?: Prisma.FloatFilter<"User"> | number
   commissionPaid?: Prisma.FloatFilter<"User"> | number
   bankroll?: Prisma.FloatFilter<"User"> | number
+  dailyPnl?: Prisma.FloatFilter<"User"> | number
+  weeklyPnl?: Prisma.FloatFilter<"User"> | number
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
   bettingAccounts?: Prisma.BettingAccountListRelationFilter
   bets?: Prisma.BetListRelationFilter
   transactions?: Prisma.TransactionListRelationFilter
   settings?: Prisma.XOR<Prisma.UserSettingsNullableScalarRelationFilter, Prisma.UserSettingsWhereInput> | null
+  accumulators?: Prisma.AccumulatorListRelationFilter
+  botLogs?: Prisma.BotLogListRelationFilter
 }, "id" | "email">
 
 export type UserOrderByWithAggregationInput = {
@@ -357,6 +391,8 @@ export type UserOrderByWithAggregationInput = {
   totalLoss?: Prisma.SortOrder
   commissionPaid?: Prisma.SortOrder
   bankroll?: Prisma.SortOrder
+  dailyPnl?: Prisma.SortOrder
+  weeklyPnl?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
@@ -381,6 +417,8 @@ export type UserScalarWhereWithAggregatesInput = {
   totalLoss?: Prisma.FloatWithAggregatesFilter<"User"> | number
   commissionPaid?: Prisma.FloatWithAggregatesFilter<"User"> | number
   bankroll?: Prisma.FloatWithAggregatesFilter<"User"> | number
+  dailyPnl?: Prisma.FloatWithAggregatesFilter<"User"> | number
+  weeklyPnl?: Prisma.FloatWithAggregatesFilter<"User"> | number
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
 }
@@ -397,12 +435,16 @@ export type UserCreateInput = {
   totalLoss?: number
   commissionPaid?: number
   bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
   bets?: Prisma.BetCreateNestedManyWithoutUserInput
   transactions?: Prisma.TransactionCreateNestedManyWithoutUserInput
   settings?: Prisma.UserSettingsCreateNestedOneWithoutUserInput
+  accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
+  botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -417,12 +459,16 @@ export type UserUncheckedCreateInput = {
   totalLoss?: number
   commissionPaid?: number
   bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
   bets?: Prisma.BetUncheckedCreateNestedManyWithoutUserInput
   transactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutUserInput
   settings?: Prisma.UserSettingsUncheckedCreateNestedOneWithoutUserInput
+  accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
+  botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserUpdateInput = {
@@ -437,12 +483,16 @@ export type UserUpdateInput = {
   totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
   commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
   bets?: Prisma.BetUpdateManyWithoutUserNestedInput
   transactions?: Prisma.TransactionUpdateManyWithoutUserNestedInput
   settings?: Prisma.UserSettingsUpdateOneWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -457,12 +507,16 @@ export type UserUncheckedUpdateInput = {
   totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
   commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
   bets?: Prisma.BetUncheckedUpdateManyWithoutUserNestedInput
   transactions?: Prisma.TransactionUncheckedUpdateManyWithoutUserNestedInput
   settings?: Prisma.UserSettingsUncheckedUpdateOneWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -477,6 +531,8 @@ export type UserCreateManyInput = {
   totalLoss?: number
   commissionPaid?: number
   bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -493,6 +549,8 @@ export type UserUpdateManyMutationInput = {
   totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
   commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -509,6 +567,8 @@ export type UserUncheckedUpdateManyInput = {
   totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
   commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -525,6 +585,8 @@ export type UserCountOrderByAggregateInput = {
   totalLoss?: Prisma.SortOrder
   commissionPaid?: Prisma.SortOrder
   bankroll?: Prisma.SortOrder
+  dailyPnl?: Prisma.SortOrder
+  weeklyPnl?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -535,6 +597,8 @@ export type UserAvgOrderByAggregateInput = {
   totalLoss?: Prisma.SortOrder
   commissionPaid?: Prisma.SortOrder
   bankroll?: Prisma.SortOrder
+  dailyPnl?: Prisma.SortOrder
+  weeklyPnl?: Prisma.SortOrder
 }
 
 export type UserMaxOrderByAggregateInput = {
@@ -549,6 +613,8 @@ export type UserMaxOrderByAggregateInput = {
   totalLoss?: Prisma.SortOrder
   commissionPaid?: Prisma.SortOrder
   bankroll?: Prisma.SortOrder
+  dailyPnl?: Prisma.SortOrder
+  weeklyPnl?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -565,6 +631,8 @@ export type UserMinOrderByAggregateInput = {
   totalLoss?: Prisma.SortOrder
   commissionPaid?: Prisma.SortOrder
   bankroll?: Prisma.SortOrder
+  dailyPnl?: Prisma.SortOrder
+  weeklyPnl?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -575,6 +643,8 @@ export type UserSumOrderByAggregateInput = {
   totalLoss?: Prisma.SortOrder
   commissionPaid?: Prisma.SortOrder
   bankroll?: Prisma.SortOrder
+  dailyPnl?: Prisma.SortOrder
+  weeklyPnl?: Prisma.SortOrder
 }
 
 export type UserScalarRelationFilter = {
@@ -644,6 +714,34 @@ export type UserUpdateOneRequiredWithoutBetsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutBetsInput, Prisma.UserUpdateWithoutBetsInput>, Prisma.UserUncheckedUpdateWithoutBetsInput>
 }
 
+export type UserCreateNestedOneWithoutAccumulatorsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAccumulatorsInput, Prisma.UserUncheckedCreateWithoutAccumulatorsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAccumulatorsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutAccumulatorsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutAccumulatorsInput, Prisma.UserUncheckedCreateWithoutAccumulatorsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutAccumulatorsInput
+  upsert?: Prisma.UserUpsertWithoutAccumulatorsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutAccumulatorsInput, Prisma.UserUpdateWithoutAccumulatorsInput>, Prisma.UserUncheckedUpdateWithoutAccumulatorsInput>
+}
+
+export type UserCreateNestedOneWithoutBotLogsInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutBotLogsInput, Prisma.UserUncheckedCreateWithoutBotLogsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutBotLogsInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutBotLogsNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutBotLogsInput, Prisma.UserUncheckedCreateWithoutBotLogsInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutBotLogsInput
+  upsert?: Prisma.UserUpsertWithoutBotLogsInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutBotLogsInput, Prisma.UserUpdateWithoutBotLogsInput>, Prisma.UserUncheckedUpdateWithoutBotLogsInput>
+}
+
 export type UserCreateNestedOneWithoutTransactionsInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutTransactionsInput, Prisma.UserUncheckedCreateWithoutTransactionsInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutTransactionsInput
@@ -670,11 +768,15 @@ export type UserCreateWithoutSettingsInput = {
   totalLoss?: number
   commissionPaid?: number
   bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
   bets?: Prisma.BetCreateNestedManyWithoutUserInput
   transactions?: Prisma.TransactionCreateNestedManyWithoutUserInput
+  accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
+  botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSettingsInput = {
@@ -689,11 +791,15 @@ export type UserUncheckedCreateWithoutSettingsInput = {
   totalLoss?: number
   commissionPaid?: number
   bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
   bets?: Prisma.BetUncheckedCreateNestedManyWithoutUserInput
   transactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutUserInput
+  accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
+  botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSettingsInput = {
@@ -724,11 +830,15 @@ export type UserUpdateWithoutSettingsInput = {
   totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
   commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
   bets?: Prisma.BetUpdateManyWithoutUserNestedInput
   transactions?: Prisma.TransactionUpdateManyWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSettingsInput = {
@@ -743,11 +853,15 @@ export type UserUncheckedUpdateWithoutSettingsInput = {
   totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
   commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
   bets?: Prisma.BetUncheckedUpdateManyWithoutUserNestedInput
   transactions?: Prisma.TransactionUncheckedUpdateManyWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutBettingAccountsInput = {
@@ -762,11 +876,15 @@ export type UserCreateWithoutBettingAccountsInput = {
   totalLoss?: number
   commissionPaid?: number
   bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   bets?: Prisma.BetCreateNestedManyWithoutUserInput
   transactions?: Prisma.TransactionCreateNestedManyWithoutUserInput
   settings?: Prisma.UserSettingsCreateNestedOneWithoutUserInput
+  accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
+  botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutBettingAccountsInput = {
@@ -781,11 +899,15 @@ export type UserUncheckedCreateWithoutBettingAccountsInput = {
   totalLoss?: number
   commissionPaid?: number
   bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   bets?: Prisma.BetUncheckedCreateNestedManyWithoutUserInput
   transactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutUserInput
   settings?: Prisma.UserSettingsUncheckedCreateNestedOneWithoutUserInput
+  accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
+  botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutBettingAccountsInput = {
@@ -816,11 +938,15 @@ export type UserUpdateWithoutBettingAccountsInput = {
   totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
   commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bets?: Prisma.BetUpdateManyWithoutUserNestedInput
   transactions?: Prisma.TransactionUpdateManyWithoutUserNestedInput
   settings?: Prisma.UserSettingsUpdateOneWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutBettingAccountsInput = {
@@ -835,11 +961,15 @@ export type UserUncheckedUpdateWithoutBettingAccountsInput = {
   totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
   commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bets?: Prisma.BetUncheckedUpdateManyWithoutUserNestedInput
   transactions?: Prisma.TransactionUncheckedUpdateManyWithoutUserNestedInput
   settings?: Prisma.UserSettingsUncheckedUpdateOneWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutBetsInput = {
@@ -854,11 +984,15 @@ export type UserCreateWithoutBetsInput = {
   totalLoss?: number
   commissionPaid?: number
   bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
   transactions?: Prisma.TransactionCreateNestedManyWithoutUserInput
   settings?: Prisma.UserSettingsCreateNestedOneWithoutUserInput
+  accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
+  botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutBetsInput = {
@@ -873,11 +1007,15 @@ export type UserUncheckedCreateWithoutBetsInput = {
   totalLoss?: number
   commissionPaid?: number
   bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
   transactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutUserInput
   settings?: Prisma.UserSettingsUncheckedCreateNestedOneWithoutUserInput
+  accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
+  botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutBetsInput = {
@@ -908,11 +1046,15 @@ export type UserUpdateWithoutBetsInput = {
   totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
   commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
   transactions?: Prisma.TransactionUpdateManyWithoutUserNestedInput
   settings?: Prisma.UserSettingsUpdateOneWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutBetsInput = {
@@ -927,11 +1069,231 @@ export type UserUncheckedUpdateWithoutBetsInput = {
   totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
   commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
   transactions?: Prisma.TransactionUncheckedUpdateManyWithoutUserNestedInput
   settings?: Prisma.UserSettingsUncheckedUpdateOneWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutAccumulatorsInput = {
+  id?: string
+  email: string
+  name: string
+  passwordHash: string
+  avatar?: string | null
+  role?: string
+  balance?: number
+  totalProfit?: number
+  totalLoss?: number
+  commissionPaid?: number
+  bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
+  bets?: Prisma.BetCreateNestedManyWithoutUserInput
+  transactions?: Prisma.TransactionCreateNestedManyWithoutUserInput
+  settings?: Prisma.UserSettingsCreateNestedOneWithoutUserInput
+  botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutAccumulatorsInput = {
+  id?: string
+  email: string
+  name: string
+  passwordHash: string
+  avatar?: string | null
+  role?: string
+  balance?: number
+  totalProfit?: number
+  totalLoss?: number
+  commissionPaid?: number
+  bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
+  bets?: Prisma.BetUncheckedCreateNestedManyWithoutUserInput
+  transactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutUserInput
+  settings?: Prisma.UserSettingsUncheckedCreateNestedOneWithoutUserInput
+  botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutAccumulatorsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutAccumulatorsInput, Prisma.UserUncheckedCreateWithoutAccumulatorsInput>
+}
+
+export type UserUpsertWithoutAccumulatorsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutAccumulatorsInput, Prisma.UserUncheckedUpdateWithoutAccumulatorsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutAccumulatorsInput, Prisma.UserUncheckedCreateWithoutAccumulatorsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutAccumulatorsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutAccumulatorsInput, Prisma.UserUncheckedUpdateWithoutAccumulatorsInput>
+}
+
+export type UserUpdateWithoutAccumulatorsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  balance?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalProfit?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
+  commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
+  bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
+  bets?: Prisma.BetUpdateManyWithoutUserNestedInput
+  transactions?: Prisma.TransactionUpdateManyWithoutUserNestedInput
+  settings?: Prisma.UserSettingsUpdateOneWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutAccumulatorsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  balance?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalProfit?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
+  commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
+  bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
+  bets?: Prisma.BetUncheckedUpdateManyWithoutUserNestedInput
+  transactions?: Prisma.TransactionUncheckedUpdateManyWithoutUserNestedInput
+  settings?: Prisma.UserSettingsUncheckedUpdateOneWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
+}
+
+export type UserCreateWithoutBotLogsInput = {
+  id?: string
+  email: string
+  name: string
+  passwordHash: string
+  avatar?: string | null
+  role?: string
+  balance?: number
+  totalProfit?: number
+  totalLoss?: number
+  commissionPaid?: number
+  bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
+  bets?: Prisma.BetCreateNestedManyWithoutUserInput
+  transactions?: Prisma.TransactionCreateNestedManyWithoutUserInput
+  settings?: Prisma.UserSettingsCreateNestedOneWithoutUserInput
+  accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutBotLogsInput = {
+  id?: string
+  email: string
+  name: string
+  passwordHash: string
+  avatar?: string | null
+  role?: string
+  balance?: number
+  totalProfit?: number
+  totalLoss?: number
+  commissionPaid?: number
+  bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
+  bets?: Prisma.BetUncheckedCreateNestedManyWithoutUserInput
+  transactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutUserInput
+  settings?: Prisma.UserSettingsUncheckedCreateNestedOneWithoutUserInput
+  accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutBotLogsInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutBotLogsInput, Prisma.UserUncheckedCreateWithoutBotLogsInput>
+}
+
+export type UserUpsertWithoutBotLogsInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutBotLogsInput, Prisma.UserUncheckedUpdateWithoutBotLogsInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutBotLogsInput, Prisma.UserUncheckedCreateWithoutBotLogsInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutBotLogsInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutBotLogsInput, Prisma.UserUncheckedUpdateWithoutBotLogsInput>
+}
+
+export type UserUpdateWithoutBotLogsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  balance?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalProfit?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
+  commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
+  bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
+  bets?: Prisma.BetUpdateManyWithoutUserNestedInput
+  transactions?: Prisma.TransactionUpdateManyWithoutUserNestedInput
+  settings?: Prisma.UserSettingsUpdateOneWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutBotLogsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  balance?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalProfit?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
+  commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
+  bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
+  bets?: Prisma.BetUncheckedUpdateManyWithoutUserNestedInput
+  transactions?: Prisma.TransactionUncheckedUpdateManyWithoutUserNestedInput
+  settings?: Prisma.UserSettingsUncheckedUpdateOneWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
 }
 
 export type UserCreateWithoutTransactionsInput = {
@@ -946,11 +1308,15 @@ export type UserCreateWithoutTransactionsInput = {
   totalLoss?: number
   commissionPaid?: number
   bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
   bets?: Prisma.BetCreateNestedManyWithoutUserInput
   settings?: Prisma.UserSettingsCreateNestedOneWithoutUserInput
+  accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
+  botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutTransactionsInput = {
@@ -965,11 +1331,15 @@ export type UserUncheckedCreateWithoutTransactionsInput = {
   totalLoss?: number
   commissionPaid?: number
   bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
   bets?: Prisma.BetUncheckedCreateNestedManyWithoutUserInput
   settings?: Prisma.UserSettingsUncheckedCreateNestedOneWithoutUserInput
+  accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
+  botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutTransactionsInput = {
@@ -1000,11 +1370,15 @@ export type UserUpdateWithoutTransactionsInput = {
   totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
   commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
   bets?: Prisma.BetUpdateManyWithoutUserNestedInput
   settings?: Prisma.UserSettingsUpdateOneWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutTransactionsInput = {
@@ -1019,11 +1393,15 @@ export type UserUncheckedUpdateWithoutTransactionsInput = {
   totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
   commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
   bets?: Prisma.BetUncheckedUpdateManyWithoutUserNestedInput
   settings?: Prisma.UserSettingsUncheckedUpdateOneWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
 }
 
 
@@ -1035,12 +1413,16 @@ export type UserCountOutputType = {
   bettingAccounts: number
   bets: number
   transactions: number
+  accumulators: number
+  botLogs: number
 }
 
 export type UserCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   bettingAccounts?: boolean | UserCountOutputTypeCountBettingAccountsArgs
   bets?: boolean | UserCountOutputTypeCountBetsArgs
   transactions?: boolean | UserCountOutputTypeCountTransactionsArgs
+  accumulators?: boolean | UserCountOutputTypeCountAccumulatorsArgs
+  botLogs?: boolean | UserCountOutputTypeCountBotLogsArgs
 }
 
 /**
@@ -1074,6 +1456,20 @@ export type UserCountOutputTypeCountTransactionsArgs<ExtArgs extends runtime.Typ
   where?: Prisma.TransactionWhereInput
 }
 
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountAccumulatorsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.AccumulatorWhereInput
+}
+
+/**
+ * UserCountOutputType without action
+ */
+export type UserCountOutputTypeCountBotLogsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.BotLogWhereInput
+}
+
 
 export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1087,12 +1483,16 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   totalLoss?: boolean
   commissionPaid?: boolean
   bankroll?: boolean
+  dailyPnl?: boolean
+  weeklyPnl?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   bettingAccounts?: boolean | Prisma.User$bettingAccountsArgs<ExtArgs>
   bets?: boolean | Prisma.User$betsArgs<ExtArgs>
   transactions?: boolean | Prisma.User$transactionsArgs<ExtArgs>
   settings?: boolean | Prisma.User$settingsArgs<ExtArgs>
+  accumulators?: boolean | Prisma.User$accumulatorsArgs<ExtArgs>
+  botLogs?: boolean | Prisma.User$botLogsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -1108,6 +1508,8 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   totalLoss?: boolean
   commissionPaid?: boolean
   bankroll?: boolean
+  dailyPnl?: boolean
+  weeklyPnl?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["user"]>
@@ -1124,6 +1526,8 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   totalLoss?: boolean
   commissionPaid?: boolean
   bankroll?: boolean
+  dailyPnl?: boolean
+  weeklyPnl?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["user"]>
@@ -1140,16 +1544,20 @@ export type UserSelectScalar = {
   totalLoss?: boolean
   commissionPaid?: boolean
   bankroll?: boolean
+  dailyPnl?: boolean
+  weeklyPnl?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "name" | "passwordHash" | "avatar" | "role" | "balance" | "totalProfit" | "totalLoss" | "commissionPaid" | "bankroll" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "name" | "passwordHash" | "avatar" | "role" | "balance" | "totalProfit" | "totalLoss" | "commissionPaid" | "bankroll" | "dailyPnl" | "weeklyPnl" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   bettingAccounts?: boolean | Prisma.User$bettingAccountsArgs<ExtArgs>
   bets?: boolean | Prisma.User$betsArgs<ExtArgs>
   transactions?: boolean | Prisma.User$transactionsArgs<ExtArgs>
   settings?: boolean | Prisma.User$settingsArgs<ExtArgs>
+  accumulators?: boolean | Prisma.User$accumulatorsArgs<ExtArgs>
+  botLogs?: boolean | Prisma.User$botLogsArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -1162,6 +1570,8 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     bets: Prisma.$BetPayload<ExtArgs>[]
     transactions: Prisma.$TransactionPayload<ExtArgs>[]
     settings: Prisma.$UserSettingsPayload<ExtArgs> | null
+    accumulators: Prisma.$AccumulatorPayload<ExtArgs>[]
+    botLogs: Prisma.$BotLogPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1175,6 +1585,8 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     totalLoss: number
     commissionPaid: number
     bankroll: number
+    dailyPnl: number
+    weeklyPnl: number
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["user"]>
@@ -1575,6 +1987,8 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   bets<T extends Prisma.User$betsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$betsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BetPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   transactions<T extends Prisma.User$transactionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$transactionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TransactionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   settings<T extends Prisma.User$settingsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$settingsArgs<ExtArgs>>): Prisma.Prisma__UserSettingsClient<runtime.Types.Result.GetResult<Prisma.$UserSettingsPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  accumulators<T extends Prisma.User$accumulatorsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$accumulatorsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AccumulatorPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  botLogs<T extends Prisma.User$botLogsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$botLogsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BotLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1615,6 +2029,8 @@ export interface UserFieldRefs {
   readonly totalLoss: Prisma.FieldRef<"User", 'Float'>
   readonly commissionPaid: Prisma.FieldRef<"User", 'Float'>
   readonly bankroll: Prisma.FieldRef<"User", 'Float'>
+  readonly dailyPnl: Prisma.FieldRef<"User", 'Float'>
+  readonly weeklyPnl: Prisma.FieldRef<"User", 'Float'>
   readonly createdAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"User", 'DateTime'>
 }
@@ -2096,6 +2512,54 @@ export type User$settingsArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    */
   include?: Prisma.UserSettingsInclude<ExtArgs> | null
   where?: Prisma.UserSettingsWhereInput
+}
+
+/**
+ * User.accumulators
+ */
+export type User$accumulatorsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Accumulator
+   */
+  select?: Prisma.AccumulatorSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Accumulator
+   */
+  omit?: Prisma.AccumulatorOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AccumulatorInclude<ExtArgs> | null
+  where?: Prisma.AccumulatorWhereInput
+  orderBy?: Prisma.AccumulatorOrderByWithRelationInput | Prisma.AccumulatorOrderByWithRelationInput[]
+  cursor?: Prisma.AccumulatorWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.AccumulatorScalarFieldEnum | Prisma.AccumulatorScalarFieldEnum[]
+}
+
+/**
+ * User.botLogs
+ */
+export type User$botLogsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BotLog
+   */
+  select?: Prisma.BotLogSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the BotLog
+   */
+  omit?: Prisma.BotLogOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BotLogInclude<ExtArgs> | null
+  where?: Prisma.BotLogWhereInput
+  orderBy?: Prisma.BotLogOrderByWithRelationInput | Prisma.BotLogOrderByWithRelationInput[]
+  cursor?: Prisma.BotLogWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.BotLogScalarFieldEnum | Prisma.BotLogScalarFieldEnum[]
 }
 
 /**

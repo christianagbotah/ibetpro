@@ -32,6 +32,8 @@ export type BetAvgAggregateOutputType = {
   potentialWin: number | null
   cashoutAmount: number | null
   cashoutOdds: number | null
+  partialCashoutAmount: number | null
+  partialCashoutPercent: number | null
   profit: number | null
   commission: number | null
   aiConfidence: number | null
@@ -46,6 +48,8 @@ export type BetSumAggregateOutputType = {
   potentialWin: number | null
   cashoutAmount: number | null
   cashoutOdds: number | null
+  partialCashoutAmount: number | null
+  partialCashoutPercent: number | null
   profit: number | null
   commission: number | null
   aiConfidence: number | null
@@ -59,6 +63,7 @@ export type BetMinAggregateOutputType = {
   userId: string | null
   bettingAccountId: string | null
   matchId: string | null
+  accumulatorId: string | null
   betType: string | null
   selection: string | null
   odds: number | null
@@ -67,6 +72,8 @@ export type BetMinAggregateOutputType = {
   status: string | null
   cashoutAmount: number | null
   cashoutOdds: number | null
+  partialCashoutAmount: number | null
+  partialCashoutPercent: number | null
   profit: number | null
   commission: number | null
   isAutoPlaced: boolean | null
@@ -76,6 +83,7 @@ export type BetMinAggregateOutputType = {
   kellyStake: number | null
   valueEdge: number | null
   riskScore: number | null
+  settlementReason: string | null
   placedAt: Date | null
   settledAt: Date | null
   cashedOutAt: Date | null
@@ -88,6 +96,7 @@ export type BetMaxAggregateOutputType = {
   userId: string | null
   bettingAccountId: string | null
   matchId: string | null
+  accumulatorId: string | null
   betType: string | null
   selection: string | null
   odds: number | null
@@ -96,6 +105,8 @@ export type BetMaxAggregateOutputType = {
   status: string | null
   cashoutAmount: number | null
   cashoutOdds: number | null
+  partialCashoutAmount: number | null
+  partialCashoutPercent: number | null
   profit: number | null
   commission: number | null
   isAutoPlaced: boolean | null
@@ -105,6 +116,7 @@ export type BetMaxAggregateOutputType = {
   kellyStake: number | null
   valueEdge: number | null
   riskScore: number | null
+  settlementReason: string | null
   placedAt: Date | null
   settledAt: Date | null
   cashedOutAt: Date | null
@@ -117,6 +129,7 @@ export type BetCountAggregateOutputType = {
   userId: number
   bettingAccountId: number
   matchId: number
+  accumulatorId: number
   betType: number
   selection: number
   odds: number
@@ -125,6 +138,8 @@ export type BetCountAggregateOutputType = {
   status: number
   cashoutAmount: number
   cashoutOdds: number
+  partialCashoutAmount: number
+  partialCashoutPercent: number
   profit: number
   commission: number
   isAutoPlaced: number
@@ -134,6 +149,7 @@ export type BetCountAggregateOutputType = {
   kellyStake: number
   valueEdge: number
   riskScore: number
+  settlementReason: number
   placedAt: number
   settledAt: number
   cashedOutAt: number
@@ -149,6 +165,8 @@ export type BetAvgAggregateInputType = {
   potentialWin?: true
   cashoutAmount?: true
   cashoutOdds?: true
+  partialCashoutAmount?: true
+  partialCashoutPercent?: true
   profit?: true
   commission?: true
   aiConfidence?: true
@@ -163,6 +181,8 @@ export type BetSumAggregateInputType = {
   potentialWin?: true
   cashoutAmount?: true
   cashoutOdds?: true
+  partialCashoutAmount?: true
+  partialCashoutPercent?: true
   profit?: true
   commission?: true
   aiConfidence?: true
@@ -176,6 +196,7 @@ export type BetMinAggregateInputType = {
   userId?: true
   bettingAccountId?: true
   matchId?: true
+  accumulatorId?: true
   betType?: true
   selection?: true
   odds?: true
@@ -184,6 +205,8 @@ export type BetMinAggregateInputType = {
   status?: true
   cashoutAmount?: true
   cashoutOdds?: true
+  partialCashoutAmount?: true
+  partialCashoutPercent?: true
   profit?: true
   commission?: true
   isAutoPlaced?: true
@@ -193,6 +216,7 @@ export type BetMinAggregateInputType = {
   kellyStake?: true
   valueEdge?: true
   riskScore?: true
+  settlementReason?: true
   placedAt?: true
   settledAt?: true
   cashedOutAt?: true
@@ -205,6 +229,7 @@ export type BetMaxAggregateInputType = {
   userId?: true
   bettingAccountId?: true
   matchId?: true
+  accumulatorId?: true
   betType?: true
   selection?: true
   odds?: true
@@ -213,6 +238,8 @@ export type BetMaxAggregateInputType = {
   status?: true
   cashoutAmount?: true
   cashoutOdds?: true
+  partialCashoutAmount?: true
+  partialCashoutPercent?: true
   profit?: true
   commission?: true
   isAutoPlaced?: true
@@ -222,6 +249,7 @@ export type BetMaxAggregateInputType = {
   kellyStake?: true
   valueEdge?: true
   riskScore?: true
+  settlementReason?: true
   placedAt?: true
   settledAt?: true
   cashedOutAt?: true
@@ -234,6 +262,7 @@ export type BetCountAggregateInputType = {
   userId?: true
   bettingAccountId?: true
   matchId?: true
+  accumulatorId?: true
   betType?: true
   selection?: true
   odds?: true
@@ -242,6 +271,8 @@ export type BetCountAggregateInputType = {
   status?: true
   cashoutAmount?: true
   cashoutOdds?: true
+  partialCashoutAmount?: true
+  partialCashoutPercent?: true
   profit?: true
   commission?: true
   isAutoPlaced?: true
@@ -251,6 +282,7 @@ export type BetCountAggregateInputType = {
   kellyStake?: true
   valueEdge?: true
   riskScore?: true
+  settlementReason?: true
   placedAt?: true
   settledAt?: true
   cashedOutAt?: true
@@ -350,6 +382,7 @@ export type BetGroupByOutputType = {
   userId: string
   bettingAccountId: string
   matchId: string
+  accumulatorId: string | null
   betType: string
   selection: string
   odds: number
@@ -358,6 +391,8 @@ export type BetGroupByOutputType = {
   status: string
   cashoutAmount: number | null
   cashoutOdds: number | null
+  partialCashoutAmount: number | null
+  partialCashoutPercent: number | null
   profit: number | null
   commission: number | null
   isAutoPlaced: boolean
@@ -367,6 +402,7 @@ export type BetGroupByOutputType = {
   kellyStake: number | null
   valueEdge: number | null
   riskScore: number | null
+  settlementReason: string | null
   placedAt: Date
   settledAt: Date | null
   cashedOutAt: Date | null
@@ -402,6 +438,7 @@ export type BetWhereInput = {
   userId?: Prisma.StringFilter<"Bet"> | string
   bettingAccountId?: Prisma.StringFilter<"Bet"> | string
   matchId?: Prisma.StringFilter<"Bet"> | string
+  accumulatorId?: Prisma.StringNullableFilter<"Bet"> | string | null
   betType?: Prisma.StringFilter<"Bet"> | string
   selection?: Prisma.StringFilter<"Bet"> | string
   odds?: Prisma.FloatFilter<"Bet"> | number
@@ -410,6 +447,8 @@ export type BetWhereInput = {
   status?: Prisma.StringFilter<"Bet"> | string
   cashoutAmount?: Prisma.FloatNullableFilter<"Bet"> | number | null
   cashoutOdds?: Prisma.FloatNullableFilter<"Bet"> | number | null
+  partialCashoutAmount?: Prisma.FloatNullableFilter<"Bet"> | number | null
+  partialCashoutPercent?: Prisma.FloatNullableFilter<"Bet"> | number | null
   profit?: Prisma.FloatNullableFilter<"Bet"> | number | null
   commission?: Prisma.FloatNullableFilter<"Bet"> | number | null
   isAutoPlaced?: Prisma.BoolFilter<"Bet"> | boolean
@@ -419,6 +458,7 @@ export type BetWhereInput = {
   kellyStake?: Prisma.FloatNullableFilter<"Bet"> | number | null
   valueEdge?: Prisma.FloatNullableFilter<"Bet"> | number | null
   riskScore?: Prisma.FloatNullableFilter<"Bet"> | number | null
+  settlementReason?: Prisma.StringNullableFilter<"Bet"> | string | null
   placedAt?: Prisma.DateTimeFilter<"Bet"> | Date | string
   settledAt?: Prisma.DateTimeNullableFilter<"Bet"> | Date | string | null
   cashedOutAt?: Prisma.DateTimeNullableFilter<"Bet"> | Date | string | null
@@ -427,6 +467,7 @@ export type BetWhereInput = {
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   bettingAccount?: Prisma.XOR<Prisma.BettingAccountScalarRelationFilter, Prisma.BettingAccountWhereInput>
   match?: Prisma.XOR<Prisma.MatchScalarRelationFilter, Prisma.MatchWhereInput>
+  accumulator?: Prisma.XOR<Prisma.AccumulatorNullableScalarRelationFilter, Prisma.AccumulatorWhereInput> | null
 }
 
 export type BetOrderByWithRelationInput = {
@@ -434,6 +475,7 @@ export type BetOrderByWithRelationInput = {
   userId?: Prisma.SortOrder
   bettingAccountId?: Prisma.SortOrder
   matchId?: Prisma.SortOrder
+  accumulatorId?: Prisma.SortOrderInput | Prisma.SortOrder
   betType?: Prisma.SortOrder
   selection?: Prisma.SortOrder
   odds?: Prisma.SortOrder
@@ -442,6 +484,8 @@ export type BetOrderByWithRelationInput = {
   status?: Prisma.SortOrder
   cashoutAmount?: Prisma.SortOrderInput | Prisma.SortOrder
   cashoutOdds?: Prisma.SortOrderInput | Prisma.SortOrder
+  partialCashoutAmount?: Prisma.SortOrderInput | Prisma.SortOrder
+  partialCashoutPercent?: Prisma.SortOrderInput | Prisma.SortOrder
   profit?: Prisma.SortOrderInput | Prisma.SortOrder
   commission?: Prisma.SortOrderInput | Prisma.SortOrder
   isAutoPlaced?: Prisma.SortOrder
@@ -451,6 +495,7 @@ export type BetOrderByWithRelationInput = {
   kellyStake?: Prisma.SortOrderInput | Prisma.SortOrder
   valueEdge?: Prisma.SortOrderInput | Prisma.SortOrder
   riskScore?: Prisma.SortOrderInput | Prisma.SortOrder
+  settlementReason?: Prisma.SortOrderInput | Prisma.SortOrder
   placedAt?: Prisma.SortOrder
   settledAt?: Prisma.SortOrderInput | Prisma.SortOrder
   cashedOutAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -459,6 +504,7 @@ export type BetOrderByWithRelationInput = {
   user?: Prisma.UserOrderByWithRelationInput
   bettingAccount?: Prisma.BettingAccountOrderByWithRelationInput
   match?: Prisma.MatchOrderByWithRelationInput
+  accumulator?: Prisma.AccumulatorOrderByWithRelationInput
 }
 
 export type BetWhereUniqueInput = Prisma.AtLeast<{
@@ -469,6 +515,7 @@ export type BetWhereUniqueInput = Prisma.AtLeast<{
   userId?: Prisma.StringFilter<"Bet"> | string
   bettingAccountId?: Prisma.StringFilter<"Bet"> | string
   matchId?: Prisma.StringFilter<"Bet"> | string
+  accumulatorId?: Prisma.StringNullableFilter<"Bet"> | string | null
   betType?: Prisma.StringFilter<"Bet"> | string
   selection?: Prisma.StringFilter<"Bet"> | string
   odds?: Prisma.FloatFilter<"Bet"> | number
@@ -477,6 +524,8 @@ export type BetWhereUniqueInput = Prisma.AtLeast<{
   status?: Prisma.StringFilter<"Bet"> | string
   cashoutAmount?: Prisma.FloatNullableFilter<"Bet"> | number | null
   cashoutOdds?: Prisma.FloatNullableFilter<"Bet"> | number | null
+  partialCashoutAmount?: Prisma.FloatNullableFilter<"Bet"> | number | null
+  partialCashoutPercent?: Prisma.FloatNullableFilter<"Bet"> | number | null
   profit?: Prisma.FloatNullableFilter<"Bet"> | number | null
   commission?: Prisma.FloatNullableFilter<"Bet"> | number | null
   isAutoPlaced?: Prisma.BoolFilter<"Bet"> | boolean
@@ -486,6 +535,7 @@ export type BetWhereUniqueInput = Prisma.AtLeast<{
   kellyStake?: Prisma.FloatNullableFilter<"Bet"> | number | null
   valueEdge?: Prisma.FloatNullableFilter<"Bet"> | number | null
   riskScore?: Prisma.FloatNullableFilter<"Bet"> | number | null
+  settlementReason?: Prisma.StringNullableFilter<"Bet"> | string | null
   placedAt?: Prisma.DateTimeFilter<"Bet"> | Date | string
   settledAt?: Prisma.DateTimeNullableFilter<"Bet"> | Date | string | null
   cashedOutAt?: Prisma.DateTimeNullableFilter<"Bet"> | Date | string | null
@@ -494,6 +544,7 @@ export type BetWhereUniqueInput = Prisma.AtLeast<{
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
   bettingAccount?: Prisma.XOR<Prisma.BettingAccountScalarRelationFilter, Prisma.BettingAccountWhereInput>
   match?: Prisma.XOR<Prisma.MatchScalarRelationFilter, Prisma.MatchWhereInput>
+  accumulator?: Prisma.XOR<Prisma.AccumulatorNullableScalarRelationFilter, Prisma.AccumulatorWhereInput> | null
 }, "id">
 
 export type BetOrderByWithAggregationInput = {
@@ -501,6 +552,7 @@ export type BetOrderByWithAggregationInput = {
   userId?: Prisma.SortOrder
   bettingAccountId?: Prisma.SortOrder
   matchId?: Prisma.SortOrder
+  accumulatorId?: Prisma.SortOrderInput | Prisma.SortOrder
   betType?: Prisma.SortOrder
   selection?: Prisma.SortOrder
   odds?: Prisma.SortOrder
@@ -509,6 +561,8 @@ export type BetOrderByWithAggregationInput = {
   status?: Prisma.SortOrder
   cashoutAmount?: Prisma.SortOrderInput | Prisma.SortOrder
   cashoutOdds?: Prisma.SortOrderInput | Prisma.SortOrder
+  partialCashoutAmount?: Prisma.SortOrderInput | Prisma.SortOrder
+  partialCashoutPercent?: Prisma.SortOrderInput | Prisma.SortOrder
   profit?: Prisma.SortOrderInput | Prisma.SortOrder
   commission?: Prisma.SortOrderInput | Prisma.SortOrder
   isAutoPlaced?: Prisma.SortOrder
@@ -518,6 +572,7 @@ export type BetOrderByWithAggregationInput = {
   kellyStake?: Prisma.SortOrderInput | Prisma.SortOrder
   valueEdge?: Prisma.SortOrderInput | Prisma.SortOrder
   riskScore?: Prisma.SortOrderInput | Prisma.SortOrder
+  settlementReason?: Prisma.SortOrderInput | Prisma.SortOrder
   placedAt?: Prisma.SortOrder
   settledAt?: Prisma.SortOrderInput | Prisma.SortOrder
   cashedOutAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -538,6 +593,7 @@ export type BetScalarWhereWithAggregatesInput = {
   userId?: Prisma.StringWithAggregatesFilter<"Bet"> | string
   bettingAccountId?: Prisma.StringWithAggregatesFilter<"Bet"> | string
   matchId?: Prisma.StringWithAggregatesFilter<"Bet"> | string
+  accumulatorId?: Prisma.StringNullableWithAggregatesFilter<"Bet"> | string | null
   betType?: Prisma.StringWithAggregatesFilter<"Bet"> | string
   selection?: Prisma.StringWithAggregatesFilter<"Bet"> | string
   odds?: Prisma.FloatWithAggregatesFilter<"Bet"> | number
@@ -546,6 +602,8 @@ export type BetScalarWhereWithAggregatesInput = {
   status?: Prisma.StringWithAggregatesFilter<"Bet"> | string
   cashoutAmount?: Prisma.FloatNullableWithAggregatesFilter<"Bet"> | number | null
   cashoutOdds?: Prisma.FloatNullableWithAggregatesFilter<"Bet"> | number | null
+  partialCashoutAmount?: Prisma.FloatNullableWithAggregatesFilter<"Bet"> | number | null
+  partialCashoutPercent?: Prisma.FloatNullableWithAggregatesFilter<"Bet"> | number | null
   profit?: Prisma.FloatNullableWithAggregatesFilter<"Bet"> | number | null
   commission?: Prisma.FloatNullableWithAggregatesFilter<"Bet"> | number | null
   isAutoPlaced?: Prisma.BoolWithAggregatesFilter<"Bet"> | boolean
@@ -555,6 +613,7 @@ export type BetScalarWhereWithAggregatesInput = {
   kellyStake?: Prisma.FloatNullableWithAggregatesFilter<"Bet"> | number | null
   valueEdge?: Prisma.FloatNullableWithAggregatesFilter<"Bet"> | number | null
   riskScore?: Prisma.FloatNullableWithAggregatesFilter<"Bet"> | number | null
+  settlementReason?: Prisma.StringNullableWithAggregatesFilter<"Bet"> | string | null
   placedAt?: Prisma.DateTimeWithAggregatesFilter<"Bet"> | Date | string
   settledAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Bet"> | Date | string | null
   cashedOutAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Bet"> | Date | string | null
@@ -572,6 +631,8 @@ export type BetCreateInput = {
   status?: string
   cashoutAmount?: number | null
   cashoutOdds?: number | null
+  partialCashoutAmount?: number | null
+  partialCashoutPercent?: number | null
   profit?: number | null
   commission?: number | null
   isAutoPlaced?: boolean
@@ -581,6 +642,7 @@ export type BetCreateInput = {
   kellyStake?: number | null
   valueEdge?: number | null
   riskScore?: number | null
+  settlementReason?: string | null
   placedAt?: Date | string
   settledAt?: Date | string | null
   cashedOutAt?: Date | string | null
@@ -589,6 +651,7 @@ export type BetCreateInput = {
   user: Prisma.UserCreateNestedOneWithoutBetsInput
   bettingAccount: Prisma.BettingAccountCreateNestedOneWithoutBetsInput
   match: Prisma.MatchCreateNestedOneWithoutBetsInput
+  accumulator?: Prisma.AccumulatorCreateNestedOneWithoutBetsInput
 }
 
 export type BetUncheckedCreateInput = {
@@ -596,6 +659,7 @@ export type BetUncheckedCreateInput = {
   userId: string
   bettingAccountId: string
   matchId: string
+  accumulatorId?: string | null
   betType: string
   selection: string
   odds: number
@@ -604,6 +668,8 @@ export type BetUncheckedCreateInput = {
   status?: string
   cashoutAmount?: number | null
   cashoutOdds?: number | null
+  partialCashoutAmount?: number | null
+  partialCashoutPercent?: number | null
   profit?: number | null
   commission?: number | null
   isAutoPlaced?: boolean
@@ -613,6 +679,7 @@ export type BetUncheckedCreateInput = {
   kellyStake?: number | null
   valueEdge?: number | null
   riskScore?: number | null
+  settlementReason?: string | null
   placedAt?: Date | string
   settledAt?: Date | string | null
   cashedOutAt?: Date | string | null
@@ -630,6 +697,8 @@ export type BetUpdateInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   cashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   cashoutOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutPercent?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profit?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   commission?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   isAutoPlaced?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -639,6 +708,7 @@ export type BetUpdateInput = {
   kellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   valueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   riskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  settlementReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   placedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cashedOutAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -647,6 +717,7 @@ export type BetUpdateInput = {
   user?: Prisma.UserUpdateOneRequiredWithoutBetsNestedInput
   bettingAccount?: Prisma.BettingAccountUpdateOneRequiredWithoutBetsNestedInput
   match?: Prisma.MatchUpdateOneRequiredWithoutBetsNestedInput
+  accumulator?: Prisma.AccumulatorUpdateOneWithoutBetsNestedInput
 }
 
 export type BetUncheckedUpdateInput = {
@@ -654,6 +725,7 @@ export type BetUncheckedUpdateInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   bettingAccountId?: Prisma.StringFieldUpdateOperationsInput | string
   matchId?: Prisma.StringFieldUpdateOperationsInput | string
+  accumulatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   betType?: Prisma.StringFieldUpdateOperationsInput | string
   selection?: Prisma.StringFieldUpdateOperationsInput | string
   odds?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -662,6 +734,8 @@ export type BetUncheckedUpdateInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   cashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   cashoutOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutPercent?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profit?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   commission?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   isAutoPlaced?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -671,6 +745,7 @@ export type BetUncheckedUpdateInput = {
   kellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   valueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   riskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  settlementReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   placedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cashedOutAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -683,6 +758,7 @@ export type BetCreateManyInput = {
   userId: string
   bettingAccountId: string
   matchId: string
+  accumulatorId?: string | null
   betType: string
   selection: string
   odds: number
@@ -691,6 +767,8 @@ export type BetCreateManyInput = {
   status?: string
   cashoutAmount?: number | null
   cashoutOdds?: number | null
+  partialCashoutAmount?: number | null
+  partialCashoutPercent?: number | null
   profit?: number | null
   commission?: number | null
   isAutoPlaced?: boolean
@@ -700,6 +778,7 @@ export type BetCreateManyInput = {
   kellyStake?: number | null
   valueEdge?: number | null
   riskScore?: number | null
+  settlementReason?: string | null
   placedAt?: Date | string
   settledAt?: Date | string | null
   cashedOutAt?: Date | string | null
@@ -717,6 +796,8 @@ export type BetUpdateManyMutationInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   cashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   cashoutOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutPercent?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profit?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   commission?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   isAutoPlaced?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -726,6 +807,7 @@ export type BetUpdateManyMutationInput = {
   kellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   valueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   riskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  settlementReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   placedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cashedOutAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -738,6 +820,7 @@ export type BetUncheckedUpdateManyInput = {
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   bettingAccountId?: Prisma.StringFieldUpdateOperationsInput | string
   matchId?: Prisma.StringFieldUpdateOperationsInput | string
+  accumulatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   betType?: Prisma.StringFieldUpdateOperationsInput | string
   selection?: Prisma.StringFieldUpdateOperationsInput | string
   odds?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -746,6 +829,8 @@ export type BetUncheckedUpdateManyInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   cashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   cashoutOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutPercent?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profit?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   commission?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   isAutoPlaced?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -755,6 +840,7 @@ export type BetUncheckedUpdateManyInput = {
   kellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   valueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   riskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  settlementReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   placedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cashedOutAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -777,6 +863,7 @@ export type BetCountOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   bettingAccountId?: Prisma.SortOrder
   matchId?: Prisma.SortOrder
+  accumulatorId?: Prisma.SortOrder
   betType?: Prisma.SortOrder
   selection?: Prisma.SortOrder
   odds?: Prisma.SortOrder
@@ -785,6 +872,8 @@ export type BetCountOrderByAggregateInput = {
   status?: Prisma.SortOrder
   cashoutAmount?: Prisma.SortOrder
   cashoutOdds?: Prisma.SortOrder
+  partialCashoutAmount?: Prisma.SortOrder
+  partialCashoutPercent?: Prisma.SortOrder
   profit?: Prisma.SortOrder
   commission?: Prisma.SortOrder
   isAutoPlaced?: Prisma.SortOrder
@@ -794,6 +883,7 @@ export type BetCountOrderByAggregateInput = {
   kellyStake?: Prisma.SortOrder
   valueEdge?: Prisma.SortOrder
   riskScore?: Prisma.SortOrder
+  settlementReason?: Prisma.SortOrder
   placedAt?: Prisma.SortOrder
   settledAt?: Prisma.SortOrder
   cashedOutAt?: Prisma.SortOrder
@@ -807,6 +897,8 @@ export type BetAvgOrderByAggregateInput = {
   potentialWin?: Prisma.SortOrder
   cashoutAmount?: Prisma.SortOrder
   cashoutOdds?: Prisma.SortOrder
+  partialCashoutAmount?: Prisma.SortOrder
+  partialCashoutPercent?: Prisma.SortOrder
   profit?: Prisma.SortOrder
   commission?: Prisma.SortOrder
   aiConfidence?: Prisma.SortOrder
@@ -820,6 +912,7 @@ export type BetMaxOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   bettingAccountId?: Prisma.SortOrder
   matchId?: Prisma.SortOrder
+  accumulatorId?: Prisma.SortOrder
   betType?: Prisma.SortOrder
   selection?: Prisma.SortOrder
   odds?: Prisma.SortOrder
@@ -828,6 +921,8 @@ export type BetMaxOrderByAggregateInput = {
   status?: Prisma.SortOrder
   cashoutAmount?: Prisma.SortOrder
   cashoutOdds?: Prisma.SortOrder
+  partialCashoutAmount?: Prisma.SortOrder
+  partialCashoutPercent?: Prisma.SortOrder
   profit?: Prisma.SortOrder
   commission?: Prisma.SortOrder
   isAutoPlaced?: Prisma.SortOrder
@@ -837,6 +932,7 @@ export type BetMaxOrderByAggregateInput = {
   kellyStake?: Prisma.SortOrder
   valueEdge?: Prisma.SortOrder
   riskScore?: Prisma.SortOrder
+  settlementReason?: Prisma.SortOrder
   placedAt?: Prisma.SortOrder
   settledAt?: Prisma.SortOrder
   cashedOutAt?: Prisma.SortOrder
@@ -849,6 +945,7 @@ export type BetMinOrderByAggregateInput = {
   userId?: Prisma.SortOrder
   bettingAccountId?: Prisma.SortOrder
   matchId?: Prisma.SortOrder
+  accumulatorId?: Prisma.SortOrder
   betType?: Prisma.SortOrder
   selection?: Prisma.SortOrder
   odds?: Prisma.SortOrder
@@ -857,6 +954,8 @@ export type BetMinOrderByAggregateInput = {
   status?: Prisma.SortOrder
   cashoutAmount?: Prisma.SortOrder
   cashoutOdds?: Prisma.SortOrder
+  partialCashoutAmount?: Prisma.SortOrder
+  partialCashoutPercent?: Prisma.SortOrder
   profit?: Prisma.SortOrder
   commission?: Prisma.SortOrder
   isAutoPlaced?: Prisma.SortOrder
@@ -866,6 +965,7 @@ export type BetMinOrderByAggregateInput = {
   kellyStake?: Prisma.SortOrder
   valueEdge?: Prisma.SortOrder
   riskScore?: Prisma.SortOrder
+  settlementReason?: Prisma.SortOrder
   placedAt?: Prisma.SortOrder
   settledAt?: Prisma.SortOrder
   cashedOutAt?: Prisma.SortOrder
@@ -879,6 +979,8 @@ export type BetSumOrderByAggregateInput = {
   potentialWin?: Prisma.SortOrder
   cashoutAmount?: Prisma.SortOrder
   cashoutOdds?: Prisma.SortOrder
+  partialCashoutAmount?: Prisma.SortOrder
+  partialCashoutPercent?: Prisma.SortOrder
   profit?: Prisma.SortOrder
   commission?: Prisma.SortOrder
   aiConfidence?: Prisma.SortOrder
@@ -1013,6 +1115,48 @@ export type BetUncheckedUpdateManyWithoutMatchNestedInput = {
   deleteMany?: Prisma.BetScalarWhereInput | Prisma.BetScalarWhereInput[]
 }
 
+export type BetCreateNestedManyWithoutAccumulatorInput = {
+  create?: Prisma.XOR<Prisma.BetCreateWithoutAccumulatorInput, Prisma.BetUncheckedCreateWithoutAccumulatorInput> | Prisma.BetCreateWithoutAccumulatorInput[] | Prisma.BetUncheckedCreateWithoutAccumulatorInput[]
+  connectOrCreate?: Prisma.BetCreateOrConnectWithoutAccumulatorInput | Prisma.BetCreateOrConnectWithoutAccumulatorInput[]
+  createMany?: Prisma.BetCreateManyAccumulatorInputEnvelope
+  connect?: Prisma.BetWhereUniqueInput | Prisma.BetWhereUniqueInput[]
+}
+
+export type BetUncheckedCreateNestedManyWithoutAccumulatorInput = {
+  create?: Prisma.XOR<Prisma.BetCreateWithoutAccumulatorInput, Prisma.BetUncheckedCreateWithoutAccumulatorInput> | Prisma.BetCreateWithoutAccumulatorInput[] | Prisma.BetUncheckedCreateWithoutAccumulatorInput[]
+  connectOrCreate?: Prisma.BetCreateOrConnectWithoutAccumulatorInput | Prisma.BetCreateOrConnectWithoutAccumulatorInput[]
+  createMany?: Prisma.BetCreateManyAccumulatorInputEnvelope
+  connect?: Prisma.BetWhereUniqueInput | Prisma.BetWhereUniqueInput[]
+}
+
+export type BetUpdateManyWithoutAccumulatorNestedInput = {
+  create?: Prisma.XOR<Prisma.BetCreateWithoutAccumulatorInput, Prisma.BetUncheckedCreateWithoutAccumulatorInput> | Prisma.BetCreateWithoutAccumulatorInput[] | Prisma.BetUncheckedCreateWithoutAccumulatorInput[]
+  connectOrCreate?: Prisma.BetCreateOrConnectWithoutAccumulatorInput | Prisma.BetCreateOrConnectWithoutAccumulatorInput[]
+  upsert?: Prisma.BetUpsertWithWhereUniqueWithoutAccumulatorInput | Prisma.BetUpsertWithWhereUniqueWithoutAccumulatorInput[]
+  createMany?: Prisma.BetCreateManyAccumulatorInputEnvelope
+  set?: Prisma.BetWhereUniqueInput | Prisma.BetWhereUniqueInput[]
+  disconnect?: Prisma.BetWhereUniqueInput | Prisma.BetWhereUniqueInput[]
+  delete?: Prisma.BetWhereUniqueInput | Prisma.BetWhereUniqueInput[]
+  connect?: Prisma.BetWhereUniqueInput | Prisma.BetWhereUniqueInput[]
+  update?: Prisma.BetUpdateWithWhereUniqueWithoutAccumulatorInput | Prisma.BetUpdateWithWhereUniqueWithoutAccumulatorInput[]
+  updateMany?: Prisma.BetUpdateManyWithWhereWithoutAccumulatorInput | Prisma.BetUpdateManyWithWhereWithoutAccumulatorInput[]
+  deleteMany?: Prisma.BetScalarWhereInput | Prisma.BetScalarWhereInput[]
+}
+
+export type BetUncheckedUpdateManyWithoutAccumulatorNestedInput = {
+  create?: Prisma.XOR<Prisma.BetCreateWithoutAccumulatorInput, Prisma.BetUncheckedCreateWithoutAccumulatorInput> | Prisma.BetCreateWithoutAccumulatorInput[] | Prisma.BetUncheckedCreateWithoutAccumulatorInput[]
+  connectOrCreate?: Prisma.BetCreateOrConnectWithoutAccumulatorInput | Prisma.BetCreateOrConnectWithoutAccumulatorInput[]
+  upsert?: Prisma.BetUpsertWithWhereUniqueWithoutAccumulatorInput | Prisma.BetUpsertWithWhereUniqueWithoutAccumulatorInput[]
+  createMany?: Prisma.BetCreateManyAccumulatorInputEnvelope
+  set?: Prisma.BetWhereUniqueInput | Prisma.BetWhereUniqueInput[]
+  disconnect?: Prisma.BetWhereUniqueInput | Prisma.BetWhereUniqueInput[]
+  delete?: Prisma.BetWhereUniqueInput | Prisma.BetWhereUniqueInput[]
+  connect?: Prisma.BetWhereUniqueInput | Prisma.BetWhereUniqueInput[]
+  update?: Prisma.BetUpdateWithWhereUniqueWithoutAccumulatorInput | Prisma.BetUpdateWithWhereUniqueWithoutAccumulatorInput[]
+  updateMany?: Prisma.BetUpdateManyWithWhereWithoutAccumulatorInput | Prisma.BetUpdateManyWithWhereWithoutAccumulatorInput[]
+  deleteMany?: Prisma.BetScalarWhereInput | Prisma.BetScalarWhereInput[]
+}
+
 export type BetCreateWithoutUserInput = {
   id?: string
   betType: string
@@ -1023,6 +1167,8 @@ export type BetCreateWithoutUserInput = {
   status?: string
   cashoutAmount?: number | null
   cashoutOdds?: number | null
+  partialCashoutAmount?: number | null
+  partialCashoutPercent?: number | null
   profit?: number | null
   commission?: number | null
   isAutoPlaced?: boolean
@@ -1032,6 +1178,7 @@ export type BetCreateWithoutUserInput = {
   kellyStake?: number | null
   valueEdge?: number | null
   riskScore?: number | null
+  settlementReason?: string | null
   placedAt?: Date | string
   settledAt?: Date | string | null
   cashedOutAt?: Date | string | null
@@ -1039,12 +1186,14 @@ export type BetCreateWithoutUserInput = {
   updatedAt?: Date | string
   bettingAccount: Prisma.BettingAccountCreateNestedOneWithoutBetsInput
   match: Prisma.MatchCreateNestedOneWithoutBetsInput
+  accumulator?: Prisma.AccumulatorCreateNestedOneWithoutBetsInput
 }
 
 export type BetUncheckedCreateWithoutUserInput = {
   id?: string
   bettingAccountId: string
   matchId: string
+  accumulatorId?: string | null
   betType: string
   selection: string
   odds: number
@@ -1053,6 +1202,8 @@ export type BetUncheckedCreateWithoutUserInput = {
   status?: string
   cashoutAmount?: number | null
   cashoutOdds?: number | null
+  partialCashoutAmount?: number | null
+  partialCashoutPercent?: number | null
   profit?: number | null
   commission?: number | null
   isAutoPlaced?: boolean
@@ -1062,6 +1213,7 @@ export type BetUncheckedCreateWithoutUserInput = {
   kellyStake?: number | null
   valueEdge?: number | null
   riskScore?: number | null
+  settlementReason?: string | null
   placedAt?: Date | string
   settledAt?: Date | string | null
   cashedOutAt?: Date | string | null
@@ -1102,6 +1254,7 @@ export type BetScalarWhereInput = {
   userId?: Prisma.StringFilter<"Bet"> | string
   bettingAccountId?: Prisma.StringFilter<"Bet"> | string
   matchId?: Prisma.StringFilter<"Bet"> | string
+  accumulatorId?: Prisma.StringNullableFilter<"Bet"> | string | null
   betType?: Prisma.StringFilter<"Bet"> | string
   selection?: Prisma.StringFilter<"Bet"> | string
   odds?: Prisma.FloatFilter<"Bet"> | number
@@ -1110,6 +1263,8 @@ export type BetScalarWhereInput = {
   status?: Prisma.StringFilter<"Bet"> | string
   cashoutAmount?: Prisma.FloatNullableFilter<"Bet"> | number | null
   cashoutOdds?: Prisma.FloatNullableFilter<"Bet"> | number | null
+  partialCashoutAmount?: Prisma.FloatNullableFilter<"Bet"> | number | null
+  partialCashoutPercent?: Prisma.FloatNullableFilter<"Bet"> | number | null
   profit?: Prisma.FloatNullableFilter<"Bet"> | number | null
   commission?: Prisma.FloatNullableFilter<"Bet"> | number | null
   isAutoPlaced?: Prisma.BoolFilter<"Bet"> | boolean
@@ -1119,6 +1274,7 @@ export type BetScalarWhereInput = {
   kellyStake?: Prisma.FloatNullableFilter<"Bet"> | number | null
   valueEdge?: Prisma.FloatNullableFilter<"Bet"> | number | null
   riskScore?: Prisma.FloatNullableFilter<"Bet"> | number | null
+  settlementReason?: Prisma.StringNullableFilter<"Bet"> | string | null
   placedAt?: Prisma.DateTimeFilter<"Bet"> | Date | string
   settledAt?: Prisma.DateTimeNullableFilter<"Bet"> | Date | string | null
   cashedOutAt?: Prisma.DateTimeNullableFilter<"Bet"> | Date | string | null
@@ -1136,6 +1292,8 @@ export type BetCreateWithoutBettingAccountInput = {
   status?: string
   cashoutAmount?: number | null
   cashoutOdds?: number | null
+  partialCashoutAmount?: number | null
+  partialCashoutPercent?: number | null
   profit?: number | null
   commission?: number | null
   isAutoPlaced?: boolean
@@ -1145,6 +1303,7 @@ export type BetCreateWithoutBettingAccountInput = {
   kellyStake?: number | null
   valueEdge?: number | null
   riskScore?: number | null
+  settlementReason?: string | null
   placedAt?: Date | string
   settledAt?: Date | string | null
   cashedOutAt?: Date | string | null
@@ -1152,12 +1311,14 @@ export type BetCreateWithoutBettingAccountInput = {
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutBetsInput
   match: Prisma.MatchCreateNestedOneWithoutBetsInput
+  accumulator?: Prisma.AccumulatorCreateNestedOneWithoutBetsInput
 }
 
 export type BetUncheckedCreateWithoutBettingAccountInput = {
   id?: string
   userId: string
   matchId: string
+  accumulatorId?: string | null
   betType: string
   selection: string
   odds: number
@@ -1166,6 +1327,8 @@ export type BetUncheckedCreateWithoutBettingAccountInput = {
   status?: string
   cashoutAmount?: number | null
   cashoutOdds?: number | null
+  partialCashoutAmount?: number | null
+  partialCashoutPercent?: number | null
   profit?: number | null
   commission?: number | null
   isAutoPlaced?: boolean
@@ -1175,6 +1338,7 @@ export type BetUncheckedCreateWithoutBettingAccountInput = {
   kellyStake?: number | null
   valueEdge?: number | null
   riskScore?: number | null
+  settlementReason?: string | null
   placedAt?: Date | string
   settledAt?: Date | string | null
   cashedOutAt?: Date | string | null
@@ -1217,6 +1381,8 @@ export type BetCreateWithoutMatchInput = {
   status?: string
   cashoutAmount?: number | null
   cashoutOdds?: number | null
+  partialCashoutAmount?: number | null
+  partialCashoutPercent?: number | null
   profit?: number | null
   commission?: number | null
   isAutoPlaced?: boolean
@@ -1226,6 +1392,7 @@ export type BetCreateWithoutMatchInput = {
   kellyStake?: number | null
   valueEdge?: number | null
   riskScore?: number | null
+  settlementReason?: string | null
   placedAt?: Date | string
   settledAt?: Date | string | null
   cashedOutAt?: Date | string | null
@@ -1233,12 +1400,14 @@ export type BetCreateWithoutMatchInput = {
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutBetsInput
   bettingAccount: Prisma.BettingAccountCreateNestedOneWithoutBetsInput
+  accumulator?: Prisma.AccumulatorCreateNestedOneWithoutBetsInput
 }
 
 export type BetUncheckedCreateWithoutMatchInput = {
   id?: string
   userId: string
   bettingAccountId: string
+  accumulatorId?: string | null
   betType: string
   selection: string
   odds: number
@@ -1247,6 +1416,8 @@ export type BetUncheckedCreateWithoutMatchInput = {
   status?: string
   cashoutAmount?: number | null
   cashoutOdds?: number | null
+  partialCashoutAmount?: number | null
+  partialCashoutPercent?: number | null
   profit?: number | null
   commission?: number | null
   isAutoPlaced?: boolean
@@ -1256,6 +1427,7 @@ export type BetUncheckedCreateWithoutMatchInput = {
   kellyStake?: number | null
   valueEdge?: number | null
   riskScore?: number | null
+  settlementReason?: string | null
   placedAt?: Date | string
   settledAt?: Date | string | null
   cashedOutAt?: Date | string | null
@@ -1288,8 +1460,41 @@ export type BetUpdateManyWithWhereWithoutMatchInput = {
   data: Prisma.XOR<Prisma.BetUpdateManyMutationInput, Prisma.BetUncheckedUpdateManyWithoutMatchInput>
 }
 
-export type BetCreateManyUserInput = {
+export type BetCreateWithoutAccumulatorInput = {
   id?: string
+  betType: string
+  selection: string
+  odds: number
+  stake: number
+  potentialWin: number
+  status?: string
+  cashoutAmount?: number | null
+  cashoutOdds?: number | null
+  partialCashoutAmount?: number | null
+  partialCashoutPercent?: number | null
+  profit?: number | null
+  commission?: number | null
+  isAutoPlaced?: boolean
+  aiConfidence?: number | null
+  aiReasoning?: string | null
+  aiModelUsed?: string | null
+  kellyStake?: number | null
+  valueEdge?: number | null
+  riskScore?: number | null
+  settlementReason?: string | null
+  placedAt?: Date | string
+  settledAt?: Date | string | null
+  cashedOutAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  user: Prisma.UserCreateNestedOneWithoutBetsInput
+  bettingAccount: Prisma.BettingAccountCreateNestedOneWithoutBetsInput
+  match: Prisma.MatchCreateNestedOneWithoutBetsInput
+}
+
+export type BetUncheckedCreateWithoutAccumulatorInput = {
+  id?: string
+  userId: string
   bettingAccountId: string
   matchId: string
   betType: string
@@ -1300,6 +1505,8 @@ export type BetCreateManyUserInput = {
   status?: string
   cashoutAmount?: number | null
   cashoutOdds?: number | null
+  partialCashoutAmount?: number | null
+  partialCashoutPercent?: number | null
   profit?: number | null
   commission?: number | null
   isAutoPlaced?: boolean
@@ -1309,6 +1516,64 @@ export type BetCreateManyUserInput = {
   kellyStake?: number | null
   valueEdge?: number | null
   riskScore?: number | null
+  settlementReason?: string | null
+  placedAt?: Date | string
+  settledAt?: Date | string | null
+  cashedOutAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type BetCreateOrConnectWithoutAccumulatorInput = {
+  where: Prisma.BetWhereUniqueInput
+  create: Prisma.XOR<Prisma.BetCreateWithoutAccumulatorInput, Prisma.BetUncheckedCreateWithoutAccumulatorInput>
+}
+
+export type BetCreateManyAccumulatorInputEnvelope = {
+  data: Prisma.BetCreateManyAccumulatorInput | Prisma.BetCreateManyAccumulatorInput[]
+}
+
+export type BetUpsertWithWhereUniqueWithoutAccumulatorInput = {
+  where: Prisma.BetWhereUniqueInput
+  update: Prisma.XOR<Prisma.BetUpdateWithoutAccumulatorInput, Prisma.BetUncheckedUpdateWithoutAccumulatorInput>
+  create: Prisma.XOR<Prisma.BetCreateWithoutAccumulatorInput, Prisma.BetUncheckedCreateWithoutAccumulatorInput>
+}
+
+export type BetUpdateWithWhereUniqueWithoutAccumulatorInput = {
+  where: Prisma.BetWhereUniqueInput
+  data: Prisma.XOR<Prisma.BetUpdateWithoutAccumulatorInput, Prisma.BetUncheckedUpdateWithoutAccumulatorInput>
+}
+
+export type BetUpdateManyWithWhereWithoutAccumulatorInput = {
+  where: Prisma.BetScalarWhereInput
+  data: Prisma.XOR<Prisma.BetUpdateManyMutationInput, Prisma.BetUncheckedUpdateManyWithoutAccumulatorInput>
+}
+
+export type BetCreateManyUserInput = {
+  id?: string
+  bettingAccountId: string
+  matchId: string
+  accumulatorId?: string | null
+  betType: string
+  selection: string
+  odds: number
+  stake: number
+  potentialWin: number
+  status?: string
+  cashoutAmount?: number | null
+  cashoutOdds?: number | null
+  partialCashoutAmount?: number | null
+  partialCashoutPercent?: number | null
+  profit?: number | null
+  commission?: number | null
+  isAutoPlaced?: boolean
+  aiConfidence?: number | null
+  aiReasoning?: string | null
+  aiModelUsed?: string | null
+  kellyStake?: number | null
+  valueEdge?: number | null
+  riskScore?: number | null
+  settlementReason?: string | null
   placedAt?: Date | string
   settledAt?: Date | string | null
   cashedOutAt?: Date | string | null
@@ -1326,6 +1591,8 @@ export type BetUpdateWithoutUserInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   cashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   cashoutOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutPercent?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profit?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   commission?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   isAutoPlaced?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1335,6 +1602,7 @@ export type BetUpdateWithoutUserInput = {
   kellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   valueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   riskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  settlementReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   placedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cashedOutAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1342,12 +1610,14 @@ export type BetUpdateWithoutUserInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccount?: Prisma.BettingAccountUpdateOneRequiredWithoutBetsNestedInput
   match?: Prisma.MatchUpdateOneRequiredWithoutBetsNestedInput
+  accumulator?: Prisma.AccumulatorUpdateOneWithoutBetsNestedInput
 }
 
 export type BetUncheckedUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   bettingAccountId?: Prisma.StringFieldUpdateOperationsInput | string
   matchId?: Prisma.StringFieldUpdateOperationsInput | string
+  accumulatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   betType?: Prisma.StringFieldUpdateOperationsInput | string
   selection?: Prisma.StringFieldUpdateOperationsInput | string
   odds?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -1356,6 +1626,8 @@ export type BetUncheckedUpdateWithoutUserInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   cashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   cashoutOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutPercent?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profit?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   commission?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   isAutoPlaced?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1365,6 +1637,7 @@ export type BetUncheckedUpdateWithoutUserInput = {
   kellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   valueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   riskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  settlementReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   placedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cashedOutAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1376,6 +1649,7 @@ export type BetUncheckedUpdateManyWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   bettingAccountId?: Prisma.StringFieldUpdateOperationsInput | string
   matchId?: Prisma.StringFieldUpdateOperationsInput | string
+  accumulatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   betType?: Prisma.StringFieldUpdateOperationsInput | string
   selection?: Prisma.StringFieldUpdateOperationsInput | string
   odds?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -1384,6 +1658,8 @@ export type BetUncheckedUpdateManyWithoutUserInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   cashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   cashoutOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutPercent?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profit?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   commission?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   isAutoPlaced?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1393,6 +1669,7 @@ export type BetUncheckedUpdateManyWithoutUserInput = {
   kellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   valueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   riskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  settlementReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   placedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cashedOutAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1404,6 +1681,7 @@ export type BetCreateManyBettingAccountInput = {
   id?: string
   userId: string
   matchId: string
+  accumulatorId?: string | null
   betType: string
   selection: string
   odds: number
@@ -1412,6 +1690,8 @@ export type BetCreateManyBettingAccountInput = {
   status?: string
   cashoutAmount?: number | null
   cashoutOdds?: number | null
+  partialCashoutAmount?: number | null
+  partialCashoutPercent?: number | null
   profit?: number | null
   commission?: number | null
   isAutoPlaced?: boolean
@@ -1421,6 +1701,7 @@ export type BetCreateManyBettingAccountInput = {
   kellyStake?: number | null
   valueEdge?: number | null
   riskScore?: number | null
+  settlementReason?: string | null
   placedAt?: Date | string
   settledAt?: Date | string | null
   cashedOutAt?: Date | string | null
@@ -1438,6 +1719,8 @@ export type BetUpdateWithoutBettingAccountInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   cashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   cashoutOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutPercent?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profit?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   commission?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   isAutoPlaced?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1447,6 +1730,7 @@ export type BetUpdateWithoutBettingAccountInput = {
   kellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   valueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   riskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  settlementReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   placedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cashedOutAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1454,12 +1738,14 @@ export type BetUpdateWithoutBettingAccountInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutBetsNestedInput
   match?: Prisma.MatchUpdateOneRequiredWithoutBetsNestedInput
+  accumulator?: Prisma.AccumulatorUpdateOneWithoutBetsNestedInput
 }
 
 export type BetUncheckedUpdateWithoutBettingAccountInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   matchId?: Prisma.StringFieldUpdateOperationsInput | string
+  accumulatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   betType?: Prisma.StringFieldUpdateOperationsInput | string
   selection?: Prisma.StringFieldUpdateOperationsInput | string
   odds?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -1468,6 +1754,8 @@ export type BetUncheckedUpdateWithoutBettingAccountInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   cashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   cashoutOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutPercent?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profit?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   commission?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   isAutoPlaced?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1477,6 +1765,7 @@ export type BetUncheckedUpdateWithoutBettingAccountInput = {
   kellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   valueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   riskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  settlementReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   placedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cashedOutAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1488,6 +1777,7 @@ export type BetUncheckedUpdateManyWithoutBettingAccountInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   matchId?: Prisma.StringFieldUpdateOperationsInput | string
+  accumulatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   betType?: Prisma.StringFieldUpdateOperationsInput | string
   selection?: Prisma.StringFieldUpdateOperationsInput | string
   odds?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -1496,6 +1786,8 @@ export type BetUncheckedUpdateManyWithoutBettingAccountInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   cashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   cashoutOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutPercent?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profit?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   commission?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   isAutoPlaced?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1505,6 +1797,7 @@ export type BetUncheckedUpdateManyWithoutBettingAccountInput = {
   kellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   valueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   riskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  settlementReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   placedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cashedOutAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1516,6 +1809,7 @@ export type BetCreateManyMatchInput = {
   id?: string
   userId: string
   bettingAccountId: string
+  accumulatorId?: string | null
   betType: string
   selection: string
   odds: number
@@ -1524,6 +1818,8 @@ export type BetCreateManyMatchInput = {
   status?: string
   cashoutAmount?: number | null
   cashoutOdds?: number | null
+  partialCashoutAmount?: number | null
+  partialCashoutPercent?: number | null
   profit?: number | null
   commission?: number | null
   isAutoPlaced?: boolean
@@ -1533,6 +1829,7 @@ export type BetCreateManyMatchInput = {
   kellyStake?: number | null
   valueEdge?: number | null
   riskScore?: number | null
+  settlementReason?: string | null
   placedAt?: Date | string
   settledAt?: Date | string | null
   cashedOutAt?: Date | string | null
@@ -1550,6 +1847,8 @@ export type BetUpdateWithoutMatchInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   cashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   cashoutOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutPercent?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profit?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   commission?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   isAutoPlaced?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1559,6 +1858,7 @@ export type BetUpdateWithoutMatchInput = {
   kellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   valueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   riskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  settlementReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   placedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cashedOutAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1566,12 +1866,14 @@ export type BetUpdateWithoutMatchInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutBetsNestedInput
   bettingAccount?: Prisma.BettingAccountUpdateOneRequiredWithoutBetsNestedInput
+  accumulator?: Prisma.AccumulatorUpdateOneWithoutBetsNestedInput
 }
 
 export type BetUncheckedUpdateWithoutMatchInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   bettingAccountId?: Prisma.StringFieldUpdateOperationsInput | string
+  accumulatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   betType?: Prisma.StringFieldUpdateOperationsInput | string
   selection?: Prisma.StringFieldUpdateOperationsInput | string
   odds?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -1580,6 +1882,8 @@ export type BetUncheckedUpdateWithoutMatchInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   cashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   cashoutOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutPercent?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profit?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   commission?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   isAutoPlaced?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1589,6 +1893,7 @@ export type BetUncheckedUpdateWithoutMatchInput = {
   kellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   valueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   riskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  settlementReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   placedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cashedOutAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1600,6 +1905,7 @@ export type BetUncheckedUpdateManyWithoutMatchInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   bettingAccountId?: Prisma.StringFieldUpdateOperationsInput | string
+  accumulatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   betType?: Prisma.StringFieldUpdateOperationsInput | string
   selection?: Prisma.StringFieldUpdateOperationsInput | string
   odds?: Prisma.FloatFieldUpdateOperationsInput | number
@@ -1608,6 +1914,8 @@ export type BetUncheckedUpdateManyWithoutMatchInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   cashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   cashoutOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutPercent?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   profit?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   commission?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   isAutoPlaced?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -1617,6 +1925,135 @@ export type BetUncheckedUpdateManyWithoutMatchInput = {
   kellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   valueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   riskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  settlementReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  placedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  cashedOutAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type BetCreateManyAccumulatorInput = {
+  id?: string
+  userId: string
+  bettingAccountId: string
+  matchId: string
+  betType: string
+  selection: string
+  odds: number
+  stake: number
+  potentialWin: number
+  status?: string
+  cashoutAmount?: number | null
+  cashoutOdds?: number | null
+  partialCashoutAmount?: number | null
+  partialCashoutPercent?: number | null
+  profit?: number | null
+  commission?: number | null
+  isAutoPlaced?: boolean
+  aiConfidence?: number | null
+  aiReasoning?: string | null
+  aiModelUsed?: string | null
+  kellyStake?: number | null
+  valueEdge?: number | null
+  riskScore?: number | null
+  settlementReason?: string | null
+  placedAt?: Date | string
+  settledAt?: Date | string | null
+  cashedOutAt?: Date | string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type BetUpdateWithoutAccumulatorInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  betType?: Prisma.StringFieldUpdateOperationsInput | string
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
+  odds?: Prisma.FloatFieldUpdateOperationsInput | number
+  stake?: Prisma.FloatFieldUpdateOperationsInput | number
+  potentialWin?: Prisma.FloatFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  cashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  cashoutOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutPercent?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  profit?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  commission?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  isAutoPlaced?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  aiConfidence?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  aiReasoning?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModelUsed?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  valueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  riskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  settlementReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  placedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  cashedOutAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  user?: Prisma.UserUpdateOneRequiredWithoutBetsNestedInput
+  bettingAccount?: Prisma.BettingAccountUpdateOneRequiredWithoutBetsNestedInput
+  match?: Prisma.MatchUpdateOneRequiredWithoutBetsNestedInput
+}
+
+export type BetUncheckedUpdateWithoutAccumulatorInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  bettingAccountId?: Prisma.StringFieldUpdateOperationsInput | string
+  matchId?: Prisma.StringFieldUpdateOperationsInput | string
+  betType?: Prisma.StringFieldUpdateOperationsInput | string
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
+  odds?: Prisma.FloatFieldUpdateOperationsInput | number
+  stake?: Prisma.FloatFieldUpdateOperationsInput | number
+  potentialWin?: Prisma.FloatFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  cashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  cashoutOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutPercent?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  profit?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  commission?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  isAutoPlaced?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  aiConfidence?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  aiReasoning?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModelUsed?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  valueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  riskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  settlementReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  placedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  cashedOutAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type BetUncheckedUpdateManyWithoutAccumulatorInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  userId?: Prisma.StringFieldUpdateOperationsInput | string
+  bettingAccountId?: Prisma.StringFieldUpdateOperationsInput | string
+  matchId?: Prisma.StringFieldUpdateOperationsInput | string
+  betType?: Prisma.StringFieldUpdateOperationsInput | string
+  selection?: Prisma.StringFieldUpdateOperationsInput | string
+  odds?: Prisma.FloatFieldUpdateOperationsInput | number
+  stake?: Prisma.FloatFieldUpdateOperationsInput | number
+  potentialWin?: Prisma.FloatFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  cashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  cashoutOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutAmount?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  partialCashoutPercent?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  profit?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  commission?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  isAutoPlaced?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  aiConfidence?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  aiReasoning?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiModelUsed?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  kellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  valueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  riskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  settlementReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   placedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   settledAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   cashedOutAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1631,6 +2068,7 @@ export type BetSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = ru
   userId?: boolean
   bettingAccountId?: boolean
   matchId?: boolean
+  accumulatorId?: boolean
   betType?: boolean
   selection?: boolean
   odds?: boolean
@@ -1639,6 +2077,8 @@ export type BetSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = ru
   status?: boolean
   cashoutAmount?: boolean
   cashoutOdds?: boolean
+  partialCashoutAmount?: boolean
+  partialCashoutPercent?: boolean
   profit?: boolean
   commission?: boolean
   isAutoPlaced?: boolean
@@ -1648,6 +2088,7 @@ export type BetSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = ru
   kellyStake?: boolean
   valueEdge?: boolean
   riskScore?: boolean
+  settlementReason?: boolean
   placedAt?: boolean
   settledAt?: boolean
   cashedOutAt?: boolean
@@ -1656,6 +2097,7 @@ export type BetSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = ru
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
   match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
+  accumulator?: boolean | Prisma.Bet$accumulatorArgs<ExtArgs>
 }, ExtArgs["result"]["bet"]>
 
 export type BetSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1663,6 +2105,7 @@ export type BetSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extension
   userId?: boolean
   bettingAccountId?: boolean
   matchId?: boolean
+  accumulatorId?: boolean
   betType?: boolean
   selection?: boolean
   odds?: boolean
@@ -1671,6 +2114,8 @@ export type BetSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extension
   status?: boolean
   cashoutAmount?: boolean
   cashoutOdds?: boolean
+  partialCashoutAmount?: boolean
+  partialCashoutPercent?: boolean
   profit?: boolean
   commission?: boolean
   isAutoPlaced?: boolean
@@ -1680,6 +2125,7 @@ export type BetSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extension
   kellyStake?: boolean
   valueEdge?: boolean
   riskScore?: boolean
+  settlementReason?: boolean
   placedAt?: boolean
   settledAt?: boolean
   cashedOutAt?: boolean
@@ -1688,6 +2134,7 @@ export type BetSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extension
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
   match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
+  accumulator?: boolean | Prisma.Bet$accumulatorArgs<ExtArgs>
 }, ExtArgs["result"]["bet"]>
 
 export type BetSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1695,6 +2142,7 @@ export type BetSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extension
   userId?: boolean
   bettingAccountId?: boolean
   matchId?: boolean
+  accumulatorId?: boolean
   betType?: boolean
   selection?: boolean
   odds?: boolean
@@ -1703,6 +2151,8 @@ export type BetSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extension
   status?: boolean
   cashoutAmount?: boolean
   cashoutOdds?: boolean
+  partialCashoutAmount?: boolean
+  partialCashoutPercent?: boolean
   profit?: boolean
   commission?: boolean
   isAutoPlaced?: boolean
@@ -1712,6 +2162,7 @@ export type BetSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extension
   kellyStake?: boolean
   valueEdge?: boolean
   riskScore?: boolean
+  settlementReason?: boolean
   placedAt?: boolean
   settledAt?: boolean
   cashedOutAt?: boolean
@@ -1720,6 +2171,7 @@ export type BetSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extension
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
   match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
+  accumulator?: boolean | Prisma.Bet$accumulatorArgs<ExtArgs>
 }, ExtArgs["result"]["bet"]>
 
 export type BetSelectScalar = {
@@ -1727,6 +2179,7 @@ export type BetSelectScalar = {
   userId?: boolean
   bettingAccountId?: boolean
   matchId?: boolean
+  accumulatorId?: boolean
   betType?: boolean
   selection?: boolean
   odds?: boolean
@@ -1735,6 +2188,8 @@ export type BetSelectScalar = {
   status?: boolean
   cashoutAmount?: boolean
   cashoutOdds?: boolean
+  partialCashoutAmount?: boolean
+  partialCashoutPercent?: boolean
   profit?: boolean
   commission?: boolean
   isAutoPlaced?: boolean
@@ -1744,6 +2199,7 @@ export type BetSelectScalar = {
   kellyStake?: boolean
   valueEdge?: boolean
   riskScore?: boolean
+  settlementReason?: boolean
   placedAt?: boolean
   settledAt?: boolean
   cashedOutAt?: boolean
@@ -1751,21 +2207,24 @@ export type BetSelectScalar = {
   updatedAt?: boolean
 }
 
-export type BetOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "bettingAccountId" | "matchId" | "betType" | "selection" | "odds" | "stake" | "potentialWin" | "status" | "cashoutAmount" | "cashoutOdds" | "profit" | "commission" | "isAutoPlaced" | "aiConfidence" | "aiReasoning" | "aiModelUsed" | "kellyStake" | "valueEdge" | "riskScore" | "placedAt" | "settledAt" | "cashedOutAt" | "createdAt" | "updatedAt", ExtArgs["result"]["bet"]>
+export type BetOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "bettingAccountId" | "matchId" | "accumulatorId" | "betType" | "selection" | "odds" | "stake" | "potentialWin" | "status" | "cashoutAmount" | "cashoutOdds" | "partialCashoutAmount" | "partialCashoutPercent" | "profit" | "commission" | "isAutoPlaced" | "aiConfidence" | "aiReasoning" | "aiModelUsed" | "kellyStake" | "valueEdge" | "riskScore" | "settlementReason" | "placedAt" | "settledAt" | "cashedOutAt" | "createdAt" | "updatedAt", ExtArgs["result"]["bet"]>
 export type BetInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
   match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
+  accumulator?: boolean | Prisma.Bet$accumulatorArgs<ExtArgs>
 }
 export type BetIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
   match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
+  accumulator?: boolean | Prisma.Bet$accumulatorArgs<ExtArgs>
 }
 export type BetIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
   match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
+  accumulator?: boolean | Prisma.Bet$accumulatorArgs<ExtArgs>
 }
 
 export type $BetPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1774,12 +2233,14 @@ export type $BetPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
     user: Prisma.$UserPayload<ExtArgs>
     bettingAccount: Prisma.$BettingAccountPayload<ExtArgs>
     match: Prisma.$MatchPayload<ExtArgs>
+    accumulator: Prisma.$AccumulatorPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     userId: string
     bettingAccountId: string
     matchId: string
+    accumulatorId: string | null
     betType: string
     selection: string
     odds: number
@@ -1788,6 +2249,8 @@ export type $BetPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
     status: string
     cashoutAmount: number | null
     cashoutOdds: number | null
+    partialCashoutAmount: number | null
+    partialCashoutPercent: number | null
     profit: number | null
     commission: number | null
     isAutoPlaced: boolean
@@ -1797,6 +2260,7 @@ export type $BetPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
     kellyStake: number | null
     valueEdge: number | null
     riskScore: number | null
+    settlementReason: string | null
     placedAt: Date
     settledAt: Date | null
     cashedOutAt: Date | null
@@ -2199,6 +2663,7 @@ export interface Prisma__BetClient<T, Null = never, ExtArgs extends runtime.Type
   user<T extends Prisma.UserDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.UserDefaultArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   bettingAccount<T extends Prisma.BettingAccountDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.BettingAccountDefaultArgs<ExtArgs>>): Prisma.Prisma__BettingAccountClient<runtime.Types.Result.GetResult<Prisma.$BettingAccountPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
   match<T extends Prisma.MatchDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.MatchDefaultArgs<ExtArgs>>): Prisma.Prisma__MatchClient<runtime.Types.Result.GetResult<Prisma.$MatchPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  accumulator<T extends Prisma.Bet$accumulatorArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Bet$accumulatorArgs<ExtArgs>>): Prisma.Prisma__AccumulatorClient<runtime.Types.Result.GetResult<Prisma.$AccumulatorPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2232,6 +2697,7 @@ export interface BetFieldRefs {
   readonly userId: Prisma.FieldRef<"Bet", 'String'>
   readonly bettingAccountId: Prisma.FieldRef<"Bet", 'String'>
   readonly matchId: Prisma.FieldRef<"Bet", 'String'>
+  readonly accumulatorId: Prisma.FieldRef<"Bet", 'String'>
   readonly betType: Prisma.FieldRef<"Bet", 'String'>
   readonly selection: Prisma.FieldRef<"Bet", 'String'>
   readonly odds: Prisma.FieldRef<"Bet", 'Float'>
@@ -2240,6 +2706,8 @@ export interface BetFieldRefs {
   readonly status: Prisma.FieldRef<"Bet", 'String'>
   readonly cashoutAmount: Prisma.FieldRef<"Bet", 'Float'>
   readonly cashoutOdds: Prisma.FieldRef<"Bet", 'Float'>
+  readonly partialCashoutAmount: Prisma.FieldRef<"Bet", 'Float'>
+  readonly partialCashoutPercent: Prisma.FieldRef<"Bet", 'Float'>
   readonly profit: Prisma.FieldRef<"Bet", 'Float'>
   readonly commission: Prisma.FieldRef<"Bet", 'Float'>
   readonly isAutoPlaced: Prisma.FieldRef<"Bet", 'Boolean'>
@@ -2249,6 +2717,7 @@ export interface BetFieldRefs {
   readonly kellyStake: Prisma.FieldRef<"Bet", 'Float'>
   readonly valueEdge: Prisma.FieldRef<"Bet", 'Float'>
   readonly riskScore: Prisma.FieldRef<"Bet", 'Float'>
+  readonly settlementReason: Prisma.FieldRef<"Bet", 'String'>
   readonly placedAt: Prisma.FieldRef<"Bet", 'DateTime'>
   readonly settledAt: Prisma.FieldRef<"Bet", 'DateTime'>
   readonly cashedOutAt: Prisma.FieldRef<"Bet", 'DateTime'>
@@ -2650,6 +3119,25 @@ export type BetDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    * Limit how many Bets to delete.
    */
   limit?: number
+}
+
+/**
+ * Bet.accumulator
+ */
+export type Bet$accumulatorArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Accumulator
+   */
+  select?: Prisma.AccumulatorSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Accumulator
+   */
+  omit?: Prisma.AccumulatorOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.AccumulatorInclude<ExtArgs> | null
+  where?: Prisma.AccumulatorWhereInput
 }
 
 /**

@@ -48,6 +48,16 @@ export type TeamStats = Prisma.TeamStatsModel
  */
 export type Bet = Prisma.BetModel
 /**
+ * Model Accumulator
+ * 
+ */
+export type Accumulator = Prisma.AccumulatorModel
+/**
+ * Model BotLog
+ * 
+ */
+export type BotLog = Prisma.BotLogModel
+/**
  * Model Transaction
  * 
  */

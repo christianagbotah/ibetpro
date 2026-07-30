@@ -43,6 +43,7 @@ export type TransactionMinAggregateOutputType = {
   status: string | null
   description: string | null
   betId: string | null
+  accumulatorId: string | null
   createdAt: Date | null
 }
 
@@ -55,6 +56,7 @@ export type TransactionMaxAggregateOutputType = {
   status: string | null
   description: string | null
   betId: string | null
+  accumulatorId: string | null
   createdAt: Date | null
 }
 
@@ -67,6 +69,7 @@ export type TransactionCountAggregateOutputType = {
   status: number
   description: number
   betId: number
+  accumulatorId: number
   createdAt: number
   _all: number
 }
@@ -89,6 +92,7 @@ export type TransactionMinAggregateInputType = {
   status?: true
   description?: true
   betId?: true
+  accumulatorId?: true
   createdAt?: true
 }
 
@@ -101,6 +105,7 @@ export type TransactionMaxAggregateInputType = {
   status?: true
   description?: true
   betId?: true
+  accumulatorId?: true
   createdAt?: true
 }
 
@@ -113,6 +118,7 @@ export type TransactionCountAggregateInputType = {
   status?: true
   description?: true
   betId?: true
+  accumulatorId?: true
   createdAt?: true
   _all?: true
 }
@@ -212,6 +218,7 @@ export type TransactionGroupByOutputType = {
   status: string
   description: string | null
   betId: string | null
+  accumulatorId: string | null
   createdAt: Date
   _count: TransactionCountAggregateOutputType | null
   _avg: TransactionAvgAggregateOutputType | null
@@ -247,6 +254,7 @@ export type TransactionWhereInput = {
   status?: Prisma.StringFilter<"Transaction"> | string
   description?: Prisma.StringNullableFilter<"Transaction"> | string | null
   betId?: Prisma.StringNullableFilter<"Transaction"> | string | null
+  accumulatorId?: Prisma.StringNullableFilter<"Transaction"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Transaction"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
 }
@@ -260,6 +268,7 @@ export type TransactionOrderByWithRelationInput = {
   status?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   betId?: Prisma.SortOrderInput | Prisma.SortOrder
+  accumulatorId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
 }
@@ -276,6 +285,7 @@ export type TransactionWhereUniqueInput = Prisma.AtLeast<{
   status?: Prisma.StringFilter<"Transaction"> | string
   description?: Prisma.StringNullableFilter<"Transaction"> | string | null
   betId?: Prisma.StringNullableFilter<"Transaction"> | string | null
+  accumulatorId?: Prisma.StringNullableFilter<"Transaction"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Transaction"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
 }, "id">
@@ -289,6 +299,7 @@ export type TransactionOrderByWithAggregationInput = {
   status?: Prisma.SortOrder
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   betId?: Prisma.SortOrderInput | Prisma.SortOrder
+  accumulatorId?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.TransactionCountOrderByAggregateInput
   _avg?: Prisma.TransactionAvgOrderByAggregateInput
@@ -309,6 +320,7 @@ export type TransactionScalarWhereWithAggregatesInput = {
   status?: Prisma.StringWithAggregatesFilter<"Transaction"> | string
   description?: Prisma.StringNullableWithAggregatesFilter<"Transaction"> | string | null
   betId?: Prisma.StringNullableWithAggregatesFilter<"Transaction"> | string | null
+  accumulatorId?: Prisma.StringNullableWithAggregatesFilter<"Transaction"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Transaction"> | Date | string
 }
 
@@ -320,6 +332,7 @@ export type TransactionCreateInput = {
   status?: string
   description?: string | null
   betId?: string | null
+  accumulatorId?: string | null
   createdAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutTransactionsInput
 }
@@ -333,6 +346,7 @@ export type TransactionUncheckedCreateInput = {
   status?: string
   description?: string | null
   betId?: string | null
+  accumulatorId?: string | null
   createdAt?: Date | string
 }
 
@@ -344,6 +358,7 @@ export type TransactionUpdateInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   betId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accumulatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutTransactionsNestedInput
 }
@@ -357,6 +372,7 @@ export type TransactionUncheckedUpdateInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   betId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accumulatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -369,6 +385,7 @@ export type TransactionCreateManyInput = {
   status?: string
   description?: string | null
   betId?: string | null
+  accumulatorId?: string | null
   createdAt?: Date | string
 }
 
@@ -380,6 +397,7 @@ export type TransactionUpdateManyMutationInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   betId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accumulatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -392,6 +410,7 @@ export type TransactionUncheckedUpdateManyInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   betId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accumulatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -414,6 +433,7 @@ export type TransactionCountOrderByAggregateInput = {
   status?: Prisma.SortOrder
   description?: Prisma.SortOrder
   betId?: Prisma.SortOrder
+  accumulatorId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -430,6 +450,7 @@ export type TransactionMaxOrderByAggregateInput = {
   status?: Prisma.SortOrder
   description?: Prisma.SortOrder
   betId?: Prisma.SortOrder
+  accumulatorId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -442,6 +463,7 @@ export type TransactionMinOrderByAggregateInput = {
   status?: Prisma.SortOrder
   description?: Prisma.SortOrder
   betId?: Prisma.SortOrder
+  accumulatorId?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -499,6 +521,7 @@ export type TransactionCreateWithoutUserInput = {
   status?: string
   description?: string | null
   betId?: string | null
+  accumulatorId?: string | null
   createdAt?: Date | string
 }
 
@@ -510,6 +533,7 @@ export type TransactionUncheckedCreateWithoutUserInput = {
   status?: string
   description?: string | null
   betId?: string | null
+  accumulatorId?: string | null
   createdAt?: Date | string
 }
 
@@ -550,6 +574,7 @@ export type TransactionScalarWhereInput = {
   status?: Prisma.StringFilter<"Transaction"> | string
   description?: Prisma.StringNullableFilter<"Transaction"> | string | null
   betId?: Prisma.StringNullableFilter<"Transaction"> | string | null
+  accumulatorId?: Prisma.StringNullableFilter<"Transaction"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Transaction"> | Date | string
 }
 
@@ -561,6 +586,7 @@ export type TransactionCreateManyUserInput = {
   status?: string
   description?: string | null
   betId?: string | null
+  accumulatorId?: string | null
   createdAt?: Date | string
 }
 
@@ -572,6 +598,7 @@ export type TransactionUpdateWithoutUserInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   betId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accumulatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -583,6 +610,7 @@ export type TransactionUncheckedUpdateWithoutUserInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   betId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accumulatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -594,6 +622,7 @@ export type TransactionUncheckedUpdateManyWithoutUserInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   betId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  accumulatorId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
@@ -608,6 +637,7 @@ export type TransactionSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   status?: boolean
   description?: boolean
   betId?: boolean
+  accumulatorId?: boolean
   createdAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["transaction"]>
@@ -621,6 +651,7 @@ export type TransactionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   status?: boolean
   description?: boolean
   betId?: boolean
+  accumulatorId?: boolean
   createdAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["transaction"]>
@@ -634,6 +665,7 @@ export type TransactionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   status?: boolean
   description?: boolean
   betId?: boolean
+  accumulatorId?: boolean
   createdAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["transaction"]>
@@ -647,10 +679,11 @@ export type TransactionSelectScalar = {
   status?: boolean
   description?: boolean
   betId?: boolean
+  accumulatorId?: boolean
   createdAt?: boolean
 }
 
-export type TransactionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "type" | "amount" | "currency" | "status" | "description" | "betId" | "createdAt", ExtArgs["result"]["transaction"]>
+export type TransactionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "type" | "amount" | "currency" | "status" | "description" | "betId" | "accumulatorId" | "createdAt", ExtArgs["result"]["transaction"]>
 export type TransactionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
@@ -675,6 +708,7 @@ export type $TransactionPayload<ExtArgs extends runtime.Types.Extensions.Interna
     status: string
     description: string | null
     betId: string | null
+    accumulatorId: string | null
     createdAt: Date
   }, ExtArgs["result"]["transaction"]>
   composites: {}
@@ -1108,6 +1142,7 @@ export interface TransactionFieldRefs {
   readonly status: Prisma.FieldRef<"Transaction", 'String'>
   readonly description: Prisma.FieldRef<"Transaction", 'String'>
   readonly betId: Prisma.FieldRef<"Transaction", 'String'>
+  readonly accumulatorId: Prisma.FieldRef<"Transaction", 'String'>
   readonly createdAt: Prisma.FieldRef<"Transaction", 'DateTime'>
 }
     

@@ -403,6 +403,8 @@ export const ModelName = {
   Match: 'Match',
   TeamStats: 'TeamStats',
   Bet: 'Bet',
+  Accumulator: 'Accumulator',
+  BotLog: 'BotLog',
   Transaction: 'Transaction',
   AdminSettings: 'AdminSettings'
 } as const
@@ -420,7 +422,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userSettings" | "bettingAccount" | "match" | "teamStats" | "bet" | "transaction" | "adminSettings"
+    modelProps: "user" | "userSettings" | "bettingAccount" | "match" | "teamStats" | "bet" | "accumulator" | "botLog" | "transaction" | "adminSettings"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -868,6 +870,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Accumulator: {
+      payload: Prisma.$AccumulatorPayload<ExtArgs>
+      fields: Prisma.AccumulatorFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.AccumulatorFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccumulatorPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.AccumulatorFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccumulatorPayload>
+        }
+        findFirst: {
+          args: Prisma.AccumulatorFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccumulatorPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.AccumulatorFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccumulatorPayload>
+        }
+        findMany: {
+          args: Prisma.AccumulatorFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccumulatorPayload>[]
+        }
+        create: {
+          args: Prisma.AccumulatorCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccumulatorPayload>
+        }
+        createMany: {
+          args: Prisma.AccumulatorCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.AccumulatorCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccumulatorPayload>[]
+        }
+        delete: {
+          args: Prisma.AccumulatorDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccumulatorPayload>
+        }
+        update: {
+          args: Prisma.AccumulatorUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccumulatorPayload>
+        }
+        deleteMany: {
+          args: Prisma.AccumulatorDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.AccumulatorUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.AccumulatorUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccumulatorPayload>[]
+        }
+        upsert: {
+          args: Prisma.AccumulatorUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$AccumulatorPayload>
+        }
+        aggregate: {
+          args: Prisma.AccumulatorAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateAccumulator>
+        }
+        groupBy: {
+          args: Prisma.AccumulatorGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AccumulatorGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.AccumulatorCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AccumulatorCountAggregateOutputType> | number
+        }
+      }
+    }
+    BotLog: {
+      payload: Prisma.$BotLogPayload<ExtArgs>
+      fields: Prisma.BotLogFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.BotLogFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotLogPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.BotLogFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotLogPayload>
+        }
+        findFirst: {
+          args: Prisma.BotLogFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotLogPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.BotLogFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotLogPayload>
+        }
+        findMany: {
+          args: Prisma.BotLogFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotLogPayload>[]
+        }
+        create: {
+          args: Prisma.BotLogCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotLogPayload>
+        }
+        createMany: {
+          args: Prisma.BotLogCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.BotLogCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotLogPayload>[]
+        }
+        delete: {
+          args: Prisma.BotLogDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotLogPayload>
+        }
+        update: {
+          args: Prisma.BotLogUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotLogPayload>
+        }
+        deleteMany: {
+          args: Prisma.BotLogDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.BotLogUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.BotLogUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotLogPayload>[]
+        }
+        upsert: {
+          args: Prisma.BotLogUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotLogPayload>
+        }
+        aggregate: {
+          args: Prisma.BotLogAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBotLog>
+        }
+        groupBy: {
+          args: Prisma.BotLogGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BotLogGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.BotLogCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BotLogCountAggregateOutputType> | number
+        }
+      }
+    }
     Transaction: {
       payload: Prisma.$TransactionPayload<ExtArgs>
       fields: Prisma.TransactionFieldRefs
@@ -1064,6 +1214,8 @@ export const UserScalarFieldEnum = {
   totalLoss: 'totalLoss',
   commissionPaid: 'commissionPaid',
   bankroll: 'bankroll',
+  dailyPnl: 'dailyPnl',
+  weeklyPnl: 'weeklyPnl',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -1087,6 +1239,18 @@ export const UserSettingsScalarFieldEnum = {
   dailyBetLimit: 'dailyBetLimit',
   kellyFraction: 'kellyFraction',
   minEdgeThreshold: 'minEdgeThreshold',
+  betTypes: 'betTypes',
+  maxAccumulatorLegs: 'maxAccumulatorLegs',
+  minAiConfidence: 'minAiConfidence',
+  stopLossDaily: 'stopLossDaily',
+  stopLossWeekly: 'stopLossWeekly',
+  profitTargetDaily: 'profitTargetDaily',
+  profitTargetWeekly: 'profitTargetWeekly',
+  betScheduleStart: 'betScheduleStart',
+  betScheduleEnd: 'betScheduleEnd',
+  partialCashoutEnabled: 'partialCashoutEnabled',
+  partialCashoutPercent: 'partialCashoutPercent',
+  waitFullSettlement: 'waitFullSettlement',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -1191,6 +1355,7 @@ export const BetScalarFieldEnum = {
   userId: 'userId',
   bettingAccountId: 'bettingAccountId',
   matchId: 'matchId',
+  accumulatorId: 'accumulatorId',
   betType: 'betType',
   selection: 'selection',
   odds: 'odds',
@@ -1199,6 +1364,8 @@ export const BetScalarFieldEnum = {
   status: 'status',
   cashoutAmount: 'cashoutAmount',
   cashoutOdds: 'cashoutOdds',
+  partialCashoutAmount: 'partialCashoutAmount',
+  partialCashoutPercent: 'partialCashoutPercent',
   profit: 'profit',
   commission: 'commission',
   isAutoPlaced: 'isAutoPlaced',
@@ -1208,6 +1375,7 @@ export const BetScalarFieldEnum = {
   kellyStake: 'kellyStake',
   valueEdge: 'valueEdge',
   riskScore: 'riskScore',
+  settlementReason: 'settlementReason',
   placedAt: 'placedAt',
   settledAt: 'settledAt',
   cashedOutAt: 'cashedOutAt',
@@ -1216,6 +1384,47 @@ export const BetScalarFieldEnum = {
 } as const
 
 export type BetScalarFieldEnum = (typeof BetScalarFieldEnum)[keyof typeof BetScalarFieldEnum]
+
+
+export const AccumulatorScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  totalOdds: 'totalOdds',
+  stake: 'stake',
+  potentialWin: 'potentialWin',
+  status: 'status',
+  cashoutAmount: 'cashoutAmount',
+  completedLegs: 'completedLegs',
+  totalLegs: 'totalLegs',
+  isAutoPlaced: 'isAutoPlaced',
+  bonusPercent: 'bonusPercent',
+  profit: 'profit',
+  commission: 'commission',
+  placedAt: 'placedAt',
+  settledAt: 'settledAt',
+  cashedOutAt: 'cashedOutAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AccumulatorScalarFieldEnum = (typeof AccumulatorScalarFieldEnum)[keyof typeof AccumulatorScalarFieldEnum]
+
+
+export const BotLogScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  action: 'action',
+  matchId: 'matchId',
+  betId: 'betId',
+  accumulatorId: 'accumulatorId',
+  details: 'details',
+  reasoning: 'reasoning',
+  confidence: 'confidence',
+  profitImpact: 'profitImpact',
+  createdAt: 'createdAt'
+} as const
+
+export type BotLogScalarFieldEnum = (typeof BotLogScalarFieldEnum)[keyof typeof BotLogScalarFieldEnum]
 
 
 export const TransactionScalarFieldEnum = {
@@ -1227,6 +1436,7 @@ export const TransactionScalarFieldEnum = {
   status: 'status',
   description: 'description',
   betId: 'betId',
+  accumulatorId: 'accumulatorId',
   createdAt: 'createdAt'
 } as const
 
@@ -1244,6 +1454,7 @@ export const AdminSettingsScalarFieldEnum = {
   autoApproveAccounts: 'autoApproveAccounts',
   oddsApiKey: 'oddsApiKey',
   apiFootballKey: 'apiFootballKey',
+  accumulatorBonusThresholds: 'accumulatorBonusThresholds',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -1464,6 +1675,8 @@ export type GlobalOmitConfig = {
   match?: Prisma.MatchOmit
   teamStats?: Prisma.TeamStatsOmit
   bet?: Prisma.BetOmit
+  accumulator?: Prisma.AccumulatorOmit
+  botLog?: Prisma.BotLogOmit
   transaction?: Prisma.TransactionOmit
   adminSettings?: Prisma.AdminSettingsOmit
 }

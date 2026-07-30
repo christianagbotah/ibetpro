@@ -57,6 +57,8 @@ export const ModelName = {
   Match: 'Match',
   TeamStats: 'TeamStats',
   Bet: 'Bet',
+  Accumulator: 'Accumulator',
+  BotLog: 'BotLog',
   Transaction: 'Transaction',
   AdminSettings: 'AdminSettings'
 } as const
@@ -86,6 +88,8 @@ export const UserScalarFieldEnum = {
   totalLoss: 'totalLoss',
   commissionPaid: 'commissionPaid',
   bankroll: 'bankroll',
+  dailyPnl: 'dailyPnl',
+  weeklyPnl: 'weeklyPnl',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -109,6 +113,18 @@ export const UserSettingsScalarFieldEnum = {
   dailyBetLimit: 'dailyBetLimit',
   kellyFraction: 'kellyFraction',
   minEdgeThreshold: 'minEdgeThreshold',
+  betTypes: 'betTypes',
+  maxAccumulatorLegs: 'maxAccumulatorLegs',
+  minAiConfidence: 'minAiConfidence',
+  stopLossDaily: 'stopLossDaily',
+  stopLossWeekly: 'stopLossWeekly',
+  profitTargetDaily: 'profitTargetDaily',
+  profitTargetWeekly: 'profitTargetWeekly',
+  betScheduleStart: 'betScheduleStart',
+  betScheduleEnd: 'betScheduleEnd',
+  partialCashoutEnabled: 'partialCashoutEnabled',
+  partialCashoutPercent: 'partialCashoutPercent',
+  waitFullSettlement: 'waitFullSettlement',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -213,6 +229,7 @@ export const BetScalarFieldEnum = {
   userId: 'userId',
   bettingAccountId: 'bettingAccountId',
   matchId: 'matchId',
+  accumulatorId: 'accumulatorId',
   betType: 'betType',
   selection: 'selection',
   odds: 'odds',
@@ -221,6 +238,8 @@ export const BetScalarFieldEnum = {
   status: 'status',
   cashoutAmount: 'cashoutAmount',
   cashoutOdds: 'cashoutOdds',
+  partialCashoutAmount: 'partialCashoutAmount',
+  partialCashoutPercent: 'partialCashoutPercent',
   profit: 'profit',
   commission: 'commission',
   isAutoPlaced: 'isAutoPlaced',
@@ -230,6 +249,7 @@ export const BetScalarFieldEnum = {
   kellyStake: 'kellyStake',
   valueEdge: 'valueEdge',
   riskScore: 'riskScore',
+  settlementReason: 'settlementReason',
   placedAt: 'placedAt',
   settledAt: 'settledAt',
   cashedOutAt: 'cashedOutAt',
@@ -238,6 +258,47 @@ export const BetScalarFieldEnum = {
 } as const
 
 export type BetScalarFieldEnum = (typeof BetScalarFieldEnum)[keyof typeof BetScalarFieldEnum]
+
+
+export const AccumulatorScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  totalOdds: 'totalOdds',
+  stake: 'stake',
+  potentialWin: 'potentialWin',
+  status: 'status',
+  cashoutAmount: 'cashoutAmount',
+  completedLegs: 'completedLegs',
+  totalLegs: 'totalLegs',
+  isAutoPlaced: 'isAutoPlaced',
+  bonusPercent: 'bonusPercent',
+  profit: 'profit',
+  commission: 'commission',
+  placedAt: 'placedAt',
+  settledAt: 'settledAt',
+  cashedOutAt: 'cashedOutAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type AccumulatorScalarFieldEnum = (typeof AccumulatorScalarFieldEnum)[keyof typeof AccumulatorScalarFieldEnum]
+
+
+export const BotLogScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  action: 'action',
+  matchId: 'matchId',
+  betId: 'betId',
+  accumulatorId: 'accumulatorId',
+  details: 'details',
+  reasoning: 'reasoning',
+  confidence: 'confidence',
+  profitImpact: 'profitImpact',
+  createdAt: 'createdAt'
+} as const
+
+export type BotLogScalarFieldEnum = (typeof BotLogScalarFieldEnum)[keyof typeof BotLogScalarFieldEnum]
 
 
 export const TransactionScalarFieldEnum = {
@@ -249,6 +310,7 @@ export const TransactionScalarFieldEnum = {
   status: 'status',
   description: 'description',
   betId: 'betId',
+  accumulatorId: 'accumulatorId',
   createdAt: 'createdAt'
 } as const
 
@@ -266,6 +328,7 @@ export const AdminSettingsScalarFieldEnum = {
   autoApproveAccounts: 'autoApproveAccounts',
   oddsApiKey: 'oddsApiKey',
   apiFootballKey: 'apiFootballKey',
+  accumulatorBonusThresholds: 'accumulatorBonusThresholds',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

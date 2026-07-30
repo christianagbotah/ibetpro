@@ -35,6 +35,13 @@ export type UserSettingsAvgAggregateOutputType = {
   dailyBetLimit: number | null
   kellyFraction: number | null
   minEdgeThreshold: number | null
+  maxAccumulatorLegs: number | null
+  minAiConfidence: number | null
+  stopLossDaily: number | null
+  stopLossWeekly: number | null
+  profitTargetDaily: number | null
+  profitTargetWeekly: number | null
+  partialCashoutPercent: number | null
 }
 
 export type UserSettingsSumAggregateOutputType = {
@@ -46,6 +53,13 @@ export type UserSettingsSumAggregateOutputType = {
   dailyBetLimit: number | null
   kellyFraction: number | null
   minEdgeThreshold: number | null
+  maxAccumulatorLegs: number | null
+  minAiConfidence: number | null
+  stopLossDaily: number | null
+  stopLossWeekly: number | null
+  profitTargetDaily: number | null
+  profitTargetWeekly: number | null
+  partialCashoutPercent: number | null
 }
 
 export type UserSettingsMinAggregateOutputType = {
@@ -64,6 +78,18 @@ export type UserSettingsMinAggregateOutputType = {
   dailyBetLimit: number | null
   kellyFraction: number | null
   minEdgeThreshold: number | null
+  betTypes: string | null
+  maxAccumulatorLegs: number | null
+  minAiConfidence: number | null
+  stopLossDaily: number | null
+  stopLossWeekly: number | null
+  profitTargetDaily: number | null
+  profitTargetWeekly: number | null
+  betScheduleStart: string | null
+  betScheduleEnd: string | null
+  partialCashoutEnabled: boolean | null
+  partialCashoutPercent: number | null
+  waitFullSettlement: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -84,6 +110,18 @@ export type UserSettingsMaxAggregateOutputType = {
   dailyBetLimit: number | null
   kellyFraction: number | null
   minEdgeThreshold: number | null
+  betTypes: string | null
+  maxAccumulatorLegs: number | null
+  minAiConfidence: number | null
+  stopLossDaily: number | null
+  stopLossWeekly: number | null
+  profitTargetDaily: number | null
+  profitTargetWeekly: number | null
+  betScheduleStart: string | null
+  betScheduleEnd: string | null
+  partialCashoutEnabled: boolean | null
+  partialCashoutPercent: number | null
+  waitFullSettlement: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -104,6 +142,18 @@ export type UserSettingsCountAggregateOutputType = {
   dailyBetLimit: number
   kellyFraction: number
   minEdgeThreshold: number
+  betTypes: number
+  maxAccumulatorLegs: number
+  minAiConfidence: number
+  stopLossDaily: number
+  stopLossWeekly: number
+  profitTargetDaily: number
+  profitTargetWeekly: number
+  betScheduleStart: number
+  betScheduleEnd: number
+  partialCashoutEnabled: number
+  partialCashoutPercent: number
+  waitFullSettlement: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -119,6 +169,13 @@ export type UserSettingsAvgAggregateInputType = {
   dailyBetLimit?: true
   kellyFraction?: true
   minEdgeThreshold?: true
+  maxAccumulatorLegs?: true
+  minAiConfidence?: true
+  stopLossDaily?: true
+  stopLossWeekly?: true
+  profitTargetDaily?: true
+  profitTargetWeekly?: true
+  partialCashoutPercent?: true
 }
 
 export type UserSettingsSumAggregateInputType = {
@@ -130,6 +187,13 @@ export type UserSettingsSumAggregateInputType = {
   dailyBetLimit?: true
   kellyFraction?: true
   minEdgeThreshold?: true
+  maxAccumulatorLegs?: true
+  minAiConfidence?: true
+  stopLossDaily?: true
+  stopLossWeekly?: true
+  profitTargetDaily?: true
+  profitTargetWeekly?: true
+  partialCashoutPercent?: true
 }
 
 export type UserSettingsMinAggregateInputType = {
@@ -148,6 +212,18 @@ export type UserSettingsMinAggregateInputType = {
   dailyBetLimit?: true
   kellyFraction?: true
   minEdgeThreshold?: true
+  betTypes?: true
+  maxAccumulatorLegs?: true
+  minAiConfidence?: true
+  stopLossDaily?: true
+  stopLossWeekly?: true
+  profitTargetDaily?: true
+  profitTargetWeekly?: true
+  betScheduleStart?: true
+  betScheduleEnd?: true
+  partialCashoutEnabled?: true
+  partialCashoutPercent?: true
+  waitFullSettlement?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -168,6 +244,18 @@ export type UserSettingsMaxAggregateInputType = {
   dailyBetLimit?: true
   kellyFraction?: true
   minEdgeThreshold?: true
+  betTypes?: true
+  maxAccumulatorLegs?: true
+  minAiConfidence?: true
+  stopLossDaily?: true
+  stopLossWeekly?: true
+  profitTargetDaily?: true
+  profitTargetWeekly?: true
+  betScheduleStart?: true
+  betScheduleEnd?: true
+  partialCashoutEnabled?: true
+  partialCashoutPercent?: true
+  waitFullSettlement?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -188,6 +276,18 @@ export type UserSettingsCountAggregateInputType = {
   dailyBetLimit?: true
   kellyFraction?: true
   minEdgeThreshold?: true
+  betTypes?: true
+  maxAccumulatorLegs?: true
+  minAiConfidence?: true
+  stopLossDaily?: true
+  stopLossWeekly?: true
+  profitTargetDaily?: true
+  profitTargetWeekly?: true
+  betScheduleStart?: true
+  betScheduleEnd?: true
+  partialCashoutEnabled?: true
+  partialCashoutPercent?: true
+  waitFullSettlement?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -295,6 +395,18 @@ export type UserSettingsGroupByOutputType = {
   dailyBetLimit: number
   kellyFraction: number
   minEdgeThreshold: number
+  betTypes: string
+  maxAccumulatorLegs: number
+  minAiConfidence: number
+  stopLossDaily: number
+  stopLossWeekly: number
+  profitTargetDaily: number
+  profitTargetWeekly: number
+  betScheduleStart: string
+  betScheduleEnd: string
+  partialCashoutEnabled: boolean
+  partialCashoutPercent: number
+  waitFullSettlement: boolean
   createdAt: Date
   updatedAt: Date
   _count: UserSettingsCountAggregateOutputType | null
@@ -338,6 +450,18 @@ export type UserSettingsWhereInput = {
   dailyBetLimit?: Prisma.FloatFilter<"UserSettings"> | number
   kellyFraction?: Prisma.FloatFilter<"UserSettings"> | number
   minEdgeThreshold?: Prisma.FloatFilter<"UserSettings"> | number
+  betTypes?: Prisma.StringFilter<"UserSettings"> | string
+  maxAccumulatorLegs?: Prisma.IntFilter<"UserSettings"> | number
+  minAiConfidence?: Prisma.FloatFilter<"UserSettings"> | number
+  stopLossDaily?: Prisma.FloatFilter<"UserSettings"> | number
+  stopLossWeekly?: Prisma.FloatFilter<"UserSettings"> | number
+  profitTargetDaily?: Prisma.FloatFilter<"UserSettings"> | number
+  profitTargetWeekly?: Prisma.FloatFilter<"UserSettings"> | number
+  betScheduleStart?: Prisma.StringFilter<"UserSettings"> | string
+  betScheduleEnd?: Prisma.StringFilter<"UserSettings"> | string
+  partialCashoutEnabled?: Prisma.BoolFilter<"UserSettings"> | boolean
+  partialCashoutPercent?: Prisma.FloatFilter<"UserSettings"> | number
+  waitFullSettlement?: Prisma.BoolFilter<"UserSettings"> | boolean
   createdAt?: Prisma.DateTimeFilter<"UserSettings"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"UserSettings"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -359,6 +483,18 @@ export type UserSettingsOrderByWithRelationInput = {
   dailyBetLimit?: Prisma.SortOrder
   kellyFraction?: Prisma.SortOrder
   minEdgeThreshold?: Prisma.SortOrder
+  betTypes?: Prisma.SortOrder
+  maxAccumulatorLegs?: Prisma.SortOrder
+  minAiConfidence?: Prisma.SortOrder
+  stopLossDaily?: Prisma.SortOrder
+  stopLossWeekly?: Prisma.SortOrder
+  profitTargetDaily?: Prisma.SortOrder
+  profitTargetWeekly?: Prisma.SortOrder
+  betScheduleStart?: Prisma.SortOrder
+  betScheduleEnd?: Prisma.SortOrder
+  partialCashoutEnabled?: Prisma.SortOrder
+  partialCashoutPercent?: Prisma.SortOrder
+  waitFullSettlement?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
@@ -383,6 +519,18 @@ export type UserSettingsWhereUniqueInput = Prisma.AtLeast<{
   dailyBetLimit?: Prisma.FloatFilter<"UserSettings"> | number
   kellyFraction?: Prisma.FloatFilter<"UserSettings"> | number
   minEdgeThreshold?: Prisma.FloatFilter<"UserSettings"> | number
+  betTypes?: Prisma.StringFilter<"UserSettings"> | string
+  maxAccumulatorLegs?: Prisma.IntFilter<"UserSettings"> | number
+  minAiConfidence?: Prisma.FloatFilter<"UserSettings"> | number
+  stopLossDaily?: Prisma.FloatFilter<"UserSettings"> | number
+  stopLossWeekly?: Prisma.FloatFilter<"UserSettings"> | number
+  profitTargetDaily?: Prisma.FloatFilter<"UserSettings"> | number
+  profitTargetWeekly?: Prisma.FloatFilter<"UserSettings"> | number
+  betScheduleStart?: Prisma.StringFilter<"UserSettings"> | string
+  betScheduleEnd?: Prisma.StringFilter<"UserSettings"> | string
+  partialCashoutEnabled?: Prisma.BoolFilter<"UserSettings"> | boolean
+  partialCashoutPercent?: Prisma.FloatFilter<"UserSettings"> | number
+  waitFullSettlement?: Prisma.BoolFilter<"UserSettings"> | boolean
   createdAt?: Prisma.DateTimeFilter<"UserSettings"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"UserSettings"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -404,6 +552,18 @@ export type UserSettingsOrderByWithAggregationInput = {
   dailyBetLimit?: Prisma.SortOrder
   kellyFraction?: Prisma.SortOrder
   minEdgeThreshold?: Prisma.SortOrder
+  betTypes?: Prisma.SortOrder
+  maxAccumulatorLegs?: Prisma.SortOrder
+  minAiConfidence?: Prisma.SortOrder
+  stopLossDaily?: Prisma.SortOrder
+  stopLossWeekly?: Prisma.SortOrder
+  profitTargetDaily?: Prisma.SortOrder
+  profitTargetWeekly?: Prisma.SortOrder
+  betScheduleStart?: Prisma.SortOrder
+  betScheduleEnd?: Prisma.SortOrder
+  partialCashoutEnabled?: Prisma.SortOrder
+  partialCashoutPercent?: Prisma.SortOrder
+  waitFullSettlement?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.UserSettingsCountOrderByAggregateInput
@@ -432,6 +592,18 @@ export type UserSettingsScalarWhereWithAggregatesInput = {
   dailyBetLimit?: Prisma.FloatWithAggregatesFilter<"UserSettings"> | number
   kellyFraction?: Prisma.FloatWithAggregatesFilter<"UserSettings"> | number
   minEdgeThreshold?: Prisma.FloatWithAggregatesFilter<"UserSettings"> | number
+  betTypes?: Prisma.StringWithAggregatesFilter<"UserSettings"> | string
+  maxAccumulatorLegs?: Prisma.IntWithAggregatesFilter<"UserSettings"> | number
+  minAiConfidence?: Prisma.FloatWithAggregatesFilter<"UserSettings"> | number
+  stopLossDaily?: Prisma.FloatWithAggregatesFilter<"UserSettings"> | number
+  stopLossWeekly?: Prisma.FloatWithAggregatesFilter<"UserSettings"> | number
+  profitTargetDaily?: Prisma.FloatWithAggregatesFilter<"UserSettings"> | number
+  profitTargetWeekly?: Prisma.FloatWithAggregatesFilter<"UserSettings"> | number
+  betScheduleStart?: Prisma.StringWithAggregatesFilter<"UserSettings"> | string
+  betScheduleEnd?: Prisma.StringWithAggregatesFilter<"UserSettings"> | string
+  partialCashoutEnabled?: Prisma.BoolWithAggregatesFilter<"UserSettings"> | boolean
+  partialCashoutPercent?: Prisma.FloatWithAggregatesFilter<"UserSettings"> | number
+  waitFullSettlement?: Prisma.BoolWithAggregatesFilter<"UserSettings"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"UserSettings"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"UserSettings"> | Date | string
 }
@@ -451,6 +623,18 @@ export type UserSettingsCreateInput = {
   dailyBetLimit?: number
   kellyFraction?: number
   minEdgeThreshold?: number
+  betTypes?: string
+  maxAccumulatorLegs?: number
+  minAiConfidence?: number
+  stopLossDaily?: number
+  stopLossWeekly?: number
+  profitTargetDaily?: number
+  profitTargetWeekly?: number
+  betScheduleStart?: string
+  betScheduleEnd?: string
+  partialCashoutEnabled?: boolean
+  partialCashoutPercent?: number
+  waitFullSettlement?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutSettingsInput
@@ -472,6 +656,18 @@ export type UserSettingsUncheckedCreateInput = {
   dailyBetLimit?: number
   kellyFraction?: number
   minEdgeThreshold?: number
+  betTypes?: string
+  maxAccumulatorLegs?: number
+  minAiConfidence?: number
+  stopLossDaily?: number
+  stopLossWeekly?: number
+  profitTargetDaily?: number
+  profitTargetWeekly?: number
+  betScheduleStart?: string
+  betScheduleEnd?: string
+  partialCashoutEnabled?: boolean
+  partialCashoutPercent?: number
+  waitFullSettlement?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -491,6 +687,18 @@ export type UserSettingsUpdateInput = {
   dailyBetLimit?: Prisma.FloatFieldUpdateOperationsInput | number
   kellyFraction?: Prisma.FloatFieldUpdateOperationsInput | number
   minEdgeThreshold?: Prisma.FloatFieldUpdateOperationsInput | number
+  betTypes?: Prisma.StringFieldUpdateOperationsInput | string
+  maxAccumulatorLegs?: Prisma.IntFieldUpdateOperationsInput | number
+  minAiConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
+  stopLossDaily?: Prisma.FloatFieldUpdateOperationsInput | number
+  stopLossWeekly?: Prisma.FloatFieldUpdateOperationsInput | number
+  profitTargetDaily?: Prisma.FloatFieldUpdateOperationsInput | number
+  profitTargetWeekly?: Prisma.FloatFieldUpdateOperationsInput | number
+  betScheduleStart?: Prisma.StringFieldUpdateOperationsInput | string
+  betScheduleEnd?: Prisma.StringFieldUpdateOperationsInput | string
+  partialCashoutEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
+  waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutSettingsNestedInput
@@ -512,6 +720,18 @@ export type UserSettingsUncheckedUpdateInput = {
   dailyBetLimit?: Prisma.FloatFieldUpdateOperationsInput | number
   kellyFraction?: Prisma.FloatFieldUpdateOperationsInput | number
   minEdgeThreshold?: Prisma.FloatFieldUpdateOperationsInput | number
+  betTypes?: Prisma.StringFieldUpdateOperationsInput | string
+  maxAccumulatorLegs?: Prisma.IntFieldUpdateOperationsInput | number
+  minAiConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
+  stopLossDaily?: Prisma.FloatFieldUpdateOperationsInput | number
+  stopLossWeekly?: Prisma.FloatFieldUpdateOperationsInput | number
+  profitTargetDaily?: Prisma.FloatFieldUpdateOperationsInput | number
+  profitTargetWeekly?: Prisma.FloatFieldUpdateOperationsInput | number
+  betScheduleStart?: Prisma.StringFieldUpdateOperationsInput | string
+  betScheduleEnd?: Prisma.StringFieldUpdateOperationsInput | string
+  partialCashoutEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
+  waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -532,6 +752,18 @@ export type UserSettingsCreateManyInput = {
   dailyBetLimit?: number
   kellyFraction?: number
   minEdgeThreshold?: number
+  betTypes?: string
+  maxAccumulatorLegs?: number
+  minAiConfidence?: number
+  stopLossDaily?: number
+  stopLossWeekly?: number
+  profitTargetDaily?: number
+  profitTargetWeekly?: number
+  betScheduleStart?: string
+  betScheduleEnd?: string
+  partialCashoutEnabled?: boolean
+  partialCashoutPercent?: number
+  waitFullSettlement?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -551,6 +783,18 @@ export type UserSettingsUpdateManyMutationInput = {
   dailyBetLimit?: Prisma.FloatFieldUpdateOperationsInput | number
   kellyFraction?: Prisma.FloatFieldUpdateOperationsInput | number
   minEdgeThreshold?: Prisma.FloatFieldUpdateOperationsInput | number
+  betTypes?: Prisma.StringFieldUpdateOperationsInput | string
+  maxAccumulatorLegs?: Prisma.IntFieldUpdateOperationsInput | number
+  minAiConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
+  stopLossDaily?: Prisma.FloatFieldUpdateOperationsInput | number
+  stopLossWeekly?: Prisma.FloatFieldUpdateOperationsInput | number
+  profitTargetDaily?: Prisma.FloatFieldUpdateOperationsInput | number
+  profitTargetWeekly?: Prisma.FloatFieldUpdateOperationsInput | number
+  betScheduleStart?: Prisma.StringFieldUpdateOperationsInput | string
+  betScheduleEnd?: Prisma.StringFieldUpdateOperationsInput | string
+  partialCashoutEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
+  waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -571,6 +815,18 @@ export type UserSettingsUncheckedUpdateManyInput = {
   dailyBetLimit?: Prisma.FloatFieldUpdateOperationsInput | number
   kellyFraction?: Prisma.FloatFieldUpdateOperationsInput | number
   minEdgeThreshold?: Prisma.FloatFieldUpdateOperationsInput | number
+  betTypes?: Prisma.StringFieldUpdateOperationsInput | string
+  maxAccumulatorLegs?: Prisma.IntFieldUpdateOperationsInput | number
+  minAiConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
+  stopLossDaily?: Prisma.FloatFieldUpdateOperationsInput | number
+  stopLossWeekly?: Prisma.FloatFieldUpdateOperationsInput | number
+  profitTargetDaily?: Prisma.FloatFieldUpdateOperationsInput | number
+  profitTargetWeekly?: Prisma.FloatFieldUpdateOperationsInput | number
+  betScheduleStart?: Prisma.StringFieldUpdateOperationsInput | string
+  betScheduleEnd?: Prisma.StringFieldUpdateOperationsInput | string
+  partialCashoutEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
+  waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -596,6 +852,18 @@ export type UserSettingsCountOrderByAggregateInput = {
   dailyBetLimit?: Prisma.SortOrder
   kellyFraction?: Prisma.SortOrder
   minEdgeThreshold?: Prisma.SortOrder
+  betTypes?: Prisma.SortOrder
+  maxAccumulatorLegs?: Prisma.SortOrder
+  minAiConfidence?: Prisma.SortOrder
+  stopLossDaily?: Prisma.SortOrder
+  stopLossWeekly?: Prisma.SortOrder
+  profitTargetDaily?: Prisma.SortOrder
+  profitTargetWeekly?: Prisma.SortOrder
+  betScheduleStart?: Prisma.SortOrder
+  betScheduleEnd?: Prisma.SortOrder
+  partialCashoutEnabled?: Prisma.SortOrder
+  partialCashoutPercent?: Prisma.SortOrder
+  waitFullSettlement?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -609,6 +877,13 @@ export type UserSettingsAvgOrderByAggregateInput = {
   dailyBetLimit?: Prisma.SortOrder
   kellyFraction?: Prisma.SortOrder
   minEdgeThreshold?: Prisma.SortOrder
+  maxAccumulatorLegs?: Prisma.SortOrder
+  minAiConfidence?: Prisma.SortOrder
+  stopLossDaily?: Prisma.SortOrder
+  stopLossWeekly?: Prisma.SortOrder
+  profitTargetDaily?: Prisma.SortOrder
+  profitTargetWeekly?: Prisma.SortOrder
+  partialCashoutPercent?: Prisma.SortOrder
 }
 
 export type UserSettingsMaxOrderByAggregateInput = {
@@ -627,6 +902,18 @@ export type UserSettingsMaxOrderByAggregateInput = {
   dailyBetLimit?: Prisma.SortOrder
   kellyFraction?: Prisma.SortOrder
   minEdgeThreshold?: Prisma.SortOrder
+  betTypes?: Prisma.SortOrder
+  maxAccumulatorLegs?: Prisma.SortOrder
+  minAiConfidence?: Prisma.SortOrder
+  stopLossDaily?: Prisma.SortOrder
+  stopLossWeekly?: Prisma.SortOrder
+  profitTargetDaily?: Prisma.SortOrder
+  profitTargetWeekly?: Prisma.SortOrder
+  betScheduleStart?: Prisma.SortOrder
+  betScheduleEnd?: Prisma.SortOrder
+  partialCashoutEnabled?: Prisma.SortOrder
+  partialCashoutPercent?: Prisma.SortOrder
+  waitFullSettlement?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -647,6 +934,18 @@ export type UserSettingsMinOrderByAggregateInput = {
   dailyBetLimit?: Prisma.SortOrder
   kellyFraction?: Prisma.SortOrder
   minEdgeThreshold?: Prisma.SortOrder
+  betTypes?: Prisma.SortOrder
+  maxAccumulatorLegs?: Prisma.SortOrder
+  minAiConfidence?: Prisma.SortOrder
+  stopLossDaily?: Prisma.SortOrder
+  stopLossWeekly?: Prisma.SortOrder
+  profitTargetDaily?: Prisma.SortOrder
+  profitTargetWeekly?: Prisma.SortOrder
+  betScheduleStart?: Prisma.SortOrder
+  betScheduleEnd?: Prisma.SortOrder
+  partialCashoutEnabled?: Prisma.SortOrder
+  partialCashoutPercent?: Prisma.SortOrder
+  waitFullSettlement?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -660,6 +959,13 @@ export type UserSettingsSumOrderByAggregateInput = {
   dailyBetLimit?: Prisma.SortOrder
   kellyFraction?: Prisma.SortOrder
   minEdgeThreshold?: Prisma.SortOrder
+  maxAccumulatorLegs?: Prisma.SortOrder
+  minAiConfidence?: Prisma.SortOrder
+  stopLossDaily?: Prisma.SortOrder
+  stopLossWeekly?: Prisma.SortOrder
+  profitTargetDaily?: Prisma.SortOrder
+  profitTargetWeekly?: Prisma.SortOrder
+  partialCashoutPercent?: Prisma.SortOrder
 }
 
 export type UserSettingsCreateNestedOneWithoutUserInput = {
@@ -698,6 +1004,14 @@ export type BoolFieldUpdateOperationsInput = {
   set?: boolean
 }
 
+export type IntFieldUpdateOperationsInput = {
+  set?: number
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
+}
+
 export type UserSettingsCreateWithoutUserInput = {
   id?: string
   autoBettingEnabled?: boolean
@@ -713,6 +1027,18 @@ export type UserSettingsCreateWithoutUserInput = {
   dailyBetLimit?: number
   kellyFraction?: number
   minEdgeThreshold?: number
+  betTypes?: string
+  maxAccumulatorLegs?: number
+  minAiConfidence?: number
+  stopLossDaily?: number
+  stopLossWeekly?: number
+  profitTargetDaily?: number
+  profitTargetWeekly?: number
+  betScheduleStart?: string
+  betScheduleEnd?: string
+  partialCashoutEnabled?: boolean
+  partialCashoutPercent?: number
+  waitFullSettlement?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -732,6 +1058,18 @@ export type UserSettingsUncheckedCreateWithoutUserInput = {
   dailyBetLimit?: number
   kellyFraction?: number
   minEdgeThreshold?: number
+  betTypes?: string
+  maxAccumulatorLegs?: number
+  minAiConfidence?: number
+  stopLossDaily?: number
+  stopLossWeekly?: number
+  profitTargetDaily?: number
+  profitTargetWeekly?: number
+  betScheduleStart?: string
+  betScheduleEnd?: string
+  partialCashoutEnabled?: boolean
+  partialCashoutPercent?: number
+  waitFullSettlement?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -767,6 +1105,18 @@ export type UserSettingsUpdateWithoutUserInput = {
   dailyBetLimit?: Prisma.FloatFieldUpdateOperationsInput | number
   kellyFraction?: Prisma.FloatFieldUpdateOperationsInput | number
   minEdgeThreshold?: Prisma.FloatFieldUpdateOperationsInput | number
+  betTypes?: Prisma.StringFieldUpdateOperationsInput | string
+  maxAccumulatorLegs?: Prisma.IntFieldUpdateOperationsInput | number
+  minAiConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
+  stopLossDaily?: Prisma.FloatFieldUpdateOperationsInput | number
+  stopLossWeekly?: Prisma.FloatFieldUpdateOperationsInput | number
+  profitTargetDaily?: Prisma.FloatFieldUpdateOperationsInput | number
+  profitTargetWeekly?: Prisma.FloatFieldUpdateOperationsInput | number
+  betScheduleStart?: Prisma.StringFieldUpdateOperationsInput | string
+  betScheduleEnd?: Prisma.StringFieldUpdateOperationsInput | string
+  partialCashoutEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
+  waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -786,6 +1136,18 @@ export type UserSettingsUncheckedUpdateWithoutUserInput = {
   dailyBetLimit?: Prisma.FloatFieldUpdateOperationsInput | number
   kellyFraction?: Prisma.FloatFieldUpdateOperationsInput | number
   minEdgeThreshold?: Prisma.FloatFieldUpdateOperationsInput | number
+  betTypes?: Prisma.StringFieldUpdateOperationsInput | string
+  maxAccumulatorLegs?: Prisma.IntFieldUpdateOperationsInput | number
+  minAiConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
+  stopLossDaily?: Prisma.FloatFieldUpdateOperationsInput | number
+  stopLossWeekly?: Prisma.FloatFieldUpdateOperationsInput | number
+  profitTargetDaily?: Prisma.FloatFieldUpdateOperationsInput | number
+  profitTargetWeekly?: Prisma.FloatFieldUpdateOperationsInput | number
+  betScheduleStart?: Prisma.StringFieldUpdateOperationsInput | string
+  betScheduleEnd?: Prisma.StringFieldUpdateOperationsInput | string
+  partialCashoutEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
+  waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -808,6 +1170,18 @@ export type UserSettingsSelect<ExtArgs extends runtime.Types.Extensions.Internal
   dailyBetLimit?: boolean
   kellyFraction?: boolean
   minEdgeThreshold?: boolean
+  betTypes?: boolean
+  maxAccumulatorLegs?: boolean
+  minAiConfidence?: boolean
+  stopLossDaily?: boolean
+  stopLossWeekly?: boolean
+  profitTargetDaily?: boolean
+  profitTargetWeekly?: boolean
+  betScheduleStart?: boolean
+  betScheduleEnd?: boolean
+  partialCashoutEnabled?: boolean
+  partialCashoutPercent?: boolean
+  waitFullSettlement?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -829,6 +1203,18 @@ export type UserSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   dailyBetLimit?: boolean
   kellyFraction?: boolean
   minEdgeThreshold?: boolean
+  betTypes?: boolean
+  maxAccumulatorLegs?: boolean
+  minAiConfidence?: boolean
+  stopLossDaily?: boolean
+  stopLossWeekly?: boolean
+  profitTargetDaily?: boolean
+  profitTargetWeekly?: boolean
+  betScheduleStart?: boolean
+  betScheduleEnd?: boolean
+  partialCashoutEnabled?: boolean
+  partialCashoutPercent?: boolean
+  waitFullSettlement?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -850,6 +1236,18 @@ export type UserSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   dailyBetLimit?: boolean
   kellyFraction?: boolean
   minEdgeThreshold?: boolean
+  betTypes?: boolean
+  maxAccumulatorLegs?: boolean
+  minAiConfidence?: boolean
+  stopLossDaily?: boolean
+  stopLossWeekly?: boolean
+  profitTargetDaily?: boolean
+  profitTargetWeekly?: boolean
+  betScheduleStart?: boolean
+  betScheduleEnd?: boolean
+  partialCashoutEnabled?: boolean
+  partialCashoutPercent?: boolean
+  waitFullSettlement?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -871,11 +1269,23 @@ export type UserSettingsSelectScalar = {
   dailyBetLimit?: boolean
   kellyFraction?: boolean
   minEdgeThreshold?: boolean
+  betTypes?: boolean
+  maxAccumulatorLegs?: boolean
+  minAiConfidence?: boolean
+  stopLossDaily?: boolean
+  stopLossWeekly?: boolean
+  profitTargetDaily?: boolean
+  profitTargetWeekly?: boolean
+  betScheduleStart?: boolean
+  betScheduleEnd?: boolean
+  partialCashoutEnabled?: boolean
+  partialCashoutPercent?: boolean
+  waitFullSettlement?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type UserSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "autoBettingEnabled" | "maxBetAmount" | "minOddsThreshold" | "maxOddsThreshold" | "riskLevel" | "autoCashoutEnabled" | "cashoutThreshold" | "commissionRate" | "preferredSports" | "notificationsEnabled" | "dailyBetLimit" | "kellyFraction" | "minEdgeThreshold" | "createdAt" | "updatedAt", ExtArgs["result"]["userSettings"]>
+export type UserSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "autoBettingEnabled" | "maxBetAmount" | "minOddsThreshold" | "maxOddsThreshold" | "riskLevel" | "autoCashoutEnabled" | "cashoutThreshold" | "commissionRate" | "preferredSports" | "notificationsEnabled" | "dailyBetLimit" | "kellyFraction" | "minEdgeThreshold" | "betTypes" | "maxAccumulatorLegs" | "minAiConfidence" | "stopLossDaily" | "stopLossWeekly" | "profitTargetDaily" | "profitTargetWeekly" | "betScheduleStart" | "betScheduleEnd" | "partialCashoutEnabled" | "partialCashoutPercent" | "waitFullSettlement" | "createdAt" | "updatedAt", ExtArgs["result"]["userSettings"]>
 export type UserSettingsInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
@@ -907,6 +1317,18 @@ export type $UserSettingsPayload<ExtArgs extends runtime.Types.Extensions.Intern
     dailyBetLimit: number
     kellyFraction: number
     minEdgeThreshold: number
+    betTypes: string
+    maxAccumulatorLegs: number
+    minAiConfidence: number
+    stopLossDaily: number
+    stopLossWeekly: number
+    profitTargetDaily: number
+    profitTargetWeekly: number
+    betScheduleStart: string
+    betScheduleEnd: string
+    partialCashoutEnabled: boolean
+    partialCashoutPercent: number
+    waitFullSettlement: boolean
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["userSettings"]>
@@ -1348,6 +1770,18 @@ export interface UserSettingsFieldRefs {
   readonly dailyBetLimit: Prisma.FieldRef<"UserSettings", 'Float'>
   readonly kellyFraction: Prisma.FieldRef<"UserSettings", 'Float'>
   readonly minEdgeThreshold: Prisma.FieldRef<"UserSettings", 'Float'>
+  readonly betTypes: Prisma.FieldRef<"UserSettings", 'String'>
+  readonly maxAccumulatorLegs: Prisma.FieldRef<"UserSettings", 'Int'>
+  readonly minAiConfidence: Prisma.FieldRef<"UserSettings", 'Float'>
+  readonly stopLossDaily: Prisma.FieldRef<"UserSettings", 'Float'>
+  readonly stopLossWeekly: Prisma.FieldRef<"UserSettings", 'Float'>
+  readonly profitTargetDaily: Prisma.FieldRef<"UserSettings", 'Float'>
+  readonly profitTargetWeekly: Prisma.FieldRef<"UserSettings", 'Float'>
+  readonly betScheduleStart: Prisma.FieldRef<"UserSettings", 'String'>
+  readonly betScheduleEnd: Prisma.FieldRef<"UserSettings", 'String'>
+  readonly partialCashoutEnabled: Prisma.FieldRef<"UserSettings", 'Boolean'>
+  readonly partialCashoutPercent: Prisma.FieldRef<"UserSettings", 'Float'>
+  readonly waitFullSettlement: Prisma.FieldRef<"UserSettings", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"UserSettings", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"UserSettings", 'DateTime'>
 }
