@@ -130,17 +130,20 @@
   html {
     @apply font-sans;
   }
-  a,
-  button,
-  [role="button"],
-  [type="button"],
-  [type="submit"],
-  [type="reset"],
-  summary,
-  select,
-  label[for] {
-    cursor: pointer;
-  }
+}
+
+/* Pointer cursor on all interactive elements - outside @layer for higher specificity */
+a,
+button,
+[role="button"],
+[type="button"],
+[type="submit"],
+[type="reset"],
+summary,
+select,
+label[for],
+[onclick] {
+  cursor: pointer !important;
 }
 
 /* Custom scrollbar */
