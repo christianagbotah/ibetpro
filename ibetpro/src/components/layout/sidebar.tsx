@@ -126,7 +126,7 @@ export function Sidebar() {
         <div className="border-t border-border p-4">
           {isAuthenticated && user ? (
             <div className="flex items-center gap-3">
-              <Avatar size="sm">
+              <Avatar className="h-8 w-8">
                 <AvatarFallback className="bg-primary/20 text-primary text-xs">
                   {user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
                 </AvatarFallback>

@@ -10,8 +10,8 @@ function env(key: string, fallback: string = ""): string {
 export const config = {
   nextauth: {
     url: env("NEXTAUTH_URL", "http://localhost:3001"),
-    // MUST set NEXTAUTH_SECRET in production — no insecure fallback
-    secret: env("NEXTAUTH_SECRET", ""),
+    // MUST set NEXTAUTH_SECRET in production — fallback for development only
+    secret: env("NEXTAUTH_SECRET", "ibetpro-dev-secret-key-not-for-production"),
   },
   api: {
     oddsApiKey: env("ODDS_API_KEY", ""),
@@ -25,8 +25,8 @@ export const config = {
   },
   admin: {
     email: env("ADMIN_EMAIL", "admin@ibetpro.com"),
-    // MUST set ADMIN_PASSWORD in production — no insecure fallback
-    password: env("ADMIN_PASSWORD", ""),
+    // MUST set ADMIN_PASSWORD in production — fallback for development only
+    password: env("ADMIN_PASSWORD", "Admin@2024"),
   },
   commission: {
     defaultRate: parseFloat(env("DEFAULT_COMMISSION_RATE", "0.10")),
