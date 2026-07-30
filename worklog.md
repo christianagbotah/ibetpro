@@ -1,48 +1,60 @@
+# iBetPro Worklog
+
+## Repository & Sync Rules (CRITICAL - READ BEFORE EVERY TASK)
+
+- **GitHub Repo**: https://github.com/christianagbotah/ibetpro.git
+- **Git Token**: REDACTED
+- **Remote URL**: https://REDACTED@github.com/christianagbotah/ibetpro.git
+- **Branch**: main
+
+### Mandatory Rules:
+1. **Push after every update** — After any code change, commit and push to the remote repo immediately.
+2. **Check sync before starting** — Before starting any new task, run `git fetch origin && git log --oneline HEAD..origin/main` to check if remote has newer commits. If so, pull first.
+3. **Recover after crashes** — If the local server crashes or files get lost, run `git fetch origin && git reset --hard origin/main` to restore from remote.
+4. **Commit message format** — Use descriptive messages like `feat: add X`, `fix: Y issue`, `chore: Z`.
+5. **Token storage** — Token is saved at `/home/z/my-project/.config/git-credentials` (chmod 600).
+
+---
+
+## Task History
+
+---
+Task ID: 0
+Agent: Main
+Task: Initial iBetPro project setup and full development
+
+Work Log:
+- Created Next.js 16 project with TypeScript, Tailwind CSS 4, shadcn/ui
+- Set up Prisma 7 with SQLite (adapter-better-sqlite3 pattern)
+- Built 8 database models: User, UserSettings, BettingAccount, Match, TeamStats, Bet, Transaction, AdminSettings
+- Developed AI statistical engine (analyzeMatch, shouldCashout, calculateOddsValue, generateBetReasoning)
+- Built 8 pages: Dashboard, Analysis, Betting, Monitor, Accounts, Profits, Settings, Admin
+- Created 6 API routes: matches, bets, accounts, ai/analyze, ai/cashout, transactions, stats
+- Implemented commission system (10% admin deduction from profits)
+- Seeded demo data (users, teams, matches, bets, transactions)
+- Fixed Prisma 7 config issues (url moved to prisma.config.ts, adapter class name)
+- Fixed shadcn v4 base-ui type issues (Select onValueChange, Slider onValueChange, Dialog asChild)
+- Build succeeds with no TypeScript errors
+
+Stage Summary:
+- Full iBetPro app built and functional
+- All 8 pages return 200 status codes
+- Dev server running on port 3001
+
 ---
 Task ID: 1
-Agent: Main Agent
-Task: Build iBetPro AI-automated betting application
+Agent: Main
+Task: Set up GitHub remote and push code
 
 Work Log:
-- Initialized Next.js 16 project with TypeScript, Tailwind CSS 4, and shadcn/ui
-- Set up Prisma with SQLite database schema (8 models: User, UserSettings, BettingAccount, Match, TeamStats, Bet, Transaction, AdminSettings)
-- Seeded database with demo data (10 teams, 9 matches, 7 bets, 8 transactions)
-- Built complete application with 8 pages: Dashboard, AI Analysis, Betting, Monitor, Accounts, Profits, Settings, Admin
-- Built 6 API routes: /api/matches, /api/bets, /api/accounts, /api/ai/analyze, /api/ai/cashout, /api/transactions, /api/stats
-- Built AI engine with statistical analysis (form parsing, rating comparison, odds value calculation, cashout logic)
-- Applied dark premium theme with emerald green accents
-- Built responsive sidebar navigation with collapsible support
-- All pages return 200 status, build succeeds
+- Added GitHub remote: https://github.com/christianagbotah/ibetpro.git
+- Set branch to main
+- Pushed all 3 commits to origin/main
+- Verified local and remote are in sync
+- Saved token to /home/z/my-project/.config/git-credentials
+- Updated worklog with repo tracking rules
 
 Stage Summary:
-- Complete iBetPro application built and running
-- All 8 pages and 6 API routes functional
-- Database seeded with demo data
-- AI engine implements statistical prediction models
-- Dark premium theme with emerald green accents
-
----
-Task ID: 2
-Agent: Main Agent
-Task: Enhance iBetPro with major new features
-
-Work Log:
-- Added real-time match simulation API (/api/matches/simulate) with Poisson-based goal probability
-- Added toast notification system with success/error/warning/info types
-- Added match detail page (/matches/[id]) with team comparison, AI analysis, and quick bet
-- Added bet history page (/history) with filtering, sorting, and CSV export
-- Added usePolling hook for live data updates
-- Enhanced AI engine with Poisson probabilities, over/under analysis, and detailed analysis generation
-- Enhanced dashboard with live polling, quick actions, recent activity feed, and commission summary
-- Enhanced monitor with simulation controls, match events timeline, and cashout progress bars
-- Enhanced betting page with bot status indicator, AI confidence meters, and one-click bet buttons
-- Added detailed analysis API (/api/ai/detailed-analysis)
-- Fixed TypeScript errors across all pages
-
-Stage Summary:
-- Application now has 21 routes (10 pages + 11 API routes)
-- New pages: Match Detail, Bet History
-- New APIs: Match Simulation, Detailed Analysis
-- Enhanced AI engine with Poisson model and over/under probabilities
-- Toast notification system integrated
-- All builds pass successfully
+- Code successfully pushed to GitHub
+- Remote URL configured with token authentication
+- Worklog updated with mandatory push/sync rules
