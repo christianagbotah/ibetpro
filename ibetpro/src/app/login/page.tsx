@@ -160,10 +160,10 @@ export default function LoginPage() {
                 </button>
               </div>
 
-              {!isRegister && (
+              {isRegister && (
                 <div className="rounded-lg bg-secondary/50 p-3 mt-4">
                   <p className="text-[10px] text-muted-foreground text-center">
-                    Admin: admin@ibetpro.com / changeme-admin-2024
+                    Password must be at least 8 characters. Your data is secured with industry-standard encryption.
                   </p>
                 </div>
               )}

@@ -1,5 +1,6 @@
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import bcrypt from "bcryptjs";
 
 const adapter = new PrismaBetterSqlite3({ url: "file:./prisma/dev.db" });
 const prisma = new PrismaClient({ adapter });
@@ -25,13 +26,18 @@ async function main() {
     },
   });
 
-  // Create admin user for commission collection
+  // Create admin user with hashed password
+  // The actual password comes from the ADMIN_PASSWORD env var
+  const adminPassword = process.env.ADMIN_PASSWORD || "changeme-admin-2024";
+  const hashedPassword = await bcrypt.hash(adminPassword, 12);
+
   const admin = await prisma.user.upsert({
     where: { email: "admin@ibetpro.com" },
     update: {},
     create: {
       email: "admin@ibetpro.com",
       name: "Admin",
+      passwordHash: hashedPassword,
       role: "admin",
       balance: 0,
       bankroll: 0,

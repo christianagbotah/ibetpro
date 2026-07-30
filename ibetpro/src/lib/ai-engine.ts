@@ -1,7 +1,10 @@
 // ============================================================================
 // iBetPro Production AI Engine v2.0
 // Multi-model prediction system with Poisson, ELO, Monte Carlo, Kelly Criterion
+// All defaults are configurable via config.ts / environment variables
 // ============================================================================
+
+import { config } from "@/lib/config";
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -140,6 +143,26 @@ interface MonteCarloResult {
 
 // ==================== MATH UTILITIES ====================
 
+// Seeded PRNG for reproducible Monte Carlo simulations
+class SeededRandom {
+  private seed: number;
+  constructor(seed: number) {
+    this.seed = seed;
+  }
+  next(): number {
+    // Mulberry32 — fast, good distribution
+    this.seed |= 0;
+    this.seed = (this.seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(this.seed ^ (this.seed >>> 15), 1 | this.seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  }
+}
+
+function createRng(seed?: number): SeededRandom {
+  return new SeededRandom(seed ?? Date.now());
+}
+
 function factorial(n: number): number {
   if (n <= 1) return 1;
   let result = 1;
@@ -165,9 +188,9 @@ function normalCDF(x: number): number {
   return 0.5 * (1.0 + sign * y);
 }
 
-function gaussianRandom(mean: number = 0, stdev: number = 1): number {
-  const u1 = Math.random();
-  const u2 = Math.random();
+function gaussianRandom(mean: number = 0, stdev: number = 1, rng?: SeededRandom): number {
+  const u1 = rng ? rng.next() : Math.random();
+  const u2 = rng ? rng.next() : Math.random();
   const z = Math.sqrt(-2.0 * Math.log(u1)) * Math.cos(2.0 * Math.PI * u2);
   return z * stdev + mean;
 }
@@ -203,7 +226,7 @@ function parseRecord(record: string | null): { wins: number; draws: number; loss
 
 function calculateEloProbability(homeElo: number, awayElo: number, isHome: boolean = true): number {
   // Home advantage bonus of 65 Elo points (well-established in football analytics)
-  const homeAdvantage = isHome ? 65 : 0;
+  const homeAdvantage = isHome ? config.ai.eloHomeAdvantage : 0;
   const eloDiff = (homeElo + homeAdvantage) - awayElo;
   return 1 / (1 + Math.pow(10, -eloDiff / 400));
 }
@@ -212,7 +235,7 @@ function calculateEloDrawProbability(homeElo: number, awayElo: number): number {
   // Draw probability is highest when teams are close in rating
   const eloDiff = Math.abs(homeElo - awayElo);
   // Base draw probability ~26% for football, decreasing with rating gap
-  const baseDrawProb = 0.26;
+  const baseDrawProb = config.ai.baseDrawProb;
   const gapPenalty = eloDiff / 1000; // Larger gap = fewer draws
   return Math.max(0.12, Math.min(0.35, baseDrawProb - gapPenalty));
 }
@@ -235,7 +258,7 @@ function predictWithElo(homeElo: number, awayElo: number): { homeWin: number; dr
 export function calculatePoissonProbabilities(
   homeStats: TeamStatsData | null,
   awayStats: TeamStatsData | null,
-  leagueAvgGoals: number = 1.35
+  leagueAvgGoals: number = config.ai.leagueAvgGoals
 ): PoissonResult {
   let expectedHomeGoals = leagueAvgGoals;
   let expectedAwayGoals = leagueAvgGoals;
@@ -277,9 +300,9 @@ export function calculatePoissonProbabilities(
       expectedAwayGoals = expectedAwayGoals * 0.4 + xgAwayExpected * 0.6;
     }
 
-    // Home advantage boost (1.15x for home team attack)
-    expectedHomeGoals *= 1.15;
-    expectedAwayGoals *= 0.90;
+    // Home advantage boost (configurable via AI_HOME_ADV_MULT / AI_AWAY_PEN_MULT)
+    expectedHomeGoals *= config.ai.homeAdvantageMultiplier;
+    expectedAwayGoals *= config.ai.awayPenaltyMultiplier;
   }
 
   // Ensure reasonable bounds
@@ -347,8 +370,11 @@ export function calculatePoissonProbabilities(
 function runMonteCarloSimulation(
   expectedHomeGoals: number,
   expectedAwayGoals: number,
-  iterations: number = 10000
+  iterations: number = config.ai.monteCarloIterations
 ): MonteCarloResult {
+  // Use seeded PRNG for reproducibility
+  const rng = createRng();
+
   let homeWins = 0;
   let draws = 0;
   let awayWins = 0;
@@ -357,9 +383,9 @@ function runMonteCarloSimulation(
   const scoreCounts: Record<string, number> = {};
 
   for (let i = 0; i < iterations; i++) {
-    // Simulate goals using Poisson with random variation
-    const homeGoals = poissonRandom(expectedHomeGoals);
-    const awayGoals = poissonRandom(expectedAwayGoals);
+    // Simulate goals using Poisson with seeded random variation
+    const homeGoals = poissonRandom(expectedHomeGoals, rng);
+    const awayGoals = poissonRandom(expectedAwayGoals, rng);
 
     totalHomeGoals += homeGoals;
     totalAwayGoals += awayGoals;
@@ -385,7 +411,7 @@ function runMonteCarloSimulation(
   // Calculate confidence interval for total goals
   const totalGoals = [];
   for (let i = 0; i < iterations; i++) {
-    totalGoals.push(poissonRandom(expectedHomeGoals) + poissonRandom(expectedAwayGoals));
+    totalGoals.push(poissonRandom(expectedHomeGoals, rng) + poissonRandom(expectedAwayGoals, rng));
   }
   totalGoals.sort((a, b) => a - b);
   const lowIdx = Math.floor(iterations * 0.1);
@@ -405,13 +431,13 @@ function runMonteCarloSimulation(
   };
 }
 
-function poissonRandom(lambda: number): number {
+function poissonRandom(lambda: number, rng?: SeededRandom): number {
   const L = Math.exp(-lambda);
   let k = 0;
   let p = 1;
   do {
     k++;
-    p *= Math.random();
+    p *= rng ? rng.next() : Math.random();
   } while (p > L);
   return k - 1;
 }
@@ -422,7 +448,7 @@ export function calculateKellyCriterion(
   probability: number,
   odds: number,
   bankroll: number = 1000,
-  fractionalKelly: number = 0.25 // Use quarter-Kelly for safety
+  fractionalKelly: number = config.ai.kellyFraction // Use quarter-Kelly for safety
 ): KellyResult {
   const b = odds - 1; // Net odds
   const q = 1 - probability; // Probability of losing
@@ -555,7 +581,7 @@ function detectValueBets(
     const overImplied = 1 / match.overOdds;
     const underImplied = 1 / match.underOdds;
     // Use Poisson model for over/under
-    const totalExpected = 2.5; // Will be overridden by actual expected goals
+    const totalExpected = config.ai.overUnderExpected; // Will be overridden by actual expected goals
     const overProb = 1 - normalCDF((match.overUnderLine - totalExpected) / Math.sqrt(totalExpected));
     const underProb = 1 - overProb;
 
@@ -634,8 +660,8 @@ export function analyzeMatch(
   });
 
   // ---- MODEL 3: ELO Rating Model ----
-  const homeElo = homeTeamStats?.eloRating || 1500;
-  const awayElo = awayTeamStats?.eloRating || 1500;
+  const homeElo = homeTeamStats?.eloRating || config.ai.defaultElo;
+  const awayElo = awayTeamStats?.eloRating || config.ai.defaultElo;
   const eloResult = predictWithElo(homeElo, awayElo);
 
   modelResults.push({
@@ -963,7 +989,7 @@ export function shouldCashout(
     if (isFootball) {
       // Football: use Poisson model for remaining time
       const remainingMins = 90 - minute;
-      const goalRate = remainingMins / 90 * 2.7; // ~2.7 goals per match average
+      const goalRate = remainingMins / 90 * config.ai.goalRatePerMatch; // Configurable average goals per match
       const probOfConceding = 1 - Math.exp(-goalRate * 0.4); // Approximate
 
       if (currentLead >= 2) {
@@ -1003,7 +1029,7 @@ export function shouldCashout(
   const fairCashout = probabilityOfWinning * profitIfWin + (1 - probabilityOfWinning) * 0;
 
   // Bookmaker cashout is typically 80-90% of fair value
-  const bookmakerCashout = fairCashout * 0.85;
+  const bookmakerCashout = fairCashout * config.ai.cashoutBookmakerMargin;
 
   // Expected value if holding
   const expectedValueIfHold = probabilityOfWinning * profitIfWin - (1 - probabilityOfWinning) * stake;
@@ -1041,14 +1067,14 @@ export function shouldCashout(
     if (progress > 0.7) {
       shouldCashout = true;
       urgency = "high";
-      cashoutAmount = stake * 0.5;
+      cashoutAmount = stake * config.ai.cashoutDrawStakeRatio;
     }
   } else {
     // Losing
     if (progress > 0.5) {
       shouldCashout = true;
       urgency = "high";
-      cashoutAmount = stake * 0.15;
+      cashoutAmount = stake * config.ai.cashoutLosingStakeRatio;
     }
   }
 

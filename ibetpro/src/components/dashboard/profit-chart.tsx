@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp } from "lucide-react";
 import {
@@ -12,16 +13,21 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
-// Demo data for the last 7 days
-const profitData = [
-  { day: "Mon", profit: 120, loss: -45 },
-  { day: "Tue", profit: 85, loss: -30 },
-  { day: "Wed", profit: 200, loss: -60 },
-  { day: "Thu", profit: 50, loss: -80 },
-  { day: "Fri", profit: 310, loss: -25 },
-  { day: "Sat", profit: 175, loss: -90 },
-  { day: "Sun", profit: 250, loss: -40 },
-];
+interface ProfitDataPoint {
+  day: string;
+  profit: number;
+  loss: number;
+}
+
+interface UserStats {
+  monthlyData: Array<{
+    month: string;
+    profit: number;
+    loss: number;
+    bets: number;
+    winRate: number;
+  }>;
+}
 
 const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; dataKey: string; color: string }>; label?: string }) => {
   if (active && payload && payload.length) {
@@ -41,18 +47,83 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 };
 
 export function ProfitChart() {
+  const [data, setData] = useState<ProfitDataPoint[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchProfitData() {
+      try {
+        const res = await fetch("/api/stats/user");
+        if (res.ok) {
+          const stats: UserStats = await res.json();
+          if (stats.monthlyData && stats.monthlyData.length > 0) {
+            const chartData = stats.monthlyData.slice(-7).map((m) => ({
+              day: m.month,
+              profit: m.profit,
+              loss: m.loss,
+            }));
+            setData(chartData);
+          }
+        }
+      } catch {
+        // Silently handle — chart will show empty state
+      } finally {
+        setLoading(false);
+      }
+    }
+    fetchProfitData();
+  }, []);
+
+  if (loading) {
+    return (
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            Profit Trend
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64 flex items-center justify-center">
+            <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            Profit Trend
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="h-64 flex items-center justify-center">
+            <p className="text-sm text-muted-foreground">
+              No profit data yet. Place bets to see your trend.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
   return (
     <Card className="bg-card border-border">
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <TrendingUp className="h-4 w-4 text-primary" />
-          Profit Trend (7 Days)
+          Profit Trend
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="h-64">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={profitData}>
+            <AreaChart data={data}>
               <defs>
                 <linearGradient id="profitGradient" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />

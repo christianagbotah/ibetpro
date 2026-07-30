@@ -96,7 +96,7 @@ export async function fetchOddsApiUpcoming(
   regions: string = "uk,eu,us",
   markets: string = "h2h,totals"
 ): Promise<ExternalOdds[]> {
-  const apiKey = config.apis.oddsApiKey;
+  const apiKey = config.api.oddsApiKey;
   if (!apiKey) {
     throw new Error("The Odds API key not configured. Set ODDS_API_KEY in .env.local");
   }
@@ -119,7 +119,7 @@ export async function fetchOddsApiUpcoming(
  * Get available sports from The Odds API
  */
 export async function fetchOddsApiSports(): Promise<Array<{ key: string; title: string; group: string }>> {
-  const apiKey = config.apis.oddsApiKey;
+  const apiKey = config.api.oddsApiKey;
   if (!apiKey) {
     throw new Error("The Odds API key not configured");
   }
@@ -223,7 +223,7 @@ export async function fetchApiFootballFixtures(
   league: number = 39, // Premier League
   season: number = 2024
 ): Promise<ExternalFixture[]> {
-  const apiKey = config.apis.apiFootballKey;
+  const apiKey = config.api.apiFootballKey;
   if (!apiKey) {
     throw new Error("API-Football key not configured. Set API_FOOTBALL_KEY in .env.local");
   }
@@ -274,7 +274,7 @@ export async function fetchApiFootballTeamStats(
   league: number = 39,
   season: number = 2024
 ): Promise<ExternalTeamStats | null> {
-  const apiKey = config.apis.apiFootballKey;
+  const apiKey = config.api.apiFootballKey;
   if (!apiKey) {
     throw new Error("API-Football key not configured");
   }
@@ -362,7 +362,7 @@ export async function fetchApiFootballTeamStats(
  * Fetch live fixtures from API-Football
  */
 export async function fetchApiFootballLiveFixtures(): Promise<ExternalFixture[]> {
-  const apiKey = config.apis.apiFootballKey;
+  const apiKey = config.api.apiFootballKey;
   if (!apiKey) {
     throw new Error("API-Football key not configured");
   }
@@ -428,7 +428,7 @@ export async function fetchSportmonksFixtures(
   leagueId: number = 8, // Premier League
   seasonId: number = 21646
 ): Promise<ExternalFixture[]> {
-  const token = config.apis.sportmonksToken;
+  const token = config.api.sportmonksToken;
   if (!token) {
     throw new Error("SportMonks API token not configured. Set SPORTMONKS_API_TOKEN in .env.local");
   }
@@ -603,10 +603,10 @@ export async function checkApiHealth(): Promise<ApiHealthStatus> {
   };
 
   // Check The Odds API
-  if (config.apis.oddsApiKey) {
+  if (config.api.oddsApiKey) {
     try {
       const res = await fetch(
-        `${config.apiUrls.oddsApi}/sports/?apiKey=${config.apis.oddsApiKey}`,
+        `${config.apiUrls.oddsApi}/sports/?apiKey=${config.api.oddsApiKey}`,
         { next: { revalidate: 0 } }
       );
       health.oddsApi.connected = res.ok;
@@ -620,10 +620,10 @@ export async function checkApiHealth(): Promise<ApiHealthStatus> {
   }
 
   // Check API-Football
-  if (config.apis.apiFootballKey) {
+  if (config.api.apiFootballKey) {
     try {
       const res = await fetch(`${config.apiUrls.apiFootball}/status`, {
-        headers: { "x-apisports-key": config.apis.apiFootballKey },
+        headers: { "x-apisports-key": config.api.apiFootballKey },
         next: { revalidate: 0 },
       });
       health.apiFootball.connected = res.ok;
@@ -638,10 +638,10 @@ export async function checkApiHealth(): Promise<ApiHealthStatus> {
   }
 
   // Check SportMonks
-  if (config.apis.sportmonksToken) {
+  if (config.api.sportmonksToken) {
     try {
       const res = await fetch(
-        `${config.apiUrls.sportmonks}/football/leagues?token=${config.apis.sportmonksToken}`,
+        `${config.apiUrls.sportmonks}/football/leagues?token=${config.api.sportmonksToken}`,
         { next: { revalidate: 0 } }
       );
       health.sportmonks.connected = res.ok;

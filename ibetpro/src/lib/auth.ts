@@ -1,12 +1,13 @@
 // ============================================================================
 // iBetPro NextAuth Configuration
-// Credentials-based authentication with proper session management
+// Credentials-based authentication with bcrypt password hashing
 // ============================================================================
 
 import type { NextAuthOptions } from "next-auth";
 import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import { config } from "@/lib/config";
+import bcrypt from "bcryptjs";
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -21,21 +22,23 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Email and password are required");
         }
 
-        // Check for admin login
+        // Check for admin login using env-configured credentials
         if (
           credentials.email === config.admin.email &&
           credentials.password === config.admin.password
         ) {
-          // Find or create admin user
+          // Find or create admin user with hashed password
           let admin = await prisma.user.findUnique({
             where: { email: credentials.email },
           });
 
           if (!admin) {
+            const hashedPassword = await bcrypt.hash(config.admin.password, 12);
             admin = await prisma.user.create({
               data: {
                 email: credentials.email,
                 name: "Admin",
+                passwordHash: hashedPassword,
                 role: "admin",
                 balance: 0,
                 bankroll: 0,
@@ -58,25 +61,21 @@ export const authOptions: NextAuthOptions = {
           };
         }
 
-        // Regular user login
+        // Regular user login — verify password with bcrypt
         const user = await prisma.user.findUnique({
           where: { email: credentials.email },
         });
 
         if (!user) {
-          throw new Error("No account found with this email");
+          throw new Error("Invalid email or password");
         }
 
-        // In production, you would hash passwords with bcrypt
-        // For now, we check against a simple password field
-        // TODO: Add password hashing with bcrypt
-        if (user.role === "admin") {
-          // Admin already checked above
-          throw new Error("Invalid credentials");
+        // Verify password against stored hash
+        const isValid = await bcrypt.compare(credentials.password, user.passwordHash);
+        if (!isValid) {
+          throw new Error("Invalid email or password");
         }
 
-        // For initial setup, accept any password for existing users
-        // This will be replaced with proper password verification
         return {
           id: user.id,
           email: user.email,

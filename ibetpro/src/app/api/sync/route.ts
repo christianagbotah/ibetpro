@@ -78,9 +78,9 @@ export async function GET() {
       health,
       lastSynced: adminSettings?.updatedAt || null,
       apiKeysConfigured: {
-        oddsApi: !!config.apis.oddsApiKey,
-        apiFootball: !!config.apis.apiFootballKey,
-        sportmonks: !!config.apis.sportmonksToken,
+        oddsApi: !!config.api.oddsApiKey,
+        apiFootball: !!config.api.apiFootballKey,
+        sportmonks: !!config.api.sportmonksToken,
       },
     });
   } catch (error) {
@@ -92,7 +92,7 @@ export async function GET() {
 // ==================== SYNC HELPERS ====================
 
 async function syncOddsApiData(): Promise<number> {
-  if (!config.apis.oddsApiKey) {
+  if (!config.api.oddsApiKey) {
     throw new Error("The Odds API key not configured");
   }
 
@@ -157,7 +157,7 @@ async function syncOddsApiData(): Promise<number> {
 }
 
 async function syncApiFootballData(): Promise<{ matches: number; teamStats: number }> {
-  if (!config.apis.apiFootballKey) {
+  if (!config.api.apiFootballKey) {
     throw new Error("API-Football key not configured");
   }
 
@@ -186,7 +186,7 @@ async function syncApiFootballData(): Promise<{ matches: number; teamStats: numb
             league: fixture.league,
             homeTeam: fixture.homeTeam,
             awayTeam: fixture.awayTeam,
-            homeOdds: 2.0, // Default odds, will be updated
+            homeOdds: 2.0, // Placeholder odds — will be updated by Odds API sync
             awayOdds: 2.0,
             commenceTime: new Date(fixture.commenceTime),
             status: fixture.status,
@@ -224,7 +224,7 @@ async function syncApiFootballData(): Promise<{ matches: number; teamStats: numb
           league: fixture.league,
           homeTeam: fixture.homeTeam,
           awayTeam: fixture.awayTeam,
-          homeOdds: 2.0,
+          homeOdds: 2.0, // Placeholder — will be updated by Odds API sync
           awayOdds: 2.0,
           commenceTime: new Date(fixture.commenceTime),
           status: "live",

@@ -1,5 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
+import bcrypt from "bcryptjs";
+import { config } from "@/lib/config";
 
 export async function POST(request: NextRequest) {
   try {
@@ -13,9 +15,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (password.length < 6) {
+    // Validate password strength
+    if (password.length < 8) {
       return NextResponse.json(
-        { error: "Password must be at least 6 characters" },
+        { error: "Password must be at least 8 characters" },
         { status: 400 }
       );
     }
@@ -32,32 +35,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Create user with settings
+    // Hash password with bcrypt (12 salt rounds)
+    const passwordHash = await bcrypt.hash(password, 12);
+
+    // Create user with hashed password
     const user = await prisma.user.create({
       data: {
         email,
         name,
+        passwordHash,
         role: "user",
         balance: 0,
         bankroll: 1000,
-        totalProfit: 0,
-        totalLoss: 0,
-        commissionPaid: 0,
         settings: {
           create: {
             autoBettingEnabled: false,
-            maxBetAmount: 200,
-            minOddsThreshold: 1.5,
-            maxOddsThreshold: 5.0,
             riskLevel: "medium",
-            autoCashoutEnabled: true,
-            cashoutThreshold: 0.7,
-            commissionRate: 0.10,
-            preferredSports: "football,basketball,tennis",
-            notificationsEnabled: true,
-            dailyBetLimit: 500,
-            kellyFraction: 0.25,
-            minEdgeThreshold: 0.03,
+            commissionRate: config.commission.defaultRate,
           },
         },
       },
@@ -67,8 +61,7 @@ export async function POST(request: NextRequest) {
       id: user.id,
       email: user.email,
       name: user.name,
-      message: "Account created successfully",
-    });
+    }, { status: 201 });
   } catch (error) {
     console.error("Registration error:", error);
     return NextResponse.json(

@@ -5,13 +5,13 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
 }
 
 model User {
   id             String   @id @default(cuid())
   email          String   @unique
   name           String
+  passwordHash   String
   avatar         String?
   role           String   @default("user")
   balance        Float    @default(0)

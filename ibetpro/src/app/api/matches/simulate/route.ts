@@ -1,19 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/session";
+import { config } from "@/lib/config";
 
-// Simple Poisson random number generator
-function poissonRandom(lambda: number): number {
-  const L = Math.exp(-lambda);
-  let k = 0;
-  let p = 1;
-  do {
-    k++;
-    p *= Math.random();
-  } while (p > L);
-  return k - 1;
-}
-
+/**
+ * Settle a match with real results from the API
+ * This replaces the simulated match endpoint with real result settlement
+ */
 export async function POST(request: NextRequest) {
   try {
     const user = await getAuthUser();
@@ -21,11 +14,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const body = await request.json();
-    const { matchId } = body;
+    // Only admins can settle matches
+    if (user.role !== "admin") {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
 
-    if (!matchId) {
-      return NextResponse.json({ error: "Match ID is required" }, { status: 400 });
+    const body = await request.json();
+    const { matchId, homeScore, awayScore, status } = body;
+
+    if (!matchId || homeScore === undefined || awayScore === undefined) {
+      return NextResponse.json(
+        { error: "Match ID, home score, and away score are required" },
+        { status: 400 }
+      );
     }
 
     const match = await prisma.match.findUnique({
@@ -37,65 +38,28 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
 
-    if (match.status !== "live") {
-      return NextResponse.json({ error: "Match is not live", match }, { status: 400 });
+    if (match.status === "finished") {
+      return NextResponse.json({ error: "Match already settled" }, { status: 400 });
     }
 
-    // Advance the minute by 1-3
-    const advance = Math.floor(Math.random() * 3) + 1;
-    const currentMinute = (match.minute ?? 0) + advance;
-
-    // Determine max minutes based on sport
-    const isFootball = match.sport === "football" || match.sport.startsWith("soccer");
-    const isBasketball = match.sport === "basketball";
-    const maxMinutes = isFootball ? 90 : isBasketball ? 48 : 180;
-
-    let homeScore = match.homeScore ?? 0;
-    let awayScore = match.awayScore ?? 0;
-    let newStatus = match.status;
-    const events: string[] = [];
-
-    // Calculate goal probability based on odds
-    const homeImplied = 1 / match.homeOdds;
-    const awayImplied = 1 / match.awayOdds;
-
-    const homeGoalRate = (homeImplied * 2.5) / maxMinutes;
-    const awayGoalRate = (awayImplied * 2.5) / maxMinutes;
-
-    for (let m = 0; m < advance; m++) {
-      const minute = (match.minute ?? 0) + m + 1;
-
-      const homeGoals = poissonRandom(homeGoalRate);
-      if (homeGoals > 0) {
-        homeScore += 1;
-        events.push(`${minute}' - Goal! ${match.homeTeam} scores! (${homeScore}-${awayScore})`);
-      }
-
-      const awayGoals = poissonRandom(awayGoalRate);
-      if (awayGoals > 0) {
-        awayScore += 1;
-        events.push(`${minute}' - Goal! ${match.awayTeam} scores! (${homeScore}-${awayScore})`);
-      }
-    }
-
-    if (currentMinute >= maxMinutes) {
-      newStatus = "finished";
-      events.push(`Full Time! ${match.homeTeam} ${homeScore} - ${awayScore} ${match.awayTeam}`);
-    }
-
+    // Update match with real results
     const updatedMatch = await prisma.match.update({
       where: { id: matchId },
       data: {
-        minute: Math.min(currentMinute, maxMinutes),
-        homeScore,
-        awayScore,
-        status: newStatus,
+        homeScore: parseInt(homeScore),
+        awayScore: parseInt(awayScore),
+        status: status || "finished",
+        minute: status === "finished" ? (match.sport === "football" ? 90 : null) : match.minute,
       },
       include: { bets: true },
     });
 
-    // If match is finished, settle bets
-    if (newStatus === "finished") {
+    // Settle bets if match is finished
+    if (updatedMatch.status === "finished") {
+      // Get commission rate from admin settings
+      const adminSettings = await prisma.adminSettings.findFirst();
+      const commissionRate = adminSettings?.defaultCommissionRate || config.commission.defaultRate;
+
       for (const bet of match.bets) {
         if (bet.status !== "pending") continue;
 
@@ -120,6 +84,8 @@ export async function POST(request: NextRequest) {
         });
 
         if (betWon) {
+          const commission = profit * commissionRate;
+
           await prisma.transaction.create({
             data: {
               userId: bet.userId,
@@ -132,8 +98,6 @@ export async function POST(request: NextRequest) {
             },
           });
 
-          // Create commission transaction (10% of profit)
-          const commission = profit * 0.10;
           await prisma.transaction.create({
             data: {
               userId: bet.userId,
@@ -141,12 +105,11 @@ export async function POST(request: NextRequest) {
               amount: -commission,
               currency: "USD",
               status: "completed",
-              description: `Commission on winning bet - ${match.homeTeam} vs ${match.awayTeam}`,
+              description: `Commission (${(commissionRate * 100).toFixed(0)}%) on winning bet - ${match.homeTeam} vs ${match.awayTeam}`,
               betId: bet.id,
             },
           });
 
-          // Update user profit and commission
           await prisma.user.update({
             where: { id: bet.userId },
             data: {
@@ -180,12 +143,10 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       match: updatedMatch,
-      events,
-      previousMinute: match.minute,
-      newMinute: Math.min(currentMinute, maxMinutes),
+      settled: updatedMatch.status === "finished",
     });
   } catch (error) {
-    console.error("Error simulating match:", error);
-    return NextResponse.json({ error: "Failed to simulate match" }, { status: 500 });
+    console.error("Error settling match:", error);
+    return NextResponse.json({ error: "Failed to settle match" }, { status: 500 });
   }
 }

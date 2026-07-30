@@ -65,6 +65,7 @@ interface UserStats {
   totalLoss: number;
   commissionPaid: number;
   bankroll: number;
+  commissionRate?: number;
 }
 
 export default function DashboardPage() {
@@ -76,6 +77,7 @@ export default function DashboardPage() {
     totalLoss: 0,
     commissionPaid: 0,
     bankroll: 1000,
+    commissionRate: 0.10,
   });
 
   const loading = matchesLoading || betsLoading;
@@ -279,7 +281,7 @@ export default function DashboardPage() {
               </div>
               <div className="rounded-lg bg-secondary/50 p-4">
                 <p className="text-xs text-muted-foreground">Commission Rate</p>
-                <p className="text-xl font-bold text-foreground mt-1">10%</p>
+                <p className="text-xl font-bold text-foreground mt-1">{((stats.commissionRate ?? 0.10) * 100).toFixed(0)}%</p>
               </div>
               <div className="rounded-lg bg-secondary/50 p-4">
                 <p className="text-xs text-muted-foreground">Session Commission</p>
@@ -296,7 +298,7 @@ export default function DashboardPage() {
             </div>
             <div className="rounded-lg bg-amber-400/5 border border-amber-400/10 p-3">
               <p className="text-xs text-muted-foreground">
-                10% commission is deducted from winning bet profits. This fee covers platform maintenance and AI model improvements.
+                {((stats.commissionRate ?? 0.10) * 100).toFixed(0)}% commission is deducted from winning bet profits. This fee covers platform maintenance and AI model improvements.
               </p>
             </div>
           </CardContent>
