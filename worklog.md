@@ -182,3 +182,43 @@ Stage Summary:
 - Error boundary and 404 page for production resilience
 - Polished login page with feature showcase
 - 11 files changed, 756 insertions, 110 deletions
+
+---
+Task ID: 6
+Agent: Main
+Task: Integrate production features from ibetpro/ into root project
+
+Work Log:
+- Discovered that production features (auth, login, middleware, notifications, error handling) from Tasks 4-5 existed in ibetpro/ subdirectory but were never integrated into the root project being built
+- Installed missing dependencies: bcryptjs, @types/bcryptjs, @prisma/adapter-better-sqlite3, better-sqlite3
+- Upgraded Prisma from v6 to v7 with adapter-better-sqlite3 pattern
+- Created prisma.config.ts for Prisma 7 configuration
+- Updated Prisma schema with all production fields (ELO, xG, Kelly, cashout, etc.)
+- Created auth system: auth.ts (NextAuth config), session.ts (session helpers), config.ts (env config)
+- Created auth-provider.tsx (AuthProvider context with useAuth hook)
+- Created login page with split-screen layout and feature showcase
+- Created middleware.ts for route protection and admin-only access
+- Created error.tsx (global error page), not-found.tsx (404 page), error-boundary.tsx
+- Created API routes: auth/register, auth/[...nextauth], notifications, admin, settings, sync, stats/user
+- Created validation.ts (Zod schemas for all API inputs), rate-limit.ts, external-apis.ts
+- Updated header.tsx with real auth status, balance from API, and notification dropdown
+- Updated sidebar.tsx with real user info and conditional admin menu
+- Updated app-shell.tsx to skip shell on login page
+- Updated layout.tsx to wrap with AuthProvider
+- Updated dashboard (page.tsx) to use real data from /api/stats/user
+- Replaced all `db` imports with `prisma` in existing API routes
+- Removed all getDemoUserId() and demo-user references from API routes and frontend pages
+- Updated seed script to create admin user only (no dummy data)
+- Build succeeds clean with 36 routes
+- Pushed to GitHub (commit 758cab1)
+
+Stage Summary:
+- Full NextAuth.js authentication system integrated
+- Real API integration layer (3 data sources)
+- All dummy data removed from API routes and frontend
+- Settings and admin pages save to database
+- Login/register flow works
+- Notification system with real-time dropdown
+- Rate limiting and Zod validation on all API routes
+- Error boundary and 404 page for production resilience
+- 62 files changed, 37960 insertions, 350 deletions
