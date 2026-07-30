@@ -130,6 +130,17 @@
   html {
     @apply font-sans;
   }
+  a,
+  button,
+  [role="button"],
+  [type="button"],
+  [type="submit"],
+  [type="reset"],
+  summary,
+  select,
+  label[for] {
+    cursor: pointer;
+  }
 }
 
 /* Custom scrollbar */
