@@ -17,7 +17,7 @@ interface Account {
 }
 
 export default function AccountsPage() {
-  const { data: accounts, loading, refetch } = useFetch<Account[]>("/api/accounts?userId=demo-user", []);
+  const { data: accounts, loading, refetch } = useFetch<Account[]>("/api/accounts", []);
 
   const handleSync = async () => {
     // Simulate sync - in a real app, this would call an API
@@ -30,7 +30,6 @@ export default function AccountsPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          userId: "demo-user",
           platform,
           accountName,
         }),

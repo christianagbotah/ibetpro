@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { analyzeMatch } from "@/lib/ai-engine";
 
@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Match ID is required" }, { status: 400 });
     }
 
-    const match = await db.match.findUnique({
+    const match = await prisma.match.findUnique({
       where: { id: matchId },
     });
 
@@ -20,14 +20,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Get team stats
-    const homeTeamStats = await db.teamStats.findFirst({
+    const homeTeamStats = await prisma.teamStats.findFirst({
       where: {
         teamName: match.homeTeam,
         sport: match.sport,
       },
     });
 
-    const awayTeamStats = await db.teamStats.findFirst({
+    const awayTeamStats = await prisma.teamStats.findFirst({
       where: {
         teamName: match.awayTeam,
         sport: match.sport,
@@ -51,7 +51,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Update match with AI analysis
-    await db.match.update({
+    await prisma.match.update({
       where: { id: matchId },
       data: {
         aiHomeWinProb: prediction.homeWinProb,

@@ -69,8 +69,8 @@ const defaultSettings: UserSettings = {
 
 export default function BettingPage() {
   const { addToast } = useToast();
-  const { data: bets, loading, refetch: refetchBets } = useFetch<Bet[]>("/api/bets?userId=demo-user", []);
-  const { data: accounts } = useFetch<Array<{ id: string; platform: string }>>("/api/accounts?userId=demo-user", []);
+  const { data: bets, loading, refetch: refetchBets } = useFetch<Bet[]>("/api/bets", []);
+  const { data: accounts } = useFetch<Array<{ id: string; platform: string }>>("/api/accounts", []);
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [betFilter, setBetFilter] = useState<string>("all");
 

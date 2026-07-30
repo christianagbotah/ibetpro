@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Brain, Sparkles, Zap, Radio, TrendingUp, DollarSign, Activity, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { useAuth } from "@/components/auth/auth-provider";
 
 interface Match {
   id: string;
@@ -53,10 +54,39 @@ interface Bet {
   };
 }
 
+interface UserStats {
+  balance: number;
+  bankroll: number;
+  totalProfit: number;
+  totalLoss: number;
+  commissionPaid: number;
+  totalBets: number;
+  wonBets: number;
+  lostBets: number;
+  pendingBets: number;
+  winRate: number;
+  roi: number;
+  commissionRate: number;
+}
+
 export default function DashboardPage() {
-  // Use polling for live match updates every 30 seconds
+  const { user, isAuthenticated } = useAuth();
   const { data: matches, loading: matchesLoading } = usePolling<Match[]>("/api/matches", 30000, []);
-  const { data: bets, loading: betsLoading } = useFetch<Bet[]>("/api/bets?userId=demo-user", []);
+  const { data: bets, loading: betsLoading } = useFetch<Bet[]>("/api/bets", []);
+  const { data: stats } = useFetch<UserStats>("/api/stats/user", {
+    balance: 0,
+    bankroll: 0,
+    totalProfit: 0,
+    totalLoss: 0,
+    commissionPaid: 0,
+    totalBets: 0,
+    wonBets: 0,
+    lostBets: 0,
+    pendingBets: 0,
+    winRate: 0,
+    roi: 0,
+    commissionRate: 0.10,
+  });
 
   const loading = matchesLoading || betsLoading;
 
@@ -71,27 +101,21 @@ export default function DashboardPage() {
     );
   }
 
-  const user = { balance: 5000, totalProfit: 2847.5, totalLoss: 1235, commissionPaid: 284.75 };
   const activeBets = bets.filter((b) => b.status === "pending").length;
-  const wonBets = bets.filter((b) => b.status === "won").length;
-  const totalBets = bets.filter((b) => b.status === "won" || b.status === "lost").length;
-  const winRate = totalBets > 0 ? Math.round((wonBets / totalBets) * 100) : 0;
+  const winRate = stats.winRate;
 
   const recommendations = matches
     .filter((m) => m.status === "upcoming" && m.aiConfidence && m.aiConfidence > 0.6)
     .sort((a, b) => (b.aiConfidence || 0) - (a.aiConfidence || 0))
     .slice(0, 3);
 
-  // Live matches count
   const liveMatches = matches.filter((m) => m.status === "live");
 
-  // Recent activity feed
   const recentSettled = bets
     .filter((b) => b.status === "won" || b.status === "lost" || b.status === "cashed_out")
     .sort((a, b) => new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime())
     .slice(0, 5);
 
-  // Commission summary
   const totalCommission = bets
     .filter((b) => b.status === "won")
     .reduce((sum, b) => sum + (b.profit || 0) * 0.10, 0);
@@ -102,7 +126,7 @@ export default function DashboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Dashboard</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Welcome back, Alex! Here&apos;s your betting overview.
+            {isAuthenticated ? `Welcome back, ${user?.name}!` : "Welcome to iBetPro"} Here&apos;s your betting overview.
           </p>
         </div>
         {liveMatches.length > 0 && (
@@ -117,8 +141,8 @@ export default function DashboardPage() {
       </div>
 
       <StatsCards
-        balance={user.balance}
-        profit={user.totalProfit - user.totalLoss}
+        balance={stats.balance}
+        profit={stats.totalProfit - stats.totalLoss}
         activeBets={activeBets}
         winRate={winRate}
       />
@@ -188,7 +212,6 @@ export default function DashboardPage() {
 
       {/* Recent Activity & Commission Summary */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Recent Activity Feed */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -203,19 +226,12 @@ export default function DashboardPage() {
               </p>
             ) : (
               recentSettled.map((bet) => (
-                <div
-                  key={bet.id}
-                  className="flex items-center justify-between rounded-lg bg-secondary/50 p-3"
-                >
+                <div key={bet.id} className="flex items-center justify-between rounded-lg bg-secondary/50 p-3">
                   <div className="flex items-center gap-3">
                     <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
                       bet.status === "won" ? "bg-emerald-400/10" : "bg-red-400/10"
                     }`}>
-                      {bet.status === "won" ? (
-                        <TrendingUp className="h-4 w-4 text-emerald-400" />
-                      ) : (
-                        <TrendingUp className="h-4 w-4 text-red-400 rotate-180" />
-                      )}
+                      <TrendingUp className={`h-4 w-4 ${bet.status === "won" ? "text-emerald-400" : "text-red-400 rotate-180"}`} />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">
@@ -227,9 +243,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`text-sm font-bold ${
-                      bet.status === "won" ? "text-emerald-400" : "text-red-400"
-                    }`}>
+                    <p className={`text-sm font-bold ${bet.status === "won" ? "text-emerald-400" : "text-red-400"}`}>
                       {bet.status === "won" ? "+" : "-"}${Math.abs(bet.profit || bet.stake).toFixed(2)}
                     </p>
                     <p className="text-[10px] text-muted-foreground">
@@ -242,7 +256,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Commission Summary */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
@@ -255,15 +268,15 @@ export default function DashboardPage() {
               <div className="rounded-lg bg-secondary/50 p-4">
                 <p className="text-xs text-muted-foreground">Total Commission Paid</p>
                 <p className="text-xl font-bold text-amber-400 mt-1">
-                  ${user.commissionPaid.toFixed(2)}
+                  ${stats.commissionPaid.toFixed(2)}
                 </p>
               </div>
               <div className="rounded-lg bg-secondary/50 p-4">
                 <p className="text-xs text-muted-foreground">Commission Rate</p>
-                <p className="text-xl font-bold text-foreground mt-1">10%</p>
+                <p className="text-xl font-bold text-foreground mt-1">{Math.round(stats.commissionRate * 100)}%</p>
               </div>
               <div className="rounded-lg bg-secondary/50 p-4">
-                <p className="text-xs text-muted-foreground">Commission This Session</p>
+                <p className="text-xs text-muted-foreground">Session Commission</p>
                 <p className="text-xl font-bold text-amber-400 mt-1">
                   ${totalCommission.toFixed(2)}
                 </p>
@@ -271,13 +284,13 @@ export default function DashboardPage() {
               <div className="rounded-lg bg-secondary/50 p-4">
                 <p className="text-xs text-muted-foreground">Net After Commission</p>
                 <p className="text-xl font-bold text-emerald-400 mt-1">
-                  ${(user.totalProfit - user.totalLoss - user.commissionPaid).toFixed(2)}
+                  ${(stats.totalProfit - stats.totalLoss - stats.commissionPaid).toFixed(2)}
                 </p>
               </div>
             </div>
             <div className="rounded-lg bg-amber-400/5 border border-amber-400/10 p-3">
               <p className="text-xs text-muted-foreground">
-                10% commission is deducted from winning bet profits. This fee covers platform maintenance and AI model improvements.
+                {Math.round(stats.commissionRate * 100)}% commission is deducted from winning bet profits. This fee covers platform maintenance and AI model improvements.
               </p>
             </div>
           </CardContent>

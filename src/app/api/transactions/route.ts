@@ -1,26 +1,18 @@
-import { db } from "@/lib/db";
+import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
-
-async function getDemoUserId(): Promise<string> {
-  const user = await db.user.findFirst({ where: { email: "demo@ibetpro.com" } });
-  return user?.id || "";
-}
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId") || await getDemoUserId();
+    const userId = await requireAuth();
     const type = searchParams.get("type");
     const limit = searchParams.get("limit");
-
-    if (!userId) {
-      return NextResponse.json({ error: "No user found" }, { status: 404 });
-    }
 
     const where: Record<string, unknown> = { userId };
     if (type) where.type = type;
 
-    const transactions = await db.transaction.findMany({
+    const transactions = await prisma.transaction.findMany({
       where,
       orderBy: { createdAt: "desc" },
       ...(limit ? { take: parseInt(limit, 10) } : {}),
@@ -28,6 +20,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(transactions);
   } catch (error) {
+    if (error instanceof Error && error.message === "Authentication required") {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
     console.error("Error fetching transactions:", error);
     return NextResponse.json({ error: "Failed to fetch transactions" }, { status: 500 });
   }

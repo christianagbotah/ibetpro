@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
 
     // If a specific match ID is requested, return that single match
     if (id) {
-      const match = await db.match.findUnique({
+      const match = await prisma.match.findUnique({
         where: { id },
         include: { bets: true },
       });
@@ -26,7 +26,7 @@ export async function GET(request: NextRequest) {
     if (sport) where.sport = sport;
     if (status) where.status = status;
 
-    const matches = await db.match.findMany({
+    const matches = await prisma.match.findMany({
       where,
       include: {
         bets: true,

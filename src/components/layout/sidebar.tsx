@@ -16,10 +16,12 @@ import {
   ChevronRight,
   Dice5,
   History,
+  LogIn,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { useAuth } from "@/components/auth/auth-provider";
 import { useState } from "react";
 
 const navItems = [
@@ -40,6 +42,7 @@ const adminItems = [
 export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
+  const { user, isAuthenticated, isAdmin: isAdminUser } = useAuth();
 
   return (
     <aside
@@ -81,26 +84,29 @@ export function Sidebar() {
           );
         })}
 
-        <Separator className="my-3" />
-
-        {adminItems.map((item) => {
-          const isActive = pathname === item.href;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
-                isActive
-                  ? "bg-primary/10 text-primary"
-                  : "text-muted-foreground hover:bg-accent hover:text-foreground"
-              )}
-            >
-              <item.icon className={cn("h-5 w-5 shrink-0", isActive && "text-primary")} />
-              {!collapsed && <span>{item.label}</span>}
-            </Link>
-          );
-        })}
+        {isAuthenticated && isAdminUser && (
+          <>
+            <Separator className="my-3" />
+            {adminItems.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  className={cn(
+                    "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  )}
+                >
+                  <item.icon className={cn("h-5 w-5 shrink-0", isActive && "text-primary")} />
+                  {!collapsed && <span>{item.label}</span>}
+                </Link>
+              );
+            })}
+          </>
+        )}
       </nav>
 
       {/* Collapse toggle */}
@@ -118,15 +124,26 @@ export function Sidebar() {
       {/* User info */}
       {!collapsed && (
         <div className="border-t border-border p-4">
-          <div className="flex items-center gap-3">
-            <Avatar size="sm">
-              <AvatarFallback className="bg-primary/20 text-primary text-xs">AJ</AvatarFallback>
-            </Avatar>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">Alex Johnson</p>
-              <p className="text-xs text-muted-foreground truncate">demo@ibetpro.com</p>
+          {isAuthenticated && user ? (
+            <div className="flex items-center gap-3">
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-primary/20 text-primary text-xs">
+                  {user.name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2)}
+                </AvatarFallback>
+              </Avatar>
+              <div className="min-w-0">
+                <p className="text-sm font-medium text-foreground truncate">{user.name}</p>
+                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+              </div>
             </div>
-          </div>
+          ) : (
+            <Link href="/login">
+              <Button variant="outline" className="w-full border-primary/30 text-primary hover:bg-primary/10">
+                <LogIn className="h-4 w-4 mr-2" />
+                Sign In
+              </Button>
+            </Link>
+          )}
         </div>
       )}
     </aside>

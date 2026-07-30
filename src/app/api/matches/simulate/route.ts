@@ -1,10 +1,6 @@
-import { db } from "@/lib/db";
+import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
-
-async function getDemoUserId(): Promise<string> {
-  const user = await db.user.findFirst({ where: { email: "demo@ibetpro.com" } });
-  return user?.id || "";
-}
 
 // Simple Poisson random number generator
 function poissonRandom(lambda: number): number {
@@ -20,6 +16,8 @@ function poissonRandom(lambda: number): number {
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await requireAuth();
+
     const body = await request.json();
     const { matchId } = body;
 
@@ -27,7 +25,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Match ID is required" }, { status: 400 });
     }
 
-    const match = await db.match.findUnique({
+    const match = await prisma.match.findUnique({
       where: { id: matchId },
       include: { bets: true },
     });
@@ -88,7 +86,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Update match
-    const updatedMatch = await db.match.update({
+    const updatedMatch = await prisma.match.update({
       where: { id: matchId },
       data: {
         minute: Math.min(currentMinute, maxMinutes),
@@ -101,8 +99,6 @@ export async function POST(request: NextRequest) {
 
     // If match is finished, settle bets
     if (newStatus === "finished") {
-      const userId = await getDemoUserId();
-
       for (const bet of match.bets) {
         if (bet.status !== "pending") continue;
 
@@ -117,7 +113,7 @@ export async function POST(request: NextRequest) {
 
         const profit = betWon ? (bet.odds * bet.stake) - bet.stake : -bet.stake;
 
-        await db.bet.update({
+        await prisma.bet.update({
           where: { id: bet.id },
           data: {
             status: betWon ? "won" : "lost",
@@ -128,7 +124,7 @@ export async function POST(request: NextRequest) {
 
         // Create settlement transaction
         if (betWon) {
-          await db.transaction.create({
+          await prisma.transaction.create({
             data: {
               userId: bet.userId,
               type: "bet_won",
@@ -142,7 +138,7 @@ export async function POST(request: NextRequest) {
 
           // Create commission transaction (10% of profit)
           const commission = profit * 0.10;
-          await db.transaction.create({
+          await prisma.transaction.create({
             data: {
               userId: bet.userId,
               type: "commission",
@@ -154,18 +150,15 @@ export async function POST(request: NextRequest) {
             },
           });
 
-          // Update user commission paid
-          if (userId) {
-            await db.user.update({
-              where: { id: bet.userId },
-              data: {
-                totalProfit: { increment: profit - commission },
-                commissionPaid: { increment: commission },
-              },
-            });
-          }
+          await prisma.user.update({
+            where: { id: bet.userId },
+            data: {
+              totalProfit: { increment: profit - commission },
+              commissionPaid: { increment: commission },
+            },
+          });
         } else {
-          await db.transaction.create({
+          await prisma.transaction.create({
             data: {
               userId: bet.userId,
               type: "bet_lost",
@@ -177,14 +170,12 @@ export async function POST(request: NextRequest) {
             },
           });
 
-          if (userId) {
-            await db.user.update({
-              where: { id: bet.userId },
-              data: {
-                totalLoss: { increment: bet.stake },
-              },
-            });
-          }
+          await prisma.user.update({
+            where: { id: bet.userId },
+            data: {
+              totalLoss: { increment: bet.stake },
+            },
+          });
         }
       }
     }
@@ -196,6 +187,9 @@ export async function POST(request: NextRequest) {
       newMinute: Math.min(currentMinute, maxMinutes),
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "Authentication required") {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
     console.error("Error simulating match:", error);
     return NextResponse.json({ error: "Failed to simulate match" }, { status: 500 });
   }

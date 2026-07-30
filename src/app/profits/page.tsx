@@ -82,7 +82,7 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 };
 
 export default function ProfitsPage() {
-  const { data: transactions, loading } = useFetch<Transaction[]>("/api/transactions?userId=demo-user", []);
+  const { data: transactions, loading } = useFetch<Transaction[]>("/api/transactions", []);
   const [txFilter, setTxFilter] = useState<string>("all");
 
   const totalProfit = 2847.5;

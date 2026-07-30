@@ -1,16 +1,17 @@
-import { db } from "@/lib/db";
+import { prisma } from "@/lib/db";
+import { requireAuth } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(request: NextRequest) {
   try {
+    const userId = await requireAuth();
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId") || "demo-user";
     const status = searchParams.get("status");
 
     const where: Record<string, unknown> = { userId };
     if (status) where.status = status;
 
-    const bets = await db.bet.findMany({
+    const bets = await prisma.bet.findMany({
       where,
       include: {
         match: true,
@@ -23,6 +24,9 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json(bets);
   } catch (error) {
+    if (error instanceof Error && error.message === "Authentication required") {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
     console.error("Error fetching bets:", error);
     return NextResponse.json({ error: "Failed to fetch bets" }, { status: 500 });
   }
@@ -30,9 +34,10 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await requireAuth();
+
     const body = await request.json();
     const {
-      userId,
       bettingAccountId,
       matchId,
       betType,
@@ -44,13 +49,13 @@ export async function POST(request: NextRequest) {
       aiReasoning,
     } = body;
 
-    if (!userId || !bettingAccountId || !matchId || !betType || !selection || !odds || !stake) {
+    if (!bettingAccountId || !matchId || !betType || !selection || !odds || !stake) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
     }
 
     const potentialWin = Math.round(odds * stake * 100) / 100;
 
-    const bet = await db.bet.create({
+    const bet = await prisma.bet.create({
       data: {
         userId,
         bettingAccountId,
@@ -71,7 +76,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Create transaction
-    await db.transaction.create({
+    await prisma.transaction.create({
       data: {
         userId,
         type: "bet_placed",
@@ -85,6 +90,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(bet, { status: 201 });
   } catch (error) {
+    if (error instanceof Error && error.message === "Authentication required") {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
     console.error("Error creating bet:", error);
     return NextResponse.json({ error: "Failed to create bet" }, { status: 500 });
   }

@@ -1,22 +1,24 @@
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "sqlite"
-  url      = "file:./dev.db"
 }
 
 model User {
   id             String   @id @default(cuid())
   email          String   @unique
   name           String
+  passwordHash   String
   avatar         String?
   role           String   @default("user")
   balance        Float    @default(0)
   totalProfit    Float    @default(0)
   totalLoss      Float    @default(0)
   commissionPaid Float    @default(0)
+  bankroll       Float    @default(1000)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -40,6 +42,8 @@ model UserSettings {
   preferredSports      String  @default("football,basketball,tennis")
   notificationsEnabled Boolean @default(true)
   dailyBetLimit        Float   @default(500)
+  kellyFraction        Float   @default(0.25)
+  minEdgeThreshold     Float   @default(0.03)
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -67,7 +71,7 @@ model BettingAccount {
 
 model Match {
   id             String   @id @default(cuid())
-  externalId     String?
+  externalId     String?  @unique
   sport          String
   league         String
   homeTeam       String
@@ -76,46 +80,66 @@ model Match {
   drawOdds       Float?
   awayOdds       Float
   overUnderLine  Float?   @default(2.5)
-  overOdds       Float?   @default(1.85)
-  underOdds      Float?   @default(2.10)
+  overOdds       Float?
+  underOdds      Float?
   commenceTime   DateTime
   status         String   @default("upcoming")
   homeScore      Int?
   awayScore      Int?
   minute         Int?
+  apiSource      String?  @default("manual")
+  lastSyncedAt   DateTime?
   aiHomeWinProb  Float?   @default(0)
   aiDrawProb     Float?   @default(0)
   aiAwayWinProb  Float?   @default(0)
   aiConfidence   Float?   @default(0)
   aiAnalysis     String?
-  aiRecommended  String?  // "home" | "away" | "draw" | "over" | "under"
+  aiRecommended  String?
+  aiRiskScore    Float?   @default(50)
+  aiRiskLevel    String?  @default("medium")
+  aiValueEdge    Float?   @default(0)
+  aiKellyStake   Float?   @default(0)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
   bets Bet[]
+
+  @@index([status])
+  @@index([sport, league])
+  @@index([commenceTime])
 }
 
 model TeamStats {
-  id            String   @id @default(cuid())
-  teamName      String
-  sport         String
-  league        String
-  season        String
-  matchesPlayed Int      @default(0)
-  wins          Int      @default(0)
-  draws         Int      @default(0)
-  losses        Int      @default(0)
-  goalsFor      Int      @default(0)
-  goalsAgainst  Int      @default(0)
-  form          String?  @default("")
-  homeRecord    String?  @default("")
-  awayRecord    String?  @default("")
-  attackRating  Float    @default(0)
-  defenseRating Float    @default(0)
-  overallRating Float    @default(0)
-  keyPlayers    String?  @default("[]")
-  lastUpdated   DateTime @default(now())
-  createdAt     DateTime @default(now())
+  id                   String   @id @default(cuid())
+  teamName             String
+  sport                String
+  league               String
+  season               String
+  matchesPlayed        Int      @default(0)
+  wins                 Int      @default(0)
+  draws                Int      @default(0)
+  losses               Int      @default(0)
+  goalsFor             Int      @default(0)
+  goalsAgainst         Int      @default(0)
+  form                 String?  @default("")
+  homeRecord           String?  @default("")
+  awayRecord           String?  @default("")
+  attackRating         Float    @default(0)
+  defenseRating        Float    @default(0)
+  overallRating        Float    @default(0)
+  eloRating            Float    @default(1500)
+  xgFor                Float    @default(0)
+  xgAgainst            Float    @default(0)
+  shotsPerGame         Float    @default(0)
+  shotsOnTargetPerGame Float    @default(0)
+  possessionAvg        Float    @default(50)
+  cornersPerGame       Float    @default(0)
+  cardsPerGame         Float    @default(0)
+  keyPlayers           String?  @default("[]")
+  externalTeamId       Int?
+  apiSource            String?  @default("manual")
+  lastUpdated          DateTime @default(now())
+  createdAt            DateTime @default(now())
 
   @@unique([teamName, sport, league, season])
 }
@@ -134,9 +158,14 @@ model Bet {
   cashoutAmount   Float?
   cashoutOdds     Float?
   profit          Float?
+  commission      Float?
   isAutoPlaced    Boolean   @default(false)
   aiConfidence    Float?    @default(0)
   aiReasoning     String?
+  aiModelUsed     String?   @default("ensemble")
+  kellyStake      Float?    @default(0)
+  valueEdge       Float?    @default(0)
+  riskScore       Float?    @default(50)
   placedAt        DateTime  @default(now())
   settledAt       DateTime?
   cashedOutAt     DateTime?
@@ -146,6 +175,11 @@ model Bet {
   user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   bettingAccount BettingAccount @relation(fields: [bettingAccountId], references: [id], onDelete: Cascade)
   match          Match         @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([matchId])
+  @@index([status])
 }
 
 model Transaction {
@@ -160,6 +194,9 @@ model Transaction {
   createdAt   DateTime @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([type])
 }
 
 model AdminSettings {
@@ -171,6 +208,8 @@ model AdminSettings {
   maintenanceMode       Boolean @default(false)
   maxUsers              Int     @default(10000)
   autoApproveAccounts   Boolean @default(true)
+  oddsApiKey            String? @default("")
+  apiFootballKey        String? @default("")
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }

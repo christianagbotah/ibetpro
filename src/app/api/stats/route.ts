@@ -1,59 +1,59 @@
-import { db } from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 
 export async function GET() {
   try {
     // Get total users
-    const totalUsers = await db.user.count();
+    const totalUsers = await prisma.user.count();
 
     // Get total bets
-    const totalBets = await db.bet.count();
+    const totalBets = await prisma.bet.count();
 
     // Get total commission
-    const commissionResult = await db.transaction.aggregate({
+    const commissionResult = await prisma.transaction.aggregate({
       where: { type: "commission" },
       _sum: { amount: true },
     });
 
     // Get total bet volume
-    const betVolume = await db.bet.aggregate({
+    const betVolume = await prisma.bet.aggregate({
       _sum: { stake: true },
     });
 
     // Get won bets
-    const wonBets = await db.bet.count({
+    const wonBets = await prisma.bet.count({
       where: { status: "won" },
     });
 
     // Get lost bets
-    const lostBets = await db.bet.count({
+    const lostBets = await prisma.bet.count({
       where: { status: "lost" },
     });
 
     // Get pending bets
-    const pendingBets = await db.bet.count({
+    const pendingBets = await prisma.bet.count({
       where: { status: "pending" },
     });
 
     // Get total profit across all users
-    const profitResult = await db.user.aggregate({
+    const profitResult = await prisma.user.aggregate({
       _sum: { totalProfit: true, totalLoss: true, commissionPaid: true },
     });
 
     // Get admin settings
-    const adminSettings = await db.adminSettings.findFirst();
+    const adminSettings = await prisma.adminSettings.findFirst();
 
     // Get active matches
-    const liveMatches = await db.match.count({
+    const liveMatches = await prisma.match.count({
       where: { status: "live" },
     });
 
-    const upcomingMatches = await db.match.count({
+    const upcomingMatches = await prisma.match.count({
       where: { status: "upcoming" },
     });
 
     // Get users with their profit/loss
-    const users = await db.user.findMany({
+    const users = await prisma.user.findMany({
       select: {
         id: true,
         name: true,

@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { AppShell } from "@/components/layout/app-shell";
 import { ToastProvider } from "@/components/ui/toast";
+import { AuthProvider } from "@/components/auth/auth-provider";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -22,9 +23,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark h-full antialiased">
       <body className={`${inter.variable} font-sans min-h-full flex flex-col bg-background text-foreground`}>
-        <ToastProvider>
-          <AppShell>{children}</AppShell>
-        </ToastProvider>
+        <AuthProvider>
+          <ToastProvider>
+            <AppShell>{children}</AppShell>
+          </ToastProvider>
+        </AuthProvider>
       </body>
     </html>
   );

@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { shouldCashout } from "@/lib/ai-engine";
 
@@ -11,7 +11,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Bet ID is required" }, { status: 400 });
     }
 
-    const bet = await db.bet.findUnique({
+    const bet = await prisma.bet.findUnique({
       where: { id: betId },
       include: {
         match: true,
@@ -49,7 +49,7 @@ export async function POST(request: NextRequest) {
 
     // Update bet with cashout amount
     if (cashoutRecommendation.shouldCashout) {
-      await db.bet.update({
+      await prisma.bet.update({
         where: { id: betId },
         data: {
           cashoutAmount: cashoutRecommendation.cashoutAmount,

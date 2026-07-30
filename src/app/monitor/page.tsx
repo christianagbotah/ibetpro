@@ -71,7 +71,7 @@ export default function MonitorPage() {
   const { addToast } = useToast();
   // Use polling for live match updates every 15 seconds
   const { data: allMatches, loading: matchesLoading, refetch: refetchMatches } = usePolling<LiveMatch[]>("/api/matches", 15000, []);
-  const { data: bets, loading: betsLoading, refetch: refetchBets } = usePolling<ActiveBet[]>("/api/bets?userId=demo-user&status=pending", 15000, []);
+  const { data: bets, loading: betsLoading, refetch: refetchBets } = usePolling<ActiveBet[]>("/api/bets?status=pending", 15000, []);
   const [cashoutRecs, setCashoutRecs] = useState<Record<string, CashoutRec>>({});
   const [cashedOutBets, setCashedOutBets] = useState<Set<string>>(new Set());
   const [soundEnabled, setSoundEnabled] = useState(false);
