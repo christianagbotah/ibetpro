@@ -1,0 +1,1132 @@
+     1→     1→// ============================================================================
+     2→     2→// iBetPro Broker API Integration Framework
+     3→     3→// Production-grade abstraction layer for connecting to real betting platforms
+     4→     4→//
+     5→     5→// Architecture:
+     6→     6→// - BrokerAdapter interface: Common contract for all broker integrations
+     7→     7→// - BrokerAdapterFactory: Creates the right adapter for each platform
+     8→     8→// - Real implementations per platform (OAuth, API key, web session)
+     9→     9→// - Retry logic, session management, error handling
+    10→    10→// - Transaction safety with idempotency keys
+    11→    11→// ============================================================================
+    12→    12→
+    13→    13→import { config } from "./config";
+    14→    14→import {
+    15→    15→  getBrokerPlatform,
+    16→    16→  validateBrokerSession,
+    17→    17→  getRegionCurrency,
+    18→    18→  type BrokerPlatform,
+    19→    19→  type BrokerAuthResult,
+    20→    20→  type BrokerBalance,
+    21→    21→  type BrokerBetResult,
+    22→    22→  type BrokerCashoutResult,
+    23→    23→  type BrokerSession,
+    24→    24→} from "./broker-integration";
+    25→    25→
+    26→    26→// ==================== TYPES ====================
+    27→    27→
+    28→    28→export interface BrokerAdapter {
+    29→    29→  platformId: string;
+    30→    30→  platform: BrokerPlatform;
+    31→    31→
+    32→    32→  // Authentication
+    33→    33→  authenticate(credentials: BrokerCredentials): Promise<BrokerAuthResult>;
+    34→    34→  refreshSession(refreshToken: string): Promise<BrokerAuthResult>;
+    35→    35→  validateSession(sessionToken: string, sessionExpiry: Date): BrokerSession;
+    36→    36→
+    37→    37→  // Account
+    38→    38→  getBalance(accessToken: string, regionCode?: string): Promise<BrokerBalance>;
+    39→    39→  getProfile(accessToken: string): Promise<BrokerUserProfile>;
+    40→    40→
+    41→    41→  // Betting
+    42→    42→  placeBet(accessToken: string, bet: BrokerBetRequest): Promise<BrokerBetResult>;
+    43→    43→  getBetStatus(accessToken: string, brokerBetId: string): Promise<BrokerBetStatus>;
+    44→    44→
+    45→    45→  // Cashout
+    46→    46→  cashout(accessToken: string, brokerBetId: string, type: "full" | "partial", partialPercent?: number): Promise<BrokerCashoutResult>;
+    47→    47→
+    48→    48→  // Transfer
+    49→    49→  transferToWallet(accessToken: string, amount: number, walletAddress: string, reference: string): Promise<BrokerTransferResult>;
+    50→    50→
+    51→    51→  // Utility
+    52→    52→  getAvailableMarkets(accessToken: string, matchId: string): Promise<BrokerMarket[]>;
+    53→    53→  getLiveEvents(accessToken: string): Promise<BrokerLiveEvent[]>;
+    54→    54→}
+    55→    55→
+    56→    56→export interface BrokerCredentials {
+    57→    57→  username?: string;
+    58→    58→  password?: string;
+    59→    59→  apiKey?: string;
+    60→    60→  token?: string;
+    61→    61→  otp?: string;
+    62→    62→}
+    63→    63→
+    64→    64→export interface BrokerUserProfile {
+    65→    65→  userId: string;
+    66→    66→  username: string;
+    67→    67→  email?: string;
+    68→    68→  phone?: string;
+    69→    69→  currency: string;
+    70→    70→  region: string;
+    71→    71→  verified: boolean;
+    72→    72→  kycLevel: string;
+    73→    73→}
+    74→    74→
+    75→    75→export interface BrokerBetRequest {
+    76→    76→  matchId: string;
+    77→    77→  selection: string;
+    78→    78→  odds: number;
+    79→    79→  stake: number;
+    80→    80→  betType: string;
+    81→    81→  market?: string;
+    82→    82→  idempotencyKey?: string;
+    83→    83→}
+    84→    84→
+    85→    85→export interface BrokerBetStatus {
+    86→    86→  brokerBetId: string;
+    87→    87→  status: "pending" | "accepted" | "rejected" | "settled" | "cashed_out" | "void";
+    88→    88→  stake: number;
+    89→    89→  odds: number;
+    90→    90→  potentialWin: number;
+    91→    91→  cashoutAvailable: boolean;
+    92→    92→  cashoutAmount?: number;
+    93→    93→  settlementAmount?: number;
+    94→    94→  settlementReason?: string;
+    95→    95→}
+    96→    96→
+    97→    97→export interface BrokerTransferResult {
+    98→    98→  success: boolean;
+    99→    99→  transferRef?: string;
+   100→   100→  status?: "pending" | "completed" | "failed";
+   101→   101→  error?: string;
+   102→   102→}
+   103→   103→
+   104→   104→export interface BrokerMarket {
+   105→   105→  id: string;
+   106→   106→  name: string;
+   107→   107→  type: string;
+   108→   108→  selections: Array<{
+   109→   109→    name: string;
+   110→   110→    odds: number;
+   111→   111→  }>;
+   112→   112→}
+   113→   113→
+   114→   114→export interface BrokerLiveEvent {
+   115→   115→  id: string;
+   116→   116→  homeTeam: string;
+   117→   117→  awayTeam: string;
+   118→   118→  sport: string;
+   119→   119→  league: string;
+   120→   120→  minute?: number;
+   121→   121→  homeScore?: number;
+   122→   122→  awayScore?: number;
+   123→   123→  status: string;
+   124→   124→  markets: BrokerMarket[];
+   125→   125→}
+   126→   126→
+   127→   127→// ==================== RETRY LOGIC ====================
+   128→   128→
+   129→   129→interface RetryConfig {
+   130→   130→  maxRetries: number;
+   131→   131→  baseDelayMs: number;
+   132→   132→  maxDelayMs: number;
+   133→   133→  retryableErrors: string[];
+   134→   134→}
+   135→   135→
+   136→   136→const DEFAULT_RETRY_CONFIG: RetryConfig = {
+   137→   137→  maxRetries: 3,
+   138→   138→  baseDelayMs: 1000,
+   139→   139→  maxDelayMs: 10000,
+   140→   140→  retryableErrors: [
+   141→   141→    "ETIMEDOUT",
+   142→   142→    "ECONNRESET",
+   143→   143→    "ECONNREFUSED",
+   144→   144→    "rate_limit",
+   145→   145→    "server_error",
+   146→   146→    "session_expired",
+   147→   147→    "temporarily_unavailable",
+   148→   148→  ],
+   149→   149→};
+   150→   150→
+   151→   151→async function withRetry<T>(
+   152→   152→  fn: () => Promise<T>,
+   153→   153→  retryConfig: Partial<RetryConfig> = {}
+   154→   154→): Promise<T> {
+   155→   155→  const cfg = { ...DEFAULT_RETRY_CONFIG, ...retryConfig };
+   156→   156→  let lastError: Error | null = null;
+   157→   157→
+   158→   158→  for (let attempt = 0; attempt <= cfg.maxRetries; attempt++) {
+   159→   159→    try {
+   160→   160→      return await fn();
+   161→   161→    } catch (error) {
+   162→   162→      lastError = error instanceof Error ? error : new Error(String(error));
+   163→   163→
+   164→   164→      // Check if error is retryable
+   165→   165→      const isRetryable = cfg.retryableErrors.some(
+   166→   166→        (err) => lastError!.message.toLowerCase().includes(err.toLowerCase())
+   167→   167→      );
+   168→   168→
+   169→   169→      if (!isRetryable || attempt === cfg.maxRetries) {
+   170→   170→        throw lastError;
+   171→   171→      }
+   172→   172→
+   173→   173→      // Exponential backoff with jitter
+   174→   174→      const delay = Math.min(
+   175→   175→        cfg.baseDelayMs * Math.pow(2, attempt) + Math.random() * 1000,
+   176→   176→        cfg.maxDelayMs
+   177→   177→      );
+   178→   178→
+   179→   179→      await new Promise((resolve) => setTimeout(resolve, delay));
+   180→   180→    }
+   181→   181→  }
+   182→   182→
+   183→   183→  throw lastError;
+   184→   184→}
+   185→   185→
+   186→   186→// ==================== IDEMPOTENCY ====================
+   187→   187→
+   188→   188→// In-memory idempotency store (use Redis in production)
+   189→   189→const idempotencyStore = new Map<string, { result: unknown; timestamp: number }>();
+   190→   190→const IDEMPOTENCY_TTL = 3600000; // 1 hour
+   191→   191→
+   192→   192→function checkIdempotency<T>(key: string): T | null {
+   193→   193→  const entry = idempotencyStore.get(key);
+   194→   194→  if (!entry) return null;
+   195→   195→
+   196→   196→  if (Date.now() - entry.timestamp > IDEMPOTENCY_TTL) {
+   197→   197→    idempotencyStore.delete(key);
+   198→   198→    return null;
+   199→   199→  }
+   200→   200→
+   201→   201→  return entry.result as T;
+   202→   202→}
+   203→   203→
+   204→   204→function setIdempotencyResult(key: string, result: unknown): void {
+   205→   205→  idempotencyStore.set(key, { result, timestamp: Date.now() });
+   206→   206→
+   207→   207→  // Clean up old entries periodically
+   208→   208→  if (idempotencyStore.size > 10000) {
+   209→   209→    const now = Date.now();
+   210→   210→    for (const [k, v] of idempotencyStore) {
+   211→   211→      if (now - v.timestamp > IDEMPOTENCY_TTL) {
+   212→   212→        idempotencyStore.delete(k);
+   213→   213→      }
+   214→   214→    }
+   215→   215→  }
+   216→   216→}
+   217→   217→
+   218→   218→// ==================== BASE ADAPTER ====================
+   219→   219→
+   220→   220→abstract class BaseBrokerAdapter implements BrokerAdapter {
+   221→   221→  abstract platformId: string;
+   222→   222→  abstract platform: BrokerPlatform;
+   223→   223→
+   224→   224→  // Per-instance demo mode override (set by getBrokerAdapter)
+   225→   225→  _demoMode?: boolean;
+   226→   226→
+   227→   227→  /**
+   228→   228→   * Check if this adapter should operate in demo mode.
+   229→   229→   * Per-instance override takes priority over global config.
+   230→   230→   */
+   231→   231→  protected isDemoMode(): boolean {
+   232→   232→    if (this._demoMode !== undefined) return this._demoMode;
+   233→   233→    return config.broker.demoMode;
+   234→   234→  }
+   235→   235→
+   236→   236→  abstract authenticate(credentials: BrokerCredentials): Promise<BrokerAuthResult>;
+   237→   237→  abstract refreshSession(refreshToken: string): Promise<BrokerAuthResult>;
+   238→   238→  abstract getBalance(accessToken: string, regionCode?: string): Promise<BrokerBalance>;
+   239→   239→  abstract getProfile(accessToken: string): Promise<BrokerUserProfile>;
+   240→   240→  abstract placeBet(accessToken: string, bet: BrokerBetRequest): Promise<BrokerBetResult>;
+   241→   241→  abstract getBetStatus(accessToken: string, brokerBetId: string): Promise<BrokerBetStatus>;
+   242→   242→  abstract cashout(accessToken: string, brokerBetId: string, type: "full" | "partial", partialPercent?: number): Promise<BrokerCashoutResult>;
+   243→   243→  abstract transferToWallet(accessToken: string, amount: number, walletAddress: string, reference: string): Promise<BrokerTransferResult>;
+   244→   244→  abstract getAvailableMarkets(accessToken: string, matchId: string): Promise<BrokerMarket[]>;
+   245→   245→  abstract getLiveEvents(accessToken: string): Promise<BrokerLiveEvent[]>;
+   246→   246→
+   247→   247→  validateSession(sessionToken: string, sessionExpiry: Date): BrokerSession {
+   248→   248→    return validateBrokerSession(sessionToken, sessionExpiry);
+   249→   249→  }
+   250→   250→
+   251→   251→  // Common helper: make authenticated API call with retry
+   252→   252→  protected async apiCall<T>(
+   253→   253→    accessToken: string,
+   254→   254→    method: string,
+   255→   255→    path: string,
+   256→   256→    body?: unknown,
+   257→   257→    options?: { idempotencyKey?: string }
+   258→   258→  ): Promise<T> {
+   259→   259→    const url = `${this.platform.baseUrl}${path}`;
+   260→   260→
+   261→   261→    // Check idempotency
+   262→   262→    if (options?.idempotencyKey) {
+   263→   263→      const cached = checkIdempotency<T>(options.idempotencyKey);
+   264→   264→      if (cached) return cached;
+   265→   265→    }
+   266→   266→
+   267→   267→    const result = await withRetry(async () => {
+   268→   268→      const response = await fetch(url, {
+   269→   269→        method,
+   270→   270→        headers: {
+   271→   271→          "Authorization": `Bearer ${accessToken}`,
+   272→   272→          "Content-Type": "application/json",
+   273→   273→          "X-Idempotency-Key": options?.idempotencyKey || "",
+   274→   274→          "X-Platform": this.platformId,
+   275→   275→          "X-App-Version": "1.0.0",
+   276→   276→        },
+   277→   277→        body: body ? JSON.stringify(body) : undefined,
+   278→   278→      });
+   279→   279→
+   280→   280→      if (!response.ok) {
+   281→   281→        const errorData = await response.json().catch(() => ({}));
+   282→   282→        const errorCode = errorData.code || errorData.error || `HTTP_${response.status}`;
+   283→   283→        const errorMessage = errorData.message || errorData.error || `API error: ${response.status}`;
+   284→   284→
+   285→   285→        // Map common error codes
+   286→   286→        if (response.status === 401) {
+   287→   287→          throw new Error(`session_expired: ${errorMessage}`);
+   288→   288→        }
+   289→   289→        if (response.status === 429) {
+   290→   290→          throw new Error(`rate_limit: ${errorMessage}`);
+   291→   291→        }
+   292→   292→        if (response.status >= 500) {
+   293→   293→          throw new Error(`server_error: ${errorMessage}`);
+   294→   294→        }
+   295→   295→
+   296→   296→        throw new Error(`${errorCode}: ${errorMessage}`);
+   297→   297→      }
+   298→   298→
+   299→   299→      return response.json() as Promise<T>;
+   300→   300→    });
+   301→   301→
+   302→   302→    // Store idempotency result
+   303→   303→    if (options?.idempotencyKey) {
+   304→   304→      setIdempotencyResult(options.idempotencyKey, result);
+   305→   305→    }
+   306→   306→
+   307→   307→    return result;
+   308→   308→  }
+   309→   309→}
+   310→   310→
+   311→   311→// ==================== OAUTH ADAPTER ====================
+   312→   312→
+   313→   313→class OAuthBrokerAdapter extends BaseBrokerAdapter {
+   314→   314→  platformId: string;
+   315→   315→  platform: BrokerPlatform;
+   316→   316→
+   317→   317→  constructor(platform: BrokerPlatform) {
+   318→   318→    super();
+   319→   319→    this.platformId = platform.id;
+   320→   320→    this.platform = platform;
+   321→   321→  }
+   322→   322→
+   323→   323→  async authenticate(credentials: BrokerCredentials): Promise<BrokerAuthResult> {
+   324→   324→    // Demo/Sandbox mode: simulate successful authentication without real API calls
+   325→   325→    // MUST be checked BEFORE credential validation — in demo mode, any credentials (even empty) work
+   326→   326→    if (this.isDemoMode()) {
+   327→   327→      const demoToken = credentials.token || `demo_${Date.now()}`;
+   328→   328→      return {
+   329→   329→        success: true,
+   330→   330→        accessToken: `demo_oauth_${this.platformId}_${Date.now()}`,
+   331→   331→        refreshToken: `demo_refresh_${this.platformId}_${Date.now()}`,
+   332→   332→        sessionExpiry: new Date(Date.now() + 3600000),
+   333→   333→        brokerUserId: `demo_oauth_${demoToken.substring(0, 8)}_${Date.now()}`,
+   334→   334→      };
+   335→   335→    }
+   336→   336→
+   337→   337→    if (!credentials.token) {
+   338→   338→      return { success: false, error: "OAuth authorization code required" };
+   339→   339→    }
+   340→   340→
+   341→   341→    try {
+   342→   342→      // In production, exchange authorization code for access token
+   343→   343→      // POST /oauth/token with client_id, client_secret, code, redirect_uri
+   344→   344→      const result = await withRetry(async () => {
+   345→   345→        const response = await fetch(`${this.platform.baseUrl}/oauth/token`, {
+   346→   346→          method: "POST",
+   347→   347→          headers: { "Content-Type": "application/json" },
+   348→   348→          body: JSON.stringify({
+   349→   349→            grant_type: "authorization_code",
+   350→   350→            code: credentials.token,
+   351→   351→            client_id: process.env[`${this.platformId.toUpperCase()}_CLIENT_ID`],
+   352→   352→            client_secret: process.env[`${this.platformId.toUpperCase()}_CLIENT_SECRET`],
+   353→   353→            redirect_uri: `${config.platform.url}/api/broker/callback/${this.platformId}`,
+   354→   354→          }),
+   355→   355→        });
+   356→   356→
+   357→   357→        if (!response.ok) {
+   358→   358→          throw new Error(`OAuth token exchange failed: ${response.status}`);
+   359→   359→        }
+   360→   360→
+   361→   361→        return response.json();
+   362→   362→      });
+   363→   363→
+   364→   364→      return {
+   365→   365→        success: true,
+   366→   366→        accessToken: result.access_token,
+   367→   367→        refreshToken: result.refresh_token,
+   368→   368→        sessionExpiry: new Date(Date.now() + (result.expires_in || 3600) * 1000),
+   369→   369→        brokerUserId: result.user_id,
+   370→   370→      };
+   371→   371→    } catch (error) {
+   372→   372→      return {
+   373→   373→        success: false,
+   374→   374→        error: error instanceof Error ? error.message : "OAuth authentication failed",
+   375→   375→      };
+   376→   376→    }
+   377→   377→  }
+   378→   378→
+   379→   379→  async refreshSession(refreshToken: string): Promise<BrokerAuthResult> {
+   380→   380→    // Demo mode: return simulated refreshed session
+   381→   381→    if (this.isDemoMode()) {
+   382→   382→      return {
+   383→   383→        success: true,
+   384→   384→        accessToken: `demo_oauth_${this.platformId}_${Date.now()}`,
+   385→   385→        refreshToken: `demo_refresh_${this.platformId}_${Date.now()}`,
+   386→   386→        sessionExpiry: new Date(Date.now() + 3600000),
+   387→   387→      };
+   388→   388→    }
+   389→   389→
+   390→   390→    try {
+   391→   391→      const result = await withRetry(async () => {
+   392→   392→        const response = await fetch(`${this.platform.baseUrl}/oauth/token`, {
+   393→   393→          method: "POST",
+   394→   394→          headers: { "Content-Type": "application/json" },
+   395→   395→          body: JSON.stringify({
+   396→   396→            grant_type: "refresh_token",
+   397→   397→            refresh_token: refreshToken,
+   398→   398→            client_id: process.env[`${this.platformId.toUpperCase()}_CLIENT_ID`],
+   399→   399→            client_secret: process.env[`${this.platformId.toUpperCase()}_CLIENT_SECRET`],
+   400→   400→          }),
+   401→   401→        });
+   402→   402→
+   403→   403→        if (!response.ok) {
+   404→   404→          throw new Error(`Token refresh failed: ${response.status}`);
+   405→   405→        }
+   406→   406→
+   407→   407→        return response.json();
+   408→   408→      });
+   409→   409→
+   410→   410→      return {
+   411→   411→        success: true,
+   412→   412→        accessToken: result.access_token,
+   413→   413→        refreshToken: result.refresh_token || refreshToken,
+   414→   414→        sessionExpiry: new Date(Date.now() + (result.expires_in || 3600) * 1000),
+   415→   415→      };
+   416→   416→    } catch (error) {
+   417→   417→      return {
+   418→   418→        success: false,
+   419→   419→        error: error instanceof Error ? error.message : "Session refresh failed",
+   420→   420→      };
+   421→   421→    }
+   422→   422→  }
+   423→   423→
+   424→   424→  async getBalance(accessToken: string, regionCode?: string): Promise<BrokerBalance> {
+   425→   425→    const currency = regionCode ? getRegionCurrency(regionCode) : { code: "USD" };
+   426→   426→
+   427→   427→    // Demo/Sandbox mode: return simulated balance
+   428→   428→    if (this.isDemoMode()) {
+   429→   429→      const demoBalance = config.broker.demoBalance;
+   430→   430→      return {
+   431→   431→        available: demoBalance,
+   432→   432→        locked: 0,
+   433→   433→        total: demoBalance,
+   434→   434→        currency: currency.code,
+   435→   435→        lastUpdated: new Date(),
+   436→   436→      };
+   437→   437→    }
+   438→   438→
+   439→   439→    try {
+   440→   440→      const result = await this.apiCall<BrokerBalance>(accessToken, "GET", "/api/v1/balance");
+   441→   441→      return result;
+   442→   442→    } catch {
+   443→   443→      // Fallback: return zero balance if API not available
+   444→   444→      return {
+   445→   445→        available: 0,
+   446→   446→        locked: 0,
+   447→   447→        total: 0,
+   448→   448→        currency: currency.code,
+   449→   449→        lastUpdated: new Date(),
+   450→   450→      };
+   451→   451→    }
+   452→   452→  }
+   453→   453→
+   454→   454→  async getProfile(accessToken: string): Promise<BrokerUserProfile> {
+   455→   455→    if (this.isDemoMode()) {
+   456→   456→      return {
+   457→   457→        userId: "demo_user",
+   458→   458→        username: "Demo User",
+   459→   459→        currency: "USD",
+   460→   460→        region: "global",
+   461→   461→        verified: true,
+   462→   462→        kycLevel: "full",
+   463→   463→      };
+   464→   464→    }
+   465→   465→    return this.apiCall<BrokerUserProfile>(accessToken, "GET", "/api/v1/profile");
+   466→   466→  }
+   467→   467→
+   468→   468→  async placeBet(accessToken: string, bet: BrokerBetRequest): Promise<BrokerBetResult> {
+   469→   469→    const idempotencyKey = bet.idempotencyKey || `${this.platformId}_${bet.matchId}_${bet.selection}_${Date.now()}`;
+   470→   470→
+   471→   471→    try {
+   472→   472→      const result = await this.apiCall<BrokerBetResult>(
+   473→   473→        accessToken,
+   474→   474→        "POST",
+   475→   475→        "/api/v1/bets",
+   476→   476→        {
+   477→   477→          match_id: bet.matchId,
+   478→   478→          selection: bet.selection,
+   479→   479→          odds: bet.odds,
+   480→   480→          stake: bet.stake,
+   481→   481→          bet_type: bet.betType,
+   482→   482→          market: bet.market,
+   483→   483→          idempotency_key: idempotencyKey,
+   484→   484→        },
+   485→   485→        { idempotencyKey }
+   486→   486→      );
+   487→   487→
+   488→   488→      return result;
+   489→   489→    } catch (error) {
+   490→   490→      return {
+   491→   491→        success: false,
+   492→   492→        error: error instanceof Error ? error.message : "Bet placement failed",
+   493→   493→      };
+   494→   494→    }
+   495→   495→  }
+   496→   496→
+   497→   497→  async getBetStatus(accessToken: string, brokerBetId: string): Promise<BrokerBetStatus> {
+   498→   498→    return this.apiCall<BrokerBetStatus>(accessToken, "GET", `/api/v1/bets/${brokerBetId}`);
+   499→   499→  }
+   500→   500→
+   501→   501→  async cashout(accessToken: string, brokerBetId: string, type: "full" | "partial", partialPercent?: number): Promise<BrokerCashoutResult> {
+   502→   502→    try {
+   503→   503→      const result = await this.apiCall<BrokerCashoutResult>(
+   504→   504→        accessToken,
+   505→   505→        "POST",
+   506→   506→        `/api/v1/bets/${brokerBetId}/cashout`,
+   507→   507→        { type, partial_percent: partialPercent }
+   508→   508→      );
+   509→   509→      return result;
+   510→   510→    } catch (error) {
+   511→   511→      return {
+   512→   512→        success: false,
+   513→   513→        error: error instanceof Error ? error.message : "Cashout failed",
+   514→   514→      };
+   515→   515→    }
+   516→   516→  }
+   517→   517→
+   518→   518→  async transferToWallet(accessToken: string, amount: number, walletAddress: string, reference: string): Promise<BrokerTransferResult> {
+   519→   519→    try {
+   520→   520→      const result = await this.apiCall<BrokerTransferResult>(
+   521→   521→        accessToken,
+   522→   522→        "POST",
+   523→   523→        "/api/v1/transfers",
+   524→   524→        {
+   525→   525→          amount,
+   526→   526→          wallet_address: walletAddress,
+   527→   527→          reference,
+   528→   528→          currency: "USD",
+   529→   529→        }
+   530→   530→      );
+   531→   531→      return result;
+   532→   532→    } catch (error) {
+   533→   533→      return {
+   534→   534→        success: false,
+   535→   535→        error: error instanceof Error ? error.message : "Transfer failed",
+   536→   536→      };
+   537→   537→    }
+   538→   538→  }
+   539→   539→
+   540→   540→  async getAvailableMarkets(accessToken: string, matchId: string): Promise<BrokerMarket[]> {
+   541→   541→    return this.apiCall<BrokerMarket[]>(accessToken, "GET", `/api/v1/matches/${matchId}/markets`);
+   542→   542→  }
+   543→   543→
+   544→   544→  async getLiveEvents(accessToken: string): Promise<BrokerLiveEvent[]> {
+   545→   545→    return this.apiCall<BrokerLiveEvent[]>(accessToken, "GET", "/api/v1/events/live");
+   546→   546→  }
+   547→   547→}
+   548→   548→
+   549→   549→// ==================== API KEY ADAPTER ====================
+   550→   550→
+   551→   551→class ApiKeyBrokerAdapter extends BaseBrokerAdapter {
+   552→   552→  platformId: string;
+   553→   553→  platform: BrokerPlatform;
+   554→   554→
+   555→   555→  constructor(platform: BrokerPlatform) {
+   556→   556→    super();
+   557→   557→    this.platformId = platform.id;
+   558→   558→    this.platform = platform;
+   559→   559→  }
+   560→   560→
+   561→   561→  async authenticate(credentials: BrokerCredentials): Promise<BrokerAuthResult> {
+   562→   562→    // Demo/Sandbox mode: simulate successful authentication without real API calls
+   563→   563→    // MUST be checked BEFORE credential validation — in demo mode, any credentials (even empty) work
+   564→   564→    if (this.isDemoMode()) {
+   565→   565→      const demoKey = credentials.apiKey || `demo_key_${Date.now()}`;
+   566→   566→      return {
+   567→   567→        success: true,
+   568→   568→        accessToken: `demo_apikey_${this.platformId}_${Date.now()}`,
+   569→   569→        sessionExpiry: new Date(Date.now() + 86400000 * 30),
+   570→   570→        brokerUserId: `demo_apikey_${demoKey.substring(0, 8)}_${Date.now()}`,
+   571→   571→      };
+   572→   572→    }
+   573→   573→
+   574→   574→    if (!credentials.apiKey) {
+   575→   575→      return { success: false, error: "API key required" };
+   576→   576→    }
+   577→   577→
+   578→   578→    // Validate API key by making a test call
+   579→   579→    try {
+   580→   580→      const response = await fetch(`${this.platform.baseUrl}/api/v1/verify`, {
+   581→   581→        headers: { "X-API-Key": credentials.apiKey },
+   582→   582→      });
+   583→   583→
+   584→   584→      if (!response.ok) {
+   585→   585→        return { success: false, error: "Invalid API key" };
+   586→   586→      }
+   587→   587→
+   588→   588→      const data = await response.json();
+   589→   589→
+   590→   590→      return {
+   591→   591→        success: true,
+   592→   592→        accessToken: credentials.apiKey,
+   593→   593→        sessionExpiry: new Date(Date.now() + 86400000 * 30), // API keys are long-lived
+   594→   594→        brokerUserId: data.user_id || `apikey_${Date.now()}`,
+   595→   595→      };
+   596→   596→    } catch (error) {
+   597→   597→      return {
+   598→   598→        success: false,
+   599→   599→        error: error instanceof Error ? error.message : "API key validation failed",
+   600→   600→      };
+   601→   601→    }
+   602→   602→  }
+   603→   603→
+   604→   604→  async refreshSession(refreshToken: string): Promise<BrokerAuthResult> {
+   605→   605→    // API keys don't need refresh
+   606→   606→    return {
+   607→   607→      success: true,
+   608→   608→      accessToken: refreshToken,
+   609→   609→      sessionExpiry: new Date(Date.now() + 86400000 * 30),
+   610→   610→    };
+   611→   611→  }
+   612→   612→
+   613→   613→  async getBalance(accessToken: string, regionCode?: string): Promise<BrokerBalance> {
+   614→   614→    const currency = regionCode ? getRegionCurrency(regionCode) : { code: "USD" };
+   615→   615→
+   616→   616→    if (this.isDemoMode()) {
+   617→   617→      const demoBalance = config.broker.demoBalance;
+   618→   618→      return { available: demoBalance, locked: 0, total: demoBalance, currency: currency.code, lastUpdated: new Date() };
+   619→   619→    }
+   620→   620→
+   621→   621→    try {
+   622→   622→      const result = await this.apiCall<BrokerBalance>(accessToken, "GET", "/api/v1/balance");
+   623→   623→      return result;
+   624→   624→    } catch {
+   625→   625→      return { available: 0, locked: 0, total: 0, currency: currency.code, lastUpdated: new Date() };
+   626→   626→    }
+   627→   627→  }
+   628→   628→
+   629→   629→  async getProfile(accessToken: string): Promise<BrokerUserProfile> {
+   630→   630→    if (this.isDemoMode()) {
+   631→   631→      return { userId: "demo_user", username: "Demo User", currency: "USD", region: "global", verified: true, kycLevel: "full" };
+   632→   632→    }
+   633→   633→    return this.apiCall<BrokerUserProfile>(accessToken, "GET", "/api/v1/profile");
+   634→   634→  }
+   635→   635→
+   636→   636→  async placeBet(accessToken: string, bet: BrokerBetRequest): Promise<BrokerBetResult> {
+   637→   637→    const idempotencyKey = bet.idempotencyKey || `${this.platformId}_${bet.matchId}_${bet.selection}_${Date.now()}`;
+   638→   638→
+   639→   639→    try {
+   640→   640→      return await this.apiCall<BrokerBetResult>(
+   641→   641→        accessToken, "POST", "/api/v1/bets",
+   642→   642→        {
+   643→   643→          match_id: bet.matchId,
+   644→   644→          selection: bet.selection,
+   645→   645→          odds: bet.odds,
+   646→   646→          stake: bet.stake,
+   647→   647→          bet_type: bet.betType,
+   648→   648→          market: bet.market,
+   649→   649→          idempotency_key: idempotencyKey,
+   650→   650→        },
+   651→   651→        { idempotencyKey }
+   652→   652→      );
+   653→   653→    } catch (error) {
+   654→   654→      return { success: false, error: error instanceof Error ? error.message : "Bet placement failed" };
+   655→   655→    }
+   656→   656→  }
+   657→   657→
+   658→   658→  async getBetStatus(accessToken: string, brokerBetId: string): Promise<BrokerBetStatus> {
+   659→   659→    return this.apiCall<BrokerBetStatus>(accessToken, "GET", `/api/v1/bets/${brokerBetId}`);
+   660→   660→  }
+   661→   661→
+   662→   662→  async cashout(accessToken: string, brokerBetId: string, type: "full" | "partial", partialPercent?: number): Promise<BrokerCashoutResult> {
+   663→   663→    try {
+   664→   664→      return await this.apiCall<BrokerCashoutResult>(accessToken, "POST", `/api/v1/bets/${brokerBetId}/cashout`, { type, partial_percent: partialPercent });
+   665→   665→    } catch (error) {
+   666→   666→      return { success: false, error: error instanceof Error ? error.message : "Cashout failed" };
+   667→   667→    }
+   668→   668→  }
+   669→   669→
+   670→   670→  async transferToWallet(accessToken: string, amount: number, walletAddress: string, reference: string): Promise<BrokerTransferResult> {
+   671→   671→    try {
+   672→   672→      return await this.apiCall<BrokerTransferResult>(accessToken, "POST", "/api/v1/transfers", { amount, wallet_address: walletAddress, reference });
+   673→   673→    } catch (error) {
+   674→   674→      return { success: false, error: error instanceof Error ? error.message : "Transfer failed" };
+   675→   675→    }
+   676→   676→  }
+   677→   677→
+   678→   678→  async getAvailableMarkets(accessToken: string, matchId: string): Promise<BrokerMarket[]> {
+   679→   679→    return this.apiCall<BrokerMarket[]>(accessToken, "GET", `/api/v1/matches/${matchId}/markets`);
+   680→   680→  }
+   681→   681→
+   682→   682→  async getLiveEvents(accessToken: string): Promise<BrokerLiveEvent[]> {
+   683→   683→    return this.apiCall<BrokerLiveEvent[]>(accessToken, "GET", "/api/v1/events/live");
+   684→   684→  }
+   685→   685→}
+   686→   686→
+   687→   687→// ==================== WEB SESSION ADAPTER ====================
+   688→   688→
+   689→   689→class WebSessionBrokerAdapter extends BaseBrokerAdapter {
+   690→   690→  platformId: string;
+   691→   691→  platform: BrokerPlatform;
+   692→   692→
+   693→   693→  constructor(platform: BrokerPlatform) {
+   694→   694→    super();
+   695→   695→    this.platformId = platform.id;
+   696→   696→    this.platform = platform;
+   697→   697→  }
+   698→   698→
+   699→   699→  async authenticate(credentials: BrokerCredentials): Promise<BrokerAuthResult> {
+   700→   700→    // Demo/Sandbox mode: simulate successful authentication without real API calls
+   701→   701→    // MUST be checked BEFORE credential validation — in demo mode, any credentials (even empty) work
+   702→   702→    // This prevents 403 errors from real broker platforms that don't have public APIs
+   703→   703→    if (this.isDemoMode()) {
+   704→   704→      const demoUser = credentials.username || "demo_user";
+   705→   705→      const sessionToken = `demo_session_${Buffer.from(demoUser).toString("base64")}_${Date.now()}`;
+   706→   706→      return {
+   707→   707→        success: true,
+   708→   708→        accessToken: sessionToken,
+   709→   709→        sessionToken,
+   710→   710→        refreshToken: `demo_refresh_${this.platformId}_${Date.now()}`,
+   711→   711→        sessionExpiry: new Date(Date.now() + 7200000),
+   712→   712→        brokerUserId: demoUser,
+   713→   713→      };
+   714→   714→    }
+   715→   715→
+   716→   716→    if (!credentials.username || !credentials.password) {
+   717→   717→      return { success: false, error: "Username and password required" };
+   718→   718→    }
+   719→   719→
+   720→   720→    try {
+   721→   721→      const result = await withRetry(async () => {
+   722→   722→        const response = await fetch(`${this.platform.baseUrl}/api/v1/auth/login`, {
+   723→   723→          method: "POST",
+   724→   724→          headers: { "Content-Type": "application/json" },
+   725→   725→          body: JSON.stringify({
+   726→   726→            username: credentials.username,
+   727→   727→            password: credentials.password,
+   728→   728→            otp: credentials.otp,
+   729→   729→          }),
+   730→   730→        });
+   731→   731→
+   732→   732→        if (!response.ok) {
+   733→   733→          const data = await response.json().catch(() => ({}));
+   734→   734→          throw new Error(data.message || `Login failed: ${response.status}`);
+   735→   735→        }
+   736→   736→
+   737→   737→        return response.json();
+   738→   738→      });
+   739→   739→
+   740→   740→      return {
+   741→   741→        success: true,
+   742→   742→        accessToken: result.access_token || result.token,
+   743→   743→        sessionToken: result.session_token || result.access_token,
+   744→   744→        refreshToken: result.refresh_token,
+   745→   745→        sessionExpiry: new Date(Date.now() + (result.expires_in || 7200) * 1000),
+   746→   746→        brokerUserId: result.user_id || credentials.username,
+   747→   747→      };
+   748→   748→    } catch (error) {
+   749→   749→      return {
+   750→   750→        success: false,
+   751→   751→        error: error instanceof Error ? error.message : "Authentication failed",
+   752→   752→      };
+   753→   753→    }
+   754→   754→  }
+   755→   755→
+   756→   756→  async refreshSession(refreshToken: string): Promise<BrokerAuthResult> {
+   757→   757→    // Demo mode: return simulated refreshed session
+   758→   758→    if (this.isDemoMode()) {
+   759→   759→      const demoUser = "demo_user";
+   760→   760→      const sessionToken = `demo_session_${Buffer.from(demoUser).toString("base64")}_${Date.now()}`;
+   761→   761→      return {
+   762→   762→        success: true,
+   763→   763→        accessToken: sessionToken,
+   764→   764→        sessionToken,
+   765→   765→        refreshToken: `demo_refresh_${this.platformId}_${Date.now()}`,
+   766→   766→        sessionExpiry: new Date(Date.now() + 7200000),
+   767→   767→      };
+   768→   768→    }
+   769→   769→
+   770→   770→    try {
+   771→   771→      const result = await withRetry(async () => {
+   772→   772→        const response = await fetch(`${this.platform.baseUrl}/api/v1/auth/refresh`, {
+   773→   773→          method: "POST",
+   774→   774→          headers: { "Content-Type": "application/json" },
+   775→   775→          body: JSON.stringify({ refresh_token: refreshToken }),
+   776→   776→        });
+   777→   777→
+   778→   778→        if (!response.ok) {
+   779→   779→          throw new Error(`Session refresh failed: ${response.status}`);
+   780→   780→        }
+   781→   781→
+   782→   782→        return response.json();
+   783→   783→      });
+   784→   784→
+   785→   785→      return {
+   786→   786→        success: true,
+   787→   787→        accessToken: result.access_token || result.token,
+   788→   788→        sessionToken: result.session_token,
+   789→   789→        refreshToken: result.refresh_token || refreshToken,
+   790→   790→        sessionExpiry: new Date(Date.now() + (result.expires_in || 7200) * 1000),
+   791→   791→      };
+   792→   792→    } catch (error) {
+   793→   793→      return {
+   794→   794→        success: false,
+   795→   795→        error: error instanceof Error ? error.message : "Session refresh failed",
+   796→   796→      };
+   797→   797→    }
+   798→   798→  }
+   799→   799→
+   800→   800→  async getBalance(accessToken: string, regionCode?: string): Promise<BrokerBalance> {
+   801→   801→    const currency = regionCode ? getRegionCurrency(regionCode) : { code: "USD" };
+   802→   802→
+   803→   803→    if (this.isDemoMode()) {
+   804→   804→      const demoBalance = config.broker.demoBalance;
+   805→   805→      return { available: demoBalance, locked: 0, total: demoBalance, currency: currency.code, lastUpdated: new Date() };
+   806→   806→    }
+   807→   807→
+   808→   808→    try {
+   809→   809→      return await this.apiCall<BrokerBalance>(accessToken, "GET", "/api/v1/balance");
+   810→   810→    } catch {
+   811→   811→      return { available: 0, locked: 0, total: 0, currency: currency.code, lastUpdated: new Date() };
+   812→   812→    }
+   813→   813→  }
+   814→   814→
+   815→   815→  async getProfile(accessToken: string): Promise<BrokerUserProfile> {
+   816→   816→    if (this.isDemoMode()) {
+   817→   817→      return { userId: "demo_user", username: "Demo User", currency: "USD", region: "global", verified: true, kycLevel: "full" };
+   818→   818→    }
+   819→   819→    return this.apiCall<BrokerUserProfile>(accessToken, "GET", "/api/v1/profile");
+   820→   820→  }
+   821→   821→
+   822→   822→  async placeBet(accessToken: string, bet: BrokerBetRequest): Promise<BrokerBetResult> {
+   823→   823→    const idempotencyKey = bet.idempotencyKey || `${this.platformId}_${bet.matchId}_${bet.selection}_${Date.now()}`;
+   824→   824→
+   825→   825→    try {
+   826→   826→      return await this.apiCall<BrokerBetResult>(
+   827→   827→        accessToken, "POST", "/api/v1/bets",
+   828→   828→        {
+   829→   829→          match_id: bet.matchId,
+   830→   830→          selection: bet.selection,
+   831→   831→          odds: bet.odds,
+   832→   832→          stake: bet.stake,
+   833→   833→          bet_type: bet.betType,
+   834→   834→          market: bet.market,
+   835→   835→          idempotency_key: idempotencyKey,
+   836→   836→        },
+   837→   837→        { idempotencyKey }
+   838→   838→      );
+   839→   839→    } catch (error) {
+   840→   840→      return { success: false, error: error instanceof Error ? error.message : "Bet placement failed" };
+   841→   841→    }
+   842→   842→  }
+   843→   843→
+   844→   844→  async getBetStatus(accessToken: string, brokerBetId: string): Promise<BrokerBetStatus> {
+   845→   845→    return this.apiCall<BrokerBetStatus>(accessToken, "GET", `/api/v1/bets/${brokerBetId}`);
+   846→   846→  }
+   847→   847→
+   848→   848→  async cashout(accessToken: string, brokerBetId: string, type: "full" | "partial", partialPercent?: number): Promise<BrokerCashoutResult> {
+   849→   849→    try {
+   850→   850→      return await this.apiCall<BrokerCashoutResult>(accessToken, "POST", `/api/v1/bets/${brokerBetId}/cashout`, { type, partial_percent: partialPercent });
+   851→   851→    } catch (error) {
+   852→   852→      return { success: false, error: error instanceof Error ? error.message : "Cashout failed" };
+   853→   853→    }
+   854→   854→  }
+   855→   855→
+   856→   856→  async transferToWallet(accessToken: string, amount: number, walletAddress: string, reference: string): Promise<BrokerTransferResult> {
+   857→   857→    try {
+   858→   858→      return await this.apiCall<BrokerTransferResult>(accessToken, "POST", "/api/v1/transfers", { amount, wallet_address: walletAddress, reference });
+   859→   859→    } catch (error) {
+   860→   860→      return { success: false, error: error instanceof Error ? error.message : "Transfer failed" };
+   861→   861→    }
+   862→   862→  }
+   863→   863→
+   864→   864→  async getAvailableMarkets(accessToken: string, matchId: string): Promise<BrokerMarket[]> {
+   865→   865→    return this.apiCall<BrokerMarket[]>(accessToken, "GET", `/api/v1/matches/${matchId}/markets`);
+   866→   866→  }
+   867→   867→
+   868→   868→  async getLiveEvents(accessToken: string): Promise<BrokerLiveEvent[]> {
+   869→   869→    return this.apiCall<BrokerLiveEvent[]>(accessToken, "GET", "/api/v1/events/live");
+   870→   870→  }
+   871→   871→}
+   872→   872→
+   873→   873→// ==================== MANUAL ADAPTER (Demo / Manual Tracking) ====================
+   874→   874→
+   875→   875→class ManualBrokerAdapter extends BaseBrokerAdapter {
+   876→   876→  platformId = "manual";
+   877→   877→  platform: BrokerPlatform;
+   878→   878→
+   879→   879→  constructor() {
+   880→   880→    super();
+   881→   881→    this.platform = {
+   882→   882→      id: "manual",
+   883→   883→      name: "Manual Tracking",
+   884→   884→      regions: [],
+   885→   885→      authType: "manual",
+   886→   886→      supportedSports: [],
+   887→   887→      baseUrl: "",
+   888→   888→      features: {
+   889→   889→        liveBetting: false,
+   890→   890→        cashout: false,
+   891→   891→        partialCashout: false,
+   892→   892→        accumulators: true,
+   893→   893→        maxAccumulatorLegs: 20,
+   894→   894→        minStake: 0,
+   895→   895→        maxStake: Infinity,
+   896→   896→        supportedMarkets: [],
+   897→   897→        instantSettlement: false,
+   898→   898→      },
+   899→   899→      commissionDefault: 0.10,
+   900→   900→    };
+   901→   901→  }
+   902→   902→
+   903→   903→  async authenticate(): Promise<BrokerAuthResult> {
+   904→   904→    return {
+   905→   905→      success: true,
+   906→   906→      sessionExpiry: new Date(Date.now() + 86400000 * 365),
+   907→   907→      brokerUserId: "manual_user",
+   908→   908→    };
+   909→   909→  }
+   910→   910→
+   911→   911→  async refreshSession(): Promise<BrokerAuthResult> {
+   912→   912→    return { success: true, sessionExpiry: new Date(Date.now() + 86400000 * 365) };
+   913→   913→  }
+   914→   914→
+   915→   915→  async getBalance(_accessToken: string, regionCode?: string): Promise<BrokerBalance> {
+   916→   916→    const currency = regionCode ? getRegionCurrency(regionCode) : { code: "USD" };
+   917→   917→    return { available: 0, locked: 0, total: 0, currency: currency.code, lastUpdated: new Date() };
+   918→   918→  }
+   919→   919→
+   920→   920→  async getProfile(): Promise<BrokerUserProfile> {
+   921→   921→    return {
+   922→   922→      userId: "manual",
+   923→   923→      username: "Manual Tracking",
+   924→   924→      currency: "USD",
+   925→   925→      region: "global",
+   926→   926→      verified: false,
+   927→   927→      kycLevel: "none",
+   928→   928→    };
+   929→   929→  }
+   930→   930→
+   931→   931→  async placeBet(): Promise<BrokerBetResult> {
+   932→   932→    return { success: false, error: "Manual tracking does not support automatic bet placement" };
+   933→   933→  }
+   934→   934→
+   935→   935→  async getBetStatus(): Promise<BrokerBetStatus> {
+   936→   936→    return {
+   937→   937→      brokerBetId: "manual",
+   938→   938→      status: "pending",
+   939→   939→      stake: 0,
+   940→   940→      odds: 0,
+   941→   941→      potentialWin: 0,
+   942→   942→      cashoutAvailable: false,
+   943→   943→    };
+   944→   944→  }
+   945→   945→
+   946→   946→  async cashout(): Promise<BrokerCashoutResult> {
+   947→   947→    return { success: false, error: "Manual tracking does not support cashout" };
+   948→   948→  }
+   949→   949→
+   950→   950→  async transferToWallet(): Promise<BrokerTransferResult> {
+   951→   951→    return { success: false, error: "Manual tracking does not support transfers" };
+   952→   952→  }
+   953→   953→
+   954→   954→  async getAvailableMarkets(): Promise<BrokerMarket[]> {
+   955→   955→    return [];
+   956→   956→  }
+   957→   957→
+   958→   958→  async getLiveEvents(): Promise<BrokerLiveEvent[]> {
+   959→   959→    return [];
+   960→   960→  }
+   961→   961→}
+   962→   962→
+   963→   963→// ==================== ADAPTER FACTORY ====================
+   964→   964→
+   965→   965→const adapterCache = new Map<string, BrokerAdapter>();
+   966→   966→
+   967→   967→/**
+   968→   968→ * Get or create a broker adapter for the given platform
+   969→   969→ * @param platformId - The platform ID
+   970→   970→ * @param demoMode - If true, the adapter will use demo/sandbox mode (no real API calls)
+   971→   971→ */
+   972→   972→export function getBrokerAdapter(platformId: string, demoMode?: boolean): BrokerAdapter | null {
+   973→   973→  // Check cache (but demo mode changes per-user, so we need a keyed cache)
+   974→   974→  const cacheKey = demoMode !== undefined ? `${platformId}_${demoMode ? "demo" : "real"}` : platformId;
+   975→   975→  if (adapterCache.has(cacheKey)) {
+   976→   976→    return adapterCache.get(cacheKey)!;
+   977→   977→  }
+   978→   978→
+   979→   979→  // Manual adapter
+   980→   980→  if (platformId === "manual") {
+   981→   981→    const adapter = new ManualBrokerAdapter();
+   982→   982→    adapterCache.set(cacheKey, adapter);
+   983→   983→    return adapter;
+   984→   984→  }
+   985→   985→
+   986→   986→  // Get platform config
+   987→   987→  const platform = getBrokerPlatform(platformId);
+   988→   988→  if (!platform) {
+   989→   989→    console.error(`Unknown broker platform: ${platformId}`);
+   990→   990→    return null;
+   991→   991→  }
+   992→   992→
+   993→   993→  // Create appropriate adapter based on auth type
+   994→   994→  let adapter: BrokerAdapter;
+   995→   995→
+   996→   996→  switch (platform.authType) {
+   997→   997→    case "oauth":
+   998→   998→      adapter = new OAuthBrokerAdapter(platform);
+   999→   999→      break;
+  1000→  1000→    case "api_key":
+  1001→  1001→      adapter = new ApiKeyBrokerAdapter(platform);
+  1002→  1002→      break;
+  1003→  1003→    case "web_session":
+  1004→  1004→      adapter = new WebSessionBrokerAdapter(platform);
+  1005→  1005→      break;
+  1006→  1006→    case "manual":
+  1007→  1007→      adapter = new ManualBrokerAdapter();
+  1008→  1008→      break;
+  1009→  1009→    default:
+  1010→  1010→      console.error(`Unsupported auth type: ${platform.authType}`);
+  1011→  1011→      return null;
+  1012→  1012→  }
+  1013→  1013→
+  1014→  1014→  // Override demo mode if specified
+  1015→  1015→  if (demoMode !== undefined) {
+  1016→  1016→    (adapter as any)._demoMode = demoMode;
+  1017→  1017→  }
+  1018→  1018→
+  1019→  1019→  adapterCache.set(cacheKey, adapter);
+  1020→  1020→  return adapter;
+  1021→  1021→}
+  1022→  1022→
+  1023→  1023→/**
+  1024→  1024→ * Get all available broker adapters
+  1025→  1025→ * Uses lazy import to avoid circular dependency at module load time
+  1026→  1026→ */
+  1027→  1027→export function getAvailableAdapters(): BrokerAdapter[] {
+  1028→  1028→  const adapters: BrokerAdapter[] = [new ManualBrokerAdapter()];
+  1029→  1029→
+  1030→  1030→  // Lazy import to avoid circular dependency at module load time
+  1031→  1031→  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  1032→  1032→  const { BROKER_PLATFORMS } = require("./regions") as { BROKER_PLATFORMS: Array<{ id: string }> };
+  1033→  1033→
+  1034→  1034→  const seen = new Set<string>();
+  1035→  1035→  for (const platform of BROKER_PLATFORMS) {
+  1036→  1036→    if (seen.has(platform.id)) continue;
+  1037→  1037→    seen.add(platform.id);
+  1038→  1038→    const adapter = getBrokerAdapter(platform.id);
+  1039→  1039→    if (adapter) {
+  1040→  1040→      adapters.push(adapter);
+  1041→  1041→    }
+  1042→  1042→  }
+  1043→  1043→
+  1044→  1044→  return adapters;
+  1045→  1045→}
+  1046→  1046→
+  1047→  1047→// ==================== PRODUCTION API HELPERS ====================
+  1048→  1048→
+  1049→  1049→/**
+  1050→  1050→ * Place a bet on a broker with full safety checks
+  1051→  1051→ */
+  1052→  1052→export async function safePlaceBet(
+  1053→  1053→  platformId: string,
+  1054→  1054→  accessToken: string,
+  1055→  1055→  bet: BrokerBetRequest,
+  1056→  1056→  maxStake: number
+  1057→  1057→): Promise<BrokerBetResult> {
+  1058→  1058→  // Validate stake limits
+  1059→  1059→  if (bet.stake <= 0) {
+  1060→  1060→    return { success: false, error: "Stake must be positive" };
+  1061→  1061→  }
+  1062→  1062→  if (bet.stake > maxStake) {
+  1063→  1063→    return { success: false, error: `Stake exceeds maximum allowed (${maxStake})` };
+  1064→  1064→  }
+  1065→  1065→
+  1066→  1066→  // Validate odds
+  1067→  1067→  if (bet.odds < 1.01) {
+  1068→  1068→    return { success: false, error: "Invalid odds" };
+  1069→  1069→  }
+  1070→  1070→
+  1071→  1071→  const adapter = getBrokerAdapter(platformId);
+  1072→  1072→  if (!adapter) {
+  1073→  1073→    return { success: false, error: `No adapter for platform: ${platformId}` };
+  1074→  1074→  }
+  1075→  1075→
+  1076→  1076→  // Generate idempotency key
+  1077→  1077→  const idempotencyKey = `${platformId}_${bet.matchId}_${bet.selection}_${bet.stake}_${Date.now()}`;
+  1078→  1078→
+  1079→  1079→  return adapter.placeBet(accessToken, {
+  1080→  1080→    ...bet,
+  1081→  1081→    idempotencyKey,
+  1082→  1082→  });
+  1083→  1083→}
+  1084→  1084→
+  1085→  1085→/**
+  1086→  1086→ * Execute cashout with safety checks
+  1087→  1087→ */
+  1088→  1088→export async function safeCashout(
+  1089→  1089→  platformId: string,
+  1090→  1090→  accessToken: string,
+  1091→  1091→  brokerBetId: string,
+  1092→  1092→  type: "full" | "partial",
+  1093→  1093→  partialPercent?: number
+  1094→  1094→): Promise<BrokerCashoutResult> {
+  1095→  1095→  if (type === "partial" && (partialPercent === undefined || partialPercent <= 0 || partialPercent >= 100)) {
+  1096→  1096→    return { success: false, error: "Partial cashout percentage must be between 0 and 100" };
+  1097→  1097→  }
+  1098→  1098→
+  1099→  1099→  const adapter = getBrokerAdapter(platformId);
+  1100→  1100→  if (!adapter) {
+  1101→  1101→    return { success: false, error: `No adapter for platform: ${platformId}` };
+  1102→  1102→  }
+  1103→  1103→
+  1104→  1104→  return adapter.cashout(accessToken, brokerBetId, type, partialPercent);
+  1105→  1105→}
+  1106→  1106→
+  1107→  1107→/**
+  1108→  1108→ * Transfer commission to admin with safety checks
+  1109→  1109→ */
+  1110→  1110→export async function safeTransferCommission(
+  1111→  1111→  platformId: string,
+  1112→  1112→  accessToken: string,
+  1113→  1113→  amount: number,
+  1114→  1114→  adminWalletAddress: string,
+  1115→  1115→  reference: string
+  1116→  1116→): Promise<BrokerTransferResult> {
+  1117→  1117→  if (amount <= 0) {
+  1118→  1118→    return { success: false, error: "Transfer amount must be positive" };
+  1119→  1119→  }
+  1120→  1120→
+  1121→  1121→  if (!adminWalletAddress) {
+  1122→  1122→    return { success: false, error: "Admin wallet address not configured" };
+  1123→  1123→  }
+  1124→  1124→
+  1125→  1125→  const adapter = getBrokerAdapter(platformId);
+  1126→  1126→  if (!adapter) {
+  1127→  1127→    return { success: false, error: `No adapter for platform: ${platformId}` };
+  1128→  1128→  }
+  1129→  1129→
+  1130→  1130→  return adapter.transferToWallet(accessToken, amount, adminWalletAddress, reference);
+  1131→  1131→}
+  1132→  1132→
