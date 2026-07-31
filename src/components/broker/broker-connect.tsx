@@ -20,6 +20,7 @@ import {
   AlertCircle, Globe, Key, User, Lock, ChevronRight,
   Search, MapPin, Smartphone, Star, ArrowLeft,
 } from "lucide-react";
+import { getBrokerLogoUrl } from "@/lib/broker-logos";
 import {
   REGIONS,
   getPlatformsForRegion,
@@ -375,10 +376,18 @@ export function BrokerConnect() {
                           >
                             <div className="flex items-center gap-3">
                               <div
-                                className="flex h-10 w-10 items-center justify-center rounded-lg text-xs font-bold text-white shrink-0"
-                                style={{ backgroundColor: platform.color || "#10b981" }}
+                                className="flex h-10 w-10 items-center justify-center rounded-lg shrink-0 overflow-hidden bg-secondary/50 border border-border"
                               >
-                                {platform.logo}
+                                <img
+                                  src={getBrokerLogoUrl(platform.id, platform.name, platform.color || "#10b981")}
+                                  alt={platform.name}
+                                  className="h-10 w-10 object-contain p-1 rounded-lg"
+                                  onError={(e) => {
+                                    const target = e.currentTarget;
+                                    target.style.display = "none";
+                                    target.parentElement!.innerHTML = `<div style="background:${platform.color || "#10b981"};width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:0.5rem;color:#fff;font-size:0.65rem;font-weight:700;">${platform.name.substring(0, 2).toUpperCase()}</div>`;
+                                  }}
+                                />
                               </div>
                               <div>
                                 <div className="flex items-center gap-1.5">
@@ -417,10 +426,18 @@ export function BrokerConnect() {
 
                     <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
                       <div
-                        className="flex h-10 w-10 items-center justify-center rounded-lg text-xs font-bold text-white shrink-0"
-                        style={{ backgroundColor: selectedPlatformData.color || "#10b981" }}
+                        className="flex h-10 w-10 items-center justify-center rounded-lg shrink-0 overflow-hidden bg-secondary/50 border border-border"
                       >
-                        {selectedPlatformData.logo}
+                        <img
+                          src={getBrokerLogoUrl(selectedPlatformData.id, selectedPlatformData.name, selectedPlatformData.color || "#10b981")}
+                          alt={selectedPlatformData.name}
+                          className="h-10 w-10 object-contain p-1 rounded-lg"
+                          onError={(e) => {
+                            const target = e.currentTarget;
+                            target.style.display = "none";
+                            target.parentElement!.innerHTML = `<div style="background:${selectedPlatformData.color || "#10b981"};width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:0.5rem;color:#fff;font-size:0.65rem;font-weight:700;">${selectedPlatformData.name.substring(0, 2).toUpperCase()}</div>`;
+                          }}
+                        />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground">{selectedPlatformData.name}</p>

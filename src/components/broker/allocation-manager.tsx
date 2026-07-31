@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { getBrokerLogoUrl } from "@/lib/broker-logos";
 import { Separator } from "@/components/ui/separator";
 import {
   Wallet, ArrowUpRight, ArrowDownLeft, DollarSign, TrendingUp,
@@ -216,12 +217,21 @@ export function AllocationManager() {
                     <button
                       key={account.id}
                       onClick={() => setSelectedAccountId(account.id)}
-                      className={`rounded-lg px-3 py-2 text-xs font-medium transition-all ${
+                      className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-all ${
                         selectedAccountId === account.id
                           ? "bg-primary/10 text-primary border border-primary/30"
                           : "bg-secondary/50 text-muted-foreground border border-border"
                       }`}
                     >
+                      <img
+                        src={getBrokerLogoUrl(account.platform, account.platformName, "#10b981")}
+                        alt={account.platformName}
+                        className="h-5 w-5 object-contain rounded"
+                        onError={(e) => {
+                          const target = e.currentTarget;
+                          target.style.display = "none";
+                        }}
+                      />
                       {account.accountName} (${account.balance.toFixed(2)})
                     </button>
                   ))}
