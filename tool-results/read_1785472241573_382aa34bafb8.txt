@@ -1,0 +1,764 @@
+     1→"use client";
+     2→
+     3→import { useState, useEffect, useCallback } from "react";
+     4→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+     5→import { Switch } from "@/components/ui/switch";
+     6→import { Label } from "@/components/ui/label";
+     7→import { Input } from "@/components/ui/input";
+     8→import { Button } from "@/components/ui/button";
+     9→import { Badge } from "@/components/ui/badge";
+    10→import { Separator } from "@/components/ui/separator";
+    11→import {
+    12→  Zap,
+    13→  Shield,
+    14→  Bell,
+    15→  Percent,
+    16→  User,
+    17→  Save,
+    18→  Loader2,
+    19→  AlertCircle,
+    20→  CheckCircle2,
+    21→  RefreshCw,
+    22→} from "lucide-react";
+    23→import { useAuth } from "@/components/auth/auth-provider";
+    24→
+    25→interface UserSettings {
+    26→  autoBettingEnabled: boolean;
+    27→  maxBetAmount: number;
+    28→  minOddsThreshold: number;
+    29→  maxOddsThreshold: number;
+    30→  riskLevel: string;
+    31→  autoCashoutEnabled: boolean;
+    32→  cashoutThreshold: number;
+    33→  commissionRate: number;
+    34→  dailyBetLimit: number;
+    35→  preferredSports: string;
+    36→  notificationsEnabled: boolean;
+    37→  kellyFraction: number;
+    38→  minEdgeThreshold: number;
+    39→  stopLossDaily: number;
+    40→  stopLossWeekly: number;
+    41→  profitTargetDaily: number;
+    42→  profitTargetWeekly: number;
+    43→  partialCashoutEnabled: boolean;
+    44→  waitFullSettlement: boolean;
+    45→  maxAccumulatorLegs: number;
+    46→  betScheduleStart: string;
+    47→  betScheduleEnd: string;
+    48→}
+    49→
+    50→interface UserProfile {
+    51→  name: string;
+    52→  email: string;
+    53→  role: string;
+    54→  region: string | null;
+    55→  currency: string | null;
+    56→  balance: number;
+    57→  bankroll: number;
+    58→  dailyPnl: number;
+    59→  weeklyPnl: number;
+    60→}
+    61→
+    62→export default function SettingsPage() {
+    63→  const { user } = useAuth();
+    64→  const [settings, setSettings] = useState<UserSettings>({
+    65→    autoBettingEnabled: false,
+    66→    maxBetAmount: 200,
+    67→    minOddsThreshold: 1.5,
+    68→    maxOddsThreshold: 5.0,
+    69→    riskLevel: "medium",
+    70→    autoCashoutEnabled: true,
+    71→    cashoutThreshold: 0.7,
+    72→    commissionRate: 0.10,
+    73→    dailyBetLimit: 500,
+    74→    preferredSports: "football,basketball,tennis",
+    75→    notificationsEnabled: true,
+    76→    kellyFraction: 0.25,
+    77→    minEdgeThreshold: 0.03,
+    78→    stopLossDaily: 100,
+    79→    stopLossWeekly: 300,
+    80→    profitTargetDaily: 200,
+    81→    profitTargetWeekly: 500,
+    82→    partialCashoutEnabled: true,
+    83→    waitFullSettlement: false,
+    84→    maxAccumulatorLegs: 5,
+    85→    betScheduleStart: "08:00",
+    86→    betScheduleEnd: "22:00",
+    87→  });
+    88→  const [profile, setProfile] = useState<UserProfile>({
+    89→    name: "",
+    90→    email: "",
+    91→    role: "user",
+    92→    region: null,
+    93→    currency: null,
+    94→    balance: 0,
+    95→    bankroll: 0,
+    96→    dailyPnl: 0,
+    97→    weeklyPnl: 0,
+    98→  });
+    99→  const [saving, setSaving] = useState(false);
+   100→  const [saved, setSaved] = useState(false);
+   101→  const [error, setError] = useState<string | null>(null);
+   102→  const [loading, setLoading] = useState(true);
+   103→
+   104→  // Fetch real user settings from API
+   105→  const fetchSettings = useCallback(async () => {
+   106→    try {
+   107→      setLoading(true);
+   108→      const [settingsRes, statsRes] = await Promise.all([
+   109→        fetch("/api/settings"),
+   110→        fetch("/api/stats/user"),
+   111→      ]);
+   112→
+   113→      if (settingsRes.ok) {
+   114→        const data = await settingsRes.json();
+   115→        setSettings({
+   116→          autoBettingEnabled: data.autoBettingEnabled ?? false,
+   117→          maxBetAmount: data.maxBetAmount ?? 200,
+   118→          minOddsThreshold: data.minOddsThreshold ?? 1.5,
+   119→          maxOddsThreshold: data.maxOddsThreshold ?? 5.0,
+   120→          riskLevel: data.riskLevel ?? "medium",
+   121→          autoCashoutEnabled: data.autoCashoutEnabled ?? true,
+   122→          cashoutThreshold: data.cashoutThreshold ?? 0.7,
+   123→          commissionRate: data.commissionRate ?? 0.10,
+   124→          dailyBetLimit: data.dailyBetLimit ?? 500,
+   125→          preferredSports: data.preferredSports ?? "football,basketball,tennis",
+   126→          notificationsEnabled: data.notificationsEnabled ?? true,
+   127→          kellyFraction: data.kellyFraction ?? 0.25,
+   128→          minEdgeThreshold: data.minEdgeThreshold ?? 0.03,
+   129→          stopLossDaily: data.stopLossDaily ?? 100,
+   130→          stopLossWeekly: data.stopLossWeekly ?? 300,
+   131→          profitTargetDaily: data.profitTargetDaily ?? 200,
+   132→          profitTargetWeekly: data.profitTargetWeekly ?? 500,
+   133→          partialCashoutEnabled: data.partialCashoutEnabled ?? true,
+   134→          waitFullSettlement: data.waitFullSettlement ?? false,
+   135→          maxAccumulatorLegs: data.maxAccumulatorLegs ?? 5,
+   136→          betScheduleStart: data.betScheduleStart ?? "08:00",
+   137→          betScheduleEnd: data.betScheduleEnd ?? "22:00",
+   138→        });
+   139→      }
+   140→
+   141→      if (statsRes.ok) {
+   142→        const stats = await statsRes.json();
+   143→        setProfile((prev) => ({
+   144→          ...prev,
+   145→          balance: stats.balance ?? 0,
+   146→          bankroll: stats.bankroll ?? 0,
+   147→          dailyPnl: stats.dailyPnl ?? 0,
+   148→          weeklyPnl: stats.weeklyPnl ?? 0,
+   149→        }));
+   150→      }
+   151→
+   152→      // Use auth context for profile info
+   153→      if (user) {
+   154→        setProfile((prev) => ({
+   155→          ...prev,
+   156→          name: user.name || "",
+   157→          email: user.email || "",
+   158→          role: user.role || "user",
+   159→        }));
+   160→      }
+   161→    } catch (err) {
+   162→      console.error("Failed to fetch settings:", err);
+   163→      setError("Failed to load settings. Using defaults.");
+   164→    } finally {
+   165→      setLoading(false);
+   166→    }
+   167→  }, [user]);
+   168→
+   169→  useEffect(() => {
+   170→    fetchSettings();
+   171→  }, [fetchSettings]);
+   172→
+   173→  // Save settings to API
+   174→  const handleSave = async () => {
+   175→    setSaving(true);
+   176→    setError(null);
+   177→    try {
+   178→      const res = await fetch("/api/settings", {
+   179→        method: "PUT",
+   180→        headers: { "Content-Type": "application/json" },
+   181→        body: JSON.stringify(settings),
+   182→      });
+   183→
+   184→      if (!res.ok) {
+   185→        const data = await res.json();
+   186→        throw new Error(data.error || "Failed to save settings");
+   187→      }
+   188→
+   189→      setSaved(true);
+   190→      setTimeout(() => setSaved(false), 2000);
+   191→    } catch (err) {
+   192→      setError(err instanceof Error ? err.message : "Failed to save settings");
+   193→    } finally {
+   194→      setSaving(false);
+   195→    }
+   196→  };
+   197→
+   198→  const riskLevels = [
+   199→    { value: "low", label: "Low", color: "text-emerald-400", desc: "Conservative bets only" },
+   200→    { value: "medium", label: "Medium", color: "text-amber-400", desc: "Balanced approach" },
+   201→    { value: "high", label: "High", color: "text-red-400", desc: "Aggressive strategy" },
+   202→  ];
+   203→
+   204→  const sportsOptions = [
+   205→    { id: "football", label: "Football" },
+   206→    { id: "basketball", label: "Basketball" },
+   207→    { id: "tennis", label: "Tennis" },
+   208→    { id: "cricket", label: "Cricket" },
+   209→    { id: "rugby", label: "Rugby" },
+   210→    { id: "hockey", label: "Hockey" },
+   211→  ];
+   212→
+   213→  const toggleSport = (sport: string) => {
+   214→    const current = settings.preferredSports.split(",").filter(Boolean);
+   215→    const updated = current.includes(sport)
+   216→      ? current.filter((s) => s !== sport)
+   217→      : [...current, sport];
+   218→    setSettings({ ...settings, preferredSports: updated.join(",") });
+   219→  };
+   220→
+   221→  if (loading) {
+   222→    return (
+   223→      <div className="flex items-center justify-center min-h-[60vh]">
+   224→        <div className="flex items-center gap-3 text-muted-foreground">
+   225→          <Loader2 className="h-5 w-5 animate-spin" />
+   226→          <span>Loading your settings...</span>
+   227→        </div>
+   228→      </div>
+   229→    );
+   230→  }
+   231→
+   232→  return (
+   233→    <div className="space-y-6 max-w-3xl">
+   234→      {/* Page Header */}
+   235→      <div className="flex items-center justify-between">
+   236→        <div>
+   237→          <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+   238→          <p className="text-sm text-muted-foreground mt-1">
+   239→            Configure your betting preferences and account settings
+   240→          </p>
+   241→        </div>
+   242→        <Button
+   243→          variant="ghost"
+   244→          size="sm"
+   245→          onClick={fetchSettings}
+   246→          className="text-muted-foreground"
+   247→        >
+   248→          <RefreshCw className="h-4 w-4 mr-1" />
+   249→          Refresh
+   250→        </Button>
+   251→      </div>
+   252→
+   253→      {/* Error Banner */}
+   254→      {error && (
+   255→        <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+   256→          <AlertCircle className="h-4 w-4 shrink-0" />
+   257→          {error}
+   258→        </div>
+   259→      )}
+   260→
+   261→      {/* Success Banner */}
+   262→      {saved && (
+   263→        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-400">
+   264→          <CheckCircle2 className="h-4 w-4 shrink-0" />
+   265→          Settings saved successfully!
+   266→        </div>
+   267→      )}
+   268→
+   269→      {/* Account Info - Real Data */}
+   270→      <Card className="bg-card border-border">
+   271→        <CardHeader className="pb-3">
+   272→          <CardTitle className="flex items-center gap-2 text-base">
+   273→            <User className="h-4 w-4 text-primary" />
+   274→            Account
+   275→          </CardTitle>
+   276→        </CardHeader>
+   277→        <CardContent className="space-y-3">
+   278→          <div className="flex items-center justify-between">
+   279→            <Label className="text-sm text-muted-foreground">Name</Label>
+   280→            <span className="text-sm text-foreground">{profile.name || "Not set"}</span>
+   281→          </div>
+   282→          <div className="flex items-center justify-between">
+   283→            <Label className="text-sm text-muted-foreground">Email</Label>
+   284→            <span className="text-sm text-foreground">{profile.email || "Not set"}</span>
+   285→          </div>
+   286→          <div className="flex items-center justify-between">
+   287→            <Label className="text-sm text-muted-foreground">Role</Label>
+   288→            <Badge variant="secondary" className={profile.role === "admin" ? "bg-primary/10 text-primary" : ""}>
+   289→              {profile.role === "admin" ? "Admin" : "User"}
+   290→            </Badge>
+   291→          </div>
+   292→          <Separator />
+   293→          <div className="grid grid-cols-2 gap-3">
+   294→            <div className="flex items-center justify-between">
+   295→              <Label className="text-sm text-muted-foreground">Region</Label>
+   296→              <span className="text-sm text-foreground">{profile.region || "Not set"}</span>
+   297→            </div>
+   298→            <div className="flex items-center justify-between">
+   299→              <Label className="text-sm text-muted-foreground">Currency</Label>
+   300→              <span className="text-sm text-foreground">{profile.currency || "USD"}</span>
+   301→            </div>
+   302→          </div>
+   303→          <div className="grid grid-cols-2 gap-3">
+   304→            <div className="flex items-center justify-between">
+   305→              <Label className="text-sm text-muted-foreground">Bankroll</Label>
+   306→              <span className="text-sm font-medium text-foreground">
+   307→                {profile.currency === "NGN" ? "₦" : profile.currency === "GBP" ? "£" : profile.currency === "EUR" ? "€" : "$"}
+   308→                {profile.bankroll.toFixed(2)}
+   309→              </span>
+   310→            </div>
+   311→            <div className="flex items-center justify-between">
+   312→              <Label className="text-sm text-muted-foreground">Balance</Label>
+   313→              <span className="text-sm font-medium text-foreground">
+   314→                {profile.currency === "NGN" ? "₦" : profile.currency === "GBP" ? "£" : profile.currency === "EUR" ? "€" : "$"}
+   315→                {profile.balance.toFixed(2)}
+   316→              </span>
+   317→            </div>
+   318→          </div>
+   319→          <div className="grid grid-cols-2 gap-3">
+   320→            <div className="flex items-center justify-between">
+   321→              <Label className="text-sm text-muted-foreground">Daily P&L</Label>
+   322→              <span className={`text-sm font-medium ${profile.dailyPnl >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+   323→                {profile.dailyPnl >= 0 ? "+" : ""}
+   324→                {profile.dailyPnl.toFixed(2)}
+   325→              </span>
+   326→            </div>
+   327→            <div className="flex items-center justify-between">
+   328→              <Label className="text-sm text-muted-foreground">Weekly P&L</Label>
+   329→              <span className={`text-sm font-medium ${profile.weeklyPnl >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+   330→                {profile.weeklyPnl >= 0 ? "+" : ""}
+   331→                {profile.weeklyPnl.toFixed(2)}
+   332→              </span>
+   333→            </div>
+   334→          </div>
+   335→        </CardContent>
+   336→      </Card>
+   337→
+   338→      {/* Auto-Betting Settings */}
+   339→      <Card className="bg-card border-border">
+   340→        <CardHeader className="pb-3">
+   341→          <CardTitle className="flex items-center gap-2 text-base">
+   342→            <Zap className="h-4 w-4 text-primary" />
+   343→            Auto-Betting
+   344→          </CardTitle>
+   345→        </CardHeader>
+   346→        <CardContent className="space-y-4">
+   347→          <div className="flex items-center justify-between">
+   348→            <div>
+   349→              <Label className="text-sm font-medium">Enable Auto-Betting</Label>
+   350→              <p className="text-xs text-muted-foreground">
+   351→                Allow AI to automatically place bets based on your criteria
+   352→              </p>
+   353→            </div>
+   354→            <Switch
+   355→              checked={settings.autoBettingEnabled}
+   356→              onCheckedChange={(checked) =>
+   357→                setSettings({ ...settings, autoBettingEnabled: checked as boolean })
+   358→              }
+   359→            />
+   360→          </div>
+   361→
+   362→          <Separator />
+   363→
+   364→          <div className="grid grid-cols-2 gap-4">
+   365→            <div>
+   366→              <Label className="text-sm font-medium">Max Bet Amount</Label>
+   367→              <Input
+   368→                type="number"
+   369→                value={settings.maxBetAmount}
+   370→                onChange={(e) =>
+   371→                  setSettings({ ...settings, maxBetAmount: parseFloat(e.target.value) || 0 })
+   372→                }
+   373→                className="bg-secondary border-border mt-1"
+   374→              />
+   375→            </div>
+   376→            <div>
+   377→              <Label className="text-sm font-medium">Daily Bet Limit</Label>
+   378→              <Input
+   379→                type="number"
+   380→                value={settings.dailyBetLimit}
+   381→                onChange={(e) =>
+   382→                  setSettings({ ...settings, dailyBetLimit: parseFloat(e.target.value) || 0 })
+   383→                }
+   384→                className="bg-secondary border-border mt-1"
+   385→              />
+   386→            </div>
+   387→          </div>
+   388→
+   389→          <div className="grid grid-cols-2 gap-4">
+   390→            <div>
+   391→              <Label className="text-sm font-medium">Min Odds Threshold</Label>
+   392→              <Input
+   393→                type="number"
+   394→                step="0.1"
+   395→                value={settings.minOddsThreshold}
+   396→                onChange={(e) =>
+   397→                  setSettings({ ...settings, minOddsThreshold: parseFloat(e.target.value) || 0 })
+   398→                }
+   399→                className="bg-secondary border-border mt-1"
+   400→              />
+   401→            </div>
+   402→            <div>
+   403→              <Label className="text-sm font-medium">Max Odds Threshold</Label>
+   404→              <Input
+   405→                type="number"
+   406→                step="0.1"
+   407→                value={settings.maxOddsThreshold}
+   408→                onChange={(e) =>
+   409→                  setSettings({ ...settings, maxOddsThreshold: parseFloat(e.target.value) || 0 })
+   410→                }
+   411→                className="bg-secondary border-border mt-1"
+   412→              />
+   413→            </div>
+   414→          </div>
+   415→
+   416→          {/* Kelly & Edge Settings */}
+   417→          <div className="grid grid-cols-2 gap-4">
+   418→            <div>
+   419→              <Label className="text-sm font-medium">Kelly Fraction</Label>
+   420→              <Input
+   421→                type="number"
+   422→                step="0.05"
+   423→                min="0.05"
+   424→                max="1.0"
+   425→                value={settings.kellyFraction}
+   426→                onChange={(e) =>
+   427→                  setSettings({ ...settings, kellyFraction: parseFloat(e.target.value) || 0.25 })
+   428→                }
+   429→                className="bg-secondary border-border mt-1"
+   430→              />
+   431→              <p className="text-[10px] text-muted-foreground mt-0.5">
+   432→                Fraction of Kelly stake to use (0.05 - 1.0)
+   433→              </p>
+   434→            </div>
+   435→            <div>
+   436→              <Label className="text-sm font-medium">Min Edge Threshold</Label>
+   437→              <Input
+   438→                type="number"
+   439→                step="0.01"
+   440→                min="0"
+   441→                max="0.5"
+   442→                value={settings.minEdgeThreshold}
+   443→                onChange={(e) =>
+   444→                  setSettings({ ...settings, minEdgeThreshold: parseFloat(e.target.value) || 0.03 })
+   445→                }
+   446→                className="bg-secondary border-border mt-1"
+   447→              />
+   448→              <p className="text-[10px] text-muted-foreground mt-0.5">
+   449→                Minimum value edge to place a bet (0.03 = 3%)
+   450→              </p>
+   451→            </div>
+   452→          </div>
+   453→
+   454→          {/* Max Accumulator Legs */}
+   455→          <div>
+   456→            <Label className="text-sm font-medium">Max Accumulator Legs</Label>
+   457→            <Input
+   458→              type="number"
+   459→              min="2"
+   460→              max="20"
+   461→              value={settings.maxAccumulatorLegs}
+   462→              onChange={(e) =>
+   463→                setSettings({ ...settings, maxAccumulatorLegs: parseInt(e.target.value) || 5 })
+   464→              }
+   465→              className="bg-secondary border-border mt-1 max-w-[200px]"
+   466→            />
+   467→            <p className="text-[10px] text-muted-foreground mt-0.5">
+   468→              Maximum number of legs in an accumulator/parlay bet
+   469→            </p>
+   470→          </div>
+   471→
+   472→          {/* Bet Schedule */}
+   473→          <div className="grid grid-cols-2 gap-4">
+   474→            <div>
+   475→              <Label className="text-sm font-medium">Bet Schedule Start</Label>
+   476→              <Input
+   477→                type="time"
+   478→                value={settings.betScheduleStart}
+   479→                onChange={(e) =>
+   480→                  setSettings({ ...settings, betScheduleStart: e.target.value })
+   481→                }
+   482→                className="bg-secondary border-border mt-1"
+   483→              />
+   484→            </div>
+   485→            <div>
+   486→              <Label className="text-sm font-medium">Bet Schedule End</Label>
+   487→              <Input
+   488→                type="time"
+   489→                value={settings.betScheduleEnd}
+   490→                onChange={(e) =>
+   491→                  setSettings({ ...settings, betScheduleEnd: e.target.value })
+   492→                }
+   493→                className="bg-secondary border-border mt-1"
+   494→              />
+   495→            </div>
+   496→          </div>
+   497→          <p className="text-[10px] text-muted-foreground">
+   498→            AI bot will only place bets during this time window
+   499→          </p>
+   500→
+   501→          {/* Preferred Sports */}
+   502→          <div>
+   503→            <Label className="text-sm font-medium">Preferred Sports</Label>
+   504→            <div className="flex flex-wrap gap-2 mt-2">
+   505→              {sportsOptions.map((sport) => {
+   506→                const isSelected = settings.preferredSports.split(",").includes(sport.id);
+   507→                return (
+   508→                  <button
+   509→                    key={sport.id}
+   510→                    onClick={() => toggleSport(sport.id)}
+   511→                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+   512→                      isSelected
+   513→                        ? "bg-primary/10 text-primary border border-primary/30"
+   514→                        : "bg-secondary/50 text-muted-foreground border border-border"
+   515→                    }`}
+   516→                  >
+   517→                    {sport.label}
+   518→                  </button>
+   519→                );
+   520→              })}
+   521→            </div>
+   522→          </div>
+   523→        </CardContent>
+   524→      </Card>
+   525→
+   526→      {/* Risk Management */}
+   527→      <Card className="bg-card border-border">
+   528→        <CardHeader className="pb-3">
+   529→          <CardTitle className="flex items-center gap-2 text-base">
+   530→            <Shield className="h-4 w-4 text-amber-400" />
+   531→            Risk Management
+   532→          </CardTitle>
+   533→        </CardHeader>
+   534→        <CardContent className="space-y-4">
+   535→          <div>
+   536→            <Label className="text-sm font-medium mb-2 block">Risk Level</Label>
+   537→            <div className="grid grid-cols-3 gap-2">
+   538→              {riskLevels.map((level) => (
+   539→                <button
+   540→                  key={level.value}
+   541→                  onClick={() => setSettings({ ...settings, riskLevel: level.value })}
+   542→                  className={`rounded-lg border p-3 text-center transition-all ${
+   543→                    settings.riskLevel === level.value
+   544→                      ? "border-primary bg-primary/10"
+   545→                      : "border-border bg-secondary/50 hover:border-border"
+   546→                  }`}
+   547→                >
+   548→                  <div className={`text-sm font-medium ${level.color}`}>{level.label}</div>
+   549→                  <div className="text-[10px] text-muted-foreground mt-0.5">{level.desc}</div>
+   550→                </button>
+   551→              ))}
+   552→            </div>
+   553→          </div>
+   554→
+   555→          <Separator />
+   556→
+   557→          {/* Stop Loss & Profit Targets */}
+   558→          <div className="grid grid-cols-2 gap-4">
+   559→            <div>
+   560→              <Label className="text-sm font-medium">Daily Stop Loss</Label>
+   561→              <Input
+   562→                type="number"
+   563→                value={settings.stopLossDaily}
+   564→                onChange={(e) =>
+   565→                  setSettings({ ...settings, stopLossDaily: parseFloat(e.target.value) || 0 })
+   566→                }
+   567→                className="bg-secondary border-border mt-1"
+   568→              />
+   569→              <p className="text-[10px] text-muted-foreground mt-0.5">
+   570→                Stop betting if daily losses reach this
+   571→              </p>
+   572→            </div>
+   573→            <div>
+   574→              <Label className="text-sm font-medium">Weekly Stop Loss</Label>
+   575→              <Input
+   576→                type="number"
+   577→                value={settings.stopLossWeekly}
+   578→                onChange={(e) =>
+   579→                  setSettings({ ...settings, stopLossWeekly: parseFloat(e.target.value) || 0 })
+   580→                }
+   581→                className="bg-secondary border-border mt-1"
+   582→              />
+   583→              <p className="text-[10px] text-muted-foreground mt-0.5">
+   584→                Stop betting if weekly losses reach this
+   585→              </p>
+   586→            </div>
+   587→          </div>
+   588→          <div className="grid grid-cols-2 gap-4">
+   589→            <div>
+   590→              <Label className="text-sm font-medium">Daily Profit Target</Label>
+   591→              <Input
+   592→                type="number"
+   593→                value={settings.profitTargetDaily}
+   594→                onChange={(e) =>
+   595→                  setSettings({ ...settings, profitTargetDaily: parseFloat(e.target.value) || 0 })
+   596→                }
+   597→                className="bg-secondary border-border mt-1"
+   598→              />
+   599→              <p className="text-[10px] text-muted-foreground mt-0.5">
+   600→                Pause betting when daily profit target is hit
+   601→              </p>
+   602→            </div>
+   603→            <div>
+   604→              <Label className="text-sm font-medium">Weekly Profit Target</Label>
+   605→              <Input
+   606→                type="number"
+   607→                value={settings.profitTargetWeekly}
+   608→                onChange={(e) =>
+   609→                  setSettings({ ...settings, profitTargetWeekly: parseFloat(e.target.value) || 0 })
+   610→                }
+   611→                className="bg-secondary border-border mt-1"
+   612→              />
+   613→              <p className="text-[10px] text-muted-foreground mt-0.5">
+   614→                Pause betting when weekly profit target is hit
+   615→              </p>
+   616→            </div>
+   617→          </div>
+   618→
+   619→          <Separator />
+   620→
+   621→          {/* Cashout Settings */}
+   622→          <div className="flex items-center justify-between">
+   623→            <div>
+   624→              <Label className="text-sm font-medium">Auto Cashout</Label>
+   625→              <p className="text-xs text-muted-foreground">
+   626→                Automatically cashout when threshold is reached
+   627→              </p>
+   628→            </div>
+   629→            <Switch
+   630→              checked={settings.autoCashoutEnabled}
+   631→              onCheckedChange={(checked) =>
+   632→                setSettings({ ...settings, autoCashoutEnabled: checked as boolean })
+   633→              }
+   634→            />
+   635→          </div>
+   636→
+   637→          {settings.autoCashoutEnabled && (
+   638→            <div>
+   639→              <Label className="text-sm font-medium">
+   640→                Cashout Threshold: {Math.round(settings.cashoutThreshold * 100)}%
+   641→              </Label>
+   642→              <input
+   643→                type="range"
+   644→                min="20"
+   645→                max="90"
+   646→                step="5"
+   647→                value={settings.cashoutThreshold * 100}
+   648→                onChange={(e) =>
+   649→                  setSettings({ ...settings, cashoutThreshold: parseInt(e.target.value) / 100 })
+   650→                }
+   651→                className="w-full h-1.5 rounded-full bg-secondary appearance-none cursor-pointer mt-2 accent-primary"
+   652→              />
+   653→              <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+   654→                <span>20%</span>
+   655→                <span>50%</span>
+   656→                <span>90%</span>
+   657→              </div>
+   658→            </div>
+   659→          )}
+   660→
+   661→          <div className="flex items-center justify-between">
+   662→            <div>
+   663→              <Label className="text-sm font-medium">Partial Cashout</Label>
+   664→              <p className="text-xs text-muted-foreground">
+   665→                Allow cashing out a portion of the bet while keeping the rest active
+   666→              </p>
+   667→            </div>
+   668→            <Switch
+   669→              checked={settings.partialCashoutEnabled}
+   670→              onCheckedChange={(checked) =>
+   671→                setSettings({ ...settings, partialCashoutEnabled: checked as boolean })
+   672→              }
+   673→            />
+   674→          </div>
+   675→
+   676→          <div className="flex items-center justify-between">
+   677→            <div>
+   678→              <Label className="text-sm font-medium">Wait Full Settlement</Label>
+   679→              <p className="text-xs text-muted-foreground">
+   680→                Wait for all matches to complete before full cashout (for accumulators)
+   681→              </p>
+   682→            </div>
+   683→            <Switch
+   684→              checked={settings.waitFullSettlement}
+   685→              onCheckedChange={(checked) =>
+   686→                setSettings({ ...settings, waitFullSettlement: checked as boolean })
+   687→              }
+   688→            />
+   689→          </div>
+   690→        </CardContent>
+   691→      </Card>
+   692→
+   693→      {/* Notifications */}
+   694→      <Card className="bg-card border-border">
+   695→        <CardHeader className="pb-3">
+   696→          <CardTitle className="flex items-center gap-2 text-base">
+   697→            <Bell className="h-4 w-4 text-primary" />
+   698→            Notifications
+   699→          </CardTitle>
+   700→        </CardHeader>
+   701→        <CardContent className="space-y-4">
+   702→          <div className="flex items-center justify-between">
+   703→            <div>
+   704→              <Label className="text-sm font-medium">Enable Notifications</Label>
+   705→              <p className="text-xs text-muted-foreground">
+   706→                Get notified about bet results, cashout opportunities, and AI recommendations
+   707→              </p>
+   708→            </div>
+   709→            <Switch
+   710→              checked={settings.notificationsEnabled}
+   711→              onCheckedChange={(checked) =>
+   712→                setSettings({ ...settings, notificationsEnabled: checked as boolean })
+   713→              }
+   714→            />
+   715→          </div>
+   716→        </CardContent>
+   717→      </Card>
+   718→
+   719→      {/* Commission Info */}
+   720→      <Card className="bg-card border-border">
+   721→        <CardHeader className="pb-3">
+   722→          <CardTitle className="flex items-center gap-2 text-base">
+   723→            <Percent className="h-4 w-4 text-amber-400" />
+   724→            Commission Rate
+   725→          </CardTitle>
+   726→        </CardHeader>
+   727→        <CardContent>
+   728→          <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-4">
+   729→            <div>
+   730→              <p className="text-sm font-medium text-foreground">Your Commission Rate</p>
+   731→              <p className="text-xs text-muted-foreground mt-0.5">
+   732→                This rate is applied to all winning bets and automatically transferred to admin
+   733→              </p>
+   734→            </div>
+   735→            <Badge variant="secondary" className="bg-amber-400/10 text-amber-400 text-lg px-3 py-1">
+   736→              {(settings.commissionRate * 100).toFixed(0)}%
+   737→            </Badge>
+   738→          </div>
+   739→          <p className="text-[10px] text-muted-foreground mt-2">
+   740→            Commission is deducted automatically from profits and transferred to the admin account.
+   741→            Your displayed profit is always net of commission.
+   742→          </p>
+   743→        </CardContent>
+   744→      </Card>
+   745→
+   746→      {/* Save Button */}
+   747→      <Button
+   748→        className="w-full bg-primary text-primary-foreground hover:bg-primary/80 h-10"
+   749→        onClick={handleSave}
+   750→        disabled={saving}
+   751→      >
+   752→        {saving ? (
+   753→          <Loader2 className="h-4 w-4 animate-spin" />
+   754→        ) : saved ? (
+   755→          <CheckCircle2 className="h-4 w-4" />
+   756→        ) : (
+   757→          <Save className="h-4 w-4" />
+   758→        )}
+   759→        {saving ? "Saving..." : saved ? "Saved!" : "Save Settings"}
+   760→      </Button>
+   761→    </div>
+   762→  );
+   763→}
+   764→
