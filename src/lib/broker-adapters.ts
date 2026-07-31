@@ -313,6 +313,17 @@ class OAuthBrokerAdapter extends BaseBrokerAdapter {
       return { success: false, error: "OAuth authorization code required" };
     }
 
+    // Demo/Sandbox mode: simulate successful authentication without real API calls
+    if (config.broker.demoMode) {
+      return {
+        success: true,
+        accessToken: `demo_oauth_${this.platformId}_${Date.now()}`,
+        refreshToken: `demo_refresh_${this.platformId}_${Date.now()}`,
+        sessionExpiry: new Date(Date.now() + 3600000),
+        brokerUserId: `demo_oauth_${credentials.token.substring(0, 8)}_${Date.now()}`,
+      };
+    }
+
     try {
       // In production, exchange authorization code for access token
       // POST /oauth/token with client_id, client_secret, code, redirect_uri
@@ -387,12 +398,25 @@ class OAuthBrokerAdapter extends BaseBrokerAdapter {
   }
 
   async getBalance(accessToken: string, regionCode?: string): Promise<BrokerBalance> {
+    const currency = regionCode ? getRegionCurrency(regionCode) : { code: "USD" };
+
+    // Demo/Sandbox mode: return simulated balance
+    if (config.broker.demoMode) {
+      const demoBalance = config.broker.demoBalance;
+      return {
+        available: demoBalance,
+        locked: 0,
+        total: demoBalance,
+        currency: currency.code,
+        lastUpdated: new Date(),
+      };
+    }
+
     try {
       const result = await this.apiCall<BrokerBalance>(accessToken, "GET", "/api/v1/balance");
       return result;
     } catch {
       // Fallback: return zero balance if API not available
-      const currency = regionCode ? getRegionCurrency(regionCode) : { code: "USD" };
       return {
         available: 0,
         locked: 0,
@@ -404,6 +428,16 @@ class OAuthBrokerAdapter extends BaseBrokerAdapter {
   }
 
   async getProfile(accessToken: string): Promise<BrokerUserProfile> {
+    if (config.broker.demoMode) {
+      return {
+        userId: "demo_user",
+        username: "Demo User",
+        currency: "USD",
+        region: "global",
+        verified: true,
+        kycLevel: "full",
+      };
+    }
     return this.apiCall<BrokerUserProfile>(accessToken, "GET", "/api/v1/profile");
   }
 
@@ -505,6 +539,16 @@ class ApiKeyBrokerAdapter extends BaseBrokerAdapter {
       return { success: false, error: "API key required" };
     }
 
+    // Demo/Sandbox mode: simulate successful authentication without real API calls
+    if (config.broker.demoMode) {
+      return {
+        success: true,
+        accessToken: `demo_apikey_${this.platformId}_${Date.now()}`,
+        sessionExpiry: new Date(Date.now() + 86400000 * 30),
+        brokerUserId: `demo_apikey_${credentials.apiKey.substring(0, 8)}_${Date.now()}`,
+      };
+    }
+
     // Validate API key by making a test call
     try {
       const response = await fetch(`${this.platform.baseUrl}/api/v1/verify`, {
@@ -541,16 +585,25 @@ class ApiKeyBrokerAdapter extends BaseBrokerAdapter {
   }
 
   async getBalance(accessToken: string, regionCode?: string): Promise<BrokerBalance> {
+    const currency = regionCode ? getRegionCurrency(regionCode) : { code: "USD" };
+
+    if (config.broker.demoMode) {
+      const demoBalance = config.broker.demoBalance;
+      return { available: demoBalance, locked: 0, total: demoBalance, currency: currency.code, lastUpdated: new Date() };
+    }
+
     try {
       const result = await this.apiCall<BrokerBalance>(accessToken, "GET", "/api/v1/balance");
       return result;
     } catch {
-      const currency = regionCode ? getRegionCurrency(regionCode) : { code: "USD" };
       return { available: 0, locked: 0, total: 0, currency: currency.code, lastUpdated: new Date() };
     }
   }
 
   async getProfile(accessToken: string): Promise<BrokerUserProfile> {
+    if (config.broker.demoMode) {
+      return { userId: "demo_user", username: "Demo User", currency: "USD", region: "global", verified: true, kycLevel: "full" };
+    }
     return this.apiCall<BrokerUserProfile>(accessToken, "GET", "/api/v1/profile");
   }
 
@@ -622,6 +675,20 @@ class WebSessionBrokerAdapter extends BaseBrokerAdapter {
       return { success: false, error: "Username and password required" };
     }
 
+    // Demo/Sandbox mode: simulate successful authentication without real API calls
+    // This prevents 403 errors from real broker platforms that don't have public APIs
+    if (config.broker.demoMode) {
+      const sessionToken = `demo_session_${Buffer.from(credentials.username).toString("base64")}_${Date.now()}`;
+      return {
+        success: true,
+        accessToken: sessionToken,
+        sessionToken,
+        refreshToken: `demo_refresh_${this.platformId}_${Date.now()}`,
+        sessionExpiry: new Date(Date.now() + 7200000),
+        brokerUserId: credentials.username,
+      };
+    }
+
     try {
       const result = await withRetry(async () => {
         const response = await fetch(`${this.platform.baseUrl}/api/v1/auth/login`, {
@@ -690,15 +757,24 @@ class WebSessionBrokerAdapter extends BaseBrokerAdapter {
   }
 
   async getBalance(accessToken: string, regionCode?: string): Promise<BrokerBalance> {
+    const currency = regionCode ? getRegionCurrency(regionCode) : { code: "USD" };
+
+    if (config.broker.demoMode) {
+      const demoBalance = config.broker.demoBalance;
+      return { available: demoBalance, locked: 0, total: demoBalance, currency: currency.code, lastUpdated: new Date() };
+    }
+
     try {
       return await this.apiCall<BrokerBalance>(accessToken, "GET", "/api/v1/balance");
     } catch {
-      const currency = regionCode ? getRegionCurrency(regionCode) : { code: "USD" };
       return { available: 0, locked: 0, total: 0, currency: currency.code, lastUpdated: new Date() };
     }
   }
 
   async getProfile(accessToken: string): Promise<BrokerUserProfile> {
+    if (config.broker.demoMode) {
+      return { userId: "demo_user", username: "Demo User", currency: "USD", region: "global", verified: true, kycLevel: "full" };
+    }
     return this.apiCall<BrokerUserProfile>(accessToken, "GET", "/api/v1/profile");
   }
 

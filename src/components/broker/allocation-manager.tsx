@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getPlatformLogoPath, getBrokerLogoUrl } from "@/lib/broker-logos";
+import { BrokerLogo } from "@/components/broker/broker-logo";
 import { Separator } from "@/components/ui/separator";
 import {
   Wallet, ArrowUpRight, ArrowDownLeft, DollarSign, TrendingUp,
@@ -223,20 +223,7 @@ export function AllocationManager() {
                           : "bg-secondary/50 text-muted-foreground border border-border"
                       }`}
                     >
-                      <img
-                        src={getPlatformLogoPath({ id: account.platform, name: account.platformName, color: "#10b981" })}
-                        alt={account.platformName}
-                        className="h-5 w-5 object-contain rounded"
-                        onError={(e) => {
-                          const target = e.currentTarget;
-                          if (!target.dataset.retried) {
-                            target.dataset.retried = "true";
-                            target.src = getBrokerLogoUrl(account.platform, account.platformName, "#10b981");
-                          } else {
-                            target.style.display = "none";
-                          }
-                        }}
-                      />
+                      <BrokerLogo platform={{ id: account.platform, name: account.platformName, color: "#10b981" }} size={20} className="shrink-0" />
                       {account.accountName} (${account.balance.toFixed(2)})
                     </button>
                   ))}

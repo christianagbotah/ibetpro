@@ -150,8 +150,35 @@ const BASE_LOGO_MAP: Record<string, string> = {
 };
 
 /**
+ * Get the best logo path for a broker platform.
+ * Returns the logoPath from the platform data if available,
+ * otherwise resolves using the BASE_LOGO_MAP.
+ * Always returns a valid path that points to a local file.
+ */
+export function getPlatformLogoPath(platform: { id: string; name: string; color?: string; logoPath?: string }): string {
+  // If the platform has a logoPath set, use it directly
+  if (platform.logoPath) {
+    return platform.logoPath;
+  }
+  // Fallback to resolving via BASE_LOGO_MAP
+  return getBrokerLogoUrl(platform.id, platform.name, platform.color || "#10b981");
+}
+
+/**
+ * Get the SVG logo path for a broker platform (fallback when PNG fails).
+ * Always returns the SVG path, which is guaranteed to exist.
+ */
+export function getBrokerSvgPath(platformId: string): string {
+  const baseLogo = BASE_LOGO_MAP[platformId];
+  if (baseLogo) {
+    return `/brokers/${baseLogo}.svg`;
+  }
+  return "";
+}
+
+/**
  * Get the logo path for a broker platform.
- * Priority: 1. Real PNG logo  2. Branded SVG fallback  3. Generated SVG
+ * Priority: 1. Real PNG logo  2. Branded SVG fallback  3. Generated SVG data URL
  */
 export function getBrokerLogoUrl(platformId: string, platformName: string, color: string): string {
   const baseLogo = BASE_LOGO_MAP[platformId];
@@ -180,12 +207,17 @@ export function getBrokerLogoUrl(platformId: string, platformName: string, color
 }
 
 /**
- * Get the local logo path from the platform's logoPath field.
- * Returns the logoPath directly, or falls back to getBrokerLogoUrl.
+ * Generate a fallback SVG data URL for a broker (used when all image files fail).
  */
-export function getPlatformLogoPath(platform: { id: string; name: string; color: string; logoPath?: string }): string {
-  if (platform.logoPath) {
-    return platform.logoPath;
-  }
-  return getBrokerLogoUrl(platform.id, platform.name, platform.color);
+export function generateFallbackLogo(platformName: string, color: string): string {
+  const bgColor = color || "#10b981";
+  const abbr = platformName
+    .replace(/[^a-zA-Z0-9 ]/g, "")
+    .split(" ")
+    .map((w) => w[0])
+    .join("")
+    .substring(0, 3)
+    .toUpperCase();
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200"><rect width="200" height="200" rx="30" fill="${bgColor}"/><text x="100" y="120" font-family="Arial,sans-serif" font-weight="bold" font-size="60" fill="white" text-anchor="middle">${abbr}</text></svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }

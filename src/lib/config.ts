@@ -50,6 +50,13 @@ export const config = {
     goalRatePerMatch: parseFloat(env("AI_GOAL_RATE_PER_MATCH", "2.7")),
     monteCarloIterations: parseInt(env("AI_MC_ITERATIONS", "10000"), 10),
   },
+  broker: {
+    // In demo/sandbox mode, broker authentication is simulated (no real API calls).
+    // Set BROKER_DEMO_MODE=false when you have real broker API credentials.
+    demoMode: env("BROKER_DEMO_MODE", "true") === "true",
+    // Demo balance to show when a broker is connected in demo mode
+    demoBalance: parseFloat(env("BROKER_DEMO_BALANCE", "5000")),
+  },
   security: {
     bcryptSaltRounds: 12,
     sessionMaxAgeHours: 24,

@@ -20,7 +20,7 @@ import {
   AlertCircle, Key, User, Lock, ChevronRight,
   Search, MapPin, Smartphone, Star, ArrowLeft,
 } from "lucide-react";
-import { getPlatformLogoPath, getBrokerLogoUrl } from "@/lib/broker-logos";
+import { BrokerLogo } from "@/components/broker/broker-logo";
 import {
   REGIONS,
   getPlatformsForRegion,
@@ -387,31 +387,7 @@ export function BrokerConnect() {
                             className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-primary/5 active:scale-[0.98] transition-colors text-left w-full"
                           >
                             <div className="flex items-center gap-3">
-                              <div
-                                className="flex h-10 w-10 items-center justify-center rounded-lg shrink-0 overflow-hidden bg-secondary/50 border border-border"
-                              >
-                                <img
-                                  src={getPlatformLogoPath(platform)}
-                                  alt={platform.name}
-                                  className="h-10 w-10 object-contain rounded-lg"
-                                  onError={(e) => {
-                                    const target = e.currentTarget;
-                                    if (!target.dataset.retried) {
-                                      target.dataset.retried = "true";
-                                      // Try SVG fallback
-                                      target.src = getBrokerLogoUrl(platform.id, platform.name, platform.color || "#10b981");
-                                    } else if (!target.dataset.retried2) {
-                                      target.dataset.retried2 = "true";
-                                      // Last resort: hide image and show color abbreviation
-                                      target.style.display = "none";
-                                      const fallback = document.createElement("div");
-                                      fallback.style.cssText = `background:${platform.color || "#10b981"};width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:0.5rem;color:#fff;font-size:0.65rem;font-weight:700;`;
-                                      fallback.textContent = platform.name.substring(0, 2).toUpperCase();
-                                      target.parentElement?.appendChild(fallback);
-                                    }
-                                  }}
-                                />
-                              </div>
+                              <BrokerLogo platform={platform} size={40} className="shrink-0" />
                               <div>
                                 <div className="flex items-center gap-1.5">
                                   <p className="text-sm font-medium text-foreground">{platform.name}</p>
@@ -449,29 +425,7 @@ export function BrokerConnect() {
                     </button>
 
                     <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
-                      <div
-                        className="flex h-10 w-10 items-center justify-center rounded-lg shrink-0 overflow-hidden bg-secondary/50 border border-border"
-                      >
-                        <img
-                          src={getPlatformLogoPath(selectedPlatformData)}
-                          alt={selectedPlatformData.name}
-                          className="h-10 w-10 object-contain rounded-lg"
-                          onError={(e) => {
-                            const target = e.currentTarget;
-                            if (!target.dataset.retried) {
-                              target.dataset.retried = "true";
-                              target.src = getBrokerLogoUrl(selectedPlatformData.id, selectedPlatformData.name, selectedPlatformData.color || "#10b981");
-                            } else if (!target.dataset.retried2) {
-                              target.dataset.retried2 = "true";
-                              target.style.display = "none";
-                              const fallback = document.createElement("div");
-                              fallback.style.cssText = `background:${selectedPlatformData.color || "#10b981"};width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:0.5rem;color:#fff;font-size:0.65rem;font-weight:700;`;
-                              fallback.textContent = selectedPlatformData.name.substring(0, 2).toUpperCase();
-                              target.parentElement?.appendChild(fallback);
-                            }
-                          }}
-                        />
-                      </div>
+                      <BrokerLogo platform={selectedPlatformData} size={40} className="shrink-0" />
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium text-foreground">{selectedPlatformData.name}</p>
                         <p className="text-xs text-muted-foreground">
@@ -493,6 +447,13 @@ export function BrokerConnect() {
                           placeholder={`My ${selectedPlatformData?.name} Account`}
                           className="bg-secondary border-border mt-1"
                         />
+                      </div>
+
+                      <div className="rounded-lg bg-blue-400/5 border border-blue-400/10 p-3">
+                        <p className="text-xs text-blue-400">
+                          <Shield className="h-3 w-3 inline mr-1" />
+                          Sandbox Mode: Any credentials will work for testing. In production, real broker API credentials are required.
+                        </p>
                       </div>
 
                       <Separator />
@@ -646,27 +607,7 @@ export function BrokerConnect() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/50 border border-border overflow-hidden shrink-0">
-                          <img
-                            src={getPlatformLogoPath({ id: account.platform, name: account.platformName, color: "#10b981" })}
-                            alt={account.platformName}
-                            className="h-10 w-10 object-contain rounded-lg"
-                            onError={(e) => {
-                              const target = e.currentTarget;
-                              if (!target.dataset.retried) {
-                                target.dataset.retried = "true";
-                                target.src = getBrokerLogoUrl(account.platform, account.platformName, "#10b981");
-                              } else if (!target.dataset.retried2) {
-                                target.dataset.retried2 = "true";
-                                target.style.display = "none";
-                                const fallback = document.createElement("div");
-                                fallback.style.cssText = "background:#10b981;width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:0.5rem;color:#fff;font-size:0.65rem;font-weight:700;";
-                                fallback.textContent = account.platformName.substring(0, 2).toUpperCase();
-                                target.parentElement?.appendChild(fallback);
-                              }
-                            }}
-                          />
-                        </div>
+                        <BrokerLogo platform={{ id: account.platform, name: account.platformName, color: "#10b981" }} size={40} className="shrink-0" />
                         <div>
                           <p className="text-sm font-medium text-foreground">{account.accountName}</p>
                           <p className="text-xs text-muted-foreground">
