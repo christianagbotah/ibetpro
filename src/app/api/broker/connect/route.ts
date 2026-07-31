@@ -2,20 +2,20 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 import {
-  authenticateBroker,
   getBrokerPlatform,
   validateBrokerSession,
   getAvailablePlatforms,
   getRegionCurrency,
 } from "@/lib/broker-integration";
 import {
+  getBrokerAdapter,
+} from "@/lib/broker-adapters";
+import {
   REGIONS,
   getPlatformsForRegion,
-  getRegionInfo,
   getContinents,
-  searchRegions,
-  type RegionInfo,
 } from "@/lib/regions";
+import { logBrokerEvent } from "@/lib/audit-log";
 
 /**
  * Broker Connect API
@@ -50,10 +50,26 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // Authenticate with the broker
-    const authResult = await authenticateBroker(platformId, credentials || {});
+    // Use the new adapter framework for authentication
+    const adapter = getBrokerAdapter(platformId);
+    if (!adapter) {
+      return NextResponse.json({
+        error: `No adapter available for platform: ${platformId}`,
+      }, { status: 400 });
+    }
+
+    const authResult = await adapter.authenticate(credentials || {});
 
     if (!authResult.success) {
+      // Log failed auth
+      await logBrokerEvent({
+        userId,
+        action: "broker_auth_failed",
+        brokerPlatform: platformId,
+        status: "failed",
+        error: authResult.error,
+      });
+
       return NextResponse.json({
         error: authResult.error || "Authentication failed",
         platform: platformId,
@@ -63,7 +79,7 @@ export async function POST(request: NextRequest) {
     // Get currency for the region
     const currencyInfo = getRegionCurrency(region);
 
-    // Update user's region and currency if not set
+    // Update user's region and currency
     const user = await prisma.user.findUnique({ where: { id: userId } });
     if (user && (!user.region || user.region === "ng")) {
       await prisma.user.update({
@@ -120,6 +136,35 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    // Log successful connection
+    await logBrokerEvent({
+      userId,
+      action: "broker_connected",
+      brokerPlatform: platformId,
+      brokerUserId: authResult.brokerUserId,
+      status: "success",
+      metadata: {
+        region,
+        authType: platform.authType,
+        accountId: account.id,
+      },
+    });
+
+    // Try to fetch real balance from the broker
+    let balance = null;
+    try {
+      const brokerBalance = await adapter.getBalance(authResult.accessToken || "", region);
+      // Update account balance in DB
+      await prisma.bettingAccount.update({
+        where: { id: account.id },
+        data: { balance: brokerBalance.total },
+      });
+      balance = brokerBalance;
+    } catch (error) {
+      console.error("Failed to fetch broker balance:", error);
+      // Non-fatal - connection succeeded, balance fetch failed
+    }
+
     return NextResponse.json({
       success: true,
       account: {
@@ -131,9 +176,10 @@ export async function POST(request: NextRequest) {
         brokerRegion: account.brokerRegion,
         currency: account.currency,
         allocatedAmount: account.allocatedAmount,
-        balance: account.balance,
+        balance: balance?.total ?? account.balance,
         sessionExpiry: account.sessionExpiry,
       },
+      balance,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
@@ -154,32 +200,65 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    // Check session validity for each account
-    const accountsWithStatus = accounts.map((account) => {
-      const session = validateBrokerSession(account.sessionToken, account.sessionExpiry);
-      const platform = getBrokerPlatform(account.platform);
+    // Check session validity for each account and try to refresh if needed
+    const accountsWithStatus = await Promise.all(
+      accounts.map(async (account) => {
+        const session = validateBrokerSession(account.sessionToken, account.sessionExpiry);
+        const platform = getBrokerPlatform(account.platform);
 
-      return {
-        id: account.id,
-        platform: account.platform,
-        platformName: platform?.name || account.platform,
-        accountName: account.accountName,
-        isConnected: account.isConnected,
-        sessionValid: session.isValid,
-        needsRefresh: session.needsRefresh,
-        sessionExpiry: account.sessionExpiry,
-        brokerType: account.brokerType,
-        brokerRegion: account.brokerRegion,
-        balance: account.balance,
-        currency: account.currency,
-        allocatedAmount: account.allocatedAmount,
-        allocationLock: account.allocationLock,
-        totalBrokerBets: account.totalBrokerBets,
-        totalBrokerProfit: account.totalBrokerProfit,
-        lastBetPlacedAt: account.lastBetPlacedAt,
-        features: platform?.features || null,
-      };
-    });
+        // If session needs refresh, try to refresh it
+        if (session.needsRefresh && account.refreshToken) {
+          try {
+            const adapter = getBrokerAdapter(account.platform);
+            if (adapter) {
+              const refreshResult = await adapter.refreshSession(account.refreshToken);
+              if (refreshResult.success) {
+                await prisma.bettingAccount.update({
+                  where: { id: account.id },
+                  data: {
+                    accessToken: refreshResult.accessToken,
+                    refreshToken: refreshResult.refreshToken,
+                    sessionExpiry: refreshResult.sessionExpiry,
+                    lastSyncedAt: new Date(),
+                  },
+                });
+
+                // Log session refresh
+                await logBrokerEvent({
+                  userId,
+                  action: "broker_session_refreshed",
+                  brokerPlatform: account.platform,
+                  status: "success",
+                });
+              }
+            }
+          } catch (error) {
+            console.error("Session refresh failed:", error);
+          }
+        }
+
+        return {
+          id: account.id,
+          platform: account.platform,
+          platformName: platform?.name || account.platform,
+          accountName: account.accountName,
+          isConnected: account.isConnected,
+          sessionValid: session.isValid,
+          needsRefresh: session.needsRefresh,
+          sessionExpiry: account.sessionExpiry,
+          brokerType: account.brokerType,
+          brokerRegion: account.brokerRegion,
+          balance: account.balance,
+          currency: account.currency,
+          allocatedAmount: account.allocatedAmount,
+          allocationLock: account.allocationLock,
+          totalBrokerBets: account.totalBrokerBets,
+          totalBrokerProfit: account.totalBrokerProfit,
+          lastBetPlacedAt: account.lastBetPlacedAt,
+          features: platform?.features || null,
+        };
+      })
+    );
 
     // Return regions data and available platforms
     const regions = REGIONS.map((r) => ({

@@ -9,7 +9,8 @@ import {
   fetchApiFootballLiveFixtures,
   checkApiHealth,
 } from "@/lib/external-apis";
-import { config } from "@/lib/config";
+import { config, getPrimaryDataSource } from "@/lib/config";
+import { generateDemoMatches } from "@/lib/demo-data";
 
 export async function POST(request: NextRequest) {
   try {
@@ -28,6 +29,69 @@ export async function POST(request: NextRequest) {
     let teamStatsSynced = 0;
     const errors: string[] = [];
 
+    // If no API keys configured, use demo data
+    const dataSource = getPrimaryDataSource();
+    if (dataSource === "none") {
+      const demoMatches = generateDemoMatches();
+
+      for (const match of demoMatches) {
+        try {
+          await prisma.match.upsert({
+            where: { externalId: match.externalId },
+            update: {
+              homeOdds: match.homeOdds,
+              drawOdds: match.drawOdds,
+              awayOdds: match.awayOdds,
+              overUnderLine: match.overUnderLine,
+              overOdds: match.overOdds,
+              underOdds: match.underOdds,
+              status: match.status,
+              homeScore: match.homeScore,
+              awayScore: match.awayScore,
+              minute: match.minute,
+              lastSyncedAt: new Date(),
+              apiSource: "demo",
+            },
+            create: {
+              externalId: match.externalId,
+              sport: match.sport,
+              league: match.league,
+              homeTeam: match.homeTeam,
+              awayTeam: match.awayTeam,
+              homeOdds: match.homeOdds,
+              drawOdds: match.drawOdds,
+              awayOdds: match.awayOdds,
+              overUnderLine: match.overUnderLine,
+              overOdds: match.overOdds,
+              underOdds: match.underOdds,
+              commenceTime: new Date(match.commenceTime),
+              status: match.status,
+              homeScore: match.homeScore,
+              awayScore: match.awayScore,
+              minute: match.minute,
+              apiSource: "demo",
+              lastSyncedAt: new Date(),
+            },
+          });
+          matchesSynced++;
+        } catch (err) {
+          errors.push(`Demo match: ${err instanceof Error ? err.message : "Unknown error"}`);
+        }
+      }
+
+      return NextResponse.json({
+        success: true,
+        matchesSynced,
+        teamStatsSynced,
+        source: "demo",
+        demo: true,
+        message: "Demo data loaded. Configure API keys (ODDS_API_KEY, API_FOOTBALL_KEY) for real live data.",
+        errors: errors.length > 0 ? errors : undefined,
+        timestamp: new Date().toISOString(),
+      });
+    }
+
+    // Real API sync
     if (source === "odds-api" || source === "auto") {
       try {
         matchesSynced += await syncOddsApiData();
@@ -72,6 +136,7 @@ export async function GET() {
 
     const health = await checkApiHealth();
     const adminSettings = await prisma.adminSettings.findFirst();
+    const dataSource = getPrimaryDataSource();
 
     return NextResponse.json({
       health,
@@ -81,6 +146,11 @@ export async function GET() {
         apiFootball: !!config.api.apiFootballKey,
         sportmonks: !!config.api.sportmonksToken,
       },
+      dataSource,
+      demoMode: dataSource === "none",
+      demoMessage: dataSource === "none"
+        ? "Running in demo mode. Add ODDS_API_KEY or API_FOOTBALL_KEY to .env for real live data."
+        : null,
     });
   } catch (error) {
     console.error("Health check error:", error);
