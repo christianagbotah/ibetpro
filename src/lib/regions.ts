@@ -120,7 +120,6 @@ export const REGIONS: RegionInfo[] = [
   { code: "gn", name: "Guinea", flag: "🇬🇳", currencyCode: "GNF", currencySymbol: "FG", currencyName: "Franc", continent: "Africa", phoneCode: "+224", languages: ["fr"] },
 
   // More East Africa
-  { code: "mz", name: "Mozambique", flag: "🇲🇿", currencyCode: "MZN", currencySymbol: "MT", currencyName: "Metical", continent: "Africa", phoneCode: "+258", languages: ["pt"] },
   { code: "mg", name: "Madagascar", flag: "🇲🇬", currencyCode: "MGA", currencySymbol: "Ar", currencyName: "Ariary", continent: "Africa", phoneCode: "+261", languages: ["fr", "mg"] },
 
   // More Southern Africa

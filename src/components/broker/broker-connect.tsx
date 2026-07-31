@@ -91,7 +91,13 @@ export function BrokerConnect() {
     if (selectedContinent !== "all") {
       regions = regions.filter((r) => r.continent === selectedContinent);
     }
-    return regions;
+    // Deduplicate by region code to prevent React key warnings
+    const seen = new Set<string>();
+    return regions.filter((r) => {
+      if (seen.has(r.code)) return false;
+      seen.add(r.code);
+      return true;
+    });
   }, [regionSearch, selectedContinent]);
 
   // Get platforms for selected region
