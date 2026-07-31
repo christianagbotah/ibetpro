@@ -19,6 +19,7 @@ import {
   Link2, RefreshCw, Wallet, Shield, CheckCircle2,
   AlertCircle, Key, User, Lock, ChevronRight,
   Search, MapPin, Smartphone, Star, ArrowLeft,
+  FlaskConical, Globe, Loader2,
 } from "lucide-react";
 import { BrokerLogo } from "@/components/broker/broker-logo";
 import {
@@ -80,7 +81,7 @@ export function BrokerConnect() {
   const [brokerSearch, setBrokerSearch] = useState("");
   const [selectedContinent, setSelectedContinent] = useState<string>("all");
 
-  const { data, loading, refresh } = useFetch<{
+  const { data, loading, refetch } = useFetch<{
     accounts: ConnectedAccount[];
     availablePlatforms: BrokerPlatformInfo[];
     brokerMode: "demo" | "real";
@@ -150,7 +151,7 @@ export function BrokerConnect() {
         addToast("success", `${result.account.accountName} connected successfully!`);
         setConnectDialogOpen(false);
         resetForm();
-        refresh();
+        refetch();
       } else {
         addToast("error", result.error || "Failed to connect broker");
       }
@@ -159,7 +160,7 @@ export function BrokerConnect() {
     } finally {
       setConnecting(false);
     }
-  }, [selectedPlatform, credentials, accountName, selectedRegion, addToast, refresh]);
+  }, [selectedPlatform, credentials, accountName, selectedRegion, addToast, refetch]);
 
   const handleSync = useCallback(async (accountId: string) => {
     try {
@@ -174,14 +175,14 @@ export function BrokerConnect() {
       if (result.success) {
         const currency = result.balance?.currency || "USD";
         addToast("success", `Account synced! Balance: ${currency} ${result.balance.total.toFixed(2)}`);
-        refresh();
+        refetch();
       } else {
         addToast("error", result.error || "Sync failed");
       }
     } catch {
       addToast("error", "Sync error occurred");
     }
-  }, [addToast, refresh]);
+  }, [addToast, refetch]);
 
   const resetForm = () => {
     setCredentials({ username: "", password: "", apiKey: "", token: "" });
@@ -197,6 +198,30 @@ export function BrokerConnect() {
     setConnectDialogOpen(open);
     if (!open) resetForm();
   };
+
+  const [switchingMode, setSwitchingMode] = useState(false);
+
+  // Switch broker mode
+  const handleBrokerModeSwitch = useCallback(async (mode: "demo" | "real") => {
+    setSwitchingMode(true);
+    try {
+      const res = await fetch("/api/user/broker-mode", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brokerMode: mode }),
+      });
+      if (res.ok) {
+        addToast("success", `Switched to ${mode === "demo" ? "Demo (Sandbox)" : "Live (Real)"} mode`);
+        refetch();
+      } else {
+        addToast("error", "Failed to switch broker mode");
+      }
+    } catch {
+      addToast("error", "Failed to switch broker mode");
+    } finally {
+      setSwitchingMode(false);
+    }
+  }, [addToast, refetch]);
 
   const formatBalance = (amount: number, currency: string) => {
     const region = REGIONS.find((r) => r.currencyCode === currency);
@@ -214,9 +239,25 @@ export function BrokerConnect() {
             <CardTitle className="flex items-center gap-2 text-base">
               <Link2 className="h-4 w-4 text-primary" />
               Connected Brokers
-              <Badge className={`text-[10px] ${brokerMode === "demo" ? "bg-blue-400/10 text-blue-400 border-blue-400/30" : "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"}`}>
+              <button
+                onClick={() => handleBrokerModeSwitch(brokerMode === "demo" ? "real" : "demo")}
+                disabled={switchingMode}
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border transition-all cursor-pointer ${
+                  brokerMode === "demo"
+                    ? "bg-blue-400/10 text-blue-400 border-blue-400/30 hover:bg-blue-400/20"
+                    : "bg-emerald-400/10 text-emerald-400 border-emerald-400/30 hover:bg-emerald-400/20"
+                } ${switchingMode ? "opacity-50" : ""}`}
+                title={`Click to switch to ${brokerMode === "demo" ? "Live" : "Demo"} mode`}
+              >
+                {switchingMode ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : brokerMode === "demo" ? (
+                  <FlaskConical className="h-3 w-3" />
+                ) : (
+                  <Globe className="h-3 w-3" />
+                )}
                 {brokerMode === "demo" ? "Sandbox" : "Live"}
-              </Badge>
+              </button>
             </CardTitle>
             <Dialog open={connectDialogOpen} onOpenChange={handleDialogClose}>
               <Button
@@ -442,6 +483,16 @@ export function BrokerConnect() {
                         <p className="text-xs font-medium text-primary">{selectedRegionInfo.currencySymbol} {selectedRegionInfo.currencyCode}</p>
                       </div>
                     </div>
+
+                    {/* Sandbox/Demo mode banner */}
+                    {brokerMode === "demo" && (
+                      <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-400/5 border border-blue-400/20 text-xs text-blue-400">
+                        <FlaskConical className="h-4 w-4 shrink-0" />
+                        <div>
+                          <span className="font-medium">Sandbox Mode</span> — Your credentials are simulated. No real API calls will be made. Switch to Live mode in Settings for real broker connections.
+                        </div>
+                      </div>
+                    )}
 
                     <div className="space-y-3">
                       <div>

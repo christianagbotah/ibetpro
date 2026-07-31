@@ -19,8 +19,11 @@ import {
   AlertCircle,
   CheckCircle2,
   RefreshCw,
+  FlaskConical,
+  Globe,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useToast } from "@/components/ui/toast";
 
 interface UserSettings {
   autoBettingEnabled: boolean;
@@ -100,15 +103,47 @@ export default function SettingsPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [brokerMode, setBrokerMode] = useState<"demo" | "real">("demo");
+  const [switchingMode, setSwitchingMode] = useState(false);
+  const { addToast } = useToast();
+
+  // Switch broker mode
+  const handleBrokerModeSwitch = useCallback(async (mode: "demo" | "real") => {
+    setSwitchingMode(true);
+    try {
+      const res = await fetch("/api/user/broker-mode", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brokerMode: mode }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setBrokerMode(data.brokerMode || mode);
+        addToast("success", `Switched to ${mode === "demo" ? "Demo (Sandbox)" : "Live (Real)"} mode`);
+      } else {
+        addToast("error", "Failed to switch broker mode");
+      }
+    } catch {
+      addToast("error", "Failed to switch broker mode");
+    } finally {
+      setSwitchingMode(false);
+    }
+  }, [addToast]);
 
   // Fetch real user settings from API
   const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
-      const [settingsRes, statsRes] = await Promise.all([
+      const [settingsRes, statsRes, brokerModeRes] = await Promise.all([
         fetch("/api/settings"),
         fetch("/api/stats/user"),
+        fetch("/api/user/broker-mode"),
       ]);
+
+      if (brokerModeRes.ok) {
+        const bmData = await brokerModeRes.json();
+        setBrokerMode(bmData.brokerMode || "demo");
+      }
 
       if (settingsRes.ok) {
         const data = await settingsRes.json();
@@ -332,6 +367,93 @@ export default function SettingsPage() {
               </span>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Broker Mode Toggle */}
+      <Card className={`bg-card border-2 ${brokerMode === "demo" ? "border-blue-400/30" : "border-emerald-400/30"}`}>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <FlaskConical className="h-4 w-4 text-primary" />
+            Broker Account Mode
+            <Badge className={`text-[10px] ${brokerMode === "demo" ? "bg-blue-400/10 text-blue-400 border-blue-400/30" : "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"}`}>
+              {brokerMode === "demo" ? "Sandbox" : "Live"}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Choose how your broker accounts operate. In Demo mode, all broker connections are simulated (no real money at risk).
+            In Live mode, connections use real broker APIs with real funds.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => handleBrokerModeSwitch("demo")}
+              disabled={switchingMode || brokerMode === "demo"}
+              className={`relative flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all cursor-pointer ${
+                brokerMode === "demo"
+                  ? "border-blue-400 bg-blue-400/5 shadow-lg shadow-blue-400/10"
+                  : "border-border hover:border-blue-400/50 hover:bg-blue-400/5"
+              } ${switchingMode ? "opacity-50" : ""}`}
+            >
+              {brokerMode === "demo" && (
+                <div className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-blue-400 flex items-center justify-center">
+                  <CheckCircle2 className="h-3 w-3 text-white" />
+                </div>
+              )}
+              <div className={`h-10 w-10 rounded-full flex items-center justify-center ${brokerMode === "demo" ? "bg-blue-400/10" : "bg-secondary"}`}>
+                <FlaskConical className={`h-5 w-5 ${brokerMode === "demo" ? "text-blue-400" : "text-muted-foreground"}`} />
+              </div>
+              <div className="text-center">
+                <p className={`text-sm font-medium ${brokerMode === "demo" ? "text-blue-400" : "text-foreground"}`}>Demo (Sandbox)</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Simulated trades, no real money</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => handleBrokerModeSwitch("real")}
+              disabled={switchingMode || brokerMode === "real"}
+              className={`relative flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all cursor-pointer ${
+                brokerMode === "real"
+                  ? "border-emerald-400 bg-emerald-400/5 shadow-lg shadow-emerald-400/10"
+                  : "border-border hover:border-emerald-400/50 hover:bg-emerald-400/5"
+              } ${switchingMode ? "opacity-50" : ""}`}
+            >
+              {brokerMode === "real" && (
+                <div className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-emerald-400 flex items-center justify-center">
+                  <CheckCircle2 className="h-3 w-3 text-white" />
+                </div>
+              )}
+              <div className={`h-10 w-10 rounded-full flex items-center justify-center ${brokerMode === "real" ? "bg-emerald-400/10" : "bg-secondary"}`}>
+                <Globe className={`h-5 w-5 ${brokerMode === "real" ? "text-emerald-400" : "text-muted-foreground"}`} />
+              </div>
+              <div className="text-center">
+                <p className={`text-sm font-medium ${brokerMode === "real" ? "text-emerald-400" : "text-foreground"}`}>Live (Real)</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Real broker API, real funds</p>
+              </div>
+            </button>
+          </div>
+
+          {brokerMode === "real" && (
+            <div className="flex items-start gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 p-3 text-xs text-amber-400">
+              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-medium">Live Mode Warning</p>
+                <p className="text-amber-400/80 mt-0.5">
+                  You are using real broker credentials. All bets, cashouts, and transfers will use real funds.
+                  Ensure your broker API credentials are correctly configured.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {switchingMode && (
+            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Switching mode...
+            </div>
+          )}
         </CardContent>
       </Card>
 

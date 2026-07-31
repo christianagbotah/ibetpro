@@ -45,13 +45,13 @@ interface AllocationSummary {
 }
 
 export function AllocationManager() {
-  const { toast } = useToast();
+  const { addToast } = useToast();
   const [allocationAmount, setAllocationAmount] = useState("");
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [setting, setSetting] = useState(false);
   const [releasing, setReleasing] = useState(false);
 
-  const { data, loading, refresh } = useFetch<{
+  const { data, loading, refetch } = useFetch<{
     allocations: AllocationData[];
     summary: AllocationSummary;
   }>("/api/broker/allocation", { allocations: [], summary: { totalAllocated: 0, totalUsed: 0, totalRemaining: 0, totalProfit: 0, totalCommission: 0, activeCount: 0, netAfterCommission: 0 } });
@@ -74,7 +74,7 @@ export function AllocationManager() {
 
   const handleSetAllocation = useCallback(async () => {
     if (!selectedAccountId || !allocationAmount || parseFloat(allocationAmount) <= 0) {
-      toast({ title: "Error", description: "Select an account and enter a valid amount", variant: "destructive" });
+      addToast("error", "Select an account and enter a valid amount");
       return;
     }
 
@@ -92,26 +92,19 @@ export function AllocationManager() {
       const result = await res.json();
 
       if (result.success) {
-        toast({
-          title: "Allocation Set!",
-          description: `$${parseFloat(allocationAmount).toFixed(2)} allocated from your broker account`,
-        });
+        addToast("success", `$${parseFloat(allocationAmount).toFixed(2)} allocated from your broker account`);
         setAllocationAmount("");
         setSelectedAccountId("");
-        refresh();
+        refetch();
       } else {
-        toast({
-          title: "Allocation Failed",
-          description: result.error || "Failed to set allocation",
-          variant: "destructive",
-        });
+        addToast("error", result.error || "Failed to set allocation");
       }
     } catch {
-      toast({ title: "Error", description: "Failed to set allocation", variant: "destructive" });
+      addToast("error", "Failed to set allocation");
     } finally {
       setSetting(false);
     }
-  }, [selectedAccountId, allocationAmount, toast, refresh]);
+  }, [selectedAccountId, allocationAmount, addToast, refetch]);
 
   const handleReleaseAllocation = useCallback(async (allocationId: string) => {
     setReleasing(true);
@@ -125,24 +118,17 @@ export function AllocationManager() {
       const result = await res.json();
 
       if (result.success) {
-        toast({
-          title: "Allocation Released",
-          description: `Released $${result.releasedAmount?.toFixed(2)} back to your broker account`,
-        });
-        refresh();
+        addToast("success", `Released $${result.releasedAmount?.toFixed(2)} back to your broker account`);
+        refetch();
       } else {
-        toast({
-          title: "Release Failed",
-          description: result.error,
-          variant: "destructive",
-        });
+        addToast("error", result.error || "Failed to release allocation");
       }
     } catch {
-      toast({ title: "Error", variant: "destructive" });
+      addToast("error", "Failed to release allocation");
     } finally {
       setReleasing(false);
     }
-  }, [toast, refresh]);
+  }, [addToast, refetch]);
 
   return (
     <div className="space-y-6">

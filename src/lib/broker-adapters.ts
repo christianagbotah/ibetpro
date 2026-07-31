@@ -993,19 +993,19 @@ export function getBrokerAdapter(platformId: string, demoMode?: boolean): Broker
 
 /**
  * Get all available broker adapters
+ * Uses lazy import to avoid circular dependency at module load time
  */
 export function getAvailableAdapters(): BrokerAdapter[] {
   const adapters: BrokerAdapter[] = [new ManualBrokerAdapter()];
 
-  // Dynamically create adapters for all registered platforms
-  const platforms = [
-    ...new Map(
-      // Import from regions to avoid circular dependency
-      require("./regions").BROKER_PLATFORMS as Array<{ id: string }>
-    ).values(),
-  ];
+  // Lazy import to avoid circular dependency at module load time
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const { BROKER_PLATFORMS } = require("./regions") as { BROKER_PLATFORMS: Array<{ id: string }> };
 
-  for (const platform of platforms) {
+  const seen = new Set<string>();
+  for (const platform of BROKER_PLATFORMS) {
+    if (seen.has(platform.id)) continue;
+    seen.add(platform.id);
     const adapter = getBrokerAdapter(platform.id);
     if (adapter) {
       adapters.push(adapter);

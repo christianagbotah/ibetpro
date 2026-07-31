@@ -80,7 +80,8 @@ export async function POST(request: NextRequest) {
     // Log the mode change
     await logBrokerEvent({
       userId,
-      action: mode === "real" ? "broker_mode_real" : "broker_mode_demo",
+      action: "broker_mode_changed",
+      brokerPlatform: "system",
       status: "success",
       metadata: { previousMode: mode === "real" ? "demo" : "real", newMode: mode },
     });

@@ -27,7 +27,8 @@ export type AuditAction =
   | "auto_bet_stopped"
   | "risk_limit_hit"
   | "stop_loss_triggered"
-  | "profit_target_hit";
+  | "profit_target_hit"
+  | "broker_mode_changed";
 
 export interface AuditLogEntry {
   userId: string;

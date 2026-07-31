@@ -108,4 +108,5 @@ export const authOptions: NextAuthOptions = {
     maxAge: 24 * 60 * 60,
   },
   secret: config.nextauth.secret,
+  debug: false,
 };

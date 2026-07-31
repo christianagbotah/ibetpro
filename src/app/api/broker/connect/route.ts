@@ -6,6 +6,7 @@ import {
   validateBrokerSession,
   getAvailablePlatforms,
   getRegionCurrency,
+  type BrokerBalance,
 } from "@/lib/broker-integration";
 import {
   getBrokerAdapter,
@@ -19,13 +20,21 @@ import { logBrokerEvent } from "@/lib/audit-log";
 
 /**
  * Get the user's broker mode setting (demo or real)
+ * Returns "demo" by default for safety (new users, missing settings, etc.)
  */
 async function getUserBrokerMode(userId: string): Promise<"demo" | "real"> {
-  const settings = await prisma.userSettings.findUnique({
-    where: { userId },
-    select: { brokerMode: true },
-  });
-  return (settings?.brokerMode as "demo" | "real") || "demo";
+  try {
+    const settings = await prisma.userSettings.findUnique({
+      where: { userId },
+      select: { brokerMode: true },
+    });
+    const mode = settings?.brokerMode;
+    if (mode === "real" || mode === "demo") return mode;
+    return "demo";
+  } catch {
+    // Fallback to demo mode if query fails
+    return "demo";
+  }
 }
 
 /**
@@ -165,7 +174,7 @@ export async function POST(request: NextRequest) {
     });
 
     // Try to fetch real balance from the broker
-    let balance = null;
+    let balance: BrokerBalance | null = null;
     try {
       const brokerBalance = await adapter.getBalance(authResult.accessToken || "", region);
       // Update account balance in DB

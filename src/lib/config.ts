@@ -51,9 +51,9 @@ export const config = {
     monteCarloIterations: parseInt(env("AI_MC_ITERATIONS", "10000"), 10),
   },
   broker: {
-    // In demo/sandbox mode, broker authentication is simulated (no real API calls).
-    // Set BROKER_DEMO_MODE=false when you have real broker API credentials.
-    demoMode: env("BROKER_DEMO_MODE", "true") === "true",
+    // Global default: real mode. Per-user override is stored in UserSettings.brokerMode.
+    // Set BROKER_DEMO_MODE=true only for global sandbox override.
+    demoMode: env("BROKER_DEMO_MODE", "false") === "true",
     // Demo balance to show when a broker is connected in demo mode
     demoBalance: parseFloat(env("BROKER_DEMO_BALANCE", "5000")),
   },
