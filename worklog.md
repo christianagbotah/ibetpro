@@ -177,3 +177,21 @@ Stage Summary:
 - Uses `--max-old-space-size=128` to keep memory usage low
 - Server needs to be started with double-fork to survive container process management
 - Start script: /home/z/my-project/scripts/start-prod.sh
+
+---
+Task ID: 6
+Agent: main
+Task: Fix Prisma better-sqlite3 / Bun incompatibility
+
+Work Log:
+- Diagnosed error: `@prisma/adapter-better-sqlite3` uses native `better-sqlite3` addon which Bun doesn't support
+- Installed `@prisma/adapter-libsql` and `@libsql/client` as replacement
+- Updated `src/lib/db.ts` to use `PrismaLibSql` adapter factory (Prisma 7.x API)
+- Removed `@prisma/adapter-better-sqlite3` and `better-sqlite3` packages
+- Regenerated Prisma client (`npx prisma generate`)
+- Restarted dev server and tested: `/api/auth/register` successfully created a user in the database
+
+Stage Summary:
+- Replaced `@prisma/adapter-better-sqlite3` → `@prisma/adapter-libsql` (works with both Node.js and Bun)
+- Database connectivity confirmed working via `/api/auth/register` endpoint
+- No more `better-sqlite3 is not yet supported in Bun` errors

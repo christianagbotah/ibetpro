@@ -1,9 +1,11 @@
-import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaLibSql } from "@prisma/adapter-libsql";
 import { PrismaClient } from "@/generated/prisma/client";
 import path from "path";
 
-const adapter = new PrismaBetterSqlite3({
-  url: path.join(process.cwd(), "prisma", "dev.db"),
+const dbPath = path.join(process.cwd(), "prisma", "dev.db");
+
+const adapter = new PrismaLibSql({
+  url: `file:${dbPath}`,
 });
 
 const globalForPrisma = globalThis as unknown as {
