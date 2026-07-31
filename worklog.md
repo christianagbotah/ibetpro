@@ -111,3 +111,46 @@ Stage Summary:
 - Graceful shutdown on SIGTERM/SIGINT
 - Frontend polls for status (read-only) instead of triggering scans
 - Build passes, dev server running
+
+---
+Task ID: 4
+Agent: Main Agent
+Task: Enhance bot engine with SSE, auto-settlement, auto-cashout, and health dashboard
+
+Work Log:
+- Created SSE (Server-Sent Events) endpoint at /api/bot/events for real-time bot notifications
+  - Streams bot events (bet_placed, bet_settled, cashout_executed, engine_status, bot_stopped) to the frontend
+  - Heartbeat every 5 seconds, polls for new bot logs since last sent
+  - Auto-reconnects on disconnect
+  - Properly handles abort signals and cleans up
+- Created useBotEvents React hook (src/hooks/use-bot-events.ts) for consuming SSE events
+  - Supports typed callbacks for specific event types (onBetPlaced, onBetSettled, onCashout, onEngineStatus, onBotStopped)
+  - Auto-reconnects with 10-second delay on error
+  - Tracks recent events (last 50) and connection state
+- Added auto-settlement engine to BotEngine (every 3rd scan cycle)
+  - Automatically settles bets for finished matches
+  - Calculates profit, commission, and updates user balance/PnL
+  - Creates commission ledger entries for auto-transfer
+  - Logs settlement events to bot logs
+- Added auto-cashout evaluation to BotEngine (every 5th scan cycle)
+  - Evaluates live bets for cashout opportunities
+  - Supports partial cashout (configurable percentage) and full cashout
+  - Cashout logic: bet winning + past 70 minutes + threshold met
+  - All cashout actions logged with detailed reasoning
+- Created BotHealthPanel component (src/components/betting/bot-health-panel.tsx)
+  - Shows engine health score (100% - errors * 10)
+  - Displays total scans, bets placed, profit/ROI, error count
+  - Shows uptime, scan interval, last scan/bet times
+  - Today's stats (bets, stake, profit)
+  - Compact mode for sidebar embedding
+  - Auto-refreshes every 10 seconds
+- Integrated BotHealthPanel into the betting page
+- All builds passing, no new TypeScript errors
+
+Stage Summary:
+- SSE endpoint for real-time bot notifications (no polling needed for events)
+- Auto-settlement: bets settled automatically when matches finish
+- Auto-cashout: winning bets cashed out at 70'+ with threshold check
+- BotHealthPanel: live engine metrics dashboard
+- useBotEvents hook: React integration for SSE stream
+- Full end-to-end flow: scan → bet → cashout → settle → report, all automated

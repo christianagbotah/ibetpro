@@ -5,6 +5,7 @@ import { useFetch } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { AutoBetConfig } from "@/components/betting/auto-bet-config";
 import { BotActivityFeed } from "@/components/betting/bot-activity-feed";
+import { BotHealthPanel } from "@/components/betting/bot-health-panel";
 import { BetCard } from "@/components/betting/bet-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -788,6 +789,7 @@ export default function BettingPage() {
 
         <div className="space-y-4">
           <AutoBetConfig settings={settings} onSave={handleSaveSettings} />
+          {user?.id && <BotHealthPanel userId={user.id} compact />}
           {user?.id && <BotActivityFeed userId={user.id} compact />}
         </div>
       </div>

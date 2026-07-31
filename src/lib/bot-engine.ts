@@ -186,6 +186,24 @@ class BotEngine {
             },
           });
         }
+
+        // Auto-settle finished matches every 3rd scan
+        if (currentStats.totalScans % 3 === 0) {
+          try {
+            await this.autoSettle(userId);
+          } catch (settleError) {
+            console.error(`[BotEngine] Auto-settle error for user ${userId}:`, settleError);
+          }
+        }
+
+        // Auto-cashout evaluation every 5th scan
+        if (currentStats.totalScans % 5 === 0) {
+          try {
+            await this.autoCashoutEvaluation(userId);
+          } catch (cashoutError) {
+            console.error(`[BotEngine] Auto-cashout error for user ${userId}:`, cashoutError);
+          }
+        }
       } catch (error) {
         console.error(`[BotEngine] Scan cycle error for user ${userId}:`, error);
         const currentStats = this.runningUsers.get(userId);
@@ -734,6 +752,369 @@ class BotEngine {
         allocatedAmount: connectedAccount.allocatedAmount,
       },
     };
+  }
+
+  // ==================== AUTO SETTLEMENT ====================
+
+  /**
+   * Automatically settle bets for finished matches.
+   * Called periodically by the engine (every 3rd scan cycle).
+   */
+  private async autoSettle(userId: string): Promise<number> {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      include: { settings: true },
+    });
+
+    if (!user) return 0;
+
+    const commissionRate = user.settings?.commissionRate || 0.10;
+
+    // Find pending bets for finished matches
+    const unsettledBets = await prisma.bet.findMany({
+      where: {
+        userId,
+        status: "pending",
+        match: { status: "finished" },
+      },
+      include: { match: true, bettingAccount: true },
+    });
+
+    if (unsettledBets.length === 0) return 0;
+
+    let settledCount = 0;
+
+    for (const bet of unsettledBets) {
+      if (!bet.match) continue;
+
+      const match = bet.match;
+      const homeScore = match.homeScore ?? 0;
+      const awayScore = match.awayScore ?? 0;
+
+      let betWon = false;
+      let resultReason = "";
+
+      if (bet.betType === "single" || bet.betType === "accumulator_leg") {
+        if (bet.selection === match.homeTeam) {
+          betWon = homeScore > awayScore;
+          resultReason = betWon
+            ? `${match.homeTeam} won ${homeScore}-${awayScore}`
+            : `${match.homeTeam} did not win (${homeScore}-${awayScore})`;
+        } else if (bet.selection === match.awayTeam) {
+          betWon = awayScore > homeScore;
+          resultReason = betWon
+            ? `${match.awayTeam} won ${awayScore}-${homeScore}`
+            : `${match.awayTeam} did not win (${awayScore}-${homeScore})`;
+        } else if (bet.selection === "Draw") {
+          betWon = homeScore === awayScore;
+          resultReason = betWon
+            ? `Match drawn ${homeScore}-${awayScore}`
+            : `Match not drawn (${homeScore}-${awayScore})`;
+        } else if (bet.selection === "Over 2.5") {
+          const totalGoals = homeScore + awayScore;
+          betWon = totalGoals > 2.5;
+          resultReason = betWon
+            ? `Total goals ${totalGoals} > 2.5`
+            : `Total goals ${totalGoals} <= 2.5`;
+        } else if (bet.selection === "Under 2.5") {
+          const totalGoals = homeScore + awayScore;
+          betWon = totalGoals < 2.5;
+          resultReason = betWon
+            ? `Total goals ${totalGoals} < 2.5`
+            : `Total goals ${totalGoals} >= 2.5`;
+        }
+      }
+
+      const now = new Date();
+
+      if (betWon) {
+        const effectiveStake = bet.partialCashoutAmount ? bet.stake - bet.partialCashoutAmount : bet.stake;
+        const grossProfit = bet.potentialWin - effectiveStake;
+        const commission = grossProfit * commissionRate;
+        const netProfit = grossProfit - commission;
+
+        await prisma.bet.update({
+          where: { id: bet.id },
+          data: {
+            status: "won",
+            profit: Math.round(netProfit * 100) / 100,
+            commission: Math.round(commission * 100) / 100,
+            settledAt: now,
+            settlementReason: "match_finished",
+          },
+        });
+
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            balance: { increment: bet.potentialWin },
+            totalProfit: { increment: netProfit },
+            commissionPaid: { increment: commission },
+            dailyPnl: { increment: netProfit },
+            weeklyPnl: { increment: netProfit },
+          },
+        });
+
+        await prisma.transaction.create({
+          data: {
+            userId,
+            type: "bet_won",
+            amount: bet.potentialWin,
+            currency: "USD",
+            status: "completed",
+            description: `Auto-settled: ${match.homeTeam} vs ${match.awayTeam} - ${bet.selection} @ ${bet.odds} (profit: $${netProfit.toFixed(2)})`,
+            betId: bet.id,
+          },
+        });
+
+        if (commission > 0 && bet.bettingAccountId) {
+          await prisma.commissionLedger.create({
+            data: {
+              userId,
+              bettingAccountId: bet.bettingAccountId,
+              betId: bet.id,
+              accumulatorId: bet.accumulatorId,
+              grossProfit,
+              commissionRate,
+              commissionAmount: commission,
+              netProfit,
+              status: "pending",
+            },
+          });
+        }
+
+        await prisma.botLog.create({
+          data: {
+            userId,
+            action: "bet_settled",
+            betId: bet.id,
+            matchId: match.id,
+            accumulatorId: bet.accumulatorId,
+            details: JSON.stringify({ result: "won", profit: netProfit, commission, autoSettled: true }),
+            reasoning: resultReason,
+            profitImpact: netProfit,
+          },
+        });
+      } else {
+        const effectiveStake = bet.partialCashoutAmount ? bet.stake - bet.partialCashoutAmount : bet.stake;
+
+        await prisma.bet.update({
+          where: { id: bet.id },
+          data: {
+            status: "lost",
+            profit: -effectiveStake,
+            settledAt: now,
+            settlementReason: "match_finished",
+          },
+        });
+
+        await prisma.user.update({
+          where: { id: userId },
+          data: {
+            totalLoss: { increment: effectiveStake },
+            dailyPnl: { decrement: effectiveStake },
+            weeklyPnl: { decrement: effectiveStake },
+          },
+        });
+
+        await prisma.botLog.create({
+          data: {
+            userId,
+            action: "bet_settled",
+            betId: bet.id,
+            matchId: match.id,
+            accumulatorId: bet.accumulatorId,
+            details: JSON.stringify({ result: "lost", loss: effectiveStake, autoSettled: true }),
+            reasoning: resultReason,
+            profitImpact: -effectiveStake,
+          },
+        });
+      }
+
+      settledCount++;
+    }
+
+    if (settledCount > 0) {
+      console.log(`[BotEngine] Auto-settled ${settledCount} bet(s) for user ${userId}`);
+    }
+
+    return settledCount;
+  }
+
+  // ==================== AUTO CASHOUT EVALUATION ====================
+
+  /**
+   * Evaluate live bets for cashout opportunities.
+   * Called periodically by the engine (every 5th scan cycle).
+   * Uses the AI engine's cashout recommendation system.
+   */
+  private async autoCashoutEvaluation(userId: string): Promise<number> {
+    const settings = await prisma.userSettings.findUnique({ where: { userId } });
+    if (!settings?.autoCashoutEnabled) return 0;
+
+    // Find live bets that could be cashed out
+    const liveBets = await prisma.bet.findMany({
+      where: {
+        userId,
+        status: "pending",
+        isAutoPlaced: true,
+        match: { status: "live" },
+      },
+      include: { match: true },
+    });
+
+    if (liveBets.length === 0) return 0;
+
+    let cashoutCount = 0;
+
+    for (const bet of liveBets) {
+      if (!bet.match) continue;
+
+      // Simple cashout evaluation based on match state
+      const match = bet.match;
+      const homeScore = match.homeScore ?? 0;
+      const awayScore = match.awayScore ?? 0;
+      const minute = match.minute ?? 0;
+
+      // Determine if the bet is winning
+      let isWinning = false;
+      if (bet.selection === match.homeTeam) {
+        isWinning = homeScore > awayScore;
+      } else if (bet.selection === match.awayTeam) {
+        isWinning = awayScore > homeScore;
+      } else if (bet.selection === "Draw") {
+        isWinning = homeScore === awayScore;
+      } else if (bet.selection === "Over 2.5") {
+        isWinning = (homeScore + awayScore) > 2.5;
+      } else if (bet.selection === "Under 2.5") {
+        isWinning = (homeScore + awayScore) < 2.5;
+      }
+
+      // Cashout logic: if the bet is winning and we're past 70 minutes,
+      // and the cashout threshold is met, execute cashout
+      if (isWinning && minute >= 70) {
+        const cashoutOdds = 1 + (1 / bet.odds) * (minute / 90);
+        const cashoutAmount = Math.round(bet.stake * cashoutOdds * 100) / 100;
+
+        if (cashoutAmount > bet.stake * (1 + settings.cashoutThreshold)) {
+          // Execute partial or full cashout based on settings
+          if (settings.partialCashoutEnabled) {
+            // Partial cashout: take 50% profit, keep the rest riding
+            const partialAmount = Math.round(cashoutAmount * settings.partialCashoutPercent * 100) / 100;
+
+            await prisma.bet.update({
+              where: { id: bet.id },
+              data: {
+                status: "partial_cashout",
+                partialCashoutAmount,
+                partialCashoutPercent: settings.partialCashoutPercent,
+                cashoutOdds,
+                cashedOutAt: new Date(),
+              },
+            });
+
+            await prisma.user.update({
+              where: { id: userId },
+              data: {
+                balance: { increment: partialAmount },
+                dailyPnl: { increment: partialAmount - bet.stake * settings.partialCashoutPercent },
+                weeklyPnl: { increment: partialAmount - bet.stake * settings.partialCashoutPercent },
+              },
+            });
+
+            await prisma.transaction.create({
+              data: {
+                userId,
+                type: "partial_cashout",
+                amount: partialAmount,
+                currency: "USD",
+                status: "completed",
+                description: `Auto partial cashout: ${match.homeTeam} vs ${match.awayTeam} - ${bet.selection} ($${partialAmount.toFixed(2)})`,
+                betId: bet.id,
+              },
+            });
+
+            await prisma.botLog.create({
+              data: {
+                userId,
+                action: "cashout_executed",
+                betId: bet.id,
+                matchId: match.id,
+                details: JSON.stringify({
+                  type: "partial",
+                  amount: partialAmount,
+                  percent: settings.partialCashoutPercent,
+                  minute,
+                  autoCashout: true,
+                }),
+                reasoning: `Auto partial cashout at ${minute}' - bet winning. ${Math.round(settings.partialCashoutPercent * 100)}% cashed out for $${partialAmount.toFixed(2)}`,
+                profitImpact: partialAmount - bet.stake * settings.partialCashoutPercent,
+              },
+            });
+          } else {
+            // Full cashout
+            await prisma.bet.update({
+              where: { id: bet.id },
+              data: {
+                status: "cashed_out",
+                cashoutAmount,
+                cashoutOdds,
+                profit: cashoutAmount - bet.stake,
+                cashedOutAt: new Date(),
+                settlementReason: "cashout",
+              },
+            });
+
+            await prisma.user.update({
+              where: { id: userId },
+              data: {
+                balance: { increment: cashoutAmount },
+                totalProfit: { increment: cashoutAmount - bet.stake },
+                dailyPnl: { increment: cashoutAmount - bet.stake },
+                weeklyPnl: { increment: cashoutAmount - bet.stake },
+              },
+            });
+
+            await prisma.transaction.create({
+              data: {
+                userId,
+                type: "cashout",
+                amount: cashoutAmount,
+                currency: "USD",
+                status: "completed",
+                description: `Auto cashout: ${match.homeTeam} vs ${match.awayTeam} - ${bet.selection} ($${cashoutAmount.toFixed(2)})`,
+                betId: bet.id,
+              },
+            });
+
+            await prisma.botLog.create({
+              data: {
+                userId,
+                action: "cashout_executed",
+                betId: bet.id,
+                matchId: match.id,
+                details: JSON.stringify({
+                  type: "full",
+                  amount: cashoutAmount,
+                  minute,
+                  autoCashout: true,
+                }),
+                reasoning: `Auto cashout at ${minute}' - bet winning. Full cashout for $${cashoutAmount.toFixed(2)}`,
+                profitImpact: cashoutAmount - bet.stake,
+              },
+            });
+          }
+
+          cashoutCount++;
+        }
+      }
+    }
+
+    if (cashoutCount > 0) {
+      console.log(`[BotEngine] Auto-cashout executed for ${cashoutCount} bet(s) for user ${userId}`);
+    }
+
+    return cashoutCount;
   }
 }
 
