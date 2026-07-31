@@ -17,10 +17,10 @@ import {
 } from "@/components/ui/dialog";
 import {
   Link2, RefreshCw, Wallet, Shield, CheckCircle2,
-  AlertCircle, Globe, Key, User, Lock, ChevronRight,
+  AlertCircle, Key, User, Lock, ChevronRight,
   Search, MapPin, Smartphone, Star, ArrowLeft,
 } from "lucide-react";
-import { getBrokerLogoUrl } from "@/lib/broker-logos";
+import { getPlatformLogoPath } from "@/lib/broker-logos";
 import {
   REGIONS,
   getPlatformsForRegion,
@@ -379,13 +379,21 @@ export function BrokerConnect() {
                                 className="flex h-10 w-10 items-center justify-center rounded-lg shrink-0 overflow-hidden bg-secondary/50 border border-border"
                               >
                                 <img
-                                  src={getBrokerLogoUrl(platform.id, platform.name, platform.color || "#10b981")}
+                                  src={getPlatformLogoPath(platform)}
                                   alt={platform.name}
-                                  className="h-10 w-10 object-contain p-1 rounded-lg"
+                                  className="h-10 w-10 object-contain rounded-lg"
                                   onError={(e) => {
                                     const target = e.currentTarget;
-                                    target.style.display = "none";
-                                    target.parentElement!.innerHTML = `<div style="background:${platform.color || "#10b981"};width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:0.5rem;color:#fff;font-size:0.65rem;font-weight:700;">${platform.name.substring(0, 2).toUpperCase()}</div>`;
+                                    if (!target.dataset.retried) {
+                                      target.dataset.retried = "true";
+                                      target.src = `/brokers/${platform.id}.svg`;
+                                    } else {
+                                      target.style.display = "none";
+                                      const fallback = document.createElement("div");
+                                      fallback.style.cssText = `background:${platform.color || "#10b981"};width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:0.5rem;color:#fff;font-size:0.65rem;font-weight:700;`;
+                                      fallback.textContent = platform.name.substring(0, 2).toUpperCase();
+                                      target.parentElement?.appendChild(fallback);
+                                    }
                                   }}
                                 />
                               </div>
@@ -429,13 +437,21 @@ export function BrokerConnect() {
                         className="flex h-10 w-10 items-center justify-center rounded-lg shrink-0 overflow-hidden bg-secondary/50 border border-border"
                       >
                         <img
-                          src={getBrokerLogoUrl(selectedPlatformData.id, selectedPlatformData.name, selectedPlatformData.color || "#10b981")}
+                          src={getPlatformLogoPath(selectedPlatformData)}
                           alt={selectedPlatformData.name}
-                          className="h-10 w-10 object-contain p-1 rounded-lg"
+                          className="h-10 w-10 object-contain rounded-lg"
                           onError={(e) => {
                             const target = e.currentTarget;
-                            target.style.display = "none";
-                            target.parentElement!.innerHTML = `<div style="background:${selectedPlatformData.color || "#10b981"};width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:0.5rem;color:#fff;font-size:0.65rem;font-weight:700;">${selectedPlatformData.name.substring(0, 2).toUpperCase()}</div>`;
+                            if (!target.dataset.retried) {
+                              target.dataset.retried = "true";
+                              target.src = `/brokers/${selectedPlatformData.id}.svg`;
+                            } else {
+                              target.style.display = "none";
+                              const fallback = document.createElement("div");
+                              fallback.style.cssText = `background:${selectedPlatformData.color || "#10b981"};width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:0.5rem;color:#fff;font-size:0.65rem;font-weight:700;`;
+                              fallback.textContent = selectedPlatformData.name.substring(0, 2).toUpperCase();
+                              target.parentElement?.appendChild(fallback);
+                            }
                           }}
                         />
                       </div>
@@ -613,8 +629,25 @@ export function BrokerConnect() {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                          <Globe className="h-5 w-5 text-primary" />
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-secondary/50 border border-border overflow-hidden shrink-0">
+                          <img
+                            src={getPlatformLogoPath({ id: account.platform, name: account.platformName, color: "#10b981" })}
+                            alt={account.platformName}
+                            className="h-10 w-10 object-contain rounded-lg"
+                            onError={(e) => {
+                              const target = e.currentTarget;
+                              if (!target.dataset.retried) {
+                                target.dataset.retried = "true";
+                                target.src = `/brokers/${account.platform}.svg`;
+                              } else {
+                                target.style.display = "none";
+                                const fallback = document.createElement("div");
+                                fallback.style.cssText = "background:#10b981;width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:0.5rem;color:#fff;font-size:0.65rem;font-weight:700;";
+                                fallback.textContent = account.platformName.substring(0, 2).toUpperCase();
+                                target.parentElement?.appendChild(fallback);
+                              }
+                            }}
+                          />
                         </div>
                         <div>
                           <p className="text-sm font-medium text-foreground">{account.accountName}</p>

@@ -26,6 +26,7 @@ export interface BrokerPlatform {
   features: BrokerFeatures;
   commissionDefault: number;
   logo?: string;
+  logoPath?: string;
   color?: string;
   mobileApp?: boolean;
   popularIn?: string[];
@@ -97,6 +98,7 @@ export const BROKER_PLATFORMS: BrokerPlatform[] = REGION_PLATFORMS.map((p) => ({
   features: p.features,
   commissionDefault: p.commissionDefault,
   logo: p.logo,
+  logoPath: p.logoPath,
   color: p.color,
   mobileApp: p.mobileApp,
   popularIn: p.popularIn,
@@ -126,6 +128,7 @@ export function getAvailablePlatforms(region?: string): BrokerPlatform[] {
     features: p.features,
     commissionDefault: p.commissionDefault,
     logo: p.logo,
+    logoPath: p.logoPath,
     color: p.color,
     mobileApp: p.mobileApp,
     popularIn: p.popularIn,
