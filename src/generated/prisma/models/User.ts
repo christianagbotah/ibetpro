@@ -60,6 +60,8 @@ export type UserMinAggregateOutputType = {
   bankroll: number | null
   dailyPnl: number | null
   weeklyPnl: number | null
+  region: string | null
+  currency: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -78,6 +80,8 @@ export type UserMaxAggregateOutputType = {
   bankroll: number | null
   dailyPnl: number | null
   weeklyPnl: number | null
+  region: string | null
+  currency: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -96,6 +100,8 @@ export type UserCountAggregateOutputType = {
   bankroll: number
   dailyPnl: number
   weeklyPnl: number
+  region: number
+  currency: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -136,6 +142,8 @@ export type UserMinAggregateInputType = {
   bankroll?: true
   dailyPnl?: true
   weeklyPnl?: true
+  region?: true
+  currency?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -154,6 +162,8 @@ export type UserMaxAggregateInputType = {
   bankroll?: true
   dailyPnl?: true
   weeklyPnl?: true
+  region?: true
+  currency?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -172,6 +182,8 @@ export type UserCountAggregateInputType = {
   bankroll?: true
   dailyPnl?: true
   weeklyPnl?: true
+  region?: true
+  currency?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -277,6 +289,8 @@ export type UserGroupByOutputType = {
   bankroll: number
   dailyPnl: number
   weeklyPnl: number
+  region: string | null
+  currency: string | null
   createdAt: Date
   updatedAt: Date
   _count: UserCountAggregateOutputType | null
@@ -318,6 +332,8 @@ export type UserWhereInput = {
   bankroll?: Prisma.FloatFilter<"User"> | number
   dailyPnl?: Prisma.FloatFilter<"User"> | number
   weeklyPnl?: Prisma.FloatFilter<"User"> | number
+  region?: Prisma.StringNullableFilter<"User"> | string | null
+  currency?: Prisma.StringNullableFilter<"User"> | string | null
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
   bettingAccounts?: Prisma.BettingAccountListRelationFilter
@@ -344,6 +360,8 @@ export type UserOrderByWithRelationInput = {
   bankroll?: Prisma.SortOrder
   dailyPnl?: Prisma.SortOrder
   weeklyPnl?: Prisma.SortOrder
+  region?: Prisma.SortOrderInput | Prisma.SortOrder
+  currency?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   bettingAccounts?: Prisma.BettingAccountOrderByRelationAggregateInput
@@ -373,6 +391,8 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   bankroll?: Prisma.FloatFilter<"User"> | number
   dailyPnl?: Prisma.FloatFilter<"User"> | number
   weeklyPnl?: Prisma.FloatFilter<"User"> | number
+  region?: Prisma.StringNullableFilter<"User"> | string | null
+  currency?: Prisma.StringNullableFilter<"User"> | string | null
   createdAt?: Prisma.DateTimeFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"User"> | Date | string
   bettingAccounts?: Prisma.BettingAccountListRelationFilter
@@ -399,6 +419,8 @@ export type UserOrderByWithAggregationInput = {
   bankroll?: Prisma.SortOrder
   dailyPnl?: Prisma.SortOrder
   weeklyPnl?: Prisma.SortOrder
+  region?: Prisma.SortOrderInput | Prisma.SortOrder
+  currency?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.UserCountOrderByAggregateInput
@@ -425,6 +447,8 @@ export type UserScalarWhereWithAggregatesInput = {
   bankroll?: Prisma.FloatWithAggregatesFilter<"User"> | number
   dailyPnl?: Prisma.FloatWithAggregatesFilter<"User"> | number
   weeklyPnl?: Prisma.FloatWithAggregatesFilter<"User"> | number
+  region?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
+  currency?: Prisma.StringNullableWithAggregatesFilter<"User"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"User"> | Date | string
 }
@@ -443,6 +467,8 @@ export type UserCreateInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
@@ -469,6 +495,8 @@ export type UserUncheckedCreateInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
@@ -495,6 +523,8 @@ export type UserUpdateInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
@@ -521,6 +551,8 @@ export type UserUncheckedUpdateInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
@@ -547,6 +579,8 @@ export type UserCreateManyInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -565,6 +599,8 @@ export type UserUpdateManyMutationInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -583,6 +619,8 @@ export type UserUncheckedUpdateManyInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -601,6 +639,8 @@ export type UserCountOrderByAggregateInput = {
   bankroll?: Prisma.SortOrder
   dailyPnl?: Prisma.SortOrder
   weeklyPnl?: Prisma.SortOrder
+  region?: Prisma.SortOrder
+  currency?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -629,6 +669,8 @@ export type UserMaxOrderByAggregateInput = {
   bankroll?: Prisma.SortOrder
   dailyPnl?: Prisma.SortOrder
   weeklyPnl?: Prisma.SortOrder
+  region?: Prisma.SortOrder
+  currency?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -647,6 +689,8 @@ export type UserMinOrderByAggregateInput = {
   bankroll?: Prisma.SortOrder
   dailyPnl?: Prisma.SortOrder
   weeklyPnl?: Prisma.SortOrder
+  region?: Prisma.SortOrder
+  currency?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -812,6 +856,8 @@ export type UserCreateWithoutSettingsInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
@@ -837,6 +883,8 @@ export type UserUncheckedCreateWithoutSettingsInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
@@ -878,6 +926,8 @@ export type UserUpdateWithoutSettingsInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
@@ -903,6 +953,8 @@ export type UserUncheckedUpdateWithoutSettingsInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
@@ -928,6 +980,8 @@ export type UserCreateWithoutBettingAccountsInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bets?: Prisma.BetCreateNestedManyWithoutUserInput
@@ -953,6 +1007,8 @@ export type UserUncheckedCreateWithoutBettingAccountsInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bets?: Prisma.BetUncheckedCreateNestedManyWithoutUserInput
@@ -994,6 +1050,8 @@ export type UserUpdateWithoutBettingAccountsInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bets?: Prisma.BetUpdateManyWithoutUserNestedInput
@@ -1019,6 +1077,8 @@ export type UserUncheckedUpdateWithoutBettingAccountsInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bets?: Prisma.BetUncheckedUpdateManyWithoutUserNestedInput
@@ -1044,6 +1104,8 @@ export type UserCreateWithoutBetsInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
@@ -1069,6 +1131,8 @@ export type UserUncheckedCreateWithoutBetsInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
@@ -1110,6 +1174,8 @@ export type UserUpdateWithoutBetsInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
@@ -1135,6 +1201,8 @@ export type UserUncheckedUpdateWithoutBetsInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
@@ -1160,6 +1228,8 @@ export type UserCreateWithoutAccumulatorsInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
@@ -1185,6 +1255,8 @@ export type UserUncheckedCreateWithoutAccumulatorsInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
@@ -1226,6 +1298,8 @@ export type UserUpdateWithoutAccumulatorsInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
@@ -1251,6 +1325,8 @@ export type UserUncheckedUpdateWithoutAccumulatorsInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
@@ -1276,6 +1352,8 @@ export type UserCreateWithoutBotLogsInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
@@ -1301,6 +1379,8 @@ export type UserUncheckedCreateWithoutBotLogsInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
@@ -1342,6 +1422,8 @@ export type UserUpdateWithoutBotLogsInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
@@ -1367,6 +1449,8 @@ export type UserUncheckedUpdateWithoutBotLogsInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
@@ -1392,6 +1476,8 @@ export type UserCreateWithoutTransactionsInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
@@ -1417,6 +1503,8 @@ export type UserUncheckedCreateWithoutTransactionsInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
@@ -1458,6 +1546,8 @@ export type UserUpdateWithoutTransactionsInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
@@ -1483,6 +1573,8 @@ export type UserUncheckedUpdateWithoutTransactionsInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
@@ -1508,6 +1600,8 @@ export type UserCreateWithoutAllocationsInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
@@ -1533,6 +1627,8 @@ export type UserUncheckedCreateWithoutAllocationsInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
@@ -1574,6 +1670,8 @@ export type UserUpdateWithoutAllocationsInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
@@ -1599,6 +1697,8 @@ export type UserUncheckedUpdateWithoutAllocationsInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
@@ -1624,6 +1724,8 @@ export type UserCreateWithoutCommissionsInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
@@ -1649,6 +1751,8 @@ export type UserUncheckedCreateWithoutCommissionsInput = {
   bankroll?: number
   dailyPnl?: number
   weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
@@ -1690,6 +1794,8 @@ export type UserUpdateWithoutCommissionsInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
@@ -1715,6 +1821,8 @@ export type UserUncheckedUpdateWithoutCommissionsInput = {
   bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
   dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
   weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
@@ -1825,6 +1933,8 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   bankroll?: boolean
   dailyPnl?: boolean
   weeklyPnl?: boolean
+  region?: boolean
+  currency?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   bettingAccounts?: boolean | Prisma.User$bettingAccountsArgs<ExtArgs>
@@ -1852,6 +1962,8 @@ export type UserSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   bankroll?: boolean
   dailyPnl?: boolean
   weeklyPnl?: boolean
+  region?: boolean
+  currency?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["user"]>
@@ -1870,6 +1982,8 @@ export type UserSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensio
   bankroll?: boolean
   dailyPnl?: boolean
   weeklyPnl?: boolean
+  region?: boolean
+  currency?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["user"]>
@@ -1888,11 +2002,13 @@ export type UserSelectScalar = {
   bankroll?: boolean
   dailyPnl?: boolean
   weeklyPnl?: boolean
+  region?: boolean
+  currency?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "name" | "passwordHash" | "avatar" | "role" | "balance" | "totalProfit" | "totalLoss" | "commissionPaid" | "bankroll" | "dailyPnl" | "weeklyPnl" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+export type UserOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "email" | "name" | "passwordHash" | "avatar" | "role" | "balance" | "totalProfit" | "totalLoss" | "commissionPaid" | "bankroll" | "dailyPnl" | "weeklyPnl" | "region" | "currency" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
 export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   bettingAccounts?: boolean | Prisma.User$bettingAccountsArgs<ExtArgs>
   bets?: boolean | Prisma.User$betsArgs<ExtArgs>
@@ -1933,6 +2049,8 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     bankroll: number
     dailyPnl: number
     weeklyPnl: number
+    region: string | null
+    currency: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["user"]>
@@ -2379,6 +2497,8 @@ export interface UserFieldRefs {
   readonly bankroll: Prisma.FieldRef<"User", 'Float'>
   readonly dailyPnl: Prisma.FieldRef<"User", 'Float'>
   readonly weeklyPnl: Prisma.FieldRef<"User", 'Float'>
+  readonly region: Prisma.FieldRef<"User", 'String'>
+  readonly currency: Prisma.FieldRef<"User", 'String'>
   readonly createdAt: Prisma.FieldRef<"User", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"User", 'DateTime'>
 }

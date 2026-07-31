@@ -146,6 +146,67 @@ label[for],
   cursor: pointer !important;
 }
 
+/* Mobile-native: safe area insets for iOS notch/home indicator */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+/* Mobile-native: prevent text selection on interactive elements */
+button,
+a,
+[role="button"],
+nav {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+/* Mobile-native: smooth scrolling */
+* {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+}
+
+/* Mobile-native: prevent overscroll bounce */
+html, body {
+  overscroll-behavior: none;
+}
+
+/* Mobile-native: touch-friendly minimum target sizes */
+@media (max-width: 1023px) {
+  button,
+  a[role="button"],
+  [role="button"],
+  input[type="submit"],
+  input[type="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Mobile-native: disable zoom on input focus (iOS) */
+@media screen and (max-width: 768px) {
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="tel"],
+  input[type="url"],
+  select,
+  textarea {
+    font-size: 16px !important;
+  }
+}
+
+/* Mobile bottom nav active indicator */
+@keyframes nav-indicator {
+  from { width: 0; opacity: 0; }
+  to { width: 2rem; opacity: 1; }
+}
+
 /* Custom scrollbar */
 ::-webkit-scrollbar {
   width: 6px;

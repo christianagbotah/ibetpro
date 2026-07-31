@@ -220,7 +220,7 @@ export function BrokerConnect() {
                 Connect Broker
               </Button>
 
-              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto sm:max-h-[90vh] max-[640px]:h-screen max-[640px]:max-h-screen max-[640px]:w-screen max-[640px]:max-w-screen max-[640px]:rounded-none max-[640px]:p-4">
                 <DialogHeader>
                   <DialogTitle>Connect Your Broker Account</DialogTitle>
                 </DialogHeader>
@@ -292,7 +292,7 @@ export function BrokerConnect() {
                       ))}
                     </div>
 
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto -webkit-overflow-scrolling-touch">
                       {filteredRegions.map((region) => {
                         const platformCount = getPlatformsForRegion(region.code).length;
                         return (
@@ -302,7 +302,7 @@ export function BrokerConnect() {
                               setSelectedRegion(region.code);
                               setStep("platform");
                             }}
-                            className={`flex items-center gap-2 rounded-lg border p-2.5 transition-all text-left hover:bg-primary/5 ${
+                            className={`flex items-center gap-2 rounded-lg border p-2.5 transition-all text-left hover:bg-primary/5 active:scale-[0.98] ${
                               selectedRegion === region.code
                                 ? "border-primary/30 bg-primary/5"
                                 : "border-border"
@@ -355,7 +355,7 @@ export function BrokerConnect() {
                       {platformsForRegion.length} platforms available in {selectedRegionInfo.name}. Select your betting platform.
                     </p>
 
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                    <div className="space-y-2 max-h-64 overflow-y-auto -webkit-overflow-scrolling-touch">
                       {platformsForRegion.map((platform) => {
                         const isPopular = platform.popularIn.includes(selectedRegion);
                         return (
@@ -365,7 +365,7 @@ export function BrokerConnect() {
                               setSelectedPlatform(platform.id);
                               setStep("credentials");
                             }}
-                            className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-primary/5 transition-colors text-left w-full"
+                            className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-primary/5 active:scale-[0.98] transition-colors text-left w-full"
                           >
                             <div className="flex items-center gap-3">
                               <div

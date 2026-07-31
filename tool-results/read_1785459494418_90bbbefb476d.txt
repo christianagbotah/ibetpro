@@ -1,0 +1,1215 @@
+     1→     1→// ============================================================================
+     2→     2→// iBetPro Region & Country Database
+     3→     3→// Comprehensive region data with currencies, flags, and available betting platforms
+     4→     4→// ============================================================================
+     5→     5→
+     6→     6→export interface RegionInfo {
+     7→     7→  code: string;
+     8→     8→  name: string;
+     9→     9→  flag: string;
+    10→    10→  currencyCode: string;
+    11→    11→  currencySymbol: string;
+    12→    12→  currencyName: string;
+    13→    13→  continent: string;
+    14→    14→  phoneCode: string;
+    15→    15→  languages: string[];
+    16→    16→}
+    17→    17→
+    18→    18→export interface BrokerPlatformInfo {
+    19→    19→  id: string;
+    20→    20→  name: string;
+    21→    21→  logo: string; // emoji or short identifier
+    22→    22→  color: string; // brand color hex
+    23→    23→  regions: string[];
+    24→    24→  authType: "oauth" | "api_key" | "web_session" | "manual";
+    25→    25→  supportedSports: string[];
+    26→    26→  features: {
+    27→    27→    liveBetting: boolean;
+    28→    28→    cashout: boolean;
+    29→    29→    partialCashout: boolean;
+    30→    30→    accumulators: boolean;
+    31→    31→    maxAccumulatorLegs: number;
+    32→    32→    minStake: number;
+    33→    33→    maxStake: number;
+    34→    34→    supportedMarkets: string[];
+    35→    35→    instantSettlement: boolean;
+    36→    36→  };
+    37→    37→  commissionDefault: number;
+    38→    38→  baseUrl: string;
+    39→    39→  mobileApp: boolean;
+    40→    40→  popularIn: string[]; // country codes where this broker is most popular
+    41→    41→}
+    42→    42→
+    43→    43→// ==================== REGIONS / COUNTRIES ====================
+    44→    44→
+    45→    45→export const REGIONS: RegionInfo[] = [
+    46→    46→  // West Africa
+    47→    47→  { code: "ng", name: "Nigeria", flag: "🇳🇬", currencyCode: "NGN", currencySymbol: "₦", currencyName: "Naira", continent: "Africa", phoneCode: "+234", languages: ["en"] },
+    48→    48→  { code: "gh", name: "Ghana", flag: "🇬🇭", currencyCode: "GHS", currencySymbol: "₵", currencyName: "Cedi", continent: "Africa", phoneCode: "+233", languages: ["en"] },
+    49→    49→  { code: "ci", name: "Côte d'Ivoire", flag: "🇨🇮", currencyCode: "XOF", currencySymbol: "CFA", currencyName: "West African CFA", continent: "Africa", phoneCode: "+225", languages: ["fr"] },
+    50→    50→  { code: "sn", name: "Senegal", flag: "🇸🇳", currencyCode: "XOF", currencySymbol: "CFA", currencyName: "West African CFA", continent: "Africa", phoneCode: "+221", languages: ["fr"] },
+    51→    51→  { code: "cm", name: "Cameroon", flag: "🇨🇲", currencyCode: "XAF", currencySymbol: "FCFA", currencyName: "Central African CFA", continent: "Africa", phoneCode: "+237", languages: ["fr", "en"] },
+    52→    52→
+    53→    53→  // East Africa
+    54→    54→  { code: "ke", name: "Kenya", flag: "🇰🇪", currencyCode: "KES", currencySymbol: "KSh", currencyName: "Shilling", continent: "Africa", phoneCode: "+254", languages: ["en", "sw"] },
+    55→    55→  { code: "tz", name: "Tanzania", flag: "🇹🇿", currencyCode: "TZS", currencySymbol: "TSh", currencyName: "Shilling", continent: "Africa", phoneCode: "+255", languages: ["en", "sw"] },
+    56→    56→  { code: "ug", name: "Uganda", flag: "🇺🇬", currencyCode: "UGX", currencySymbol: "USh", currencyName: "Shilling", continent: "Africa", phoneCode: "+256", languages: ["en"] },
+    57→    57→  { code: "rw", name: "Rwanda", flag: "🇷🇼", currencyCode: "RWF", currencySymbol: "FRw", currencyName: "Franc", continent: "Africa", phoneCode: "+250", languages: ["en", "fr"] },
+    58→    58→  { code: "et", name: "Ethiopia", flag: "🇪🇹", currencyCode: "ETB", currencySymbol: "Br", currencyName: "Birr", continent: "Africa", phoneCode: "+251", languages: ["en"] },
+    59→    59→
+    60→    60→  // Southern Africa
+    61→    61→  { code: "za", name: "South Africa", flag: "🇿🇦", currencyCode: "ZAR", currencySymbol: "R", currencyName: "Rand", continent: "Africa", phoneCode: "+27", languages: ["en", "af", "zu"] },
+    62→    62→  { code: "zm", name: "Zambia", flag: "🇿🇲", currencyCode: "ZMW", currencySymbol: "ZK", currencyName: "Kwacha", continent: "Africa", phoneCode: "+260", languages: ["en"] },
+    63→    63→  { code: "mw", name: "Malawi", flag: "🇲🇼", currencyCode: "MWK", currencySymbol: "MK", currencyName: "Kwacha", continent: "Africa", phoneCode: "+265", languages: ["en"] },
+    64→    64→  { code: "bw", name: "Botswana", flag: "🇧🇼", currencyCode: "BWP", currencySymbol: "P", currencyName: "Pula", continent: "Africa", phoneCode: "+267", languages: ["en"] },
+    65→    65→  { code: "mz", name: "Mozambique", flag: "🇲🇿", currencyCode: "MZN", currencySymbol: "MT", currencyName: "Metical", continent: "Africa", phoneCode: "+258", languages: ["pt"] },
+    66→    66→
+    67→    67→  // North Africa
+    68→    68→  { code: "eg", name: "Egypt", flag: "🇪🇬", currencyCode: "EGP", currencySymbol: "E£", currencyName: "Pound", continent: "Africa", phoneCode: "+20", languages: ["ar", "en"] },
+    69→    69→  { code: "ma", name: "Morocco", flag: "🇲🇦", currencyCode: "MAD", currencySymbol: "MAD", currencyName: "Dirham", continent: "Africa", phoneCode: "+212", languages: ["ar", "fr"] },
+    70→    70→  { code: "tn", name: "Tunisia", flag: "🇹🇳", currencyCode: "TND", currencySymbol: "DT", currencyName: "Dinar", continent: "Africa", phoneCode: "+216", languages: ["ar", "fr"] },
+    71→    71→
+    72→    72→  // Europe
+    73→    73→  { code: "gb", name: "United Kingdom", flag: "🇬🇧", currencyCode: "GBP", currencySymbol: "£", currencyName: "Pound Sterling", continent: "Europe", phoneCode: "+44", languages: ["en"] },
+    74→    74→  { code: "ie", name: "Ireland", flag: "🇮🇪", currencyCode: "EUR", currencySymbol: "€", currencyName: "Euro", continent: "Europe", phoneCode: "+353", languages: ["en"] },
+    75→    75→  { code: "de", name: "Germany", flag: "🇩🇪", currencyCode: "EUR", currencySymbol: "€", currencyName: "Euro", continent: "Europe", phoneCode: "+49", languages: ["de"] },
+    76→    76→  { code: "fr", name: "France", flag: "🇫🇷", currencyCode: "EUR", currencySymbol: "€", currencyName: "Euro", continent: "Europe", phoneCode: "+33", languages: ["fr"] },
+    77→    77→  { code: "es", name: "Spain", flag: "🇪🇸", currencyCode: "EUR", currencySymbol: "€", currencyName: "Euro", continent: "Europe", phoneCode: "+34", languages: ["es"] },
+    78→    78→  { code: "it", name: "Italy", flag: "🇮🇹", currencyCode: "EUR", currencySymbol: "€", currencyName: "Euro", continent: "Europe", phoneCode: "+39", languages: ["it"] },
+    79→    79→  { code: "pt", name: "Portugal", flag: "🇵🇹", currencyCode: "EUR", currencySymbol: "€", currencyName: "Euro", continent: "Europe", phoneCode: "+351", languages: ["pt"] },
+    80→    80→  { code: "nl", name: "Netherlands", flag: "🇳🇱", currencyCode: "EUR", currencySymbol: "€", currencyName: "Euro", continent: "Europe", phoneCode: "+31", languages: ["nl", "en"] },
+    81→    81→  { code: "se", name: "Sweden", flag: "🇸🇪", currencyCode: "SEK", currencySymbol: "kr", currencyName: "Krona", continent: "Europe", phoneCode: "+46", languages: ["sv", "en"] },
+    82→    82→  { code: "no", name: "Norway", flag: "🇳🇴", currencyCode: "NOK", currencySymbol: "kr", currencyName: "Krone", continent: "Europe", phoneCode: "+47", languages: ["no", "en"] },
+    83→    83→  { code: "pl", name: "Poland", flag: "🇵🇱", currencyCode: "PLN", currencySymbol: "zł", currencyName: "Zloty", continent: "Europe", phoneCode: "+48", languages: ["pl"] },
+    84→    84→  { code: "gr", name: "Greece", flag: "🇬🇷", currencyCode: "EUR", currencySymbol: "€", currencyName: "Euro", continent: "Europe", phoneCode: "+30", languages: ["el"] },
+    85→    85→  { code: "tr", name: "Turkey", flag: "🇹🇷", currencyCode: "TRY", currencySymbol: "₺", currencyName: "Lira", continent: "Europe", phoneCode: "+90", languages: ["tr"] },
+    86→    86→
+    87→    87→  // Americas
+    88→    88→  { code: "us", name: "United States", flag: "🇺🇸", currencyCode: "USD", currencySymbol: "$", currencyName: "Dollar", continent: "Americas", phoneCode: "+1", languages: ["en"] },
+    89→    89→  { code: "ca", name: "Canada", flag: "🇨🇦", currencyCode: "CAD", currencySymbol: "C$", currencyName: "Dollar", continent: "Americas", phoneCode: "+1", languages: ["en", "fr"] },
+    90→    90→  { code: "br", name: "Brazil", flag: "🇧🇷", currencyCode: "BRL", currencySymbol: "R$", currencyName: "Real", continent: "Americas", phoneCode: "+55", languages: ["pt"] },
+    91→    91→  { code: "ar", name: "Argentina", flag: "🇦🇷", currencyCode: "ARS", currencySymbol: "$", currencyName: "Peso", continent: "Americas", phoneCode: "+54", languages: ["es"] },
+    92→    92→  { code: "mx", name: "Mexico", flag: "🇲🇽", currencyCode: "MXN", currencySymbol: "MX$", currencyName: "Peso", continent: "Americas", phoneCode: "+52", languages: ["es"] },
+    93→    93→  { code: "co", name: "Colombia", flag: "🇨🇴", currencyCode: "COP", currencySymbol: "COP$", currencyName: "Peso", continent: "Americas", phoneCode: "+57", languages: ["es"] },
+    94→    94→
+    95→    95→  // Asia & Middle East
+    96→    96→  { code: "in", name: "India", flag: "🇮🇳", currencyCode: "INR", currencySymbol: "₹", currencyName: "Rupee", continent: "Asia", phoneCode: "+91", languages: ["en", "hi"] },
+    97→    97→  { code: "pk", name: "Pakistan", flag: "🇵🇰", currencyCode: "PKR", currencySymbol: "₨", currencyName: "Rupee", continent: "Asia", phoneCode: "+92", languages: ["en", "ur"] },
+    98→    98→  { code: "bd", name: "Bangladesh", flag: "🇧🇩", currencyCode: "BDT", currencySymbol: "৳", currencyName: "Taka", continent: "Asia", phoneCode: "+880", languages: ["bn", "en"] },
+    99→    99→  { code: "jp", name: "Japan", flag: "🇯🇵", currencyCode: "JPY", currencySymbol: "¥", currencyName: "Yen", continent: "Asia", phoneCode: "+81", languages: ["ja"] },
+   100→   100→  { code: "kr", name: "South Korea", flag: "🇰🇷", currencyCode: "KRW", currencySymbol: "₩", currencyName: "Won", continent: "Asia", phoneCode: "+82", languages: ["ko"] },
+   101→   101→  { code: "ph", name: "Philippines", flag: "🇵🇭", currencyCode: "PHP", currencySymbol: "₱", currencyName: "Peso", continent: "Asia", phoneCode: "+63", languages: ["en", "fil"] },
+   102→   102→  { code: "th", name: "Thailand", flag: "🇹🇭", currencyCode: "THB", currencySymbol: "฿", currencyName: "Baht", continent: "Asia", phoneCode: "+66", languages: ["th", "en"] },
+   103→   103→  { code: "vn", name: "Vietnam", flag: "🇻🇳", currencyCode: "VND", currencySymbol: "₫", currencyName: "Dong", continent: "Asia", phoneCode: "+84", languages: ["vi"] },
+   104→   104→  { code: "my", name: "Malaysia", flag: "🇲🇾", currencyCode: "MYR", currencySymbol: "RM", currencyName: "Ringgit", continent: "Asia", phoneCode: "+60", languages: ["ms", "en"] },
+   105→   105→  { code: "id", name: "Indonesia", flag: "🇮🇩", currencyCode: "IDR", currencySymbol: "Rp", currencyName: "Rupiah", continent: "Asia", phoneCode: "+62", languages: ["id", "en"] },
+   106→   106→  { code: "ae", name: "UAE", flag: "🇦🇪", currencyCode: "AED", currencySymbol: "د.إ", currencyName: "Dirham", continent: "Asia", phoneCode: "+971", languages: ["ar", "en"] },
+   107→   107→  { code: "sa", name: "Saudi Arabia", flag: "🇸🇦", currencyCode: "SAR", currencySymbol: "﷼", currencyName: "Riyal", continent: "Asia", phoneCode: "+966", languages: ["ar", "en"] },
+   108→   108→
+   109→   109→  // Oceania
+   110→   110→  { code: "au", name: "Australia", flag: "🇦🇺", currencyCode: "AUD", currencySymbol: "A$", currencyName: "Dollar", continent: "Oceania", phoneCode: "+61", languages: ["en"] },
+   111→   111→  { code: "nz", name: "New Zealand", flag: "🇳🇿", currencyCode: "NZD", currencySymbol: "NZ$", currencyName: "Dollar", continent: "Oceania", phoneCode: "+64", languages: ["en"] },
+   112→   112→];
+   113→   113→
+   114→   114→// ==================== COMPREHENSIVE BROKER PLATFORMS ====================
+   115→   115→
+   116→   116→export const BROKER_PLATFORMS: BrokerPlatformInfo[] = [
+   117→   117→  // ===== AFRICA - West Africa =====
+   118→   118→  {
+   119→   119→    id: "sportybet",
+   120→   120→    name: "Sportybet",
+   121→   121→    logo: "S",
+   122→   122→    color: "#00C853",
+   123→   123→    regions: ["ng", "gh", "ke", "tz", "ug"],
+   124→   124→    authType: "web_session",
+   125→   125→    supportedSports: ["football", "basketball", "tennis", "cricket"],
+   126→   126→    features: {
+   127→   127→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   128→   128→      maxAccumulatorLegs: 30, minStake: 100, maxStake: 10000000,
+   129→   129→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "draw_no_bet"],
+   130→   130→      instantSettlement: true,
+   131→   131→    },
+   132→   132→    commissionDefault: 0.10,
+   133→   133→    baseUrl: "https://www.sportybet.com",
+   134→   134→    mobileApp: true,
+   135→   135→    popularIn: ["ng", "gh", "ke"],
+   136→   136→  },
+   137→   137→  {
+   138→   138→    id: "bet9ja",
+   139→   139→    name: "Bet9ja",
+   140→   140→    logo: "9",
+   141→   141→    color: "#FF6D00",
+   142→   142→    regions: ["ng"],
+   143→   143→    authType: "web_session",
+   144→   144→    supportedSports: ["football", "basketball", "tennis"],
+   145→   145→    features: {
+   146→   146→      liveBetting: true, cashout: true, partialCashout: false, accumulators: true,
+   147→   147→      maxAccumulatorLegs: 25, minStake: 100, maxStake: 5000000,
+   148→   148→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance"],
+   149→   149→      instantSettlement: true,
+   150→   150→    },
+   151→   151→    commissionDefault: 0.10,
+   152→   152→    baseUrl: "https://www.bet9ja.com",
+   153→   153→    mobileApp: true,
+   154→   154→    popularIn: ["ng"],
+   155→   155→  },
+   156→   156→  {
+   157→   157→    id: "1xbet",
+   158→   158→    name: "1xBet",
+   159→   159→    logo: "1X",
+   160→   160→    color: "#1A73E8",
+   161→   161→    regions: ["ng", "gh", "ke", "tz", "ug", "cm", "sn", "ci", "za", "eg", "ma", "global"],
+   162→   162→    authType: "api_key",
+   163→   163→    supportedSports: ["football", "basketball", "tennis", "hockey", "cricket", "baseball", "esports"],
+   164→   164→    features: {
+   165→   165→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   166→   166→      maxAccumulatorLegs: 20, minStake: 50, maxStake: 50000000,
+   167→   167→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap", "correct_score", "half_time_full_time"],
+   168→   168→      instantSettlement: true,
+   169→   169→    },
+   170→   170→    commissionDefault: 0.10,
+   171→   171→    baseUrl: "https://1xbet.com",
+   172→   172→    mobileApp: true,
+   173→   173→    popularIn: ["ng", "gh", "ke", "tz"],
+   174→   174→  },
+   175→   175→  {
+   176→   176→    id: "betway",
+   177→   177→    name: "Betway",
+   178→   178→    logo: "BW",
+   179→   179→    color: "#000000",
+   180→   180→    regions: ["ng", "gh", "ke", "za", "zm", "mz", "gb", "ie", "global"],
+   181→   181→    authType: "oauth",
+   182→   182→    supportedSports: ["football", "basketball", "tennis", "hockey", "cricket", "esports"],
+   183→   183→    features: {
+   184→   184→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   185→   185→      maxAccumulatorLegs: 15, minStake: 50, maxStake: 10000000,
+   186→   186→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   187→   187→      instantSettlement: true,
+   188→   188→    },
+   189→   189→    commissionDefault: 0.10,
+   190→   190→    baseUrl: "https://www.betway.com",
+   191→   191→    mobileApp: true,
+   192→   192→    popularIn: ["ng", "gh", "ke", "za"],
+   193→   193→  },
+   194→   194→  {
+   195→   195→    id: "22bet",
+   196→   196→    name: "22Bet",
+   197→   197→    logo: "22",
+   198→   198→    color: "#0066CC",
+   199→   199→    regions: ["ng", "gh", "ke", "tz", "ug", "cm", "global"],
+   200→   200→    authType: "api_key",
+   201→   201→    supportedSports: ["football", "basketball", "tennis", "hockey", "cricket"],
+   202→   202→    features: {
+   203→   203→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   204→   204→      maxAccumulatorLegs: 20, minStake: 50, maxStake: 25000000,
+   205→   205→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap", "correct_score"],
+   206→   206→      instantSettlement: true,
+   207→   207→    },
+   208→   208→    commissionDefault: 0.10,
+   209→   209→    baseUrl: "https://22bet.com",
+   210→   210→    mobileApp: true,
+   211→   211→    popularIn: ["ng", "gh", "ke"],
+   212→   212→  },
+   213→   213→  {
+   214→   214→    id: "melbet",
+   215→   215→    name: "Melbet",
+   216→   216→    logo: "MB",
+   217→   217→    color: "#1E88E5",
+   218→   218→    regions: ["ng", "gh", "ke", "tz", "ug", "cm", "global"],
+   219→   219→    authType: "api_key",
+   220→   220→    supportedSports: ["football", "basketball", "tennis", "hockey", "cricket"],
+   221→   221→    features: {
+   222→   222→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   223→   223→      maxAccumulatorLegs: 20, minStake: 50, maxStake: 20000000,
+   224→   224→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   225→   225→      instantSettlement: true,
+   226→   226→    },
+   227→   227→    commissionDefault: 0.10,
+   228→   228→    baseUrl: "https://melbet.com",
+   229→   229→    mobileApp: true,
+   230→   230→    popularIn: ["ng", "gh"],
+   231→   231→  },
+   232→   232→  {
+   233→   233→    id: "parimatch",
+   234→   234→    name: "Parimatch",
+   235→   235→    logo: "PM",
+   236→   236→    color: "#FF1744",
+   237→   237→    regions: ["ng", "gh", "ke", "tz", "ug", "za", "global"],
+   238→   238→    authType: "web_session",
+   239→   239→    supportedSports: ["football", "basketball", "tennis", "cricket", "esports"],
+   240→   240→    features: {
+   241→   241→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   242→   242→      maxAccumulatorLegs: 15, minStake: 100, maxStake: 10000000,
+   243→   243→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   244→   244→      instantSettlement: true,
+   245→   245→    },
+   246→   246→    commissionDefault: 0.10,
+   247→   247→    baseUrl: "https://parimatch.com",
+   248→   248→    mobileApp: true,
+   249→   249→    popularIn: ["ng", "ke", "tz"],
+   250→   250→  },
+   251→   251→  {
+   252→   252→    id: "helabet",
+   253→   253→    name: "Helabet",
+   254→   254→    logo: "HB",
+   255→   255→    color: "#4CAF50",
+   256→   256→    regions: ["ke", "tz", "ug"],
+   257→   257→    authType: "web_session",
+   258→   258→    supportedSports: ["football", "basketball", "tennis", "cricket"],
+   259→   259→    features: {
+   260→   260→      liveBetting: true, cashout: true, partialCashout: false, accumulators: true,
+   261→   261→      maxAccumulatorLegs: 20, minStake: 50, maxStake: 5000000,
+   262→   262→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance"],
+   263→   263→      instantSettlement: true,
+   264→   264→    },
+   265→   265→    commissionDefault: 0.10,
+   266→   266→    baseUrl: "https://helabet.com",
+   267→   267→    mobileApp: true,
+   268→   268→    popularIn: ["ke", "tz"],
+   269→   269→  },
+   270→   270→  {
+   271→   271→    id: "odibets",
+   272→   272→    name: "Odibets",
+   273→   273→    logo: "OB",
+   274→   274→    color: "#FF9800",
+   275→   275→    regions: ["ke"],
+   276→   276→    authType: "web_session",
+   277→   277→    supportedSports: ["football", "basketball"],
+   278→   278→    features: {
+   279→   279→      liveBetting: false, cashout: false, partialCashout: false, accumulators: true,
+   280→   280→      maxAccumulatorLegs: 15, minStake: 50, maxStake: 2000000,
+   281→   281→      supportedMarkets: ["1x2", "over_under", "both_teams_score"],
+   282→   282→      instantSettlement: true,
+   283→   283→    },
+   284→   284→    commissionDefault: 0.10,
+   285→   285→    baseUrl: "https://odibets.com",
+   286→   286→    mobileApp: false,
+   287→   287→    popularIn: ["ke"],
+   288→   288→  },
+   289→   289→  {
+   290→   290→    id: "palmsbet",
+   291→   291→    name: "Palmsbet",
+   292→   292→    logo: "PB",
+   293→   293→    color: "#2E7D32",
+   294→   294→    regions: ["gh"],
+   295→   295→    authType: "web_session",
+   296→   296→    supportedSports: ["football", "basketball", "tennis"],
+   297→   297→    features: {
+   298→   298→      liveBetting: true, cashout: true, partialCashout: false, accumulators: true,
+   299→   299→      maxAccumulatorLegs: 15, minStake: 50, maxStake: 5000000,
+   300→   300→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance"],
+   301→   301→      instantSettlement: true,
+   302→   302→    },
+   303→   303→    commissionDefault: 0.10,
+   304→   304→    baseUrl: "https://palmsbet.com",
+   305→   305→    mobileApp: true,
+   306→   306→    popularIn: ["gh"],
+   307→   307→  },
+   308→   308→  {
+   309→   309→    id: "soccabet",
+   310→   310→    name: "Soccabet",
+   311→   311→    logo: "SB",
+   312→   312→    color: "#43A047",
+   313→   313→    regions: ["gh"],
+   314→   314→    authType: "web_session",
+   315→   315→    supportedSports: ["football", "basketball"],
+   316→   316→    features: {
+   317→   317→      liveBetting: true, cashout: false, partialCashout: false, accumulators: true,
+   318→   318→      maxAccumulatorLegs: 20, minStake: 50, maxStake: 3000000,
+   319→   319→      supportedMarkets: ["1x2", "over_under", "both_teams_score"],
+   320→   320→      instantSettlement: true,
+   321→   321→    },
+   322→   322→    commissionDefault: 0.10,
+   323→   323→    baseUrl: "https://soccabet.com",
+   324→   324→    mobileApp: false,
+   325→   325→    popularIn: ["gh"],
+   326→   326→  },
+   327→   327→  {
+   328→   328→    id: "mybet",
+   329→   329→    name: "MyBet",
+   330→   330→    logo: "MY",
+   331→   331→    color: "#7B1FA2",
+   332→   332→    regions: ["gh"],
+   333→   333→    authType: "web_session",
+   334→   334→    supportedSports: ["football", "basketball", "tennis"],
+   335→   335→    features: {
+   336→   336→      liveBetting: true, cashout: true, partialCashout: false, accumulators: true,
+   337→   337→      maxAccumulatorLegs: 15, minStake: 50, maxStake: 5000000,
+   338→   338→      supportedMarkets: ["1x2", "over_under", "both_teams_score"],
+   339→   339→      instantSettlement: true,
+   340→   340→    },
+   341→   341→    commissionDefault: 0.10,
+   342→   342→    baseUrl: "https://mybet.com.gh",
+   343→   343→    mobileApp: false,
+   344→   344→    popularIn: ["gh"],
+   345→   345→  },
+   346→   346→  {
+   347→   347→    id: "msport",
+   348→   348→    name: "MSport",
+   349→   349→    logo: "MS",
+   350→   350→    color: "#FF5722",
+   351→   351→    regions: ["ng", "gh"],
+   352→   352→    authType: "web_session",
+   353→   353→    supportedSports: ["football", "basketball", "tennis"],
+   354→   354→    features: {
+   355→   355→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   356→   356→      maxAccumulatorLegs: 20, minStake: 100, maxStake: 5000000,
+   357→   357→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance"],
+   358→   358→      instantSettlement: true,
+   359→   359→    },
+   360→   360→    commissionDefault: 0.10,
+   361→   361→    baseUrl: "https://msport.com",
+   362→   362→    mobileApp: true,
+   363→   363→    popularIn: ["ng", "gh"],
+   364→   364→  },
+   365→   365→  {
+   366→   366→    id: "bangbet",
+   367→   367→    name: "Bangbet",
+   368→   368→    logo: "BB",
+   369→   369→    color: "#E91E63",
+   370→   370→    regions: ["ng", "ke"],
+   371→   371→    authType: "web_session",
+   372→   372→    supportedSports: ["football", "basketball", "tennis"],
+   373→   373→    features: {
+   374→   374→      liveBetting: true, cashout: true, partialCashout: false, accumulators: true,
+   375→   375→      maxAccumulatorLegs: 15, minStake: 100, maxStake: 5000000,
+   376→   376→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance"],
+   377→   377→      instantSettlement: true,
+   378→   378→    },
+   379→   379→    commissionDefault: 0.10,
+   380→   380→    baseUrl: "https://bangbet.com",
+   381→   381→    mobileApp: true,
+   382→   382→    popularIn: ["ng"],
+   383→   383→  },
+   384→   384→  {
+   385→   385→    id: "cloudbet",
+   386→   386→    name: "Cloudbet",
+   387→   387→    logo: "CB",
+   388→   388→    color: "#FF6F00",
+   389→   389→    regions: ["ng", "za", "global"],
+   390→   390→    authType: "api_key",
+   391→   391→    supportedSports: ["football", "basketball", "tennis", "esports", "horse_racing"],
+   392→   392→    features: {
+   393→   393→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   394→   394→      maxAccumulatorLegs: 10, minStake: 10, maxStake: 5000000,
+   395→   395→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "handicap", "correct_score"],
+   396→   396→      instantSettlement: true,
+   397→   397→    },
+   398→   398→    commissionDefault: 0.10,
+   399→   399→    baseUrl: "https://cloudbet.com",
+   400→   400→    mobileApp: true,
+   401→   401→    popularIn: ["ng", "za"],
+   402→   402→  },
+   403→   403→
+   404→   404→  // ===== AFRICA - Southern Africa =====
+   405→   405→  {
+   406→   406→    id: "hollywoodbets",
+   407→   407→    name: "Hollywoodbets",
+   408→   408→    logo: "HB",
+   409→   409→    color: "#1B5E20",
+   410→   410→    regions: ["za", "zm", "mw"],
+   411→   411→    authType: "web_session",
+   412→   412→    supportedSports: ["football", "horse_racing", "cricket", "rugby"],
+   413→   413→    features: {
+   414→   414→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   415→   415→      maxAccumulatorLegs: 20, minStake: 10, maxStake: 2000000,
+   416→   416→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   417→   417→      instantSettlement: true,
+   418→   418→    },
+   419→   419→    commissionDefault: 0.10,
+   420→   420→    baseUrl: "https://www.hollywoodbets.net",
+   421→   421→    mobileApp: true,
+   422→   422→    popularIn: ["za", "zm"],
+   423→   423→  },
+   424→   424→  {
+   425→   425→    id: "supabets",
+   426→   426→    name: "Supabets",
+   427→   427→    logo: "SP",
+   428→   428→    color: "#1565C0",
+   429→   429→    regions: ["za", "zm", "bw"],
+   430→   430→    authType: "web_session",
+   431→   431→    supportedSports: ["football", "horse_racing", "cricket"],
+   432→   432→    features: {
+   433→   433→      liveBetting: true, cashout: true, partialCashout: false, accumulators: true,
+   434→   434→      maxAccumulatorLegs: 15, minStake: 10, maxStake: 1000000,
+   435→   435→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance"],
+   436→   436→      instantSettlement: true,
+   437→   437→    },
+   438→   438→    commissionDefault: 0.10,
+   439→   439→    baseUrl: "https://supabets.co.za",
+   440→   440→    mobileApp: true,
+   441→   441→    popularIn: ["za"],
+   442→   442→  },
+   443→   443→  {
+   444→   444→    id: "betcoza",
+   445→   445→    name: "Bet.co.za",
+   446→   446→    logo: "CZ",
+   447→   447→    color: "#0D47A1",
+   448→   448→    regions: ["za"],
+   449→   449→    authType: "web_session",
+   450→   450→    supportedSports: ["football", "horse_racing", "cricket", "rugby"],
+   451→   451→    features: {
+   452→   452→      liveBetting: true, cashout: true, partialCashout: false, accumulators: true,
+   453→   453→      maxAccumulatorLegs: 15, minStake: 10, maxStake: 500000,
+   454→   454→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance"],
+   455→   455→      instantSettlement: true,
+   456→   456→    },
+   457→   457→    commissionDefault: 0.10,
+   458→   458→    baseUrl: "https://www.bet.co.za",
+   459→   459→    mobileApp: true,
+   460→   460→    popularIn: ["za"],
+   461→   461→  },
+   462→   462→  {
+   463→   463→    id: "gbets",
+   464→   464→    name: "GGBets",
+   465→   465→    logo: "GG",
+   466→   466→    color: "#6A1B9A",
+   467→   467→    regions: ["za"],
+   468→   468→    authType: "web_session",
+   469→   469→    supportedSports: ["football", "horse_racing", "esports"],
+   470→   470→    features: {
+   471→   471→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   472→   472→      maxAccumulatorLegs: 12, minStake: 10, maxStake: 1000000,
+   473→   473→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "handicap"],
+   474→   474→      instantSettlement: true,
+   475→   475→    },
+   476→   476→    commissionDefault: 0.10,
+   477→   477→    baseUrl: "https://gbets.co.za",
+   478→   478→    mobileApp: true,
+   479→   479→    popularIn: ["za"],
+   480→   480→  },
+   481→   481→  {
+   482→   482→    id: "wsb",
+   483→   483→    name: "World Sports Betting",
+   484→   484→    logo: "WS",
+   485→   485→    color: "#BF360C",
+   486→   486→    regions: ["za", "zm"],
+   487→   487→    authType: "web_session",
+   488→   488→    supportedSports: ["football", "horse_racing", "cricket", "rugby"],
+   489→   489→    features: {
+   490→   490→      liveBetting: true, cashout: true, partialCashout: false, accumulators: true,
+   491→   491→      maxAccumulatorLegs: 15, minStake: 10, maxStake: 2000000,
+   492→   492→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance"],
+   493→   493→      instantSettlement: true,
+   494→   494→    },
+   495→   495→    commissionDefault: 0.10,
+   496→   496→    baseUrl: "https://wsb.co.za",
+   497→   497→    mobileApp: true,
+   498→   498→    popularIn: ["za"],
+   499→   499→  },
+   500→   500→
+   501→   501→  // ===== AFRICA - North Africa =====
+   502→   502→  {
+   503→   503→    id: "betano_eg",
+   504→   504→    name: "Betano Egypt",
+   505→   505→    logo: "BA",
+   506→   506→    color: "#00897B",
+   507→   507→    regions: ["eg"],
+   508→   508→    authType: "web_session",
+   509→   509→    supportedSports: ["football", "basketball", "tennis"],
+   510→   510→    features: {
+   511→   511→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   512→   512→      maxAccumulatorLegs: 15, minStake: 50, maxStake: 5000000,
+   513→   513→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   514→   514→      instantSettlement: true,
+   515→   515→    },
+   516→   516→    commissionDefault: 0.10,
+   517→   517→    baseUrl: "https://betano.com",
+   518→   518→    mobileApp: true,
+   519→   519→    popularIn: ["eg"],
+   520→   520→  },
+   521→   521→
+   522→   522→  // ===== EUROPE =====
+   523→   523→  {
+   524→   524→    id: "bet365",
+   525→   525→    name: "Bet365",
+   526→   526→    logo: "B3",
+   527→   527→    color: "#0D47A1",
+   528→   528→    regions: ["gb", "ie", "de", "fr", "es", "it", "pt", "nl", "se", "no", "pl", "gr", "global"],
+   529→   529→    authType: "web_session",
+   530→   530→    supportedSports: ["football", "basketball", "tennis", "hockey", "cricket", "horse_racing"],
+   531→   531→    features: {
+   532→   532→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   533→   533→      maxAccumulatorLegs: 14, minStake: 10, maxStake: 5000000,
+   534→   534→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap", "correct_score", "half_time_full_time", "first_goalscorer"],
+   535→   535→      instantSettlement: true,
+   536→   536→    },
+   537→   537→    commissionDefault: 0.10,
+   538→   538→    baseUrl: "https://www.bet365.com",
+   539→   539→    mobileApp: true,
+   540→   540→    popularIn: ["gb", "ie", "de"],
+   541→   541→  },
+   542→   542→  {
+   543→   543→    id: "pinnacle",
+   544→   544→    name: "Pinnacle",
+   545→   545→    logo: "PN",
+   546→   546→    color: "#1A237E",
+   547→   547→    regions: ["gb", "de", "fr", "es", "it", "nl", "se", "no", "pl", "global"],
+   548→   548→    authType: "api_key",
+   549→   549→    supportedSports: ["football", "basketball", "tennis", "hockey", "baseball", "esports"],
+   550→   550→    features: {
+   551→   551→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   552→   552→      maxAccumulatorLegs: 12, minStake: 10, maxStake: 10000000,
+   553→   553→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "handicap", "correct_score", "asian_handicap"],
+   554→   554→      instantSettlement: true,
+   555→   555→    },
+   556→   556→    commissionDefault: 0.10,
+   557→   557→    baseUrl: "https://www.pinnacle.com",
+   558→   558→    mobileApp: true,
+   559→   559→    popularIn: ["de", "nl"],
+   560→   560→  },
+   561→   561→  {
+   562→   562→    id: "williamhill",
+   563→   563→    name: "William Hill",
+   564→   564→    logo: "WH",
+   565→   565→    color: "#B71C1C",
+   566→   566→    regions: ["gb", "ie", "es", "it"],
+   567→   567→    authType: "web_session",
+   568→   568→    supportedSports: ["football", "horse_racing", "tennis", "cricket", "rugby"],
+   569→   569→    features: {
+   570→   570→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   571→   571→      maxAccumulatorLegs: 14, minStake: 5, maxStake: 2000000,
+   572→   572→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap", "first_goalscorer"],
+   573→   573→      instantSettlement: true,
+   574→   574→    },
+   575→   575→    commissionDefault: 0.10,
+   576→   576→    baseUrl: "https://www.williamhill.com",
+   577→   577→    mobileApp: true,
+   578→   578→    popularIn: ["gb"],
+   579→   579→  },
+   580→   580→  {
+   581→   581→    id: "ladbrokes",
+   582→   582→    name: "Ladbrokes",
+   583→   583→    logo: "LK",
+   584→   584→    color: "#D32F2F",
+   585→   585→    regions: ["gb", "ie", "au"],
+   586→   586→    authType: "web_session",
+   587→   587→    supportedSports: ["football", "horse_racing", "tennis", "cricket"],
+   588→   588→    features: {
+   589→   589→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   590→   590→      maxAccumulatorLegs: 12, minStake: 5, maxStake: 1000000,
+   591→   591→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   592→   592→      instantSettlement: true,
+   593→   593→    },
+   594→   594→    commissionDefault: 0.10,
+   595→   595→    baseUrl: "https://www.ladbrokes.com",
+   596→   596→    mobileApp: true,
+   597→   597→    popularIn: ["gb"],
+   598→   598→  },
+   599→   599→  {
+   600→   600→    id: "coral",
+   601→   601→    name: "Coral",
+   602→   602→    logo: "CO",
+   603→   603→    color: "#1976D2",
+   604→   604→    regions: ["gb", "ie"],
+   605→   605→    authType: "web_session",
+   606→   606→    supportedSports: ["football", "horse_racing", "tennis", "cricket"],
+   607→   607→    features: {
+   608→   608→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   609→   609→      maxAccumulatorLegs: 12, minStake: 5, maxStake: 1000000,
+   610→   610→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance"],
+   611→   611→      instantSettlement: true,
+   612→   612→    },
+   613→   613→    commissionDefault: 0.10,
+   614→   614→    baseUrl: "https://www.coral.co.uk",
+   615→   615→    mobileApp: true,
+   616→   616→    popularIn: ["gb"],
+   617→   617→  },
+   618→   618→  {
+   619→   619→    id: "betfair",
+   620→   620→    name: "Betfair",
+   621→   621→    logo: "BF",
+   622→   622→    color: "#FF8F00",
+   623→   623→    regions: ["gb", "ie", "de", "fr", "es", "it", "pt", "nl", "se", "au"],
+   624→   624→    authType: "oauth",
+   625→   625→    supportedSports: ["football", "horse_racing", "tennis", "cricket", "rugby"],
+   626→   626→    features: {
+   627→   627→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   628→   628→      maxAccumulatorLegs: 12, minStake: 5, maxStake: 5000000,
+   629→   629→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap", "lay"],
+   630→   630→      instantSettlement: true,
+   631→   631→    },
+   632→   632→    commissionDefault: 0.10,
+   633→   633→    baseUrl: "https://www.betfair.com",
+   634→   634→    mobileApp: true,
+   635→   635→    popularIn: ["gb", "ie", "au"],
+   636→   636→  },
+   637→   637→  {
+   638→   638→    id: "unibet",
+   639→   639→    name: "Unibet",
+   640→   640→    logo: "UB",
+   641→   641→    color: "#00695C",
+   642→   642→    regions: ["gb", "ie", "de", "fr", "nl", "se", "no", "au"],
+   643→   643→    authType: "oauth",
+   644→   644→    supportedSports: ["football", "basketball", "tennis", "hockey", "horse_racing"],
+   645→   645→    features: {
+   646→   646→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   647→   647→      maxAccumulatorLegs: 12, minStake: 5, maxStake: 2000000,
+   648→   648→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   649→   649→      instantSettlement: true,
+   650→   650→    },
+   651→   651→    commissionDefault: 0.10,
+   652→   652→    baseUrl: "https://www.unibet.com",
+   653→   653→    mobileApp: true,
+   654→   654→    popularIn: ["se", "nl", "au"],
+   655→   655→  },
+   656→   656→  {
+   657→   657→    id: "betano",
+   658→   658→    name: "Betano",
+   659→   659→    logo: "BN",
+   660→   660→    color: "#00897B",
+   661→   661→    regions: ["de", "pt", "br", "co", "mx"],
+   662→   662→    authType: "web_session",
+   663→   663→    supportedSports: ["football", "basketball", "tennis"],
+   664→   664→    features: {
+   665→   665→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   666→   666→      maxAccumulatorLegs: 15, minStake: 10, maxStake: 5000000,
+   667→   667→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   668→   668→      instantSettlement: true,
+   669→   669→    },
+   670→   670→    commissionDefault: 0.10,
+   671→   671→    baseUrl: "https://betano.com",
+   672→   672→    mobileApp: true,
+   673→   673→    popularIn: ["pt", "br"],
+   674→   674→  },
+   675→   675→  {
+   676→   676→    id: "bwin",
+   677→   677→    name: "Bwin",
+   678→   678→    logo: "BW",
+   679→   679→    color: "#C62828",
+   680→   680→    regions: ["de", "fr", "es", "it", "nl", "gr"],
+   681→   681→    authType: "oauth",
+   682→   682→    supportedSports: ["football", "basketball", "tennis", "hockey"],
+   683→   683→    features: {
+   684→   684→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   685→   685→      maxAccumulatorLegs: 12, minStake: 10, maxStake: 2000000,
+   686→   686→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   687→   687→      instantSettlement: true,
+   688→   688→    },
+   689→   689→    commissionDefault: 0.10,
+   690→   690→    baseUrl: "https://www.bwin.com",
+   691→   691→    mobileApp: true,
+   692→   692→    popularIn: ["de", "es"],
+   693→   693→  },
+   694→   694→  {
+   695→   695→    id: "tipico",
+   696→   696→    name: "Tipico",
+   697→   697→    logo: "TP",
+   698→   698→    color: "#CDDC39",
+   699→   699→    regions: ["de", "at"],
+   700→   700→    authType: "web_session",
+   701→   701→    supportedSports: ["football", "basketball", "tennis", "hockey"],
+   702→   702→    features: {
+   703→   703→      liveBetting: true, cashout: true, partialCashout: false, accumulators: true,
+   704→   704→      maxAccumulatorLegs: 12, minStake: 10, maxStake: 1000000,
+   705→   705→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance"],
+   706→   706→      instantSettlement: true,
+   707→   707→    },
+   708→   708→    commissionDefault: 0.10,
+   709→   709→    baseUrl: "https://www.tipico.com",
+   710→   710→    mobileApp: true,
+   711→   711→    popularIn: ["de"],
+   712→   712→  },
+   713→   713→  {
+   714→   714→    id: "stoiximan",
+   715→   715→    name: "Stoiximan",
+   716→   716→    logo: "SX",
+   717→   717→    color: "#4CAF50",
+   718→   718→    regions: ["gr"],
+   719→   719→    authType: "web_session",
+   720→   720→    supportedSports: ["football", "basketball", "tennis"],
+   721→   721→    features: {
+   722→   722→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   723→   723→      maxAccumulatorLegs: 12, minStake: 10, maxStake: 1000000,
+   724→   724→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   725→   725→      instantSettlement: true,
+   726→   726→    },
+   727→   727→    commissionDefault: 0.10,
+   728→   728→    baseUrl: "https://www.stoiximan.gr",
+   729→   729→    mobileApp: true,
+   730→   730→    popularIn: ["gr"],
+   731→   731→  },
+   732→   732→  {
+   733→   733→    id: "tempobet",
+   734→   734→    name: "Tempobet",
+   735→   735→    logo: "TB",
+   736→   736→    color: "#F57F17",
+   737→   737→    regions: ["tr"],
+   738→   738→    authType: "web_session",
+   739→   739→    supportedSports: ["football", "basketball", "tennis"],
+   740→   740→    features: {
+   741→   741→      liveBetting: true, cashout: true, partialCashout: false, accumulators: true,
+   742→   742→      maxAccumulatorLegs: 15, minStake: 50, maxStake: 5000000,
+   743→   743→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance"],
+   744→   744→      instantSettlement: true,
+   745→   745→    },
+   746→   746→    commissionDefault: 0.10,
+   747→   747→    baseUrl: "https://tempobet.com",
+   748→   748→    mobileApp: true,
+   749→   749→    popularIn: ["tr"],
+   750→   750→  },
+   751→   751→  {
+   752→   752→    id: "betist",
+   753→   753→    name: "Betist",
+   754→   754→    logo: "BT",
+   755→   755→    color: "#5D4037",
+   756→   756→    regions: ["tr"],
+   757→   757→    authType: "web_session",
+   758→   758→    supportedSports: ["football", "basketball", "tennis"],
+   759→   759→    features: {
+   760→   760→      liveBetting: true, cashout: true, partialCashout: false, accumulators: true,
+   761→   761→      maxAccumulatorLegs: 15, minStake: 50, maxStake: 3000000,
+   762→   762→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance"],
+   763→   763→      instantSettlement: true,
+   764→   764→    },
+   765→   765→    commissionDefault: 0.10,
+   766→   766→    baseUrl: "https://betist.com",
+   767→   767→    mobileApp: true,
+   768→   768→    popularIn: ["tr"],
+   769→   769→  },
+   770→   770→
+   771→   771→  // ===== AMERICAS =====
+   772→   772→  {
+   773→   773→    id: "draftkings",
+   774→   774→    name: "DraftKings",
+   775→   775→    logo: "DK",
+   776→   776→    color: "#53B71F",
+   777→   777→    regions: ["us", "ca"],
+   778→   778→    authType: "oauth",
+   779→   779→    supportedSports: ["football", "basketball", "baseball", "hockey", "esports"],
+   780→   780→    features: {
+   781→   781→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   782→   782→      maxAccumulatorLegs: 12, minStake: 5, maxStake: 1000000,
+   783→   783→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "handicap", "player_props"],
+   784→   784→      instantSettlement: true,
+   785→   785→    },
+   786→   786→    commissionDefault: 0.10,
+   787→   787→    baseUrl: "https://www.draftkings.com",
+   788→   788→    mobileApp: true,
+   789→   789→    popularIn: ["us"],
+   790→   790→  },
+   791→   791→  {
+   792→   792→    id: "fanduel",
+   793→   793→    name: "FanDuel",
+   794→   794→    logo: "FD",
+   795→   795→    color: "#1493FF",
+   796→   796→    regions: ["us", "ca"],
+   797→   797→    authType: "oauth",
+   798→   798→    supportedSports: ["football", "basketball", "baseball", "hockey"],
+   799→   799→    features: {
+   800→   800→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   801→   801→      maxAccumulatorLegs: 12, minStake: 5, maxStake: 1000000,
+   802→   802→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "handicap", "player_props"],
+   803→   803→      instantSettlement: true,
+   804→   804→    },
+   805→   805→    commissionDefault: 0.10,
+   806→   806→    baseUrl: "https://www.fanduel.com",
+   807→   807→    mobileApp: true,
+   808→   808→    popularIn: ["us"],
+   809→   809→  },
+   810→   810→  {
+   811→   811→    id: "betmgm",
+   812→   812→    name: "BetMGM",
+   813→   813→    logo: "MG",
+   814→   814→    color: "#C4A44A",
+   815→   815→    regions: ["us", "ca"],
+   816→   816→    authType: "oauth",
+   817→   817→    supportedSports: ["football", "basketball", "baseball", "hockey", "tennis"],
+   818→   818→    features: {
+   819→   819→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   820→   820→      maxAccumulatorLegs: 12, minStake: 5, maxStake: 500000,
+   821→   821→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "handicap", "player_props"],
+   822→   822→      instantSettlement: true,
+   823→   823→    },
+   824→   824→    commissionDefault: 0.10,
+   825→   825→    baseUrl: "https://www.betmgm.com",
+   826→   826→    mobileApp: true,
+   827→   827→    popularIn: ["us"],
+   828→   828→  },
+   829→   829→  {
+   830→   830→    id: "betano_br",
+   831→   831→    name: "Betano Brasil",
+   832→   832→    logo: "BR",
+   833→   833→    color: "#00897B",
+   834→   834→    regions: ["br"],
+   835→   835→    authType: "web_session",
+   836→   836→    supportedSports: ["football", "basketball", "tennis", "volleyball"],
+   837→   837→    features: {
+   838→   838→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   839→   839→      maxAccumulatorLegs: 15, minStake: 10, maxStake: 5000000,
+   840→   840→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   841→   841→      instantSettlement: true,
+   842→   842→    },
+   843→   843→    commissionDefault: 0.10,
+   844→   844→    baseUrl: "https://betano.com",
+   845→   845→    mobileApp: true,
+   846→   846→    popularIn: ["br"],
+   847→   847→  },
+   848→   848→  {
+   849→   849→    id: "betfair_br",
+   850→   850→    name: "Betfair Brasil",
+   851→   851→    logo: "BF",
+   852→   852→    color: "#FF8F00",
+   853→   853→    regions: ["br"],
+   854→   854→    authType: "oauth",
+   855→   855→    supportedSports: ["football", "basketball", "tennis", "volleyball"],
+   856→   856→    features: {
+   857→   857→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   858→   858→      maxAccumulatorLegs: 12, minStake: 10, maxStake: 5000000,
+   859→   859→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   860→   860→      instantSettlement: true,
+   861→   861→    },
+   862→   862→    commissionDefault: 0.10,
+   863→   863→    baseUrl: "https://www.betfair.com.br",
+   864→   864→    mobileApp: true,
+   865→   865→    popularIn: ["br"],
+   866→   866→  },
+   867→   867→  {
+   868→   868→    id: "betsson",
+   869→   869→    name: "Betsson",
+   870→   870→    logo: "BS",
+   871→   871→    color: "#E65100",
+   872→   872→    regions: ["br", "co", "mx", "ar"],
+   873→   873→    authType: "web_session",
+   874→   874→    supportedSports: ["football", "basketball", "tennis", "esports"],
+   875→   875→    features: {
+   876→   876→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   877→   877→      maxAccumulatorLegs: 12, minStake: 10, maxStake: 3000000,
+   878→   878→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   879→   879→      instantSettlement: true,
+   880→   880→    },
+   881→   881→    commissionDefault: 0.10,
+   882→   882→    baseUrl: "https://www.betsson.com",
+   883→   883→    mobileApp: true,
+   884→   884→    popularIn: ["br", "co"],
+   885→   885→  },
+   886→   886→  {
+   887→   887→    id: "codere",
+   888→   888→    name: "Codere",
+   889→   889→    logo: "CD",
+   890→   890→    color: "#FF6F00",
+   891→   891→    regions: ["mx", "es", "co", "ar"],
+   892→   892→    authType: "web_session",
+   893→   893→    supportedSports: ["football", "basketball", "baseball", "tennis"],
+   894→   894→    features: {
+   895→   895→      liveBetting: true, cashout: true, partialCashout: false, accumulators: true,
+   896→   896→      maxAccumulatorLegs: 12, minStake: 10, maxStake: 2000000,
+   897→   897→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance"],
+   898→   898→      instantSettlement: true,
+   899→   899→    },
+   900→   900→    commissionDefault: 0.10,
+   901→   901→    baseUrl: "https://www.codere.com",
+   902→   902→    mobileApp: true,
+   903→   903→    popularIn: ["mx", "es"],
+   904→   904→  },
+   905→   905→  {
+   906→   906→    id: "rushbet",
+   907→   907→    name: "RushBet",
+   908→   908→    logo: "RB",
+   909→   909→    color: "#E53935",
+   910→   910→    regions: ["co", "mx"],
+   911→   911→    authType: "web_session",
+   912→   912→    supportedSports: ["football", "basketball", "tennis"],
+   913→   913→    features: {
+   914→   914→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   915→   915→      maxAccumulatorLegs: 12, minStake: 10, maxStake: 2000000,
+   916→   916→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   917→   917→      instantSettlement: true,
+   918→   918→    },
+   919→   919→    commissionDefault: 0.10,
+   920→   920→    baseUrl: "https://www.rushbet.co",
+   921→   921→    mobileApp: true,
+   922→   922→    popularIn: ["co"],
+   923→   923→  },
+   924→   924→
+   925→   925→  // ===== ASIA =====
+   926→   926→  {
+   927→   927→    id: "stake",
+   928→   928→    name: "Stake",
+   929→   929→    logo: "SK",
+   930→   930→    color: "#1A73E8",
+   931→   931→    regions: ["in", "pk", "bd", "ph", "th", "vn", "my", "id", "global"],
+   932→   932→    authType: "api_key",
+   933→   933→    supportedSports: ["football", "basketball", "tennis", "hockey", "cricket", "esports"],
+   934→   934→    features: {
+   935→   935→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   936→   936→      maxAccumulatorLegs: 10, minStake: 10, maxStake: 1000000,
+   937→   937→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "handicap", "correct_score"],
+   938→   938→      instantSettlement: true,
+   939→   939→    },
+   940→   940→    commissionDefault: 0.10,
+   941→   941→    baseUrl: "https://www.stake.com",
+   942→   942→    mobileApp: true,
+   943→   943→    popularIn: ["in", "pk", "ph"],
+   944→   944→  },
+   945→   945→  {
+   946→   946→    id: "dafa",
+   947→   947→    name: "Dafabet",
+   948→   948→    logo: "DF",
+   949→   949→    color: "#D50000",
+   950→   950→    regions: ["in", "ph", "th", "vn", "my", "id"],
+   951→   951→    authType: "web_session",
+   952→   952→    supportedSports: ["football", "basketball", "tennis", "cricket", "snooker"],
+   953→   953→    features: {
+   954→   954→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   955→   955→      maxAccumulatorLegs: 15, minStake: 50, maxStake: 10000000,
+   956→   956→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   957→   957→      instantSettlement: true,
+   958→   958→    },
+   959→   959→    commissionDefault: 0.10,
+   960→   960→    baseUrl: "https://www.dafabet.com",
+   961→   961→    mobileApp: true,
+   962→   962→    popularIn: ["in", "ph", "th"],
+   963→   963→  },
+   964→   964→  {
+   965→   965→    id: "10cric",
+   966→   966→    name: "10CRIC",
+   967→   967→    logo: "10",
+   968→   968→    color: "#FF6F00",
+   969→   969→    regions: ["in", "pk", "bd"],
+   970→   970→    authType: "web_session",
+   971→   971→    supportedSports: ["football", "basketball", "tennis", "cricket", "kabaddi"],
+   972→   972→    features: {
+   973→   973→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   974→   974→      maxAccumulatorLegs: 15, minStake: 100, maxStake: 10000000,
+   975→   975→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   976→   976→      instantSettlement: true,
+   977→   977→    },
+   978→   978→    commissionDefault: 0.10,
+   979→   979→    baseUrl: "https://www.10cric.com",
+   980→   980→    mobileApp: true,
+   981→   981→    popularIn: ["in"],
+   982→   982→  },
+   983→   983→  {
+   984→   984→    id: "betway_in",
+   985→   985→    name: "Betway India",
+   986→   986→    logo: "IN",
+   987→   987→    color: "#000000",
+   988→   988→    regions: ["in", "pk", "bd"],
+   989→   989→    authType: "oauth",
+   990→   990→    supportedSports: ["football", "basketball", "tennis", "cricket", "kabaddi"],
+   991→   991→    features: {
+   992→   992→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+   993→   993→      maxAccumulatorLegs: 15, minStake: 50, maxStake: 10000000,
+   994→   994→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+   995→   995→      instantSettlement: true,
+   996→   996→    },
+   997→   997→    commissionDefault: 0.10,
+   998→   998→    baseUrl: "https://www.betway.in",
+   999→   999→    mobileApp: true,
+  1000→  1000→    popularIn: ["in"],
+  1001→  1001→  },
+  1002→  1002→  {
+  1003→  1003→    id: "parimatch_in",
+  1004→  1004→    name: "Parimatch India",
+  1005→  1005→    logo: "PM",
+  1006→  1006→    color: "#FF1744",
+  1007→  1007→    regions: ["in", "pk", "bd"],
+  1008→  1008→    authType: "web_session",
+  1009→  1009→    supportedSports: ["football", "basketball", "tennis", "cricket", "kabaddi"],
+  1010→  1010→    features: {
+  1011→  1011→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+  1012→  1012→      maxAccumulatorLegs: 15, minStake: 100, maxStake: 10000000,
+  1013→  1013→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+  1014→  1014→      instantSettlement: true,
+  1015→  1015→    },
+  1016→  1016→    commissionDefault: 0.10,
+  1017→  1017→    baseUrl: "https://parimatch.in",
+  1018→  1018→    mobileApp: true,
+  1019→  1019→    popularIn: ["in"],
+  1020→  1020→  },
+  1021→  1021→  {
+  1022→  1022→    id: "fun88",
+  1023→  1023→    name: "Fun88",
+  1024→  1024→    logo: "F8",
+  1025→  1025→    color: "#E91E63",
+  1026→  1026→    regions: ["in", "th", "vn", "my", "id"],
+  1027→  1027→    authType: "web_session",
+  1028→  1028→    supportedSports: ["football", "basketball", "tennis", "cricket"],
+  1029→  1029→    features: {
+  1030→  1030→      liveBetting: true, cashout: true, partialCashout: false, accumulators: true,
+  1031→  1031→      maxAccumulatorLegs: 15, minStake: 50, maxStake: 5000000,
+  1032→  1032→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance"],
+  1033→  1033→      instantSettlement: true,
+  1034→  1034→    },
+  1035→  1035→    commissionDefault: 0.10,
+  1036→  1036→    baseUrl: "https://www.fun88.com",
+  1037→  1037→    mobileApp: true,
+  1038→  1038→    popularIn: ["in", "th"],
+  1039→  1039→  },
+  1040→  1040→  {
+  1041→  1041→    id: "ladbrokes_au",
+  1042→  1042→    name: "Ladbrokes Australia",
+  1043→  1043→    logo: "LA",
+  1044→  1044→    color: "#C62828",
+  1045→  1045→    regions: ["au"],
+  1046→  1046→    authType: "web_session",
+  1047→  1047→    supportedSports: ["football", "horse_racing", "cricket", "rugby"],
+  1048→  1048→    features: {
+  1049→  1049→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+  1050→  1050→      maxAccumulatorLegs: 12, minStake: 5, maxStake: 500000,
+  1051→  1051→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+  1052→  1052→      instantSettlement: true,
+  1053→  1053→    },
+  1054→  1054→    commissionDefault: 0.10,
+  1055→  1055→    baseUrl: "https://www.ladbrokes.com.au",
+  1056→  1056→    mobileApp: true,
+  1057→  1057→    popularIn: ["au"],
+  1058→  1058→  },
+  1059→  1059→  {
+  1060→  1060→    id: "sportsbet",
+  1061→  1061→    name: "Sportsbet",
+  1062→  1062→    logo: "SPT",
+  1063→  1063→    color: "#FF6F00",
+  1064→  1064→    regions: ["au"],
+  1065→  1065→    authType: "oauth",
+  1066→  1066→    supportedSports: ["football", "horse_racing", "cricket", "rugby", "tennis"],
+  1067→  1067→    features: {
+  1068→  1068→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+  1069→  1069→      maxAccumulatorLegs: 12, minStake: 5, maxStake: 500000,
+  1070→  1070→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+  1071→  1071→      instantSettlement: true,
+  1072→  1072→    },
+  1073→  1073→    commissionDefault: 0.10,
+  1074→  1074→    baseUrl: "https://www.sportsbet.com.au",
+  1075→  1075→    mobileApp: true,
+  1076→  1076→    popularIn: ["au"],
+  1077→  1077→  },
+  1078→  1078→  {
+  1079→  1079→    id: "tab",
+  1080→  1080→    name: "TAB",
+  1081→  1081→    logo: "TAB",
+  1082→  1082→    color: "#1B5E20",
+  1083→  1083→    regions: ["au", "nz"],
+  1084→  1084→    authType: "web_session",
+  1085→  1085→    supportedSports: ["football", "horse_racing", "rugby", "cricket"],
+  1086→  1086→    features: {
+  1087→  1087→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+  1088→  1088→      maxAccumulatorLegs: 12, minStake: 5, maxStake: 500000,
+  1089→  1089→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance"],
+  1090→  1090→      instantSettlement: true,
+  1091→  1091→    },
+  1092→  1092→    commissionDefault: 0.10,
+  1093→  1093→    baseUrl: "https://www.tab.com.au",
+  1094→  1094→    mobileApp: true,
+  1095→  1095→    popularIn: ["au", "nz"],
+  1096→  1096→  },
+  1097→  1097→  {
+  1098→  1098→    id: "betway_nz",
+  1099→  1099→    name: "Betway NZ",
+  1100→  1100→    logo: "NZ",
+  1101→  1101→    color: "#000000",
+  1102→  1102→    regions: ["nz"],
+  1103→  1103→    authType: "oauth",
+  1104→  1104→    supportedSports: ["football", "rugby", "cricket", "tennis"],
+  1105→  1105→    features: {
+  1106→  1106→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+  1107→  1107→      maxAccumulatorLegs: 12, minStake: 5, maxStake: 500000,
+  1108→  1108→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+  1109→  1109→      instantSettlement: true,
+  1110→  1110→    },
+  1111→  1111→    commissionDefault: 0.10,
+  1112→  1112→    baseUrl: "https://www.betway.nz",
+  1113→  1113→    mobileApp: true,
+  1114→  1114→    popularIn: ["nz"],
+  1115→  1115→  },
+  1116→  1116→
+  1117→  1117→  // ===== MIDDLE EAST =====
+  1118→  1118→  {
+  1119→  1119→    id: "betano_ae",
+  1120→  1120→    name: "Betano UAE",
+  1121→  1121→    logo: "AE",
+  1122→  1122→    color: "#00897B",
+  1123→  1123→    regions: ["ae", "sa"],
+  1124→  1124→    authType: "web_session",
+  1125→  1125→    supportedSports: ["football", "basketball", "tennis", "cricket"],
+  1126→  1126→    features: {
+  1127→  1127→      liveBetting: true, cashout: true, partialCashout: true, accumulators: true,
+  1128→  1128→      maxAccumulatorLegs: 12, minStake: 50, maxStake: 5000000,
+  1129→  1129→      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
+  1130→  1130→      instantSettlement: true,
+  1131→  1131→    },
+  1132→  1132→    commissionDefault: 0.10,
+  1133→  1133→    baseUrl: "https://betano.com",
+  1134→  1134→    mobileApp: true,
+  1135→  1135→    popularIn: ["ae"],
+  1136→  1136→  },
+  1137→  1137→
+  1138→  1138→  // ===== GLOBAL =====
+  1139→  1139→  {
+  1140→  1140→    id: "manual",
+  1141→  1141→    name: "Manual Broker",
+  1142→  1142→    logo: "MN",
+  1143→  1143→    color: "#78909C",
+  1144→  1144→    regions: ["global"],
+  1145→  1145→    authType: "manual",
+  1146→  1146→    supportedSports: ["football", "basketball", "tennis"],
+  1147→  1147→    features: {
+  1148→  1148→      liveBetting: false, cashout: true, partialCashout: true, accumulators: true,
+  1149→  1149→      maxAccumulatorLegs: 10, minStake: 10, maxStake: 1000000,
+  1150→  1150→      supportedMarkets: ["1x2", "over_under", "both_teams_score"],
+  1151→  1151→      instantSettlement: false,
+  1152→  1152→    },
+  1153→  1153→    commissionDefault: 0.10,
+  1154→  1154→    baseUrl: "",
+  1155→  1155→    mobileApp: false,
+  1156→  1156→    popularIn: [],
+  1157→  1157→  },
+  1158→  1158→];
+  1159→  1159→
+  1160→  1160→// ==================== HELPER FUNCTIONS ====================
+  1161→  1161→
+  1162→  1162→export function getRegionInfo(code: string): RegionInfo | undefined {
+  1163→  1163→  return REGIONS.find((r) => r.code === code);
+  1164→  1164→}
+  1165→  1165→
+  1166→  1166→export function getRegionsByContinent(continent: string): RegionInfo[] {
+  1167→  1167→  return REGIONS.filter((r) => r.continent === continent);
+  1168→  1168→}
+  1169→  1169→
+  1170→  1170→export function getPlatformsForRegion(regionCode: string): BrokerPlatformInfo[] {
+  1171→  1171→  return BROKER_PLATFORMS.filter(
+  1172→  1172→    (p) => (p.regions && p.regions.includes(regionCode)) || (p.regions && p.regions.includes("global"))
+  1173→  1173→  );
+  1174→  1174→}
+  1175→  1175→
+  1176→  1176→export function getPopularPlatformsForRegion(regionCode: string): BrokerPlatformInfo[] {
+  1177→  1177→  const platforms = getPlatformsForRegion(regionCode);
+  1178→  1178→  // Sort by popularity in the region first, then by name
+  1179→  1179→  return platforms.sort((a, b) => {
+  1180→  1180→    const aPopular = a.popularIn?.includes(regionCode) ? 1 : 0;
+  1181→  1181→    const bPopular = b.popularIn?.includes(regionCode) ? 1 : 0;
+  1182→  1182→    if (bPopular !== aPopular) return bPopular - aPopular;
+  1183→  1183→    return a.name.localeCompare(b.name);
+  1184→  1184→  });
+  1185→  1185→}
+  1186→  1186→
+  1187→  1187→export function getCurrencyForRegion(regionCode: string): { code: string; symbol: string; name: string } {
+  1188→  1188→  const region = getRegionInfo(regionCode);
+  1189→  1189→  if (region) {
+  1190→  1190→    return { code: region.currencyCode, symbol: region.currencySymbol, name: region.currencyName };
+  1191→  1191→  }
+  1192→  1192→  return { code: "USD", symbol: "$", name: "Dollar" };
+  1193→  1193→}
+  1194→  1194→
+  1195→  1195→export function formatCurrency(amount: number, currencyCode: string): string {
+  1196→  1196→  const region = REGIONS.find((r) => r.currencyCode === currencyCode);
+  1197→  1197→  const symbol = region?.currencySymbol || "$";
+  1198→  1198→  return `${symbol}${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  1199→  1199→}
+  1200→  1200→
+  1201→  1201→export function getContinents(): string[] {
+  1202→  1202→  return [...new Set(REGIONS.map((r) => r.continent))];
+  1203→  1203→}
+  1204→  1204→
+  1205→  1205→export function searchRegions(query: string): RegionInfo[] {
+  1206→  1206→  const q = query.toLowerCase();
+  1207→  1207→  return REGIONS.filter(
+  1208→  1208→    (r) =>
+  1209→  1209→      r.name.toLowerCase().includes(q) ||
+  1210→  1210→      r.code.toLowerCase().includes(q) ||
+  1211→  1211→      r.currencyCode.toLowerCase().includes(q) ||
+  1212→  1212→      r.continent.toLowerCase().includes(q)
+  1213→  1213→  );
+  1214→  1214→}
+  1215→  1215→

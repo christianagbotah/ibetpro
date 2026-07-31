@@ -93,6 +93,8 @@ export const UserScalarFieldEnum = {
   bankroll: 'bankroll',
   dailyPnl: 'dailyPnl',
   weeklyPnl: 'weeklyPnl',
+  region: 'region',
+  currency: 'currency',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
