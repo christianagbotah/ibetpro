@@ -64,7 +64,8 @@ export const ModelName = {
   AdminSettings: 'AdminSettings',
   Allocation: 'Allocation',
   CommissionLedger: 'CommissionLedger',
-  AIModelPerformance: 'AIModelPerformance'
+  AIModelPerformance: 'AIModelPerformance',
+  PasswordResetToken: 'PasswordResetToken'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -443,6 +444,18 @@ export const AIModelPerformanceScalarFieldEnum = {
 } as const
 
 export type AIModelPerformanceScalarFieldEnum = (typeof AIModelPerformanceScalarFieldEnum)[keyof typeof AIModelPerformanceScalarFieldEnum]
+
+
+export const PasswordResetTokenScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  token: 'token',
+  expiresAt: 'expiresAt',
+  usedAt: 'usedAt',
+  createdAt: 'createdAt'
+} as const
+
+export type PasswordResetTokenScalarFieldEnum = (typeof PasswordResetTokenScalarFieldEnum)[keyof typeof PasswordResetTokenScalarFieldEnum]
 
 
 export const SortOrder = {

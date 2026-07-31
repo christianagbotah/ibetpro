@@ -195,3 +195,27 @@ Stage Summary:
 - Replaced `@prisma/adapter-better-sqlite3` → `@prisma/adapter-libsql` (works with both Node.js and Bun)
 - Database connectivity confirmed working via `/api/auth/register` endpoint
 - No more `better-sqlite3 is not yet supported in Bun` errors
+
+---
+Task ID: 7
+Agent: main
+Task: Add password reset / forgot password feature
+
+Work Log:
+- Added `PasswordResetToken` model to Prisma schema (id, userId, token, expiresAt, usedAt)
+- Added relation from User model to PasswordResetToken
+- Ran `prisma db push` and `prisma generate` to sync schema
+- Created `/forgot-password` page with email form, success/error states, back-to-login link
+- Created `/api/auth/forgot-password` endpoint: generates crypto token, 1hr expiry, rate-limited, prevents email enumeration
+- Created `/reset-password` page with token validation, new password + confirm fields, show/hide password toggle
+- Created `/api/auth/reset-password` endpoint: validates token, checks expiry/reuse, updates password in transaction, invalidates all other tokens
+- Added "Forgot password?" link on the login page (replaces "Min 8 characters" hint)
+- Updated middleware to allow `/forgot-password` and `/reset-password` as public routes
+- Added `forgotPasswordSchema` and `resetPasswordSchema` to validation.ts
+- Tested full flow: forgot-password → token generation → reset-password → success → login
+
+Stage Summary:
+- Complete password reset flow implemented
+- Security: rate limiting, email enumeration prevention, token expiry (1hr), single-use tokens, bcrypt password hashing
+- Demo mode: returns token in response for self-hosted apps (replace with email service in production)
+- All pages follow existing dark theme and shadcn/ui patterns

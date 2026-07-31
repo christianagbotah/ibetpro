@@ -87,3 +87,8 @@ export type CommissionLedger = Prisma.CommissionLedgerModel
  * 
  */
 export type AIModelPerformance = Prisma.AIModelPerformanceModel
+/**
+ * Model PasswordResetToken
+ * 
+ */
+export type PasswordResetToken = Prisma.PasswordResetTokenModel

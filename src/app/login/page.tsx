@@ -205,9 +205,13 @@ function LoginForm() {
                   <div className="flex items-center justify-between">
                     <Label className="text-sm font-medium">Password</Label>
                     {!isRegister && (
-                      <span className="text-[10px] text-muted-foreground">
-                        Min 8 characters
-                      </span>
+                      <button
+                        type="button"
+                        onClick={() => router.push("/forgot-password")}
+                        className="text-[10px] text-primary hover:text-primary/80 transition-colors"
+                      >
+                        Forgot password?
+                      </button>
                     )}
                   </div>
                   <Input
