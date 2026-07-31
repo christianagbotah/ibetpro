@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useFetch } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { AutoBetConfig } from "@/components/betting/auto-bet-config";
@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Zap, Brain, Shield, DollarSign, Clock, TrendingUp, Play, Square, RefreshCw, Layers, Target } from "lucide-react";
+import { Zap, Brain, Shield, DollarSign, Clock, TrendingUp, Play, Square, RefreshCw, Layers, Target, Activity, Eye, Radio } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 
 interface Bet {
@@ -117,9 +117,20 @@ export default function BettingPage() {
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [betFilter, setBetFilter] = useState<string>("all");
   const [botRunning, setBotRunning] = useState(false);
+  const [botLoading, setBotLoading] = useState(false); // for start/stop API calls
   const [settleLoading, setSettleLoading] = useState(false);
+  const [botSession, setBotSession] = useState<{
+    totalScans: number;
+    totalBetsPlaced: number;
+    totalStakeUsed: number;
+    totalProfit: number;
+    lastScanAt: string | null;
+    lastBetAt: string | null;
+    startedAt: string | null;
+  } | null>(null);
+  const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Load user settings
+  // Load user settings and bot status
   useEffect(() => {
     async function loadSettings() {
       try {
@@ -137,8 +148,137 @@ export default function BettingPage() {
         // Use defaults
       }
     }
+    async function loadBotStatus() {
+      try {
+        const res = await fetch("/api/bot/control");
+        if (res.ok) {
+          const data = await res.json();
+          if (data.botStatus === "running") {
+            setBotRunning(true);
+          }
+          if (data.session) {
+            setBotSession(data.session);
+          }
+        }
+      } catch {
+        // Ignore
+      }
+    }
     loadSettings();
+    loadBotStatus();
   }, []);
+
+  // Start/stop polling when bot state changes
+  useEffect(() => {
+    if (botRunning) {
+      // Start polling every 30 seconds
+      pollIntervalRef.current = setInterval(async () => {
+        try {
+          const res = await fetch("/api/bot/control", { method: "PATCH" });
+          if (res.ok) {
+            const data = await res.json();
+            if (data.botStatus === "stopped") {
+              // Bot was auto-stopped (risk limit, no allocation, etc.)
+              setBotRunning(false);
+              if (data.stopReason && data.stopReason !== "user_stopped") {
+                const reasonMap: Record<string, string> = {
+                  stop_loss: "Stop-loss limit reached",
+                  profit_target: "Profit target reached",
+                  schedule: "Outside betting schedule",
+                  no_allocation: "No allocation remaining",
+                  error: "An error occurred",
+                };
+                addToast("warning", `Bot stopped: ${reasonMap[data.stopReason] || data.stopReason}`);
+              }
+            }
+            if (data.totalScans !== undefined) {
+              setBotSession((prev) => prev ? {
+                ...prev,
+                totalScans: data.totalScans,
+                totalBetsPlaced: data.totalBetsPlaced,
+                totalStakeUsed: data.totalStakeUsed,
+                lastScanAt: data.lastScanAt,
+                lastBetAt: data.lastBetAt ?? prev.lastBetAt,
+              } : null);
+            }
+            if (data.scanResult?.betsPlaced > 0) {
+              addToast("success", `Bot placed ${data.scanResult.betsPlaced} bet(s)!`);
+              refetchBets();
+            }
+          }
+        } catch {
+          // Ignore poll errors
+        }
+      }, 30000); // 30-second scan interval
+    } else {
+      // Stop polling
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    }
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+    };
+  }, [botRunning, addToast, refetchBets]);
+
+  // Start the bot
+  const handleStartBot = async () => {
+    if (!user?.id) {
+      addToast("error", "Please log in to run the bot");
+      return;
+    }
+    setBotLoading(true);
+    try {
+      const res = await fetch("/api/bot/control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "start" }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setBotRunning(true);
+        if (data.firstScan?.betsPlaced > 0) {
+          addToast("success", data.message);
+        } else {
+          addToast("success", "AI Bot started! It will scan for matches and place bets automatically.");
+        }
+        refetchBets();
+      } else {
+        addToast("error", data.error || "Failed to start bot");
+      }
+    } catch {
+      addToast("error", "Failed to start bot");
+    } finally {
+      setBotLoading(false);
+    }
+  };
+
+  // Stop the bot
+  const handleStopBot = async () => {
+    setBotLoading(true);
+    try {
+      const res = await fetch("/api/bot/control", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "stop" }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setBotRunning(false);
+        addToast("info", data.message || "Bot stopped.");
+      } else {
+        addToast("error", data.error || "Failed to stop bot");
+      }
+    } catch {
+      addToast("error", "Failed to stop bot");
+    } finally {
+      setBotLoading(false);
+    }
+  };
 
   const handleCashout = async (betId: string, type: "full" | "partial" = "full") => {
     try {
@@ -158,38 +298,6 @@ export default function BettingPage() {
     } catch (error) {
       console.error("Cashout failed:", error);
       addToast("error", "Cashout failed");
-    }
-  };
-
-  const handleRunBot = async () => {
-    if (!user?.id) {
-      addToast("error", "Please log in to run the bot");
-      return;
-    }
-
-    setBotRunning(true);
-    try {
-      const res = await fetch("/api/auto-bet", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id }),
-      });
-      if (res.ok) {
-        const result = await res.json();
-        if (result.betsPlaced > 0) {
-          addToast("success", `Bot placed ${result.betsPlaced} bet(s)`);
-        } else {
-          addToast("info", result.error || result.message || "No suitable matches found for betting");
-        }
-        refetchBets();
-      } else {
-        const data = await res.json();
-        addToast("error", data.error || "Bot failed");
-      }
-    } catch {
-      addToast("error", "Bot execution failed");
-    } finally {
-      setBotRunning(false);
     }
   };
 
@@ -285,7 +393,7 @@ export default function BettingPage() {
   return (
     <div className="space-y-6">
       {/* Auto-Betting Disabled Banner */}
-      {!settings.autoBettingEnabled && (
+      {!settings.autoBettingEnabled && !botRunning && (
         <div className="rounded-xl border-2 border-amber-400/30 bg-amber-400/5 p-4">
           <div className="flex items-start justify-between gap-4">
             <div className="flex items-start gap-3">
@@ -295,8 +403,7 @@ export default function BettingPage() {
               <div>
                 <p className="text-sm font-medium text-amber-400">AI Auto-Betting is Disabled</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Toggle the switch to enable the AI bot, then click "Run Bot" to start placing bets automatically.
-                  You can also configure advanced settings in the Auto-Betting Configuration panel below.
+                  Toggle the switch to enable the AI bot, then click "Start Bot" to begin scanning for matches automatically.
                 </p>
               </div>
             </div>
@@ -313,7 +420,7 @@ export default function BettingPage() {
                       headers: { "Content-Type": "application/json" },
                       body: JSON.stringify({ autoBettingEnabled: checked }),
                     });
-                    addToast("success", checked ? "Auto-betting enabled! You can now run the bot." : "Auto-betting disabled");
+                    addToast("success", checked ? "Auto-betting enabled! You can now start the bot." : "Auto-betting disabled");
                   } catch {
                     addToast("error", "Failed to update setting");
                     setSettings(settings); // revert
@@ -325,48 +432,101 @@ export default function BettingPage() {
         </div>
       )}
 
+      {/* Bot Running Banner */}
+      {botRunning && (
+        <div className="rounded-xl border-2 border-red-500/30 bg-red-500/5 p-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500/10">
+                <Radio className="h-4 w-4 text-red-500 animate-pulse" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-red-400">AI Bot is Running</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Scanning for matches every 30 seconds. {botSession?.totalScans ? `${botSession.totalScans} scan(s) completed` : "First scan in progress"}...
+                  {botSession?.totalBetsPlaced ? ` ${botSession.totalBetsPlaced} bet(s) placed.` : ""}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 shrink-0">
+              {botSession?.lastScanAt && (
+                <span className="text-[10px] text-muted-foreground">
+                  Last scan: {new Date(botSession.lastScanAt).toLocaleTimeString()}
+                </span>
+              )}
+              <Badge className="text-xs bg-red-500/10 text-red-400 border-red-500/20 animate-pulse">
+                <Activity className="h-3 w-3 mr-1" />
+                Live
+              </Badge>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Automated Betting</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Configure auto-betting and manage your bets
+            {botRunning ? "AI Bot is scanning for the best opportunities" : "Configure auto-betting and manage your bets"}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {/* Bot Status Indicator */}
           <Badge className={`px-3 py-1.5 ${
-            settings.autoBettingEnabled
+            botRunning
+              ? "bg-red-500/10 text-red-400 border-red-500/20"
+              : settings.autoBettingEnabled
               ? "bg-primary/10 text-primary border-primary/20"
               : "bg-secondary text-muted-foreground border-border"
           }`}>
             <span className="relative flex h-2 w-2 mr-2">
-              {settings.autoBettingEnabled && (
+              {botRunning ? (
+                <>
+                  <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+                </>
+              ) : settings.autoBettingEnabled ? (
                 <>
                   <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
                   <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
                 </>
-              )}
-              {!settings.autoBettingEnabled && (
+              ) : (
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-muted-foreground" />
               )}
             </span>
-            Bot {settings.autoBettingEnabled ? "Active" : "Inactive"}
+            {botRunning ? "Running" : settings.autoBettingEnabled ? "Ready" : "Inactive"}
           </Badge>
 
-          {/* Run Bot Button */}
-          <Button
-            size="sm"
-            className="bg-primary text-primary-foreground hover:bg-primary/80"
-            onClick={handleRunBot}
-            disabled={botRunning || !settings.autoBettingEnabled}
-          >
-            {botRunning ? (
-              <div className="h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <Play className="h-4 w-4" />
-            )}
-            {botRunning ? "Running..." : "Run Bot"}
-          </Button>
+          {/* Start/Stop Bot Button */}
+          {botRunning ? (
+            <Button
+              size="sm"
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={handleStopBot}
+              disabled={botLoading}
+            >
+              {botLoading ? (
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Square className="h-4 w-4" />
+              )}
+              {botLoading ? "Stopping..." : "Stop Bot"}
+            </Button>
+          ) : (
+            <Button
+              size="sm"
+              className="bg-primary text-primary-foreground hover:bg-primary/80"
+              onClick={handleStartBot}
+              disabled={botLoading || !settings.autoBettingEnabled}
+            >
+              {botLoading ? (
+                <div className="h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <Play className="h-4 w-4" />
+              )}
+              {botLoading ? "Starting..." : "Start Bot"}
+            </Button>
+          )}
 
           {/* Settle Button */}
           <Button

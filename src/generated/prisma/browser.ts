@@ -58,6 +58,11 @@ export type Accumulator = Prisma.AccumulatorModel
  */
 export type BotLog = Prisma.BotLogModel
 /**
+ * Model BotSession
+ * 
+ */
+export type BotSession = Prisma.BotSessionModel
+/**
  * Model Transaction
  * 
  */

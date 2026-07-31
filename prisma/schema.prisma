@@ -34,6 +34,7 @@ model User {
   botLogs         BotLog[]
   allocations     Allocation[]
   commissions     CommissionLedger[]
+  botSession      BotSession?
 }
 
 model UserSettings {
@@ -256,7 +257,7 @@ model Accumulator {
 model BotLog {
   id          String   @id @default(cuid())
   userId      String
-  action      String   // "bet_placed" | "bet_skipped" | "cashout_executed" | "cashout_skipped" | "bet_settled" | "accumulator_created" | "stop_loss_hit" | "profit_target_hit" | "schedule_blocked"
+  action      String   // "bet_placed" | "bet_skipped" | "cashout_executed" | "cashout_skipped" | "bet_settled" | "accumulator_created" | "stop_loss_hit" | "profit_target_hit" | "schedule_blocked" | "bot_started" | "bot_stopped" | "bot_scan" | "bot_match_found"
   matchId     String?
   betId       String?
   accumulatorId String?
@@ -272,6 +273,30 @@ model BotLog {
   @@index([userId, createdAt])
   @@index([action])
   @@index([createdAt])
+}
+
+// Bot session - tracks active bot runs for persistent background operation
+model BotSession {
+  id              String   @id @default(cuid())
+  userId          String   @unique
+  status          String   @default("stopped") // "running" | "stopped" | "paused"
+  startedAt       DateTime?
+  stoppedAt       DateTime?
+  totalScans      Int      @default(0) // how many scan cycles completed
+  totalBetsPlaced Int      @default(0) // bets placed during this session
+  totalStakeUsed  Float    @default(0) // total stake used
+  totalProfit     Float    @default(0) // profit from this session
+  lastScanAt      DateTime? // when the last scan cycle ran
+  lastBetAt       DateTime? // when the last bet was placed
+  scanIntervalSec Int      @default(30) // seconds between scan cycles
+  stopReason      String?  // "user_stopped" | "stop_loss" | "profit_target" | "schedule" | "error" | "no_allocation"
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
 }
 
 model Transaction {

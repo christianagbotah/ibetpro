@@ -405,6 +405,7 @@ export const ModelName = {
   Bet: 'Bet',
   Accumulator: 'Accumulator',
   BotLog: 'BotLog',
+  BotSession: 'BotSession',
   Transaction: 'Transaction',
   AdminSettings: 'AdminSettings',
   Allocation: 'Allocation',
@@ -425,7 +426,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userSettings" | "bettingAccount" | "match" | "teamStats" | "bet" | "accumulator" | "botLog" | "transaction" | "adminSettings" | "allocation" | "commissionLedger" | "aIModelPerformance"
+    modelProps: "user" | "userSettings" | "bettingAccount" | "match" | "teamStats" | "bet" | "accumulator" | "botLog" | "botSession" | "transaction" | "adminSettings" | "allocation" | "commissionLedger" | "aIModelPerformance"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1018,6 +1019,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.BotLogCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.BotLogCountAggregateOutputType> | number
+        }
+      }
+    }
+    BotSession: {
+      payload: Prisma.$BotSessionPayload<ExtArgs>
+      fields: Prisma.BotSessionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.BotSessionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotSessionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.BotSessionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotSessionPayload>
+        }
+        findFirst: {
+          args: Prisma.BotSessionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotSessionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.BotSessionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotSessionPayload>
+        }
+        findMany: {
+          args: Prisma.BotSessionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotSessionPayload>[]
+        }
+        create: {
+          args: Prisma.BotSessionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotSessionPayload>
+        }
+        createMany: {
+          args: Prisma.BotSessionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.BotSessionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotSessionPayload>[]
+        }
+        delete: {
+          args: Prisma.BotSessionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotSessionPayload>
+        }
+        update: {
+          args: Prisma.BotSessionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotSessionPayload>
+        }
+        deleteMany: {
+          args: Prisma.BotSessionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.BotSessionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.BotSessionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotSessionPayload>[]
+        }
+        upsert: {
+          args: Prisma.BotSessionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$BotSessionPayload>
+        }
+        aggregate: {
+          args: Prisma.BotSessionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateBotSession>
+        }
+        groupBy: {
+          args: Prisma.BotSessionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BotSessionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.BotSessionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.BotSessionCountAggregateOutputType> | number
         }
       }
     }
@@ -1666,6 +1741,27 @@ export const BotLogScalarFieldEnum = {
 export type BotLogScalarFieldEnum = (typeof BotLogScalarFieldEnum)[keyof typeof BotLogScalarFieldEnum]
 
 
+export const BotSessionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  status: 'status',
+  startedAt: 'startedAt',
+  stoppedAt: 'stoppedAt',
+  totalScans: 'totalScans',
+  totalBetsPlaced: 'totalBetsPlaced',
+  totalStakeUsed: 'totalStakeUsed',
+  totalProfit: 'totalProfit',
+  lastScanAt: 'lastScanAt',
+  lastBetAt: 'lastBetAt',
+  scanIntervalSec: 'scanIntervalSec',
+  stopReason: 'stopReason',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type BotSessionScalarFieldEnum = (typeof BotSessionScalarFieldEnum)[keyof typeof BotSessionScalarFieldEnum]
+
+
 export const TransactionScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -1986,6 +2082,7 @@ export type GlobalOmitConfig = {
   bet?: Prisma.BetOmit
   accumulator?: Prisma.AccumulatorOmit
   botLog?: Prisma.BotLogOmit
+  botSession?: Prisma.BotSessionOmit
   transaction?: Prisma.TransactionOmit
   adminSettings?: Prisma.AdminSettingsOmit
   allocation?: Prisma.AllocationOmit

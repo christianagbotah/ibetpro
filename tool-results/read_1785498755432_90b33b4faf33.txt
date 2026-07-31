@@ -1,0 +1,772 @@
+     1→"use client";
+     2→
+     3→import { useState, useCallback, useEffect } from "react";
+     4→import { useFetch } from "@/lib/hooks";
+     5→import { useToast } from "@/components/ui/toast";
+     6→import { AutoBetConfig } from "@/components/betting/auto-bet-config";
+     7→import { BotActivityFeed } from "@/components/betting/bot-activity-feed";
+     8→import { BetCard } from "@/components/betting/bet-card";
+     9→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+    10→import { Button } from "@/components/ui/button";
+    11→import { Badge } from "@/components/ui/badge";
+    12→import { Switch } from "@/components/ui/switch";
+    13→import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+    14→import { Zap, Brain, Shield, DollarSign, Clock, TrendingUp, Play, Square, RefreshCw, Layers, Target } from "lucide-react";
+    15→import { useAuth } from "@/components/auth/auth-provider";
+    16→
+    17→interface Bet {
+    18→  id: string;
+    19→  betType: string;
+    20→  selection: string;
+    21→  odds: number;
+    22→  stake: number;
+    23→  potentialWin: number;
+    24→  status: string;
+    25→  profit: number | null;
+    26→  isAutoPlaced: boolean;
+    27→  aiConfidence: number | null;
+    28→  aiReasoning: string | null;
+    29→  cashoutAmount: number | null;
+    30→  partialCashoutAmount: number | null;
+    31→  accumulatorId: string | null;
+    32→  placedAt: string;
+    33→  bettingAccountId: string;
+    34→  match?: {
+    35→    id: string;
+    36→    homeTeam: string;
+    37→    awayTeam: string;
+    38→    sport: string;
+    39→    league: string;
+    40→    status: string;
+    41→    homeScore: number | null;
+    42→    awayScore: number | null;
+    43→    minute: number | null;
+    44→  };
+    45→  bettingAccount?: {
+    46→    platform: string;
+    47→  };
+    48→  accumulator?: {
+    49→    id: string;
+    50→    totalOdds: number;
+    51→    totalLegs: number;
+    52→    completedLegs: number;
+    53→    status: string;
+    54→    bonusPercent: number | null;
+    55→  };
+    56→}
+    57→
+    58→interface UserSettings {
+    59→  autoBettingEnabled: boolean;
+    60→  maxBetAmount: number;
+    61→  minOddsThreshold: number;
+    62→  maxOddsThreshold: number;
+    63→  riskLevel: string;
+    64→  autoCashoutEnabled: boolean;
+    65→  cashoutThreshold: number;
+    66→  commissionRate: number;
+    67→  dailyBetLimit: number;
+    68→  preferredSports: string;
+    69→  betTypes: string;
+    70→  maxAccumulatorLegs: number;
+    71→  minAiConfidence: number;
+    72→  stopLossDaily: number;
+    73→  stopLossWeekly: number;
+    74→  profitTargetDaily: number;
+    75→  profitTargetWeekly: number;
+    76→  betScheduleStart: string;
+    77→  betScheduleEnd: string;
+    78→  partialCashoutEnabled: boolean;
+    79→  partialCashoutPercent: number;
+    80→  waitFullSettlement: boolean;
+    81→  kellyFraction: number;
+    82→  minEdgeThreshold: number;
+    83→}
+    84→
+    85→const defaultSettings: UserSettings = {
+    86→  autoBettingEnabled: true,
+    87→  maxBetAmount: 200,
+    88→  minOddsThreshold: 1.5,
+    89→  maxOddsThreshold: 5.0,
+    90→  riskLevel: "medium",
+    91→  autoCashoutEnabled: true,
+    92→  cashoutThreshold: 0.7,
+    93→  commissionRate: 0.10,
+    94→  dailyBetLimit: 500,
+    95→  preferredSports: "football,basketball,tennis",
+    96→  betTypes: "single,accumulator",
+    97→  maxAccumulatorLegs: 5,
+    98→  minAiConfidence: 0.6,
+    99→  stopLossDaily: 200,
+   100→  stopLossWeekly: 500,
+   101→  profitTargetDaily: 300,
+   102→  profitTargetWeekly: 1000,
+   103→  betScheduleStart: "08:00",
+   104→  betScheduleEnd: "22:00",
+   105→  partialCashoutEnabled: true,
+   106→  partialCashoutPercent: 0.5,
+   107→  waitFullSettlement: true,
+   108→  kellyFraction: 0.25,
+   109→  minEdgeThreshold: 0.03,
+   110→};
+   111→
+   112→export default function BettingPage() {
+   113→  const { addToast } = useToast();
+   114→  const { user } = useAuth();
+   115→  const { data: bets, loading, refetch: refetchBets } = useFetch<Bet[]>("/api/bets", []);
+   116→  const { data: accounts } = useFetch<Array<{ id: string; platform: string }>>("/api/accounts", []);
+   117→  const [settings, setSettings] = useState<UserSettings>(defaultSettings);
+   118→  const [betFilter, setBetFilter] = useState<string>("all");
+   119→  const [botRunning, setBotRunning] = useState(false);
+   120→  const [settleLoading, setSettleLoading] = useState(false);
+   121→
+   122→  // Load user settings
+   123→  useEffect(() => {
+   124→    async function loadSettings() {
+   125→      try {
+   126→        const res = await fetch("/api/settings");
+   127→        if (res.ok) {
+   128→          const data = await res.json();
+   129→          if (data) {
+   130→            setSettings({
+   131→              ...defaultSettings,
+   132→              ...data,
+   133→            });
+   134→          }
+   135→        }
+   136→      } catch {
+   137→        // Use defaults
+   138→      }
+   139→    }
+   140→    loadSettings();
+   141→  }, []);
+   142→
+   143→  const handleCashout = async (betId: string, type: "full" | "partial" = "full") => {
+   144→    try {
+   145→      const res = await fetch("/api/cashout", {
+   146→        method: "POST",
+   147→        headers: { "Content-Type": "application/json" },
+   148→        body: JSON.stringify({ betId, cashoutType: type }),
+   149→      });
+   150→      if (res.ok) {
+   151→        const result = await res.json();
+   152→        refetchBets();
+   153→        addToast("success", `${type === "partial" ? "Partial" : "Full"} cashout processed: $${result.amount?.toFixed(2)}`);
+   154→      } else {
+   155→        const data = await res.json();
+   156→        addToast("error", data.error || "Cashout failed");
+   157→      }
+   158→    } catch (error) {
+   159→      console.error("Cashout failed:", error);
+   160→      addToast("error", "Cashout failed");
+   161→    }
+   162→  };
+   163→
+   164→  const handleRunBot = async () => {
+   165→    if (!user?.id) {
+   166→      addToast("error", "Please log in to run the bot");
+   167→      return;
+   168→    }
+   169→
+   170→    setBotRunning(true);
+   171→    try {
+   172→      const res = await fetch("/api/auto-bet", {
+   173→        method: "POST",
+   174→        headers: { "Content-Type": "application/json" },
+   175→        body: JSON.stringify({ userId: user.id }),
+   176→      });
+   177→      if (res.ok) {
+   178→        const result = await res.json();
+   179→        if (result.betsPlaced > 0) {
+   180→          addToast("success", `Bot placed ${result.betsPlaced} bet(s)`);
+   181→        } else {
+   182→          addToast("info", result.error || result.message || "No suitable matches found for betting");
+   183→        }
+   184→        refetchBets();
+   185→      } else {
+   186→        const data = await res.json();
+   187→        addToast("error", data.error || "Bot failed");
+   188→      }
+   189→    } catch {
+   190→      addToast("error", "Bot execution failed");
+   191→    } finally {
+   192→      setBotRunning(false);
+   193→    }
+   194→  };
+   195→
+   196→  const handleSettle = async () => {
+   197→    if (!user?.id) return;
+   198→    setSettleLoading(true);
+   199→    try {
+   200→      const res = await fetch("/api/settle", {
+   201→        method: "POST",
+   202→        headers: { "Content-Type": "application/json" },
+   203→        body: JSON.stringify({ userId: user.id }),
+   204→      });
+   205→      if (res.ok) {
+   206→        const result = await res.json();
+   207→        if (result.settled > 0) {
+   208→          addToast("success", `Settled ${result.settled} bet(s). Profit: $${result.totalProfit?.toFixed(2)}`);
+   209→        } else {
+   210→          addToast("info", "No bets to settle");
+   211→        }
+   212→        refetchBets();
+   213→      }
+   214→    } catch {
+   215→      addToast("error", "Settlement failed");
+   216→    } finally {
+   217→      setSettleLoading(false);
+   218→    }
+   219→  };
+   220→
+   221→  const handleSaveSettings = async (newSettings: UserSettings) => {
+   222→    setSettings(newSettings);
+   223→    try {
+   224→      await fetch("/api/settings", {
+   225→        method: "PUT",
+   226→        headers: { "Content-Type": "application/json" },
+   227→        body: JSON.stringify(newSettings),
+   228→      });
+   229→      addToast("success", "Settings saved successfully!");
+   230→    } catch {
+   231→      addToast("error", "Failed to save settings");
+   232→    }
+   233→  };
+   234→
+   235→  // Merge betting account info
+   236→  const enrichedBets = bets.map((bet) => {
+   237→    const account = accounts.find((a) => a.id === bet.bettingAccountId);
+   238→    return {
+   239→      ...bet,
+   240→      bettingAccount: account ? { platform: account.platform } : undefined,
+   241→    };
+   242→  });
+   243→
+   244→  const filteredBets =
+   245→    betFilter === "all"
+   246→      ? enrichedBets
+   247→      : betFilter === "auto"
+   248→      ? enrichedBets.filter((b) => b.isAutoPlaced)
+   249→      : betFilter === "manual"
+   250→      ? enrichedBets.filter((b) => !b.isAutoPlaced)
+   251→      : betFilter === "accumulator"
+   252→      ? enrichedBets.filter((b) => b.accumulatorId)
+   253→      : enrichedBets.filter((b) => b.status === betFilter);
+   254→
+   255→  const autoBets = enrichedBets.filter((b) => b.isAutoPlaced);
+   256→  const accumulatorBets = enrichedBets.filter((b) => b.accumulatorId);
+   257→  const totalStake = enrichedBets.reduce((sum, b) => sum + b.stake, 0);
+   258→  const totalProfit = enrichedBets.reduce((sum, b) => sum + (b.profit || 0), 0);
+   259→
+   260→  // AI recommended bets
+   261→  const aiRecommendedBets = enrichedBets
+   262→    .filter((b) => b.status === "pending" && b.aiConfidence && b.aiConfidence > 0.5)
+   263→    .sort((a, b) => (b.aiConfidence || 0) - (a.aiConfidence || 0));
+   264→
+   265→  // Daily bet limit progress
+   266→  const todayBets = enrichedBets.filter((b) => {
+   267→    const today = new Date();
+   268→    const placedAt = new Date(b.placedAt);
+   269→    return placedAt.toDateString() === today.toDateString();
+   270→  });
+   271→  const dailyStake = todayBets.reduce((sum, b) => sum + b.stake, 0);
+   272→  const dailyLimitProgress = Math.min((dailyStake / settings.dailyBetLimit) * 100, 100);
+   273→
+   274→  if (loading) {
+   275→    return (
+   276→      <div className="flex items-center justify-center h-64">
+   277→        <div className="flex items-center gap-2 text-muted-foreground">
+   278→          <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+   279→          Loading...
+   280→        </div>
+   281→      </div>
+   282→    );
+   283→  }
+   284→
+   285→  return (
+   286→    <div className="space-y-6">
+   287→      {/* Auto-Betting Disabled Banner */}
+   288→      {!settings.autoBettingEnabled && (
+   289→        <div className="rounded-xl border-2 border-amber-400/30 bg-amber-400/5 p-4">
+   290→          <div className="flex items-start justify-between gap-4">
+   291→            <div className="flex items-start gap-3">
+   292→              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-400/10">
+   293→                <Zap className="h-4 w-4 text-amber-400" />
+   294→              </div>
+   295→              <div>
+   296→                <p className="text-sm font-medium text-amber-400">AI Auto-Betting is Disabled</p>
+   297→                <p className="text-xs text-muted-foreground mt-1">
+   298→                  Toggle the switch to enable the AI bot, then click "Run Bot" to start placing bets automatically.
+   299→                  You can also configure advanced settings in the Auto-Betting Configuration panel below.
+   300→                </p>
+   301→              </div>
+   302→            </div>
+   303→            <div className="flex items-center gap-2 shrink-0">
+   304→              <span className="text-xs text-muted-foreground">Enable</span>
+   305→              <Switch
+   306→                checked={settings.autoBettingEnabled}
+   307→                onCheckedChange={async (checked) => {
+   308→                  const updated = { ...settings, autoBettingEnabled: checked as boolean };
+   309→                  setSettings(updated);
+   310→                  try {
+   311→                    await fetch("/api/settings", {
+   312→                      method: "PUT",
+   313→                      headers: { "Content-Type": "application/json" },
+   314→                      body: JSON.stringify({ autoBettingEnabled: checked }),
+   315→                    });
+   316→                    addToast("success", checked ? "Auto-betting enabled! You can now run the bot." : "Auto-betting disabled");
+   317→                  } catch {
+   318→                    addToast("error", "Failed to update setting");
+   319→                    setSettings(settings); // revert
+   320→                  }
+   321→                }}
+   322→              />
+   323→            </div>
+   324→          </div>
+   325→        </div>
+   326→      )}
+   327→
+   328→      <div className="flex items-center justify-between">
+   329→        <div>
+   330→          <h1 className="text-2xl font-bold text-foreground">Automated Betting</h1>
+   331→          <p className="text-sm text-muted-foreground mt-1">
+   332→            Configure auto-betting and manage your bets
+   333→          </p>
+   334→        </div>
+   335→        <div className="flex items-center gap-2">
+   336→          {/* Bot Status Indicator */}
+   337→          <Badge className={`px-3 py-1.5 ${
+   338→            settings.autoBettingEnabled
+   339→              ? "bg-primary/10 text-primary border-primary/20"
+   340→              : "bg-secondary text-muted-foreground border-border"
+   341→          }`}>
+   342→            <span className="relative flex h-2 w-2 mr-2">
+   343→              {settings.autoBettingEnabled && (
+   344→                <>
+   345→                  <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
+   346→                  <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
+   347→                </>
+   348→              )}
+   349→              {!settings.autoBettingEnabled && (
+   350→                <span className="relative inline-flex rounded-full h-2 w-2 bg-muted-foreground" />
+   351→              )}
+   352→            </span>
+   353→            Bot {settings.autoBettingEnabled ? "Active" : "Inactive"}
+   354→          </Badge>
+   355→
+   356→          {/* Run Bot Button */}
+   357→          <Button
+   358→            size="sm"
+   359→            className="bg-primary text-primary-foreground hover:bg-primary/80"
+   360→            onClick={handleRunBot}
+   361→            disabled={botRunning || !settings.autoBettingEnabled}
+   362→          >
+   363→            {botRunning ? (
+   364→              <div className="h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+   365→            ) : (
+   366→              <Play className="h-4 w-4" />
+   367→            )}
+   368→            {botRunning ? "Running..." : "Run Bot"}
+   369→          </Button>
+   370→
+   371→          {/* Settle Button */}
+   372→          <Button
+   373→            size="sm"
+   374→            variant="outline"
+   375→            onClick={handleSettle}
+   376→            disabled={settleLoading}
+   377→            className="border-emerald-400/30 text-emerald-400 hover:bg-emerald-400/10"
+   378→          >
+   379→            {settleLoading ? (
+   380→              <div className="h-4 w-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+   381→            ) : (
+   382→              <RefreshCw className="h-4 w-4" />
+   383→            )}
+   384→            Settle
+   385→          </Button>
+   386→        </div>
+   387→      </div>
+   388→
+   389→      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+   390→        <Card className="bg-card border-border">
+   391→          <CardContent className="p-3">
+   392→            <p className="text-xs text-muted-foreground">Total Bets</p>
+   393→            <p className="text-lg font-bold text-foreground">{enrichedBets.length}</p>
+   394→          </CardContent>
+   395→        </Card>
+   396→        <Card className="bg-card border-border">
+   397→          <CardContent className="p-3">
+   398→            <p className="text-xs text-muted-foreground">AI-Placed</p>
+   399→            <p className="text-lg font-bold text-primary">{autoBets.length}</p>
+   400→          </CardContent>
+   401→        </Card>
+   402→        <Card className="bg-card border-border">
+   403→          <CardContent className="p-3">
+   404→            <p className="text-xs text-muted-foreground">Accumulators</p>
+   405→            <p className="text-lg font-bold text-purple-400">{accumulatorBets.length}</p>
+   406→          </CardContent>
+   407→        </Card>
+   408→        <Card className="bg-card border-border">
+   409→          <CardContent className="p-3">
+   410→            <p className="text-xs text-muted-foreground">Total Stake</p>
+   411→            <p className="text-lg font-bold text-foreground">${totalStake.toFixed(2)}</p>
+   412→          </CardContent>
+   413→        </Card>
+   414→        <Card className="bg-card border-border">
+   415→          <CardContent className="p-3">
+   416→            <p className="text-xs text-muted-foreground">Net Profit</p>
+   417→            <p className={`text-lg font-bold ${totalProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+   418→              {totalProfit >= 0 ? "+" : ""}${totalProfit.toFixed(2)}
+   419→            </p>
+   420→          </CardContent>
+   421→        </Card>
+   422→      </div>
+   423→
+   424→      {/* Daily Bet Limit Progress Bar */}
+   425→      <Card className="bg-card border-border">
+   426→        <CardContent className="p-4">
+   427→          <div className="flex items-center justify-between mb-2">
+   428→            <div className="flex items-center gap-2">
+   429→              <Shield className="h-4 w-4 text-amber-400" />
+   430→              <span className="text-sm font-medium text-foreground">Daily Bet Limit</span>
+   431→            </div>
+   432→            <span className="text-sm text-muted-foreground">
+   433→              ${dailyStake.toFixed(0)} / ${settings.dailyBetLimit.toFixed(0)}
+   434→            </span>
+   435→          </div>
+   436→          <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
+   437→            <div
+   438→              className={`h-full rounded-full transition-all ${
+   439→                dailyLimitProgress >= 90 ? "bg-red-500" : dailyLimitProgress >= 70 ? "bg-amber-400" : "bg-primary"
+   440→              }`}
+   441→              style={{ width: `${dailyLimitProgress}%` }}
+   442→            />
+   443→          </div>
+   444→          <div className="flex items-center justify-between mt-1">
+   445→            <span className="text-[10px] text-muted-foreground">
+   446→              {dailyLimitProgress >= 90 ? "Limit almost reached!" : `${Math.round(dailyLimitProgress)}% of daily limit used`}
+   447→            </span>
+   448→            <span className="text-[10px] text-muted-foreground">
+   449→              ${Math.max(0, settings.dailyBetLimit - dailyStake).toFixed(0)} remaining
+   450→            </span>
+   451→          </div>
+   452→        </CardContent>
+   453→      </Card>
+   454→
+   455→      {/* Risk Limits Display */}
+   456→      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   457→        <div className="rounded-lg bg-red-400/5 border border-red-400/10 p-3">
+   458→          <div className="flex items-center gap-1.5 mb-1">
+   459→            <Shield className="h-3 w-3 text-red-400" />
+   460→            <span className="text-xs text-muted-foreground">Daily Stop-Loss</span>
+   461→          </div>
+   462→          <p className="text-sm font-bold text-red-400">-${settings.stopLossDaily}</p>
+   463→        </div>
+   464→        <div className="rounded-lg bg-red-400/5 border border-red-400/10 p-3">
+   465→          <div className="flex items-center gap-1.5 mb-1">
+   466→            <Shield className="h-3 w-3 text-red-400" />
+   467→            <span className="text-xs text-muted-foreground">Weekly Stop-Loss</span>
+   468→          </div>
+   469→          <p className="text-sm font-bold text-red-400">-${settings.stopLossWeekly}</p>
+   470→        </div>
+   471→        <div className="rounded-lg bg-emerald-400/5 border border-emerald-400/10 p-3">
+   472→          <div className="flex items-center gap-1.5 mb-1">
+   473→            <Target className="h-3 w-3 text-emerald-400" />
+   474→            <span className="text-xs text-muted-foreground">Daily Target</span>
+   475→          </div>
+   476→          <p className="text-sm font-bold text-emerald-400">+${settings.profitTargetDaily}</p>
+   477→        </div>
+   478→        <div className="rounded-lg bg-emerald-400/5 border border-emerald-400/10 p-3">
+   479→          <div className="flex items-center gap-1.5 mb-1">
+   480→            <Target className="h-3 w-3 text-emerald-400" />
+   481→            <span className="text-xs text-muted-foreground">Weekly Target</span>
+   482→          </div>
+   483→          <p className="text-sm font-bold text-emerald-400">+${settings.profitTargetWeekly}</p>
+   484→        </div>
+   485→      </div>
+   486→
+   487→      {/* AI Recommended Bets */}
+   488→      {aiRecommendedBets.length > 0 && (
+   489→        <Card className="bg-card border-border">
+   490→          <CardHeader className="pb-3">
+   491→            <CardTitle className="flex items-center gap-2 text-base">
+   492→              <Brain className="h-4 w-4 text-primary" />
+   493→              AI Recommended Bets
+   494→            </CardTitle>
+   495→          </CardHeader>
+   496→          <CardContent>
+   497→            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+   498→              {aiRecommendedBets.slice(0, 6).map((bet) => (
+   499→                <div
+   500→                  key={bet.id}
+   501→                  className="rounded-lg bg-primary/5 border border-primary/10 p-3"
+   502→                >
+   503→                  <div className="flex items-center justify-between mb-2">
+   504→                    <div className="flex items-center gap-1.5">
+   505→                      <Brain className="h-3 w-3 text-primary" />
+   506→                      <span className="text-xs font-medium text-foreground">
+   507→                        {bet.match?.homeTeam} vs {bet.match?.awayTeam}
+   508→                      </span>
+   509→                    </div>
+   510→                    <div className="flex items-center gap-1">
+   511→                      <div className="w-12 h-1.5 rounded-full bg-secondary overflow-hidden">
+   512→                        <div
+   513→                          className={`h-full rounded-full ${
+   514→                            (bet.aiConfidence || 0) >= 0.7 ? "bg-primary" : (bet.aiConfidence || 0) >= 0.5 ? "bg-amber-400" : "bg-red-400"
+   515→                          }`}
+   516→                          style={{ width: `${(bet.aiConfidence || 0) * 100}%` }}
+   517→                        />
+   518→                      </div>
+   519→                      <span className="text-[10px] font-bold text-primary">
+   520→                        {Math.round((bet.aiConfidence || 0) * 100)}%
+   521→                      </span>
+   522→                    </div>
+   523→                  </div>
+   524→                  <div className="flex items-center justify-between text-xs mb-2">
+   525→                    <span className="text-muted-foreground">
+   526→                      {bet.selection} @ {bet.odds}
+   527→                    </span>
+   528→                    <span className="text-foreground">${bet.stake.toFixed(0)} stake</span>
+   529→                  </div>
+   530→                  <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-2">
+   531→                    <span>Commission: {(settings.commissionRate * 100).toFixed(0)}%</span>
+   532→                    <span>Projected: ${(bet.potentialWin * (1 - settings.commissionRate)).toFixed(2)}</span>
+   533→                  </div>
+   534→                  {/* Cashout buttons */}
+   535→                  <div className="flex gap-2">
+   536→                    {bet.cashoutAmount && (
+   537→                      <button
+   538→                        onClick={() => handleCashout(bet.id, "partial")}
+   539→                        className="flex-1 text-[10px] bg-primary/10 text-primary border border-primary/20 rounded px-2 py-1 hover:bg-primary/20 transition-colors"
+   540→                      >
+   541→                        <DollarSign className="h-3 w-3 inline" />
+   542→                        Partial ${((bet.cashoutAmount || 0) * settings.partialCashoutPercent).toFixed(2)}
+   543→                      </button>
+   544→                    )}
+   545→                    {bet.cashoutAmount && (
+   546→                      <button
+   547→                        onClick={() => handleCashout(bet.id, "full")}
+   548→                        className="flex-1 text-[10px] bg-amber-400/10 text-amber-400 border border-amber-400/20 rounded px-2 py-1 hover:bg-amber-400/20 transition-colors"
+   549→                      >
+   550→                        <DollarSign className="h-3 w-3 inline" />
+   551→                        Full ${bet.cashoutAmount.toFixed(2)}
+   552→                      </button>
+   553→                    )}
+   554→                  </div>
+   555→                </div>
+   556→              ))}
+   557→            </div>
+   558→          </CardContent>
+   559→        </Card>
+   560→      )}
+   561→
+   562→      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+   563→        <div className="lg:col-span-2 space-y-4">
+   564→          <div className="flex items-center justify-between">
+   565→            <h2 className="text-lg font-semibold text-foreground">Your Bets</h2>
+   566→            <div className="flex items-center gap-2">
+   567→              {["all", "pending", "won", "lost", "auto", "accumulator"].map((filter) => (
+   568→                <Button
+   569→                  key={filter}
+   570→                  size="xs"
+   571→                  variant={betFilter === filter ? "default" : "ghost"}
+   572→                  onClick={() => setBetFilter(filter)}
+   573→                  className={betFilter === filter ? "bg-primary text-primary-foreground" : ""}
+   574→                >
+   575→                  {filter.charAt(0).toUpperCase() + filter.slice(1)}
+   576→                </Button>
+   577→              ))}
+   578→            </div>
+   579→          </div>
+   580→
+   581→          <div className="space-y-3 max-h-[calc(100vh-400px)] overflow-y-auto">
+   582→            {filteredBets.length === 0 ? (
+   583→              <Card className="bg-card border-border">
+   584→                <CardContent className="p-8 text-center">
+   585→                  <Zap className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+   586→                  <p className="text-sm text-muted-foreground">
+   587→                    No bets found for this filter.
+   588→                  </p>
+   589→                </CardContent>
+   590→              </Card>
+   591→            ) : (
+   592→              filteredBets.map((bet) => (
+   593→                <EnhancedBetCard
+   594→                  key={bet.id}
+   595→                  bet={bet}
+   596→                  onCashout={handleCashout}
+   597→                  settings={settings}
+   598→                />
+   599→              ))
+   600→            )}
+   601→          </div>
+   602→        </div>
+   603→
+   604→        <div className="space-y-4">
+   605→          <AutoBetConfig settings={settings} onSave={handleSaveSettings} />
+   606→          {user?.id && <BotActivityFeed userId={user.id} compact />}
+   607→        </div>
+   608→      </div>
+   609→    </div>
+   610→  );
+   611→}
+   612→
+   613→// Enhanced Bet Card with accumulator support and partial cashout
+   614→function EnhancedBetCard({
+   615→  bet,
+   616→  onCashout,
+   617→  settings,
+   618→}: {
+   619→  bet: Bet;
+   620→  onCashout: (betId: string, type: "full" | "partial") => void;
+   621→  settings: UserSettings;
+   622→}) {
+   623→  const statusConfig: Record<string, { icon: typeof Zap; color: string; label: string }> = {
+   624→    pending: { icon: Clock, color: "text-amber-400", label: "Pending" },
+   625→    won: { icon: TrendingUp, color: "text-emerald-400", label: "Won" },
+   626→    lost: { icon: Zap, color: "text-red-400", label: "Lost" },
+   627→    cashed_out: { icon: DollarSign, color: "text-blue-400", label: "Cashed Out" },
+   628→    partial_cashout: { icon: DollarSign, color: "text-amber-400", label: "Partial Cashout" },
+   629→  };
+   630→
+   631→  const config = statusConfig[bet.status] || statusConfig.pending;
+   632→  const StatusIcon = config.icon;
+   633→  const isAccumulatorLeg = !!bet.accumulatorId;
+   634→
+   635→  return (
+   636→    <Card className={`bg-card border-border ${isAccumulatorLeg ? "border-l-2 border-l-purple-400" : ""}`}>
+   637→      <CardContent className="p-4">
+   638→        <div className="flex items-start justify-between gap-3">
+   639→          <div className="flex-1 min-w-0">
+   640→            {/* Match Info */}
+   641→            <div className="flex items-center gap-2 mb-1">
+   642→              <Badge variant="secondary" className="text-[10px]">
+   643→                {bet.match?.sport}
+   644→              </Badge>
+   645→              <span className="text-xs text-muted-foreground">{bet.match?.league}</span>
+   646→              {bet.isAutoPlaced && (
+   647→                <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20">
+   648→                  <Brain className="h-3 w-3 mr-0.5" />
+   649→                  AI
+   650→                </Badge>
+   651→              )}
+   652→              {isAccumulatorLeg && (
+   653→                <Badge className="text-[10px] bg-purple-400/10 text-purple-400 border-purple-400/20">
+   654→                  <Layers className="h-3 w-3 mr-0.5" />
+   655→                  Acca
+   656→                </Badge>
+   657→              )}
+   658→              {bet.status === "partial_cashout" && (
+   659→                <Badge className="text-[10px] bg-amber-400/10 text-amber-400 border-amber-400/20">
+   660→                  Partial
+   661→                </Badge>
+   662→              )}
+   663→            </div>
+   664→            <p className="text-sm font-medium text-foreground">
+   665→              {bet.match?.homeTeam} vs {bet.match?.awayTeam}
+   666→            </p>
+   667→
+   668→            {/* Live Score */}
+   669→            {bet.match?.status === "live" && bet.match.homeScore !== null && (
+   670→              <div className="flex items-center gap-2 mt-1">
+   671→                <span className="relative flex h-2 w-2">
+   672→                  <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+   673→                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+   674→                </span>
+   675→                <span className="text-sm font-bold text-foreground">
+   676→                  {bet.match.homeScore} - {bet.match.awayScore}
+   677→                </span>
+   678→                <span className="text-xs text-muted-foreground">{bet.match.minute}&apos;</span>
+   679→              </div>
+   680→            )}
+   681→
+   682→            {/* Bet Details */}
+   683→            <div className="mt-2 flex items-center gap-4 text-xs">
+   684→              <div>
+   685→                <span className="text-muted-foreground">Selection: </span>
+   686→                <span className="text-foreground font-medium">{bet.selection}</span>
+   687→              </div>
+   688→              <div>
+   689→                <span className="text-muted-foreground">Odds: </span>
+   690→                <span className="text-primary font-medium">{bet.odds}</span>
+   691→              </div>
+   692→              <div>
+   693→                <span className="text-muted-foreground">Stake: </span>
+   694→                <span className="text-foreground">${bet.stake.toFixed(2)}</span>
+   695→              </div>
+   696→            </div>
+   697→
+   698→            {/* AI Reasoning */}
+   699→            {bet.aiReasoning && (
+   700→              <div className="mt-2 rounded bg-secondary/50 p-2">
+   701→                <p className="text-[11px] text-muted-foreground leading-relaxed">
+   702→                  {bet.aiReasoning}
+   703→                </p>
+   704→              </div>
+   705→            )}
+   706→          </div>
+   707→
+   708→          {/* Status & Profit */}
+   709→          <div className="flex flex-col items-end gap-2">
+   710→            <div className="flex items-center gap-1.5">
+   711→              <StatusIcon className={`h-4 w-4 ${config.color}`} />
+   712→              <span className={`text-xs font-medium ${config.color}`}>{config.label}</span>
+   713→            </div>
+   714→
+   715→            {bet.status === "won" && bet.profit !== null && (
+   716→              <span className="text-lg font-bold text-emerald-400">
+   717→                +${bet.profit.toFixed(2)}
+   718→              </span>
+   719→            )}
+   720→            {bet.status === "lost" && (
+   721→              <span className="text-lg font-bold text-red-400">
+   722→                -${bet.stake.toFixed(2)}
+   723→              </span>
+   724→            )}
+   725→            {bet.status === "pending" && (
+   726→              <span className="text-sm text-muted-foreground">
+   727→                Potential: ${bet.potentialWin.toFixed(2)}
+   728→              </span>
+   729→            )}
+   730→            {bet.status === "cashed_out" && bet.cashoutAmount && (
+   731→              <span className="text-sm font-bold text-blue-400">
+   732→                Cashed: ${bet.cashoutAmount.toFixed(2)}
+   733→              </span>
+   734→            )}
+   735→            {bet.status === "partial_cashout" && bet.partialCashoutAmount && (
+   736→              <span className="text-xs text-amber-400">
+   737→                Partial: ${bet.partialCashoutAmount.toFixed(2)}
+   738→              </span>
+   739→            )}
+   740→
+   741→            {/* Cashout buttons */}
+   742→            {bet.status === "pending" && bet.cashoutAmount && (
+   743→              <div className="flex flex-col gap-1">
+   744→                {settings.partialCashoutEnabled && (
+   745→                  <button
+   746→                    onClick={() => onCashout(bet.id, "partial")}
+   747→                    className="text-[10px] bg-primary/10 text-primary border border-primary/20 rounded px-2 py-1 hover:bg-primary/20 transition-colors"
+   748→                  >
+   749→                    Partial ${((bet.cashoutAmount || 0) * settings.partialCashoutPercent).toFixed(2)}
+   750→                  </button>
+   751→                )}
+   752→                <button
+   753→                  onClick={() => onCashout(bet.id, "full")}
+   754→                  className="text-[10px] bg-amber-400/10 text-amber-400 border border-amber-400/20 rounded px-2 py-1 hover:bg-amber-400/20 transition-colors"
+   755→                >
+   756→                  Cashout ${bet.cashoutAmount.toFixed(2)}
+   757→                </button>
+   758→              </div>
+   759→            )}
+   760→          </div>
+   761→        </div>
+   762→
+   763→        {/* Platform & Time */}
+   764→        <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
+   765→          <span>Platform: {bet.bettingAccount?.platform || "N/A"}</span>
+   766→          <span>{new Date(bet.placedAt).toLocaleDateString()}</span>
+   767→        </div>
+   768→      </CardContent>
+   769→    </Card>
+   770→  );
+   771→}
+   772→

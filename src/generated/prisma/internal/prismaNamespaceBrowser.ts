@@ -59,6 +59,7 @@ export const ModelName = {
   Bet: 'Bet',
   Accumulator: 'Accumulator',
   BotLog: 'BotLog',
+  BotSession: 'BotSession',
   Transaction: 'Transaction',
   AdminSettings: 'AdminSettings',
   Allocation: 'Allocation',
@@ -316,6 +317,27 @@ export const BotLogScalarFieldEnum = {
 } as const
 
 export type BotLogScalarFieldEnum = (typeof BotLogScalarFieldEnum)[keyof typeof BotLogScalarFieldEnum]
+
+
+export const BotSessionScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  status: 'status',
+  startedAt: 'startedAt',
+  stoppedAt: 'stoppedAt',
+  totalScans: 'totalScans',
+  totalBetsPlaced: 'totalBetsPlaced',
+  totalStakeUsed: 'totalStakeUsed',
+  totalProfit: 'totalProfit',
+  lastScanAt: 'lastScanAt',
+  lastBetAt: 'lastBetAt',
+  scanIntervalSec: 'scanIntervalSec',
+  stopReason: 'stopReason',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type BotSessionScalarFieldEnum = (typeof BotSessionScalarFieldEnum)[keyof typeof BotSessionScalarFieldEnum]
 
 
 export const TransactionScalarFieldEnum = {

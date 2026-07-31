@@ -344,6 +344,7 @@ export type UserWhereInput = {
   botLogs?: Prisma.BotLogListRelationFilter
   allocations?: Prisma.AllocationListRelationFilter
   commissions?: Prisma.CommissionLedgerListRelationFilter
+  botSession?: Prisma.XOR<Prisma.BotSessionNullableScalarRelationFilter, Prisma.BotSessionWhereInput> | null
 }
 
 export type UserOrderByWithRelationInput = {
@@ -372,6 +373,7 @@ export type UserOrderByWithRelationInput = {
   botLogs?: Prisma.BotLogOrderByRelationAggregateInput
   allocations?: Prisma.AllocationOrderByRelationAggregateInput
   commissions?: Prisma.CommissionLedgerOrderByRelationAggregateInput
+  botSession?: Prisma.BotSessionOrderByWithRelationInput
 }
 
 export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -403,6 +405,7 @@ export type UserWhereUniqueInput = Prisma.AtLeast<{
   botLogs?: Prisma.BotLogListRelationFilter
   allocations?: Prisma.AllocationListRelationFilter
   commissions?: Prisma.CommissionLedgerListRelationFilter
+  botSession?: Prisma.XOR<Prisma.BotSessionNullableScalarRelationFilter, Prisma.BotSessionWhereInput> | null
 }, "id" | "email">
 
 export type UserOrderByWithAggregationInput = {
@@ -479,6 +482,7 @@ export type UserCreateInput = {
   botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
   allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
   commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateInput = {
@@ -507,6 +511,7 @@ export type UserUncheckedCreateInput = {
   botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
   allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
   commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserUpdateInput = {
@@ -535,6 +540,7 @@ export type UserUpdateInput = {
   botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
   allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
   commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateInput = {
@@ -563,6 +569,7 @@ export type UserUncheckedUpdateInput = {
   botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
   allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
   commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateManyInput = {
@@ -800,6 +807,20 @@ export type UserUpdateOneRequiredWithoutBotLogsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutBotLogsInput, Prisma.UserUpdateWithoutBotLogsInput>, Prisma.UserUncheckedUpdateWithoutBotLogsInput>
 }
 
+export type UserCreateNestedOneWithoutBotSessionInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutBotSessionInput, Prisma.UserUncheckedCreateWithoutBotSessionInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutBotSessionInput
+  connect?: Prisma.UserWhereUniqueInput
+}
+
+export type UserUpdateOneRequiredWithoutBotSessionNestedInput = {
+  create?: Prisma.XOR<Prisma.UserCreateWithoutBotSessionInput, Prisma.UserUncheckedCreateWithoutBotSessionInput>
+  connectOrCreate?: Prisma.UserCreateOrConnectWithoutBotSessionInput
+  upsert?: Prisma.UserUpsertWithoutBotSessionInput
+  connect?: Prisma.UserWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.UserUpdateToOneWithWhereWithoutBotSessionInput, Prisma.UserUpdateWithoutBotSessionInput>, Prisma.UserUncheckedUpdateWithoutBotSessionInput>
+}
+
 export type UserCreateNestedOneWithoutTransactionsInput = {
   create?: Prisma.XOR<Prisma.UserCreateWithoutTransactionsInput, Prisma.UserUncheckedCreateWithoutTransactionsInput>
   connectOrCreate?: Prisma.UserCreateOrConnectWithoutTransactionsInput
@@ -867,6 +888,7 @@ export type UserCreateWithoutSettingsInput = {
   botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
   allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
   commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutSettingsInput = {
@@ -894,6 +916,7 @@ export type UserUncheckedCreateWithoutSettingsInput = {
   botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
   allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
   commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutSettingsInput = {
@@ -937,6 +960,7 @@ export type UserUpdateWithoutSettingsInput = {
   botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
   allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
   commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutSettingsInput = {
@@ -964,6 +988,7 @@ export type UserUncheckedUpdateWithoutSettingsInput = {
   botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
   allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
   commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutBettingAccountsInput = {
@@ -991,6 +1016,7 @@ export type UserCreateWithoutBettingAccountsInput = {
   botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
   allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
   commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutBettingAccountsInput = {
@@ -1018,6 +1044,7 @@ export type UserUncheckedCreateWithoutBettingAccountsInput = {
   botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
   allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
   commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutBettingAccountsInput = {
@@ -1061,6 +1088,7 @@ export type UserUpdateWithoutBettingAccountsInput = {
   botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
   allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
   commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutBettingAccountsInput = {
@@ -1088,6 +1116,7 @@ export type UserUncheckedUpdateWithoutBettingAccountsInput = {
   botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
   allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
   commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutBetsInput = {
@@ -1115,6 +1144,7 @@ export type UserCreateWithoutBetsInput = {
   botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
   allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
   commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutBetsInput = {
@@ -1142,6 +1172,7 @@ export type UserUncheckedCreateWithoutBetsInput = {
   botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
   allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
   commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutBetsInput = {
@@ -1185,6 +1216,7 @@ export type UserUpdateWithoutBetsInput = {
   botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
   allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
   commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutBetsInput = {
@@ -1212,6 +1244,7 @@ export type UserUncheckedUpdateWithoutBetsInput = {
   botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
   allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
   commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutAccumulatorsInput = {
@@ -1239,6 +1272,7 @@ export type UserCreateWithoutAccumulatorsInput = {
   botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
   allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
   commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutAccumulatorsInput = {
@@ -1266,6 +1300,7 @@ export type UserUncheckedCreateWithoutAccumulatorsInput = {
   botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
   allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
   commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutAccumulatorsInput = {
@@ -1309,6 +1344,7 @@ export type UserUpdateWithoutAccumulatorsInput = {
   botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
   allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
   commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAccumulatorsInput = {
@@ -1336,6 +1372,7 @@ export type UserUncheckedUpdateWithoutAccumulatorsInput = {
   botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
   allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
   commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutBotLogsInput = {
@@ -1363,6 +1400,7 @@ export type UserCreateWithoutBotLogsInput = {
   accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
   allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
   commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutBotLogsInput = {
@@ -1390,6 +1428,7 @@ export type UserUncheckedCreateWithoutBotLogsInput = {
   accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
   allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
   commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutBotLogsInput = {
@@ -1433,6 +1472,7 @@ export type UserUpdateWithoutBotLogsInput = {
   accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
   allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
   commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutBotLogsInput = {
@@ -1458,6 +1498,135 @@ export type UserUncheckedUpdateWithoutBotLogsInput = {
   transactions?: Prisma.TransactionUncheckedUpdateManyWithoutUserNestedInput
   settings?: Prisma.UserSettingsUncheckedUpdateOneWithoutUserNestedInput
   accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUncheckedUpdateOneWithoutUserNestedInput
+}
+
+export type UserCreateWithoutBotSessionInput = {
+  id?: string
+  email: string
+  name: string
+  passwordHash: string
+  avatar?: string | null
+  role?: string
+  balance?: number
+  totalProfit?: number
+  totalLoss?: number
+  commissionPaid?: number
+  bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bettingAccounts?: Prisma.BettingAccountCreateNestedManyWithoutUserInput
+  bets?: Prisma.BetCreateNestedManyWithoutUserInput
+  transactions?: Prisma.TransactionCreateNestedManyWithoutUserInput
+  settings?: Prisma.UserSettingsCreateNestedOneWithoutUserInput
+  accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
+  botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
+}
+
+export type UserUncheckedCreateWithoutBotSessionInput = {
+  id?: string
+  email: string
+  name: string
+  passwordHash: string
+  avatar?: string | null
+  role?: string
+  balance?: number
+  totalProfit?: number
+  totalLoss?: number
+  commissionPaid?: number
+  bankroll?: number
+  dailyPnl?: number
+  weeklyPnl?: number
+  region?: string | null
+  currency?: string | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bettingAccounts?: Prisma.BettingAccountUncheckedCreateNestedManyWithoutUserInput
+  bets?: Prisma.BetUncheckedCreateNestedManyWithoutUserInput
+  transactions?: Prisma.TransactionUncheckedCreateNestedManyWithoutUserInput
+  settings?: Prisma.UserSettingsUncheckedCreateNestedOneWithoutUserInput
+  accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
+  botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
+  allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
+  commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
+}
+
+export type UserCreateOrConnectWithoutBotSessionInput = {
+  where: Prisma.UserWhereUniqueInput
+  create: Prisma.XOR<Prisma.UserCreateWithoutBotSessionInput, Prisma.UserUncheckedCreateWithoutBotSessionInput>
+}
+
+export type UserUpsertWithoutBotSessionInput = {
+  update: Prisma.XOR<Prisma.UserUpdateWithoutBotSessionInput, Prisma.UserUncheckedUpdateWithoutBotSessionInput>
+  create: Prisma.XOR<Prisma.UserCreateWithoutBotSessionInput, Prisma.UserUncheckedCreateWithoutBotSessionInput>
+  where?: Prisma.UserWhereInput
+}
+
+export type UserUpdateToOneWithWhereWithoutBotSessionInput = {
+  where?: Prisma.UserWhereInput
+  data: Prisma.XOR<Prisma.UserUpdateWithoutBotSessionInput, Prisma.UserUncheckedUpdateWithoutBotSessionInput>
+}
+
+export type UserUpdateWithoutBotSessionInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  balance?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalProfit?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
+  commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
+  bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bettingAccounts?: Prisma.BettingAccountUpdateManyWithoutUserNestedInput
+  bets?: Prisma.BetUpdateManyWithoutUserNestedInput
+  transactions?: Prisma.TransactionUpdateManyWithoutUserNestedInput
+  settings?: Prisma.UserSettingsUpdateOneWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
+  allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
+  commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
+}
+
+export type UserUncheckedUpdateWithoutBotSessionInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  email?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  passwordHash?: Prisma.StringFieldUpdateOperationsInput | string
+  avatar?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  role?: Prisma.StringFieldUpdateOperationsInput | string
+  balance?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalProfit?: Prisma.FloatFieldUpdateOperationsInput | number
+  totalLoss?: Prisma.FloatFieldUpdateOperationsInput | number
+  commissionPaid?: Prisma.FloatFieldUpdateOperationsInput | number
+  bankroll?: Prisma.FloatFieldUpdateOperationsInput | number
+  dailyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  weeklyPnl?: Prisma.FloatFieldUpdateOperationsInput | number
+  region?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currency?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bettingAccounts?: Prisma.BettingAccountUncheckedUpdateManyWithoutUserNestedInput
+  bets?: Prisma.BetUncheckedUpdateManyWithoutUserNestedInput
+  transactions?: Prisma.TransactionUncheckedUpdateManyWithoutUserNestedInput
+  settings?: Prisma.UserSettingsUncheckedUpdateOneWithoutUserNestedInput
+  accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
+  botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
   allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
   commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
 }
@@ -1487,6 +1656,7 @@ export type UserCreateWithoutTransactionsInput = {
   botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
   allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
   commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutTransactionsInput = {
@@ -1514,6 +1684,7 @@ export type UserUncheckedCreateWithoutTransactionsInput = {
   botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
   allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
   commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutTransactionsInput = {
@@ -1557,6 +1728,7 @@ export type UserUpdateWithoutTransactionsInput = {
   botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
   allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
   commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutTransactionsInput = {
@@ -1584,6 +1756,7 @@ export type UserUncheckedUpdateWithoutTransactionsInput = {
   botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
   allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
   commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutAllocationsInput = {
@@ -1611,6 +1784,7 @@ export type UserCreateWithoutAllocationsInput = {
   accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
   botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
   commissions?: Prisma.CommissionLedgerCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutAllocationsInput = {
@@ -1638,6 +1812,7 @@ export type UserUncheckedCreateWithoutAllocationsInput = {
   accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
   botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
   commissions?: Prisma.CommissionLedgerUncheckedCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutAllocationsInput = {
@@ -1681,6 +1856,7 @@ export type UserUpdateWithoutAllocationsInput = {
   accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
   botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
   commissions?: Prisma.CommissionLedgerUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutAllocationsInput = {
@@ -1708,6 +1884,7 @@ export type UserUncheckedUpdateWithoutAllocationsInput = {
   accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
   botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
   commissions?: Prisma.CommissionLedgerUncheckedUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUncheckedUpdateOneWithoutUserNestedInput
 }
 
 export type UserCreateWithoutCommissionsInput = {
@@ -1735,6 +1912,7 @@ export type UserCreateWithoutCommissionsInput = {
   accumulators?: Prisma.AccumulatorCreateNestedManyWithoutUserInput
   botLogs?: Prisma.BotLogCreateNestedManyWithoutUserInput
   allocations?: Prisma.AllocationCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionCreateNestedOneWithoutUserInput
 }
 
 export type UserUncheckedCreateWithoutCommissionsInput = {
@@ -1762,6 +1940,7 @@ export type UserUncheckedCreateWithoutCommissionsInput = {
   accumulators?: Prisma.AccumulatorUncheckedCreateNestedManyWithoutUserInput
   botLogs?: Prisma.BotLogUncheckedCreateNestedManyWithoutUserInput
   allocations?: Prisma.AllocationUncheckedCreateNestedManyWithoutUserInput
+  botSession?: Prisma.BotSessionUncheckedCreateNestedOneWithoutUserInput
 }
 
 export type UserCreateOrConnectWithoutCommissionsInput = {
@@ -1805,6 +1984,7 @@ export type UserUpdateWithoutCommissionsInput = {
   accumulators?: Prisma.AccumulatorUpdateManyWithoutUserNestedInput
   botLogs?: Prisma.BotLogUpdateManyWithoutUserNestedInput
   allocations?: Prisma.AllocationUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUpdateOneWithoutUserNestedInput
 }
 
 export type UserUncheckedUpdateWithoutCommissionsInput = {
@@ -1832,6 +2012,7 @@ export type UserUncheckedUpdateWithoutCommissionsInput = {
   accumulators?: Prisma.AccumulatorUncheckedUpdateManyWithoutUserNestedInput
   botLogs?: Prisma.BotLogUncheckedUpdateManyWithoutUserNestedInput
   allocations?: Prisma.AllocationUncheckedUpdateManyWithoutUserNestedInput
+  botSession?: Prisma.BotSessionUncheckedUpdateOneWithoutUserNestedInput
 }
 
 
@@ -1945,6 +2126,7 @@ export type UserSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = r
   botLogs?: boolean | Prisma.User$botLogsArgs<ExtArgs>
   allocations?: boolean | Prisma.User$allocationsArgs<ExtArgs>
   commissions?: boolean | Prisma.User$commissionsArgs<ExtArgs>
+  botSession?: boolean | Prisma.User$botSessionArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["user"]>
 
@@ -2018,6 +2200,7 @@ export type UserInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   botLogs?: boolean | Prisma.User$botLogsArgs<ExtArgs>
   allocations?: boolean | Prisma.User$allocationsArgs<ExtArgs>
   commissions?: boolean | Prisma.User$commissionsArgs<ExtArgs>
+  botSession?: boolean | Prisma.User$botSessionArgs<ExtArgs>
   _count?: boolean | Prisma.UserCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type UserIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -2034,6 +2217,7 @@ export type $UserPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs =
     botLogs: Prisma.$BotLogPayload<ExtArgs>[]
     allocations: Prisma.$AllocationPayload<ExtArgs>[]
     commissions: Prisma.$CommissionLedgerPayload<ExtArgs>[]
+    botSession: Prisma.$BotSessionPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -2455,6 +2639,7 @@ export interface Prisma__UserClient<T, Null = never, ExtArgs extends runtime.Typ
   botLogs<T extends Prisma.User$botLogsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$botLogsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BotLogPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   allocations<T extends Prisma.User$allocationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$allocationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AllocationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   commissions<T extends Prisma.User$commissionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$commissionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CommissionLedgerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  botSession<T extends Prisma.User$botSessionArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.User$botSessionArgs<ExtArgs>>): Prisma.Prisma__BotSessionClient<runtime.Types.Result.GetResult<Prisma.$BotSessionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -3076,6 +3261,25 @@ export type User$commissionsArgs<ExtArgs extends runtime.Types.Extensions.Intern
   take?: number
   skip?: number
   distinct?: Prisma.CommissionLedgerScalarFieldEnum | Prisma.CommissionLedgerScalarFieldEnum[]
+}
+
+/**
+ * User.botSession
+ */
+export type User$botSessionArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the BotSession
+   */
+  select?: Prisma.BotSessionSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the BotSession
+   */
+  omit?: Prisma.BotSessionOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.BotSessionInclude<ExtArgs> | null
+  where?: Prisma.BotSessionWhereInput
 }
 
 /**
