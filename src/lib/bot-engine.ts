@@ -1,0 +1,746 @@
+// ============================================================================
+// iBetPro Bot Engine - Background Auto-Betting Engine
+// Runs continuously on the server using setInterval, independent of frontend
+// polling. Each user's bot gets its own timer that scans matches and places
+// bets automatically according to their settings.
+// ============================================================================
+
+import { prisma } from "./db";
+import { analyzeMatch, shouldAutoBet, checkRiskLimits, isWithinBetSchedule } from "./ai-engine-v2";
+import { placeBetOnBroker } from "./broker-integration";
+
+// ==================== TYPES ====================
+
+interface ScanResult {
+  betsPlaced: number;
+  totalStake: number;
+  matches: number;
+  skipped: number;
+  error?: string;
+}
+
+interface BotEngineStats {
+  userId: string;
+  status: "running" | "stopped" | "paused";
+  scanIntervalSec: number;
+  totalScans: number;
+  totalBetsPlaced: number;
+  totalStakeUsed: number;
+  totalProfit: number;
+  lastScanAt: Date | null;
+  lastBetAt: Date | null;
+  startedAt: Date | null;
+  errorCount: number;
+  lastError: string | null;
+}
+
+// ==================== SINGLETON ENGINE ====================
+
+/**
+ * BotEngine is a singleton that manages all running bot instances.
+ * Each user has their own timer that runs scan cycles on a configurable interval.
+ *
+ * The engine is designed to:
+ * - Run independently of the frontend (no polling required)
+ * - Auto-recover from errors (continues running after failed scans)
+ * - Auto-stop on risk limits, schedule violations, or no allocation
+ * - Persist state in the database (BotSession) for recovery after restarts
+ * - Support graceful shutdown
+ */
+class BotEngine {
+  private static instance: BotEngine | null = null;
+  private timers: Map<string, NodeJS.Timeout> = new Map();
+  private runningUsers: Map<string, BotEngineStats> = new Map();
+  private isShuttingDown = false;
+
+  private constructor() {
+    // Register graceful shutdown handlers
+    process.on("SIGTERM", () => this.shutdown());
+    process.on("SIGINT", () => this.shutdown());
+  }
+
+  static getInstance(): BotEngine {
+    if (!BotEngine.instance) {
+      BotEngine.instance = new BotEngine();
+    }
+    return BotEngine.instance;
+  }
+
+  // ==================== LIFECYCLE ====================
+
+  /**
+   * Start the bot for a specific user. Creates a timer that runs scan cycles
+   * on the configured interval (default 30 seconds).
+   */
+  async start(userId: string, scanIntervalSec: number = 30): Promise<{ success: boolean; message: string }> {
+    // Don't start if already running
+    if (this.timers.has(userId)) {
+      return { success: false, message: "Bot is already running for this user" };
+    }
+
+    // Validate prerequisites
+    const validation = await this.validatePrerequisites(userId);
+    if (!validation.valid) {
+      return { success: false, message: validation.error! };
+    }
+
+    // Initialize stats tracking
+    const stats: BotEngineStats = {
+      userId,
+      status: "running",
+      scanIntervalSec,
+      totalScans: 0,
+      totalBetsPlaced: 0,
+      totalStakeUsed: 0,
+      totalProfit: 0,
+      lastScanAt: null,
+      lastBetAt: null,
+      startedAt: new Date(),
+      errorCount: 0,
+      lastError: null,
+    };
+    this.runningUsers.set(userId, stats);
+
+    // Run the first scan immediately
+    try {
+      const result = await this.runScanCycle(userId);
+      stats.totalScans++;
+      stats.totalBetsPlaced += result.betsPlaced;
+      stats.totalStakeUsed += result.totalStake;
+      stats.lastScanAt = new Date();
+      if (result.betsPlaced > 0) {
+        stats.lastBetAt = new Date();
+      }
+      if (result.error) {
+        stats.errorCount++;
+        stats.lastError = result.error;
+      }
+    } catch (error) {
+      console.error(`[BotEngine] First scan failed for user ${userId}:`, error);
+      stats.errorCount++;
+      stats.lastError = error instanceof Error ? error.message : "Unknown error";
+    }
+
+    // Set up the recurring timer
+    const timer = setInterval(async () => {
+      if (this.isShuttingDown) return;
+
+      try {
+        const currentStats = this.runningUsers.get(userId);
+        if (!currentStats || currentStats.status !== "running") {
+          // Bot was stopped externally, clean up
+          this.stop(userId, "auto_stopped");
+          return;
+        }
+
+        // Check if the session is still running in the DB
+        const session = await prisma.botSession.findUnique({ where: { userId } });
+        if (!session || session.status !== "running") {
+          this.stop(userId, "session_expired");
+          return;
+        }
+
+        const result = await this.runScanCycle(userId);
+
+        currentStats.totalScans++;
+        currentStats.totalBetsPlaced += result.betsPlaced;
+        currentStats.totalStakeUsed += result.totalStake;
+        currentStats.lastScanAt = new Date();
+        currentStats.lastError = null; // Clear error on success
+
+        if (result.betsPlaced > 0) {
+          currentStats.lastBetAt = new Date();
+        }
+
+        if (result.error) {
+          currentStats.errorCount++;
+          currentStats.lastError = result.error;
+        }
+
+        // Update session stats in DB
+        await prisma.botSession.update({
+          where: { userId },
+          data: {
+            totalScans: { increment: 1 },
+            totalBetsPlaced: { increment: result.betsPlaced },
+            totalStakeUsed: { increment: result.totalStake },
+            lastScanAt: new Date(),
+            lastBetAt: result.betsPlaced > 0 ? new Date() : undefined,
+          },
+        });
+
+        // Log scan activity periodically (every 10 scans)
+        if (currentStats.totalScans % 10 === 0) {
+          await prisma.botLog.create({
+            data: {
+              userId,
+              action: "bot_scan",
+              reasoning: `Auto-scan #${currentStats.totalScans}: ${result.matches} matches found, ${result.betsPlaced} bets placed, ${result.skipped} skipped`,
+              details: JSON.stringify({
+                scanNumber: currentStats.totalScans,
+                betsPlaced: result.betsPlaced,
+                totalStake: result.totalStake,
+                matches: result.matches,
+                skipped: result.skipped,
+              }),
+            },
+          });
+        }
+      } catch (error) {
+        console.error(`[BotEngine] Scan cycle error for user ${userId}:`, error);
+        const currentStats = this.runningUsers.get(userId);
+        if (currentStats) {
+          currentStats.errorCount++;
+          currentStats.lastError = error instanceof Error ? error.message : "Unknown error";
+
+          // Auto-stop after too many consecutive errors
+          if (currentStats.errorCount >= 10) {
+            console.error(`[BotEngine] Too many errors for user ${userId}, stopping bot`);
+            await this.stop(userId, "too_many_errors");
+          }
+        }
+      }
+    }, scanIntervalSec * 1000);
+
+    // Prevent Node.js from keeping the process alive just for this timer
+    if (timer.unref) {
+      timer.unref();
+    }
+
+    this.timers.set(userId, timer);
+
+    console.log(`[BotEngine] Bot started for user ${userId} with interval ${scanIntervalSec}s`);
+
+    // Log bot start
+    await prisma.botLog.create({
+      data: {
+        userId,
+        action: "bot_started",
+        reasoning: `Bot engine started in background mode. Scanning every ${scanIntervalSec}s.`,
+        details: JSON.stringify({
+          mode: "background",
+          scanIntervalSec,
+          broker: validation.connectedAccount?.platform,
+          allocation: validation.connectedAccount?.allocatedAmount,
+        }),
+      },
+    });
+
+    return {
+      success: true,
+      message: stats.totalBetsPlaced > 0
+        ? `Bot started! Placed ${stats.totalBetsPlaced} bet(s) in first scan. Running in background.`
+        : "Bot started! Scanning for matches in background. Will place bets automatically.",
+    };
+  }
+
+  /**
+   * Stop the bot for a specific user. Clears the timer and updates the session.
+   */
+  async stop(userId: string, reason: string = "user_stopped"): Promise<void> {
+    const timer = this.timers.get(userId);
+    if (timer) {
+      clearInterval(timer);
+      this.timers.delete(userId);
+    }
+
+    const stats = this.runningUsers.get(userId);
+    if (stats) {
+      stats.status = "stopped";
+      this.runningUsers.delete(userId);
+    }
+
+    // Update the database session
+    try {
+      await prisma.botSession.upsert({
+        where: { userId },
+        update: {
+          status: "stopped",
+          stoppedAt: new Date(),
+          stopReason: reason,
+        },
+        create: {
+          userId,
+          status: "stopped",
+          stoppedAt: new Date(),
+          stopReason: reason,
+        },
+      });
+
+      // Log bot stop
+      await prisma.botLog.create({
+        data: {
+          userId,
+          action: "bot_stopped",
+          reasoning: `Bot engine stopped. Reason: ${reason}`,
+          details: JSON.stringify({
+            reason,
+            totalScans: stats?.totalScans || 0,
+            totalBetsPlaced: stats?.totalBetsPlaced || 0,
+            totalStakeUsed: stats?.totalStakeUsed || 0,
+            totalProfit: stats?.totalProfit || 0,
+            runDuration: stats?.startedAt
+              ? Math.round((Date.now() - stats.startedAt.getTime()) / 60000)
+              : 0,
+            errorCount: stats?.errorCount || 0,
+          }),
+        },
+      });
+    } catch (error) {
+      console.error(`[BotEngine] Error stopping bot for user ${userId}:`, error);
+    }
+
+    console.log(`[BotEngine] Bot stopped for user ${userId}. Reason: ${reason}`);
+  }
+
+  /**
+   * Gracefully shut down all running bots.
+   */
+  async shutdown(): Promise<void> {
+    if (this.isShuttingDown) return;
+    this.isShuttingDown = true;
+
+    console.log(`[BotEngine] Shutting down ${this.timers.size} running bots...`);
+
+    for (const [userId] of this.timers) {
+      await this.stop(userId, "server_shutdown");
+    }
+
+    this.timers.clear();
+    this.runningUsers.clear();
+  }
+
+  /**
+   * Recover bots that were running before a server restart.
+   * Checks the database for sessions with status "running" and restarts them.
+   */
+  async recoverRunningBots(): Promise<number> {
+    try {
+      const runningSessions = await prisma.botSession.findMany({
+        where: { status: "running" },
+      });
+
+      console.log(`[BotEngine] Found ${runningSessions.length} running sessions to recover`);
+
+      let recovered = 0;
+      for (const session of runningSessions) {
+        try {
+          const result = await this.start(session.userId, session.scanIntervalSec || 30);
+          if (result.success) {
+            recovered++;
+            console.log(`[BotEngine] Recovered bot for user ${session.userId}`);
+          } else {
+            console.warn(`[BotEngine] Could not recover bot for user ${session.userId}: ${result.message}`);
+          }
+        } catch (error) {
+          console.error(`[BotEngine] Error recovering bot for user ${session.userId}:`, error);
+        }
+      }
+
+      return recovered;
+    } catch (error) {
+      console.error("[BotEngine] Error recovering bots:", error);
+      return 0;
+    }
+  }
+
+  // ==================== STATUS ====================
+
+  /**
+   * Get the current status of a user's bot.
+   */
+  getStatus(userId: string): BotEngineStats | null {
+    return this.runningUsers.get(userId) || null;
+  }
+
+  /**
+   * Check if a user's bot is currently running.
+   */
+  isRunning(userId: string): boolean {
+    return this.timers.has(userId) && (this.runningUsers.get(userId)?.status === "running");
+  }
+
+  /**
+   * Get all running bot stats.
+   */
+  getAllRunningStats(): BotEngineStats[] {
+    return Array.from(this.runningUsers.values());
+  }
+
+  /**
+   * Get the number of currently running bots.
+   */
+  getRunningCount(): number {
+    return this.timers.size;
+  }
+
+  // ==================== SCAN CYCLE ====================
+
+  /**
+   * Run a single scan cycle - analyze matches and place bets.
+   * This is the core logic that runs on each interval tick.
+   */
+  private async runScanCycle(userId: string): Promise<ScanResult> {
+    const result: ScanResult = { betsPlaced: 0, totalStake: 0, matches: 0, skipped: 0 };
+
+    try {
+      // Get user settings
+      const settings = await prisma.userSettings.findUnique({ where: { userId } });
+      if (!settings) {
+        result.error = "Settings not found";
+        return result;
+      }
+
+      if (!settings.autoBettingEnabled) {
+        result.error = "Auto-betting is disabled";
+        await this.stop(userId, "auto_betting_disabled");
+        return result;
+      }
+
+      // Check schedule
+      if (!isWithinBetSchedule(settings.betScheduleStart, settings.betScheduleEnd)) {
+        // Don't stop the bot, just skip this scan
+        return result;
+      }
+
+      // Check risk limits
+      const user = await prisma.user.findUnique({ where: { id: userId } });
+      const riskCheck = checkRiskLimits(user?.dailyPnl || 0, user?.weeklyPnl || 0, {
+        stopLossDaily: settings.stopLossDaily,
+        stopLossWeekly: settings.stopLossWeekly,
+        profitTargetDaily: settings.profitTargetDaily,
+        profitTargetWeekly: settings.profitTargetWeekly,
+      });
+
+      if (!riskCheck.canBet) {
+        // Auto-stop the bot if risk limits hit
+        const reason = (user?.dailyPnl ?? 0) <= -settings.stopLossDaily ? "stop_loss" : "profit_target";
+        await this.stop(userId, reason);
+        await prisma.botLog.create({
+          data: {
+            userId,
+            action: reason === "stop_loss" ? "stop_loss_hit" : "profit_target_hit",
+            reasoning: riskCheck.reason,
+          },
+        });
+        return result;
+      }
+
+      // Get connected betting account
+      const bettingAccount = await prisma.bettingAccount.findFirst({
+        where: { userId, isConnected: true },
+        orderBy: { allocatedAmount: "desc" },
+      });
+
+      if (!bettingAccount || bettingAccount.allocatedAmount <= 0) {
+        await this.stop(userId, "no_allocation");
+        await prisma.botLog.create({
+          data: {
+            userId,
+            action: "bot_scan",
+            reasoning: "No connected broker or allocation available. Stopping bot.",
+          },
+        });
+        return result;
+      }
+
+      // Check daily limit
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
+      const todayBets = await prisma.bet.findMany({
+        where: {
+          userId,
+          placedAt: { gte: todayStart },
+          status: { in: ["pending", "won", "lost", "cashed_out", "partial_cashout"] },
+        },
+      });
+      const dailyStake = todayBets.reduce((sum, b) => sum + b.stake, 0);
+      const existingBetMatchIds = todayBets.map((b) => b.matchId);
+
+      if (dailyStake >= settings.dailyBetLimit) {
+        // Don't stop the bot, just skip this scan
+        return result;
+      }
+
+      const remainingDailyLimit = Math.min(
+        settings.dailyBetLimit - dailyStake,
+        bettingAccount.allocatedAmount
+      );
+
+      if (remainingDailyLimit < 5) {
+        return result;
+      }
+
+      // Get active allocation
+      const activeAllocation = await prisma.allocation.findFirst({
+        where: { userId, bettingAccountId: bettingAccount.id, status: "active" },
+      });
+
+      // Get upcoming matches
+      const preferredSports = settings.preferredSports?.split(",") || ["football"];
+      const upcomingMatches = await prisma.match.findMany({
+        where: {
+          status: "upcoming",
+          sport: { in: preferredSports },
+          commenceTime: { gte: new Date() },
+          id: { notIn: existingBetMatchIds },
+        },
+        orderBy: { commenceTime: "asc" },
+        take: 20,
+      });
+
+      result.matches = upcomingMatches.length;
+
+      if (upcomingMatches.length === 0) {
+        return result;
+      }
+
+      // Analyze and place bets
+      for (const match of upcomingMatches) {
+        try {
+          const homeTeamStats = await prisma.teamStats.findFirst({
+            where: { teamName: match.homeTeam, sport: match.sport },
+          });
+          const awayTeamStats = await prisma.teamStats.findFirst({
+            where: { teamName: match.awayTeam, sport: match.sport },
+          });
+
+          const prediction = analyzeMatch(
+            {
+              homeTeam: match.homeTeam,
+              awayTeam: match.awayTeam,
+              sport: match.sport,
+              league: match.league,
+              homeOdds: match.homeOdds,
+              drawOdds: match.drawOdds ?? undefined,
+              awayOdds: match.awayOdds,
+              overOdds: match.overOdds ?? undefined,
+              underOdds: match.underOdds ?? undefined,
+              overUnderLine: match.overUnderLine ?? undefined,
+              status: match.status,
+              commenceTime: match.commenceTime.toISOString(),
+            },
+            homeTeamStats,
+            awayTeamStats,
+            user?.bankroll || 1000,
+            settings.kellyFraction
+          );
+
+          const autoBetCheck = shouldAutoBet(prediction, {
+            minOddsThreshold: settings.minOddsThreshold,
+            maxOddsThreshold: settings.maxOddsThreshold,
+            minAiConfidence: settings.minAiConfidence,
+            minEdgeThreshold: settings.minEdgeThreshold,
+            riskLevel: settings.riskLevel,
+            preferredSports: settings.preferredSports,
+          }, match.sport);
+
+          const recOdds = prediction.recommended === "home" ? match.homeOdds
+            : prediction.recommended === "away" ? match.awayOdds
+            : match.drawOdds || 3.0;
+
+          // Check odds range
+          if (recOdds < settings.minOddsThreshold || recOdds > settings.maxOddsThreshold) {
+            result.skipped++;
+            continue;
+          }
+
+          if (!autoBetCheck.shouldPlace) {
+            result.skipped++;
+            continue;
+          }
+
+          // Calculate stake
+          const stake = Math.min(
+            autoBetCheck.suggestedStake || settings.maxBetAmount * 0.5,
+            settings.maxBetAmount,
+            remainingDailyLimit - result.totalStake
+          );
+
+          if (stake < 5) continue;
+
+          const selection = prediction.recommended === "home" ? match.homeTeam
+            : prediction.recommended === "away" ? match.awayTeam
+            : prediction.recommended === "draw" ? "Draw"
+            : prediction.recommended === "over" ? "Over 2.5"
+            : "Under 2.5";
+
+          const potentialWin = Math.round(stake * recOdds * 100) / 100;
+
+          // Place bet on broker
+          const brokerResult = await placeBetOnBroker(
+            bettingAccount.platform,
+            bettingAccount.accessToken || "",
+            {
+              matchId: match.id,
+              selection,
+              odds: recOdds,
+              stake,
+              betType: "single",
+            }
+          );
+
+          // Create bet record
+          const bet = await prisma.bet.create({
+            data: {
+              userId,
+              bettingAccountId: bettingAccount.id,
+              matchId: match.id,
+              betType: "single",
+              selection,
+              odds: recOdds,
+              stake,
+              potentialWin,
+              isAutoPlaced: true,
+              aiConfidence: prediction.confidence,
+              aiReasoning: prediction.analysis,
+              aiModelUsed: "v2_ensemble",
+              kellyStake: prediction.kellyStake,
+              valueEdge: prediction.valueEdge,
+              riskScore: prediction.riskScore,
+            },
+          });
+
+          // Update allocation
+          if (activeAllocation) {
+            await prisma.allocation.update({
+              where: { id: activeAllocation.id },
+              data: {
+                usedAmount: { increment: stake },
+                remainingAmount: { decrement: stake },
+              },
+            });
+          }
+
+          // Update betting account
+          await prisma.bettingAccount.update({
+            where: { id: bettingAccount.id },
+            data: {
+              allocatedAmount: { decrement: stake },
+              lastBetPlacedAt: new Date(),
+              totalBrokerBets: { increment: 1 },
+            },
+          });
+
+          // Create transaction
+          await prisma.transaction.create({
+            data: {
+              userId,
+              type: "bet_placed",
+              amount: -stake,
+              currency: bettingAccount.currency || "USD",
+              status: "completed",
+              description: `Auto-bet via ${bettingAccount.platform}: ${match.homeTeam} vs ${match.awayTeam} - ${selection} @ ${recOdds}`,
+              betId: bet.id,
+            },
+          });
+
+          // Update match AI data
+          await prisma.match.update({
+            where: { id: match.id },
+            data: {
+              aiHomeWinProb: prediction.homeWinProb,
+              aiDrawProb: prediction.drawProb,
+              aiAwayWinProb: prediction.awayWinProb,
+              aiConfidence: prediction.confidence,
+              aiRecommended: prediction.recommended,
+              aiAnalysis: prediction.analysis,
+              aiRiskScore: prediction.riskScore,
+              aiValueEdge: prediction.valueEdge,
+              aiKellyStake: prediction.kellyStake,
+            },
+          });
+
+          // Log the bet
+          await prisma.botLog.create({
+            data: {
+              userId,
+              action: "bet_placed",
+              matchId: match.id,
+              betId: bet.id,
+              details: JSON.stringify({
+                stake,
+                odds: recOdds,
+                selection,
+                potentialWin,
+                broker: bettingAccount.platform,
+                brokerBetId: brokerResult.brokerBetId,
+              }),
+              reasoning: autoBetCheck.reason,
+              confidence: prediction.confidence,
+              profitImpact: -stake,
+            },
+          });
+
+          result.betsPlaced++;
+          result.totalStake += stake;
+        } catch (matchError) {
+          console.error(`[BotEngine] Error processing match ${match.id}:`, matchError);
+          result.skipped++;
+        }
+      }
+
+      // Check for accumulator opportunities
+      if (result.betsPlaced === 0 && result.skipped > 0) {
+        await prisma.botLog.create({
+          data: {
+            userId,
+            action: "bot_scan",
+            reasoning: `Scan completed: ${result.matches} matches found, ${result.skipped} skipped (no qualifying bets)`,
+          },
+        });
+      }
+
+    } catch (error) {
+      console.error(`[BotEngine] Scan cycle error for user ${userId}:`, error);
+      result.error = error instanceof Error ? error.message : "Unknown error";
+    }
+
+    return result;
+  }
+
+  // ==================== VALIDATION ====================
+
+  private async validatePrerequisites(userId: string): Promise<{
+    valid: boolean;
+    error?: string;
+    connectedAccount?: { platform: string; allocatedAmount: number };
+  }> {
+    const settings = await prisma.userSettings.findUnique({ where: { userId } });
+    if (!settings) {
+      return { valid: false, error: "Settings not found. Please configure your settings first." };
+    }
+
+    if (!settings.autoBettingEnabled) {
+      return { valid: false, error: "Auto-betting is disabled. Enable it first." };
+    }
+
+    const connectedAccount = await prisma.bettingAccount.findFirst({
+      where: { userId, isConnected: true },
+    });
+
+    if (!connectedAccount) {
+      return { valid: false, error: "No connected broker account. Connect a broker and set allocation first." };
+    }
+
+    if (connectedAccount.allocatedAmount <= 0) {
+      return { valid: false, error: "No allocation set. Allocate funds from your broker account first." };
+    }
+
+    return {
+      valid: true,
+      connectedAccount: {
+        platform: connectedAccount.platform,
+        allocatedAmount: connectedAccount.allocatedAmount,
+      },
+    };
+  }
+}
+
+// ==================== EXPORT ====================
+
+// Export the singleton instance
+export const botEngine = BotEngine.getInstance();
+
+// Also export the class for testing
+export { BotEngine };

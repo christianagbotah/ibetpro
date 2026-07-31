@@ -128,6 +128,7 @@ export default function BettingPage() {
     lastBetAt: string | null;
     startedAt: string | null;
   } | null>(null);
+  const [engineRunning, setEngineRunning] = useState(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
 
   // Load user settings and bot status
@@ -156,6 +157,9 @@ export default function BettingPage() {
           if (data.botStatus === "running") {
             setBotRunning(true);
           }
+          if (data.engineRunning) {
+            setEngineRunning(true);
+          }
           if (data.session) {
             setBotSession(data.session);
           }
@@ -164,52 +168,66 @@ export default function BettingPage() {
         // Ignore
       }
     }
+    // Initialize the bot engine (recovers running bots on server restart)
+    fetch("/api/bot/init").catch(() => {});
     loadSettings();
     loadBotStatus();
   }, []);
 
-  // Start/stop polling when bot state changes
+  // Poll for bot status updates when running (read-only, doesn't trigger scans)
   useEffect(() => {
     if (botRunning) {
-      // Start polling every 30 seconds
+      // Poll for status updates every 15 seconds (the bot engine runs scans independently)
       pollIntervalRef.current = setInterval(async () => {
         try {
-          const res = await fetch("/api/bot/control", { method: "PATCH" });
+          const res = await fetch("/api/bot/control");
           if (res.ok) {
             const data = await res.json();
             if (data.botStatus === "stopped") {
               // Bot was auto-stopped (risk limit, no allocation, etc.)
               setBotRunning(false);
-              if (data.stopReason && data.stopReason !== "user_stopped") {
+              setEngineRunning(false);
+              if (data.session?.stopReason && data.session.stopReason !== "user_stopped") {
                 const reasonMap: Record<string, string> = {
                   stop_loss: "Stop-loss limit reached",
                   profit_target: "Profit target reached",
                   schedule: "Outside betting schedule",
                   no_allocation: "No allocation remaining",
                   error: "An error occurred",
+                  too_many_errors: "Too many errors occurred",
                 };
-                addToast("warning", `Bot stopped: ${reasonMap[data.stopReason] || data.stopReason}`);
+                addToast("warning", `Bot stopped: ${reasonMap[data.session.stopReason] || data.session.stopReason}`);
               }
             }
-            if (data.totalScans !== undefined) {
-              setBotSession((prev) => prev ? {
-                ...prev,
-                totalScans: data.totalScans,
-                totalBetsPlaced: data.totalBetsPlaced,
-                totalStakeUsed: data.totalStakeUsed,
-                lastScanAt: data.lastScanAt,
-                lastBetAt: data.lastBetAt ?? prev.lastBetAt,
-              } : null);
+            if (data.engineRunning !== undefined) {
+              setEngineRunning(data.engineRunning);
             }
-            if (data.scanResult?.betsPlaced > 0) {
-              addToast("success", `Bot placed ${data.scanResult.betsPlaced} bet(s)!`);
+            // Update session stats from engine
+            if (data.engineStats) {
+              setBotSession((prev) => ({
+                totalScans: data.engineStats.totalScans ?? prev?.totalScans ?? 0,
+                totalBetsPlaced: data.engineStats.totalBetsPlaced ?? prev?.totalBetsPlaced ?? 0,
+                totalStakeUsed: data.engineStats.totalStakeUsed ?? prev?.totalStakeUsed ?? 0,
+                totalProfit: data.engineStats.totalProfit ?? prev?.totalProfit ?? 0,
+                lastScanAt: data.engineStats.lastScanAt ?? prev?.lastScanAt ?? null,
+                lastBetAt: data.engineStats.lastBetAt ?? prev?.lastBetAt ?? null,
+                startedAt: data.engineStats.startedAt ?? prev?.startedAt ?? null,
+              }));
+            } else if (data.session) {
+              setBotSession(data.session);
+            }
+            // Check for new bets placed
+            const prevBets = botSession?.totalBetsPlaced ?? 0;
+            const newBetsPlaced = (data.engineStats?.totalBetsPlaced ?? data.session?.totalBetsPlaced ?? 0) - prevBets;
+            if (newBetsPlaced > 0) {
+              addToast("success", `Bot placed ${newBetsPlaced} bet(s)!`);
               refetchBets();
             }
           }
         } catch {
           // Ignore poll errors
         }
-      }, 30000); // 30-second scan interval
+      }, 15000); // 15-second status poll (engine scans independently)
     } else {
       // Stop polling
       if (pollIntervalRef.current) {
@@ -443,7 +461,10 @@ export default function BettingPage() {
               <div>
                 <p className="text-sm font-medium text-red-400">AI Bot is Running</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Scanning for matches every 30 seconds. {botSession?.totalScans ? `${botSession.totalScans} scan(s) completed` : "First scan in progress"}...
+                  {engineRunning
+                    ? "Running in background — scans happen automatically even when you close this page."
+                    : "Session active but engine not detected — try restarting the bot."}{" "}
+                  {botSession?.totalScans ? `${botSession.totalScans} scan(s) completed` : "First scan in progress"}...
                   {botSession?.totalBetsPlaced ? ` ${botSession.totalBetsPlaced} bet(s) placed.` : ""}
                 </p>
               </div>
@@ -454,9 +475,13 @@ export default function BettingPage() {
                   Last scan: {new Date(botSession.lastScanAt).toLocaleTimeString()}
                 </span>
               )}
-              <Badge className="text-xs bg-red-500/10 text-red-400 border-red-500/20 animate-pulse">
+              <Badge className={`text-xs animate-pulse ${
+                engineRunning
+                  ? "bg-red-500/10 text-red-400 border-red-500/20"
+                  : "bg-amber-400/10 text-amber-400 border-amber-400/20"
+              }`}>
                 <Activity className="h-3 w-3 mr-1" />
-                Live
+                {engineRunning ? "Live" : "Reconnect"}
               </Badge>
             </div>
           </div>
@@ -494,7 +519,7 @@ export default function BettingPage() {
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-muted-foreground" />
               )}
             </span>
-            {botRunning ? "Running" : settings.autoBettingEnabled ? "Ready" : "Inactive"}
+            {botRunning ? (engineRunning ? "Running" : "Session Active") : settings.autoBettingEnabled ? "Ready" : "Inactive"}
           </Badge>
 
           {/* Start/Stop Bot Button */}
