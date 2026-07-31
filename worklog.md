@@ -154,3 +154,26 @@ Stage Summary:
 - BotHealthPanel: live engine metrics dashboard
 - useBotEvents hook: React integration for SSE stream
 - Full end-to-end flow: scan → bet → cashout → settle → report, all automated
+
+---
+Task ID: 5
+Agent: Main Agent
+Task: Start development server for iBetPro
+
+Work Log:
+- Discovered that the Next.js dev server (Turbopack) uses too much memory (~500MB RSS) and gets OOM killed
+- The standalone production server uses ~100MB RSS which is more stable
+- Found that the container kills background processes after ~30 seconds when they're children of the shell
+- Discovered that double-forking (detaching from the shell) allows the server to survive
+- Built the production bundle with `npx next build`
+- Copied static files and public directory to the standalone build
+- Started the server with `node --max-old-space-size=128 .next/standalone/server.js`
+- Server is accessible via Caddy reverse proxy on port 81 and directly on port 3000
+- All endpoints working: /, /login, /betting, /api/bot/control, /api/bot/init
+
+Stage Summary:
+- Production server running on port 3000 (PID 12687, ~102MB RSS)
+- Accessible via Caddy on port 81
+- Uses `--max-old-space-size=128` to keep memory usage low
+- Server needs to be started with double-fork to survive container process management
+- Start script: /home/z/my-project/scripts/start-prod.sh
