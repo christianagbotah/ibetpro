@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0f1117" rx="76.8"/>
+  <rect x="40.96" y="40.96" width="430.08" height="430.08" fill="#10b981" rx="61.44"/>
+  <text x="256" y="266.24" font-family="sans-serif" font-weight="bold" font-size="153.6" fill="#0f1117" text-anchor="middle" dominant-baseline="middle">iB</text>
+</svg>

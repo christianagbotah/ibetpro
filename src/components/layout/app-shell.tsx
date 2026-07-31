@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Sidebar } from "@/components/layout/sidebar";
 import { Header } from "@/components/layout/header";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { PWAInstallBanner } from "@/components/pwa/install-banner";
 import { useState } from "react";
 
 const noShellRoutes = ["/login"];
@@ -37,10 +38,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Main content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header onMobileMenuToggle={() => setMobileOpen(true)} />
-        <main className="flex-1 overflow-y-auto bg-background p-4 lg:p-6">
+        <main className="flex-1 overflow-y-auto bg-background p-3 sm:p-4 lg:p-6">
           {children}
         </main>
       </div>
+
+      {/* PWA install banner */}
+      <PWAInstallBanner />
     </div>
   );
 }

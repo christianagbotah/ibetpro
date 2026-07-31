@@ -21,6 +21,8 @@ model User {
   bankroll       Float    @default(1000)
   dailyPnl       Float    @default(0)
   weeklyPnl      Float    @default(0)
+  region         String?  @default("ng") // user's country/region code
+  currency       String?  @default("NGN") // currency code based on region
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

@@ -5,13 +5,22 @@ import {
   authenticateBroker,
   getBrokerPlatform,
   validateBrokerSession,
-  BROKER_PLATFORMS,
+  getAvailablePlatforms,
+  getRegionCurrency,
 } from "@/lib/broker-integration";
+import {
+  REGIONS,
+  getPlatformsForRegion,
+  getRegionInfo,
+  getContinents,
+  searchRegions,
+  type RegionInfo,
+} from "@/lib/regions";
 
 /**
  * Broker Connect API
  * POST /api/broker/connect - Connect a broker account
- * GET /api/broker/connect - Get available broker platforms and connection status
+ * GET /api/broker/connect - Get available regions, platforms, and connection status
  */
 export async function POST(request: NextRequest) {
   try {
@@ -24,9 +33,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Platform ID required" }, { status: 400 });
     }
 
+    if (!region) {
+      return NextResponse.json({ error: "Region is required" }, { status: 400 });
+    }
+
     const platform = getBrokerPlatform(platformId);
     if (!platform) {
       return NextResponse.json({ error: `Unknown platform: ${platformId}` }, { status: 400 });
+    }
+
+    // Verify platform is available in the user's region
+    const platformsInRegion = getAvailablePlatforms(region);
+    if (!platformsInRegion.find((p) => p.id === platformId)) {
+      return NextResponse.json({
+        error: `${platform.name} is not available in your region`,
+      }, { status: 400 });
     }
 
     // Authenticate with the broker
@@ -37,6 +58,18 @@ export async function POST(request: NextRequest) {
         error: authResult.error || "Authentication failed",
         platform: platformId,
       }, { status: 401 });
+    }
+
+    // Get currency for the region
+    const currencyInfo = getRegionCurrency(region);
+
+    // Update user's region and currency if not set
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (user && (!user.region || user.region === "ng")) {
+      await prisma.user.update({
+        where: { id: userId },
+        data: { region, currency: currencyInfo.code },
+      });
     }
 
     // Create or update the betting account with broker connection
@@ -50,7 +83,6 @@ export async function POST(request: NextRequest) {
 
     let account;
     if (existingAccount) {
-      // Update existing account
       account = await prisma.bettingAccount.update({
         where: { id: existingAccount.id },
         data: {
@@ -60,14 +92,14 @@ export async function POST(request: NextRequest) {
           sessionExpiry: authResult.sessionExpiry,
           isConnected: true,
           brokerType: platform.authType,
-          brokerRegion: region || platform.regions[0],
+          brokerRegion: region,
           brokerUserId: authResult.brokerUserId,
           accountName: accountName || `${platform.name} Account`,
+          currency: currencyInfo.code,
           lastSyncedAt: new Date(),
         },
       });
     } else {
-      // Create new account
       account = await prisma.bettingAccount.create({
         data: {
           userId,
@@ -80,8 +112,9 @@ export async function POST(request: NextRequest) {
           sessionExpiry: authResult.sessionExpiry,
           isConnected: true,
           brokerType: platform.authType,
-          brokerRegion: region || platform.regions[0],
+          brokerRegion: region,
           brokerUserId: authResult.brokerUserId,
+          currency: currencyInfo.code,
           lastSyncedAt: new Date(),
         },
       });
@@ -96,6 +129,7 @@ export async function POST(request: NextRequest) {
         isConnected: account.isConnected,
         brokerType: account.brokerType,
         brokerRegion: account.brokerRegion,
+        currency: account.currency,
         allocatedAmount: account.allocatedAmount,
         balance: account.balance,
         sessionExpiry: account.sessionExpiry,
@@ -137,6 +171,7 @@ export async function GET(request: NextRequest) {
         brokerType: account.brokerType,
         brokerRegion: account.brokerRegion,
         balance: account.balance,
+        currency: account.currency,
         allocatedAmount: account.allocatedAmount,
         allocationLock: account.allocationLock,
         totalBrokerBets: account.totalBrokerBets,
@@ -146,19 +181,24 @@ export async function GET(request: NextRequest) {
       };
     });
 
-    // Available platforms
-    const availablePlatforms = BROKER_PLATFORMS.map((p) => ({
-      id: p.id,
-      name: p.name,
-      regions: p.regions,
-      authType: p.authType,
-      supportedSports: p.supportedSports,
-      features: p.features,
+    // Return regions data and available platforms
+    const regions = REGIONS.map((r) => ({
+      code: r.code,
+      name: r.name,
+      flag: r.flag,
+      currencyCode: r.currencyCode,
+      currencySymbol: r.currencySymbol,
+      currencyName: r.currencyName,
+      continent: r.continent,
+      platformCount: getPlatformsForRegion(r.code).length,
     }));
+
+    const continents = getContinents();
 
     return NextResponse.json({
       accounts: accountsWithStatus,
-      availablePlatforms,
+      regions,
+      continents,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {

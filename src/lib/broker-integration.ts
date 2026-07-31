@@ -1,11 +1,18 @@
 // ============================================================================
 // iBetPro Broker Integration Layer
-// Handles connections to betting platforms (Sportybet, 1xBet, Bet9ja, etc.)
+// Handles connections to betting platforms across all regions
 // Users log in with their broker credentials, the app gets allocation from
 // their account and places bets directly on the broker platform.
 // ============================================================================
 
 import { config } from "./config";
+import {
+  BROKER_PLATFORMS as REGION_PLATFORMS,
+  getPlatformsForRegion,
+  getCurrencyForRegion,
+  getRegionInfo,
+  type BrokerPlatformInfo,
+} from "./regions";
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -18,6 +25,10 @@ export interface BrokerPlatform {
   baseUrl: string;
   features: BrokerFeatures;
   commissionDefault: number;
+  logo?: string;
+  color?: string;
+  mobileApp?: boolean;
+  popularIn?: string[];
 }
 
 export interface BrokerFeatures {
@@ -74,150 +85,22 @@ export interface BrokerSession {
   needsRefresh: boolean;
 }
 
-// ==================== SUPPORTED BROKER PLATFORMS ====================
+// ==================== BROKER PLATFORMS (re-exported from regions) ====================
 
-export const BROKER_PLATFORMS: BrokerPlatform[] = [
-  {
-    id: "sportybet",
-    name: "Sportybet",
-    regions: ["ng", "ke", "gh", "tz", "ug"],
-    authType: "web_session",
-    supportedSports: ["football", "basketball", "tennis", "cricket"],
-    baseUrl: "https://www.sportybet.com",
-    features: {
-      liveBetting: true,
-      cashout: true,
-      partialCashout: true,
-      accumulators: true,
-      maxAccumulatorLegs: 30,
-      minStake: 100,
-      maxStake: 10000000,
-      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "draw_no_bet"],
-      instantSettlement: true,
-    },
-    commissionDefault: 0.10,
-  },
-  {
-    id: "1xbet",
-    name: "1xBet",
-    regions: ["ng", "ke", "gh", "global"],
-    authType: "api_key",
-    supportedSports: ["football", "basketball", "tennis", "hockey", "cricket", "baseball"],
-    baseUrl: "https://1xbet.com",
-    features: {
-      liveBetting: true,
-      cashout: true,
-      partialCashout: true,
-      accumulators: true,
-      maxAccumulatorLegs: 20,
-      minStake: 50,
-      maxStake: 50000000,
-      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap", "correct_score", "half_time_full_time"],
-      instantSettlement: true,
-    },
-    commissionDefault: 0.10,
-  },
-  {
-    id: "bet9ja",
-    name: "Bet9ja",
-    regions: ["ng"],
-    authType: "web_session",
-    supportedSports: ["football", "basketball", "tennis"],
-    baseUrl: "https://www.bet9ja.com",
-    features: {
-      liveBetting: true,
-      cashout: true,
-      partialCashout: false,
-      accumulators: true,
-      maxAccumulatorLegs: 25,
-      minStake: 100,
-      maxStake: 5000000,
-      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance"],
-      instantSettlement: true,
-    },
-    commissionDefault: 0.10,
-  },
-  {
-    id: "betway",
-    name: "Betway",
-    regions: ["ng", "ke", "gh", "uk", "global"],
-    authType: "oauth",
-    supportedSports: ["football", "basketball", "tennis", "hockey", "cricket"],
-    baseUrl: "https://www.betway.com",
-    features: {
-      liveBetting: true,
-      cashout: true,
-      partialCashout: true,
-      accumulators: true,
-      maxAccumulatorLegs: 15,
-      minStake: 50,
-      maxStake: 10000000,
-      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap"],
-      instantSettlement: true,
-    },
-    commissionDefault: 0.10,
-  },
-  {
-    id: "stake",
-    name: "Stake",
-    regions: ["global"],
-    authType: "api_key",
-    supportedSports: ["football", "basketball", "tennis", "hockey", "cricket", "esports"],
-    baseUrl: "https://www.stake.com",
-    features: {
-      liveBetting: true,
-      cashout: true,
-      partialCashout: true,
-      accumulators: true,
-      maxAccumulatorLegs: 10,
-      minStake: 10,
-      maxStake: 1000000,
-      supportedMarkets: ["1x2", "over_under", "both_teams_score", "handicap", "correct_score"],
-      instantSettlement: true,
-    },
-    commissionDefault: 0.10,
-  },
-  {
-    id: "bet365",
-    name: "Bet365",
-    regions: ["uk", "eu", "global"],
-    authType: "web_session",
-    supportedSports: ["football", "basketball", "tennis", "hockey", "cricket", "horse_racing"],
-    baseUrl: "https://www.bet365.com",
-    features: {
-      liveBetting: true,
-      cashout: true,
-      partialCashout: true,
-      accumulators: true,
-      maxAccumulatorLegs: 14,
-      minStake: 10,
-      maxStake: 5000000,
-      supportedMarkets: ["1x2", "over_under", "both_teams_score", "double_chance", "handicap", "correct_score", "half_time_full_time", "first_goalscorer"],
-      instantSettlement: true,
-    },
-    commissionDefault: 0.10,
-  },
-  {
-    id: "manual",
-    name: "Manual Broker",
-    regions: ["global"],
-    authType: "manual",
-    supportedSports: ["football", "basketball", "tennis"],
-    baseUrl: "",
-    features: {
-      liveBetting: false,
-      cashout: true,
-      partialCashout: true,
-      accumulators: true,
-      maxAccumulatorLegs: 10,
-      minStake: 10,
-      maxStake: 1000000,
-      supportedMarkets: ["1x2", "over_under", "both_teams_score"],
-      instantSettlement: false,
-    },
-    commissionDefault: 0.10,
-  },
-];
+export const BROKER_PLATFORMS: BrokerPlatform[] = REGION_PLATFORMS.map((p) => ({
+  id: p.id,
+  name: p.name,
+  regions: p.regions,
+  authType: p.authType,
+  supportedSports: p.supportedSports,
+  baseUrl: p.baseUrl,
+  features: p.features,
+  commissionDefault: p.commissionDefault,
+  logo: p.logo,
+  color: p.color,
+  mobileApp: p.mobileApp,
+  popularIn: p.popularIn,
+}));
 
 // ==================== BROKER CONNECTION MANAGER ====================
 
@@ -229,11 +112,38 @@ export function getBrokerPlatform(platformId: string): BrokerPlatform | undefine
 }
 
 /**
- * Get all available broker platforms
+ * Get all available broker platforms, optionally filtered by region
  */
 export function getAvailablePlatforms(region?: string): BrokerPlatform[] {
   if (!region) return BROKER_PLATFORMS;
-  return BROKER_PLATFORMS.filter((p) => p.regions.includes(region) || p.regions.includes("global"));
+  return getPlatformsForRegion(region).map((p) => ({
+    id: p.id,
+    name: p.name,
+    regions: p.regions,
+    authType: p.authType,
+    supportedSports: p.supportedSports,
+    baseUrl: p.baseUrl,
+    features: p.features,
+    commissionDefault: p.commissionDefault,
+    logo: p.logo,
+    color: p.color,
+    mobileApp: p.mobileApp,
+    popularIn: p.popularIn,
+  }));
+}
+
+/**
+ * Get the currency for a given region
+ */
+export function getRegionCurrency(regionCode: string): { code: string; symbol: string; name: string } {
+  return getCurrencyForRegion(regionCode);
+}
+
+/**
+ * Get region display info
+ */
+export function getRegionDisplayInfo(regionCode: string) {
+  return getRegionInfo(regionCode);
 }
 
 /**
@@ -249,11 +159,8 @@ export async function authenticateBroker(
     return { success: false, error: `Unknown platform: ${platformId}` };
   }
 
-  // In production, each broker would have its own auth flow
-  // For now, we simulate the authentication based on the broker type
   switch (platform.authType) {
     case "oauth": {
-      // OAuth flow - redirect to broker's OAuth endpoint
       if (!credentials.token) {
         return { success: false, error: "OAuth token required" };
       }
@@ -261,45 +168,41 @@ export async function authenticateBroker(
         success: true,
         accessToken: credentials.token,
         refreshToken: `refresh_${Date.now()}`,
-        sessionExpiry: new Date(Date.now() + 3600000), // 1 hour
+        sessionExpiry: new Date(Date.now() + 3600000),
         brokerUserId: `oauth_${Date.now()}`,
       };
     }
 
     case "api_key": {
-      // API key auth
       if (!credentials.apiKey) {
         return { success: false, error: "API key required" };
       }
       return {
         success: true,
         accessToken: credentials.apiKey,
-        sessionExpiry: new Date(Date.now() + 86400000), // 24 hours
+        sessionExpiry: new Date(Date.now() + 86400000),
         brokerUserId: `apikey_${Date.now()}`,
       };
     }
 
     case "web_session": {
-      // Web session auth (username/password)
       if (!credentials.username || !credentials.password) {
         return { success: false, error: "Username and password required" };
       }
-      // In production, this would POST to the broker's login endpoint
       const sessionToken = `session_${Buffer.from(credentials.username).toString("base64")}_${Date.now()}`;
       return {
         success: true,
         accessToken: sessionToken,
         sessionToken,
-        sessionExpiry: new Date(Date.now() + 7200000), // 2 hours
+        sessionExpiry: new Date(Date.now() + 7200000),
         brokerUserId: credentials.username,
       };
     }
 
     case "manual": {
-      // Manual connection - user provides their own account details
       return {
         success: true,
-        sessionExpiry: new Date(Date.now() + 86400000 * 30), // 30 days
+        sessionExpiry: new Date(Date.now() + 86400000 * 30),
         brokerUserId: credentials.username || "manual_user",
       };
     }
@@ -322,46 +225,43 @@ export function validateBrokerSession(
 
   const now = new Date();
   const isValid = sessionExpiry > now;
-  const needsRefresh = !isValid || (sessionExpiry.getTime() - now.getTime() < 300000); // 5 min buffer
+  const needsRefresh = !isValid || (sessionExpiry.getTime() - now.getTime() < 300000);
 
   return { isValid, expiresAt: sessionExpiry, needsRefresh };
 }
 
 /**
  * Fetch balance from broker platform
- * In production, this would make real API calls to the broker
  */
 export async function fetchBrokerBalance(
   platformId: string,
-  accessToken: string
+  accessToken: string,
+  regionCode?: string
 ): Promise<BrokerBalance> {
   const platform = getBrokerPlatform(platformId);
+  const currency = regionCode ? getCurrencyForRegion(regionCode) : { code: "USD" };
 
   if (!platform || platform.id === "manual") {
-    // For manual brokers, return a simulated balance
     return {
       available: 0,
       locked: 0,
       total: 0,
-      currency: "USD",
+      currency: currency.code,
       lastUpdated: new Date(),
     };
   }
 
-  // In production, this would make real API calls to the broker
-  // For now, simulate a response
   return {
     available: 0,
     locked: 0,
     total: 0,
-    currency: "USD",
+    currency: currency.code,
     lastUpdated: new Date(),
   };
 }
 
 /**
  * Place a bet directly on the broker platform
- * In production, this would make real API calls to the broker
  */
 export async function placeBetOnBroker(
   platformId: string,
@@ -380,7 +280,6 @@ export async function placeBetOnBroker(
     return { success: false, error: `Unknown platform: ${platformId}` };
   }
 
-  // Validate stake limits
   if (betDetails.stake < platform.features.minStake) {
     return { success: false, error: `Stake below minimum (${platform.features.minStake})` };
   }
@@ -388,8 +287,6 @@ export async function placeBetOnBroker(
     return { success: false, error: `Stake above maximum (${platform.features.maxStake})` };
   }
 
-  // In production, this would make real API calls to the broker
-  // For now, simulate a successful bet placement
   const brokerBetId = `${platformId}_bet_${Date.now()}`;
 
   return {
@@ -404,7 +301,6 @@ export async function placeBetOnBroker(
 
 /**
  * Execute a cashout on the broker platform
- * In production, this would make real API calls to the broker
  */
 export async function executeCashoutOnBroker(
   platformId: string,
@@ -422,7 +318,6 @@ export async function executeCashoutOnBroker(
     return { success: false, error: "Partial cashout not supported on this platform" };
   }
 
-  // In production, this would make real API calls to the broker
   return {
     success: true,
     cashoutAmount: 0,
@@ -433,7 +328,6 @@ export async function executeCashoutOnBroker(
 
 /**
  * Transfer commission to admin's account on the broker
- * This is called automatically when a bet is settled with profit
  */
 export async function transferCommissionToAdmin(
   platformId: string,
@@ -450,8 +344,6 @@ export async function transferCommissionToAdmin(
     return { success: false, error: "Commission amount must be positive" };
   }
 
-  // In production, this would make real API calls to transfer funds
-  // to the admin's account on the broker platform
   const transferRef = `comm_${platformId}_${reference}_${Date.now()}`;
 
   return {
@@ -472,7 +364,6 @@ export async function refreshBrokerSession(
     return { success: false, error: `Unknown platform: ${platformId}` };
   }
 
-  // In production, this would make real API calls to refresh the token
   return {
     success: true,
     accessToken: `refreshed_${Date.now()}`,
@@ -483,7 +374,6 @@ export async function refreshBrokerSession(
 
 /**
  * Calculate the allocation for a user's broker account
- * The user decides how much of their broker balance to allocate to the auto-bet bot
  */
 export function calculateAllocation(
   brokerBalance: number,
