@@ -219,3 +219,24 @@ Stage Summary:
 - Security: rate limiting, email enumeration prevention, token expiry (1hr), single-use tokens, bcrypt password hashing
 - Demo mode: returns token in response for self-hosted apps (replace with email service in production)
 - All pages follow existing dark theme and shadcn/ui patterns
+
+---
+Task ID: 8
+Agent: main
+Task: Fix hardcoded stop-loss/target values on betting page to fetch real P&L data
+
+Work Log:
+- Investigated the betting page: Risk Limits section displayed only threshold values (stopLossDaily, stopLossWeekly, profitTargetDaily, profitTargetWeekly) from settings
+- Found that User model has `dailyPnl` and `weeklyPnl` fields that track actual P&L, but they were never fetched
+- Added `dailyPnl` and `weeklyPnl` to the `/api/stats/user` endpoint's Prisma select and response
+- Updated betting page to fetch P&L data alongside settings via `/api/stats/user`
+- Added `pnlData` state to the betting page component
+- Redesigned Risk Limits section with progress bars and real-time P&L text under each card
+- Stop-loss cards show progress bar (orange → amber → red as loss approaches threshold) and actual loss amount
+- Target cards show green progress bar and actual profit amount
+- Color-coded text: red for losses, emerald for profits, muted for no activity
+
+Stage Summary:
+- `/api/stats/user` now returns `dailyPnl` and `weeklyPnl` from the User model
+- Betting page shows real P&L data with visual progress bars alongside configured thresholds
+- No more hardcoded-only display — users see their actual progress toward stop-loss/target limits

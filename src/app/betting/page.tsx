@@ -116,6 +116,7 @@ export default function BettingPage() {
   const { data: bets, loading, refetch: refetchBets } = useFetch<Bet[]>("/api/bets", []);
   const { data: accounts } = useFetch<Array<{ id: string; platform: string }>>("/api/accounts", []);
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
+  const [pnlData, setPnlData] = useState<{ dailyPnl: number; weeklyPnl: number }>({ dailyPnl: 0, weeklyPnl: 0 });
   const [betFilter, setBetFilter] = useState<string>("all");
   const [botRunning, setBotRunning] = useState(false);
   const [botLoading, setBotLoading] = useState(false); // for start/stop API calls
@@ -136,15 +137,25 @@ export default function BettingPage() {
   useEffect(() => {
     async function loadSettings() {
       try {
-        const res = await fetch("/api/settings");
-        if (res.ok) {
-          const data = await res.json();
+        const [settingsRes, statsRes] = await Promise.all([
+          fetch("/api/settings"),
+          fetch("/api/stats/user"),
+        ]);
+        if (settingsRes.ok) {
+          const data = await settingsRes.json();
           if (data) {
             setSettings({
               ...defaultSettings,
               ...data,
             });
           }
+        }
+        if (statsRes.ok) {
+          const stats = await statsRes.json();
+          setPnlData({
+            dailyPnl: stats.dailyPnl ?? 0,
+            weeklyPnl: stats.weeklyPnl ?? 0,
+          });
         }
       } catch {
         // Use defaults
@@ -646,6 +657,18 @@ export default function BettingPage() {
             <span className="text-xs text-muted-foreground">Daily Stop-Loss</span>
           </div>
           <p className="text-sm font-bold text-red-400">-${settings.stopLossDaily}</p>
+          <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${Math.min(100, Math.max(0, (Math.abs(pnlData.dailyPnl) / settings.stopLossDaily) * 100))}%`,
+                backgroundColor: Math.abs(pnlData.dailyPnl) >= settings.stopLossDaily ? "#ef4444" : Math.abs(pnlData.dailyPnl) >= settings.stopLossDaily * 0.7 ? "#f59e0b" : "#fb923c",
+              }}
+            />
+          </div>
+          <p className={`text-[10px] mt-1 ${pnlData.dailyPnl < 0 ? "text-red-400" : "text-muted-foreground"}`}>
+            {pnlData.dailyPnl < 0 ? `${pnlData.dailyPnl.toFixed(2)} today` : "No loss today"}
+          </p>
         </div>
         <div className="rounded-lg bg-red-400/5 border border-red-400/10 p-3">
           <div className="flex items-center gap-1.5 mb-1">
@@ -653,6 +676,18 @@ export default function BettingPage() {
             <span className="text-xs text-muted-foreground">Weekly Stop-Loss</span>
           </div>
           <p className="text-sm font-bold text-red-400">-${settings.stopLossWeekly}</p>
+          <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
+            <div
+              className="h-full rounded-full transition-all duration-500"
+              style={{
+                width: `${Math.min(100, Math.max(0, (Math.abs(pnlData.weeklyPnl) / settings.stopLossWeekly) * 100))}%`,
+                backgroundColor: Math.abs(pnlData.weeklyPnl) >= settings.stopLossWeekly ? "#ef4444" : Math.abs(pnlData.weeklyPnl) >= settings.stopLossWeekly * 0.7 ? "#f59e0b" : "#fb923c",
+              }}
+            />
+          </div>
+          <p className={`text-[10px] mt-1 ${pnlData.weeklyPnl < 0 ? "text-red-400" : "text-muted-foreground"}`}>
+            {pnlData.weeklyPnl < 0 ? `${pnlData.weeklyPnl.toFixed(2)} this week` : "No loss this week"}
+          </p>
         </div>
         <div className="rounded-lg bg-emerald-400/5 border border-emerald-400/10 p-3">
           <div className="flex items-center gap-1.5 mb-1">
@@ -660,6 +695,17 @@ export default function BettingPage() {
             <span className="text-xs text-muted-foreground">Daily Target</span>
           </div>
           <p className="text-sm font-bold text-emerald-400">+${settings.profitTargetDaily}</p>
+          <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
+            <div
+              className="h-full rounded-full bg-emerald-400 transition-all duration-500"
+              style={{
+                width: `${Math.min(100, Math.max(0, (pnlData.dailyPnl / settings.profitTargetDaily) * 100))}%`,
+              }}
+            />
+          </div>
+          <p className={`text-[10px] mt-1 ${pnlData.dailyPnl > 0 ? "text-emerald-400" : "text-muted-foreground"}`}>
+            {pnlData.dailyPnl > 0 ? `+${pnlData.dailyPnl.toFixed(2)} today` : "No profit today"}
+          </p>
         </div>
         <div className="rounded-lg bg-emerald-400/5 border border-emerald-400/10 p-3">
           <div className="flex items-center gap-1.5 mb-1">
@@ -667,6 +713,17 @@ export default function BettingPage() {
             <span className="text-xs text-muted-foreground">Weekly Target</span>
           </div>
           <p className="text-sm font-bold text-emerald-400">+${settings.profitTargetWeekly}</p>
+          <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
+            <div
+              className="h-full rounded-full bg-emerald-400 transition-all duration-500"
+              style={{
+                width: `${Math.min(100, Math.max(0, (pnlData.weeklyPnl / settings.profitTargetWeekly) * 100))}%`,
+              }}
+            />
+          </div>
+          <p className={`text-[10px] mt-1 ${pnlData.weeklyPnl > 0 ? "text-emerald-400" : "text-muted-foreground"}`}>
+            {pnlData.weeklyPnl > 0 ? `+${pnlData.weeklyPnl.toFixed(2)} this week` : "No profit this week"}
+          </p>
         </div>
       </div>
 
