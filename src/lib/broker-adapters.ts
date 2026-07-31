@@ -321,19 +321,21 @@ class OAuthBrokerAdapter extends BaseBrokerAdapter {
   }
 
   async authenticate(credentials: BrokerCredentials): Promise<BrokerAuthResult> {
-    if (!credentials.token) {
-      return { success: false, error: "OAuth authorization code required" };
-    }
-
     // Demo/Sandbox mode: simulate successful authentication without real API calls
+    // MUST be checked BEFORE credential validation — in demo mode, any credentials (even empty) work
     if (this.isDemoMode()) {
+      const demoToken = credentials.token || `demo_${Date.now()}`;
       return {
         success: true,
         accessToken: `demo_oauth_${this.platformId}_${Date.now()}`,
         refreshToken: `demo_refresh_${this.platformId}_${Date.now()}`,
         sessionExpiry: new Date(Date.now() + 3600000),
-        brokerUserId: `demo_oauth_${credentials.token.substring(0, 8)}_${Date.now()}`,
+        brokerUserId: `demo_oauth_${demoToken.substring(0, 8)}_${Date.now()}`,
       };
+    }
+
+    if (!credentials.token) {
+      return { success: false, error: "OAuth authorization code required" };
     }
 
     try {
@@ -375,6 +377,16 @@ class OAuthBrokerAdapter extends BaseBrokerAdapter {
   }
 
   async refreshSession(refreshToken: string): Promise<BrokerAuthResult> {
+    // Demo mode: return simulated refreshed session
+    if (this.isDemoMode()) {
+      return {
+        success: true,
+        accessToken: `demo_oauth_${this.platformId}_${Date.now()}`,
+        refreshToken: `demo_refresh_${this.platformId}_${Date.now()}`,
+        sessionExpiry: new Date(Date.now() + 3600000),
+      };
+    }
+
     try {
       const result = await withRetry(async () => {
         const response = await fetch(`${this.platform.baseUrl}/oauth/token`, {
@@ -547,18 +559,20 @@ class ApiKeyBrokerAdapter extends BaseBrokerAdapter {
   }
 
   async authenticate(credentials: BrokerCredentials): Promise<BrokerAuthResult> {
-    if (!credentials.apiKey) {
-      return { success: false, error: "API key required" };
-    }
-
     // Demo/Sandbox mode: simulate successful authentication without real API calls
+    // MUST be checked BEFORE credential validation — in demo mode, any credentials (even empty) work
     if (this.isDemoMode()) {
+      const demoKey = credentials.apiKey || `demo_key_${Date.now()}`;
       return {
         success: true,
         accessToken: `demo_apikey_${this.platformId}_${Date.now()}`,
         sessionExpiry: new Date(Date.now() + 86400000 * 30),
-        brokerUserId: `demo_apikey_${credentials.apiKey.substring(0, 8)}_${Date.now()}`,
+        brokerUserId: `demo_apikey_${demoKey.substring(0, 8)}_${Date.now()}`,
       };
+    }
+
+    if (!credentials.apiKey) {
+      return { success: false, error: "API key required" };
     }
 
     // Validate API key by making a test call
@@ -683,22 +697,24 @@ class WebSessionBrokerAdapter extends BaseBrokerAdapter {
   }
 
   async authenticate(credentials: BrokerCredentials): Promise<BrokerAuthResult> {
-    if (!credentials.username || !credentials.password) {
-      return { success: false, error: "Username and password required" };
-    }
-
     // Demo/Sandbox mode: simulate successful authentication without real API calls
+    // MUST be checked BEFORE credential validation — in demo mode, any credentials (even empty) work
     // This prevents 403 errors from real broker platforms that don't have public APIs
     if (this.isDemoMode()) {
-      const sessionToken = `demo_session_${Buffer.from(credentials.username).toString("base64")}_${Date.now()}`;
+      const demoUser = credentials.username || "demo_user";
+      const sessionToken = `demo_session_${Buffer.from(demoUser).toString("base64")}_${Date.now()}`;
       return {
         success: true,
         accessToken: sessionToken,
         sessionToken,
         refreshToken: `demo_refresh_${this.platformId}_${Date.now()}`,
         sessionExpiry: new Date(Date.now() + 7200000),
-        brokerUserId: credentials.username,
+        brokerUserId: demoUser,
       };
+    }
+
+    if (!credentials.username || !credentials.password) {
+      return { success: false, error: "Username and password required" };
     }
 
     try {
@@ -738,6 +754,19 @@ class WebSessionBrokerAdapter extends BaseBrokerAdapter {
   }
 
   async refreshSession(refreshToken: string): Promise<BrokerAuthResult> {
+    // Demo mode: return simulated refreshed session
+    if (this.isDemoMode()) {
+      const demoUser = "demo_user";
+      const sessionToken = `demo_session_${Buffer.from(demoUser).toString("base64")}_${Date.now()}`;
+      return {
+        success: true,
+        accessToken: sessionToken,
+        sessionToken,
+        refreshToken: `demo_refresh_${this.platformId}_${Date.now()}`,
+        sessionExpiry: new Date(Date.now() + 7200000),
+      };
+    }
+
     try {
       const result = await withRetry(async () => {
         const response = await fetch(`${this.platform.baseUrl}/api/v1/auth/refresh`, {

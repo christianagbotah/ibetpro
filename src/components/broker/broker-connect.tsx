@@ -528,23 +528,25 @@ export function BrokerConnect() {
                           <div>
                             <Label className="text-xs text-muted-foreground flex items-center gap-1">
                               <User className="h-3 w-3" /> Username / Email
+                              {brokerMode === "demo" && <span className="text-blue-400 ml-1">(optional in demo)</span>}
                             </Label>
                             <Input
                               value={credentials.username}
                               onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
-                              placeholder="Your broker username"
+                              placeholder={brokerMode === "demo" ? "Any username (demo mode)" : "Your broker username"}
                               className="bg-secondary border-border mt-1"
                             />
                           </div>
                           <div>
                             <Label className="text-xs text-muted-foreground flex items-center gap-1">
                               <Lock className="h-3 w-3" /> Password
+                              {brokerMode === "demo" && <span className="text-blue-400 ml-1">(optional in demo)</span>}
                             </Label>
                             <Input
                               type="password"
                               value={credentials.password}
                               onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
-                              placeholder="Your broker password"
+                              placeholder={brokerMode === "demo" ? "Any password (demo mode)" : "Your broker password"}
                               className="bg-secondary border-border mt-1"
                             />
                           </div>
@@ -555,11 +557,12 @@ export function BrokerConnect() {
                         <div>
                           <Label className="text-xs text-muted-foreground flex items-center gap-1">
                             <Key className="h-3 w-3" /> API Key
+                            {brokerMode === "demo" && <span className="text-blue-400 ml-1">(optional in demo)</span>}
                           </Label>
                           <Input
                             value={credentials.apiKey}
                             onChange={(e) => setCredentials({ ...credentials, apiKey: e.target.value })}
-                            placeholder="Your broker API key"
+                            placeholder={brokerMode === "demo" ? "Any API key (demo mode)" : "Your broker API key"}
                             className="bg-secondary border-border mt-1"
                           />
                         </div>
@@ -569,11 +572,12 @@ export function BrokerConnect() {
                         <div>
                           <Label className="text-xs text-muted-foreground flex items-center gap-1">
                             <Shield className="h-3 w-3" /> OAuth Token
+                            {brokerMode === "demo" && <span className="text-blue-400 ml-1">(optional in demo)</span>}
                           </Label>
                           <Input
                             value={credentials.token}
                             onChange={(e) => setCredentials({ ...credentials, token: e.target.value })}
-                            placeholder="OAuth access token"
+                            placeholder={brokerMode === "demo" ? "Any token (demo mode)" : "OAuth access token"}
                             className="bg-secondary border-border mt-1"
                           />
                         </div>
