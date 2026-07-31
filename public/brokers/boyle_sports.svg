@@ -1,11 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200">
   <defs>
-    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+    <linearGradient id="bg_boyle_sports" x1="0%" y1="0%" x2="100%" y2="100%">
       <stop offset="0%" style="stop-color:#0D47A1;stop-opacity:1" />
       <stop offset="100%" style="stop-color:#0A3578;stop-opacity:1" />
     </linearGradient>
   </defs>
-  <rect width="200" height="200" rx="28" fill="url(#bg)"/>
+  <rect width="200" height="200" rx="28" fill="url(#bg_boyle_sports)"/>
   <rect x="2" y="2" width="196" height="196" rx="26" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="2"/>
   <text x="100" y="78" font-family="Arial,Helvetica,sans-serif" font-weight="bold" font-size="30" fill="white" text-anchor="middle">BOYLE</text>
   <text x="100" y="128" font-family="Arial,Helvetica,sans-serif" font-weight="bold" font-size="30" fill="white" text-anchor="middle">SPORTS</text>

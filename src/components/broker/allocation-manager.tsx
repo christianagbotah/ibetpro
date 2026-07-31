@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { getPlatformLogoPath } from "@/lib/broker-logos";
+import { getPlatformLogoPath, getBrokerLogoUrl } from "@/lib/broker-logos";
 import { Separator } from "@/components/ui/separator";
 import {
   Wallet, ArrowUpRight, ArrowDownLeft, DollarSign, TrendingUp,
@@ -231,7 +231,7 @@ export function AllocationManager() {
                           const target = e.currentTarget;
                           if (!target.dataset.retried) {
                             target.dataset.retried = "true";
-                            target.src = `/brokers/${account.platform}.svg`;
+                            target.src = getBrokerLogoUrl(account.platform, account.platformName, "#10b981");
                           } else {
                             target.style.display = "none";
                           }

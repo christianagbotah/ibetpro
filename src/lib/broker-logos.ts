@@ -1,8 +1,18 @@
 // ============================================================================
 // iBetPro Broker Logo URLs
-// Maps platform IDs to their brand logo SVG files served locally
-// Local SVGs are stored in /public/brokers/ for reliable, fast loading
+// Maps platform IDs to their brand logo files served locally
+// Priority: 1. Real PNG logo  2. Branded SVG fallback  3. Generated SVG
 // ============================================================================
+
+// Set of brokers that have real PNG logos (downloaded from image search)
+const HAS_REAL_PNG = new Set([
+  "sportybet", "betway", "1xbet", "bet365", "bet9ja", "22bet",
+  "melbet", "stake", "betwinner", "draftkings", "fanduel", "betmgm",
+  "pinnacle", "williamhill", "unibet", "bwin", "betfair", "ladbrokes",
+  "hollywoodbets", "sportpesa", "betika", "parimatch", "cloudbet",
+  "betking", "nairabet", "supabets", "betano", "tipico", "mozzartbet",
+  "bangbet", "odibets",
+]);
 
 // Base brand to logo file mapping (regional variants map to the same base brand)
 const BASE_LOGO_MAP: Record<string, string> = {
@@ -24,7 +34,6 @@ const BASE_LOGO_MAP: Record<string, string> = {
   "22bet": "22bet",
   melbet: "melbet",
   parimatch: "parimatch",
-  parimatch_in: "parimatch",
   helabet: "helabet",
   odibets: "odibets",
   palmsbet: "palmsbet",
@@ -142,16 +151,22 @@ const BASE_LOGO_MAP: Record<string, string> = {
 
 /**
  * Get the logo path for a broker platform.
- * Uses local SVG files stored in /public/brokers/ for reliable, fast loading.
- * Falls back to a generated SVG data URL if no local file exists.
+ * Priority: 1. Real PNG logo  2. Branded SVG fallback  3. Generated SVG
  */
 export function getBrokerLogoUrl(platformId: string, platformName: string, color: string): string {
   const baseLogo = BASE_LOGO_MAP[platformId];
+
+  // Priority 1: Real PNG logo (downloaded from image search)
+  if (baseLogo && HAS_REAL_PNG.has(baseLogo)) {
+    return `/brokers/${baseLogo}.png`;
+  }
+
+  // Priority 2: Branded SVG fallback
   if (baseLogo) {
     return `/brokers/${baseLogo}.svg`;
   }
 
-  // Fallback: Generate a styled SVG data URL with the brand color and abbreviation
+  // Priority 3: Generate a styled SVG data URL with the brand color and abbreviation
   const bgColor = color || "#10b981";
   const abbr = platformName
     .replace(/[^a-zA-Z0-9 ]/g, "")

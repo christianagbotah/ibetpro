@@ -20,7 +20,7 @@ import {
   AlertCircle, Key, User, Lock, ChevronRight,
   Search, MapPin, Smartphone, Star, ArrowLeft,
 } from "lucide-react";
-import { getPlatformLogoPath } from "@/lib/broker-logos";
+import { getPlatformLogoPath, getBrokerLogoUrl } from "@/lib/broker-logos";
 import {
   REGIONS,
   getPlatformsForRegion,
@@ -63,7 +63,7 @@ interface ConnectedAccount {
 type ConnectStep = "region" | "platform" | "credentials";
 
 export function BrokerConnect() {
-  const { toast } = useToast();
+  const { addToast } = useToast();
   const [connectDialogOpen, setConnectDialogOpen] = useState(false);
   const [step, setStep] = useState<ConnectStep>("region");
   const [selectedRegion, setSelectedRegion] = useState<string>("");
@@ -77,6 +77,7 @@ export function BrokerConnect() {
   });
   const [accountName, setAccountName] = useState("");
   const [regionSearch, setRegionSearch] = useState("");
+  const [brokerSearch, setBrokerSearch] = useState("");
   const [selectedContinent, setSelectedContinent] = useState<string>("all");
 
   const { data, loading, refresh } = useFetch<{
@@ -107,6 +108,18 @@ export function BrokerConnect() {
     return getPlatformsForRegion(selectedRegion);
   }, [selectedRegion]);
 
+  // Filter platforms by search query
+  const filteredPlatforms = useMemo(() => {
+    if (!brokerSearch.trim()) return platformsForRegion;
+    const q = brokerSearch.toLowerCase().trim();
+    return platformsForRegion.filter(
+      (p) =>
+        p.name.toLowerCase().includes(q) ||
+        p.id.toLowerCase().includes(q) ||
+        p.authType.toLowerCase().includes(q)
+    );
+  }, [platformsForRegion, brokerSearch]);
+
   const selectedRegionInfo = useMemo(() => {
     return REGIONS.find((r) => r.code === selectedRegion);
   }, [selectedRegion]);
@@ -132,30 +145,19 @@ export function BrokerConnect() {
       const result = await res.json();
 
       if (result.success) {
-        toast({
-          title: "Broker Connected!",
-          description: `${result.account.accountName} connected successfully`,
-        });
+        addToast("success", `${result.account.accountName} connected successfully!`);
         setConnectDialogOpen(false);
         resetForm();
         refresh();
       } else {
-        toast({
-          title: "Connection Failed",
-          description: result.error || "Failed to connect broker",
-          variant: "destructive",
-        });
+        addToast("error", result.error || "Failed to connect broker");
       }
     } catch {
-      toast({
-        title: "Error",
-        description: "Failed to connect broker",
-        variant: "destructive",
-      });
+      addToast("error", "Failed to connect broker");
     } finally {
       setConnecting(false);
     }
-  }, [selectedPlatform, credentials, accountName, selectedRegion, toast, refresh]);
+  }, [selectedPlatform, credentials, accountName, selectedRegion, addToast, refresh]);
 
   const handleSync = useCallback(async (accountId: string) => {
     try {
@@ -169,22 +171,15 @@ export function BrokerConnect() {
 
       if (result.success) {
         const currency = result.balance?.currency || "USD";
-        toast({
-          title: "Account Synced",
-          description: `Balance: ${currency} ${result.balance.total.toFixed(2)}`,
-        });
+        addToast("success", `Account synced! Balance: ${currency} ${result.balance.total.toFixed(2)}`);
         refresh();
       } else {
-        toast({
-          title: "Sync Failed",
-          description: result.error,
-          variant: "destructive",
-        });
+        addToast("error", result.error || "Sync failed");
       }
     } catch {
-      toast({ title: "Sync Error", variant: "destructive" });
+      addToast("error", "Sync error occurred");
     }
-  }, [toast, refresh]);
+  }, [addToast, refresh]);
 
   const resetForm = () => {
     setCredentials({ username: "", password: "", apiKey: "", token: "" });
@@ -192,6 +187,7 @@ export function BrokerConnect() {
     setSelectedPlatform(null);
     setStep("region");
     setRegionSearch("");
+    setBrokerSearch("");
     setSelectedContinent("all");
   };
 
@@ -362,8 +358,24 @@ export function BrokerConnect() {
                       {platformsForRegion.length} platforms available in {selectedRegionInfo.name}. Select your betting platform.
                     </p>
 
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        type="text"
+                        placeholder="Search brokers..."
+                        value={brokerSearch}
+                        onChange={(e) => setBrokerSearch(e.target.value)}
+                        className="pl-9 h-9 text-sm"
+                      />
+                    </div>
+
                     <div className="space-y-2 max-h-64 overflow-y-auto -webkit-overflow-scrolling-touch">
-                      {platformsForRegion.map((platform) => {
+                      {filteredPlatforms.length === 0 ? (
+                        <div className="text-center py-4 text-sm text-muted-foreground">
+                          No brokers found matching &quot;{brokerSearch}&quot;
+                        </div>
+                      ) : (
+                        filteredPlatforms.map((platform) => {
                         const isPopular = platform.popularIn.includes(selectedRegion);
                         return (
                           <button
@@ -386,8 +398,11 @@ export function BrokerConnect() {
                                     const target = e.currentTarget;
                                     if (!target.dataset.retried) {
                                       target.dataset.retried = "true";
-                                      target.src = `/brokers/${platform.id}.svg`;
-                                    } else {
+                                      // Try SVG fallback
+                                      target.src = getBrokerLogoUrl(platform.id, platform.name, platform.color || "#10b981");
+                                    } else if (!target.dataset.retried2) {
+                                      target.dataset.retried2 = "true";
+                                      // Last resort: hide image and show color abbreviation
                                       target.style.display = "none";
                                       const fallback = document.createElement("div");
                                       fallback.style.cssText = `background:${platform.color || "#10b981"};width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:0.5rem;color:#fff;font-size:0.65rem;font-weight:700;`;
@@ -414,7 +429,8 @@ export function BrokerConnect() {
                             <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                           </button>
                         );
-                      })}
+                      })
+                      )}
                     </div>
                   </div>
                 )}
@@ -444,8 +460,9 @@ export function BrokerConnect() {
                             const target = e.currentTarget;
                             if (!target.dataset.retried) {
                               target.dataset.retried = "true";
-                              target.src = `/brokers/${selectedPlatformData.id}.svg`;
-                            } else {
+                              target.src = getBrokerLogoUrl(selectedPlatformData.id, selectedPlatformData.name, selectedPlatformData.color || "#10b981");
+                            } else if (!target.dataset.retried2) {
+                              target.dataset.retried2 = "true";
                               target.style.display = "none";
                               const fallback = document.createElement("div");
                               fallback.style.cssText = `background:${selectedPlatformData.color || "#10b981"};width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:0.5rem;color:#fff;font-size:0.65rem;font-weight:700;`;
@@ -638,8 +655,9 @@ export function BrokerConnect() {
                               const target = e.currentTarget;
                               if (!target.dataset.retried) {
                                 target.dataset.retried = "true";
-                                target.src = `/brokers/${account.platform}.svg`;
-                              } else {
+                                target.src = getBrokerLogoUrl(account.platform, account.platformName, "#10b981");
+                              } else if (!target.dataset.retried2) {
+                                target.dataset.retried2 = "true";
                                 target.style.display = "none";
                                 const fallback = document.createElement("div");
                                 fallback.style.cssText = "background:#10b981;width:100%;height:100%;display:flex;align-items:center;justify-content:center;border-radius:0.5rem;color:#fff;font-size:0.65rem;font-weight:700;";
