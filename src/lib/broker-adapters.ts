@@ -221,6 +221,18 @@ abstract class BaseBrokerAdapter implements BrokerAdapter {
   abstract platformId: string;
   abstract platform: BrokerPlatform;
 
+  // Per-instance demo mode override (set by getBrokerAdapter)
+  _demoMode?: boolean;
+
+  /**
+   * Check if this adapter should operate in demo mode.
+   * Per-instance override takes priority over global config.
+   */
+  protected isDemoMode(): boolean {
+    if (this._demoMode !== undefined) return this._demoMode;
+    return config.broker.demoMode;
+  }
+
   abstract authenticate(credentials: BrokerCredentials): Promise<BrokerAuthResult>;
   abstract refreshSession(refreshToken: string): Promise<BrokerAuthResult>;
   abstract getBalance(accessToken: string, regionCode?: string): Promise<BrokerBalance>;
@@ -314,7 +326,7 @@ class OAuthBrokerAdapter extends BaseBrokerAdapter {
     }
 
     // Demo/Sandbox mode: simulate successful authentication without real API calls
-    if (config.broker.demoMode) {
+    if (this.isDemoMode()) {
       return {
         success: true,
         accessToken: `demo_oauth_${this.platformId}_${Date.now()}`,
@@ -401,7 +413,7 @@ class OAuthBrokerAdapter extends BaseBrokerAdapter {
     const currency = regionCode ? getRegionCurrency(regionCode) : { code: "USD" };
 
     // Demo/Sandbox mode: return simulated balance
-    if (config.broker.demoMode) {
+    if (this.isDemoMode()) {
       const demoBalance = config.broker.demoBalance;
       return {
         available: demoBalance,
@@ -428,7 +440,7 @@ class OAuthBrokerAdapter extends BaseBrokerAdapter {
   }
 
   async getProfile(accessToken: string): Promise<BrokerUserProfile> {
-    if (config.broker.demoMode) {
+    if (this.isDemoMode()) {
       return {
         userId: "demo_user",
         username: "Demo User",
@@ -540,7 +552,7 @@ class ApiKeyBrokerAdapter extends BaseBrokerAdapter {
     }
 
     // Demo/Sandbox mode: simulate successful authentication without real API calls
-    if (config.broker.demoMode) {
+    if (this.isDemoMode()) {
       return {
         success: true,
         accessToken: `demo_apikey_${this.platformId}_${Date.now()}`,
@@ -587,7 +599,7 @@ class ApiKeyBrokerAdapter extends BaseBrokerAdapter {
   async getBalance(accessToken: string, regionCode?: string): Promise<BrokerBalance> {
     const currency = regionCode ? getRegionCurrency(regionCode) : { code: "USD" };
 
-    if (config.broker.demoMode) {
+    if (this.isDemoMode()) {
       const demoBalance = config.broker.demoBalance;
       return { available: demoBalance, locked: 0, total: demoBalance, currency: currency.code, lastUpdated: new Date() };
     }
@@ -601,7 +613,7 @@ class ApiKeyBrokerAdapter extends BaseBrokerAdapter {
   }
 
   async getProfile(accessToken: string): Promise<BrokerUserProfile> {
-    if (config.broker.demoMode) {
+    if (this.isDemoMode()) {
       return { userId: "demo_user", username: "Demo User", currency: "USD", region: "global", verified: true, kycLevel: "full" };
     }
     return this.apiCall<BrokerUserProfile>(accessToken, "GET", "/api/v1/profile");
@@ -677,7 +689,7 @@ class WebSessionBrokerAdapter extends BaseBrokerAdapter {
 
     // Demo/Sandbox mode: simulate successful authentication without real API calls
     // This prevents 403 errors from real broker platforms that don't have public APIs
-    if (config.broker.demoMode) {
+    if (this.isDemoMode()) {
       const sessionToken = `demo_session_${Buffer.from(credentials.username).toString("base64")}_${Date.now()}`;
       return {
         success: true,
@@ -759,7 +771,7 @@ class WebSessionBrokerAdapter extends BaseBrokerAdapter {
   async getBalance(accessToken: string, regionCode?: string): Promise<BrokerBalance> {
     const currency = regionCode ? getRegionCurrency(regionCode) : { code: "USD" };
 
-    if (config.broker.demoMode) {
+    if (this.isDemoMode()) {
       const demoBalance = config.broker.demoBalance;
       return { available: demoBalance, locked: 0, total: demoBalance, currency: currency.code, lastUpdated: new Date() };
     }
@@ -772,7 +784,7 @@ class WebSessionBrokerAdapter extends BaseBrokerAdapter {
   }
 
   async getProfile(accessToken: string): Promise<BrokerUserProfile> {
-    if (config.broker.demoMode) {
+    if (this.isDemoMode()) {
       return { userId: "demo_user", username: "Demo User", currency: "USD", region: "global", verified: true, kycLevel: "full" };
     }
     return this.apiCall<BrokerUserProfile>(accessToken, "GET", "/api/v1/profile");
@@ -925,17 +937,20 @@ const adapterCache = new Map<string, BrokerAdapter>();
 
 /**
  * Get or create a broker adapter for the given platform
+ * @param platformId - The platform ID
+ * @param demoMode - If true, the adapter will use demo/sandbox mode (no real API calls)
  */
-export function getBrokerAdapter(platformId: string): BrokerAdapter | null {
-  // Check cache
-  if (adapterCache.has(platformId)) {
-    return adapterCache.get(platformId)!;
+export function getBrokerAdapter(platformId: string, demoMode?: boolean): BrokerAdapter | null {
+  // Check cache (but demo mode changes per-user, so we need a keyed cache)
+  const cacheKey = demoMode !== undefined ? `${platformId}_${demoMode ? "demo" : "real"}` : platformId;
+  if (adapterCache.has(cacheKey)) {
+    return adapterCache.get(cacheKey)!;
   }
 
   // Manual adapter
   if (platformId === "manual") {
     const adapter = new ManualBrokerAdapter();
-    adapterCache.set(platformId, adapter);
+    adapterCache.set(cacheKey, adapter);
     return adapter;
   }
 
@@ -967,7 +982,12 @@ export function getBrokerAdapter(platformId: string): BrokerAdapter | null {
       return null;
   }
 
-  adapterCache.set(platformId, adapter);
+  // Override demo mode if specified
+  if (demoMode !== undefined) {
+    (adapter as any)._demoMode = demoMode;
+  }
+
+  adapterCache.set(cacheKey, adapter);
   return adapter;
 }
 

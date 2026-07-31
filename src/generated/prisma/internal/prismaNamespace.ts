@@ -1478,6 +1478,7 @@ export const UserSettingsScalarFieldEnum = {
   partialCashoutEnabled: 'partialCashoutEnabled',
   partialCashoutPercent: 'partialCashoutPercent',
   waitFullSettlement: 'waitFullSettlement',
+  brokerMode: 'brokerMode',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

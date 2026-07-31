@@ -90,6 +90,7 @@ export type UserSettingsMinAggregateOutputType = {
   partialCashoutEnabled: boolean | null
   partialCashoutPercent: number | null
   waitFullSettlement: boolean | null
+  brokerMode: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -122,6 +123,7 @@ export type UserSettingsMaxAggregateOutputType = {
   partialCashoutEnabled: boolean | null
   partialCashoutPercent: number | null
   waitFullSettlement: boolean | null
+  brokerMode: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -154,6 +156,7 @@ export type UserSettingsCountAggregateOutputType = {
   partialCashoutEnabled: number
   partialCashoutPercent: number
   waitFullSettlement: number
+  brokerMode: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -224,6 +227,7 @@ export type UserSettingsMinAggregateInputType = {
   partialCashoutEnabled?: true
   partialCashoutPercent?: true
   waitFullSettlement?: true
+  brokerMode?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -256,6 +260,7 @@ export type UserSettingsMaxAggregateInputType = {
   partialCashoutEnabled?: true
   partialCashoutPercent?: true
   waitFullSettlement?: true
+  brokerMode?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -288,6 +293,7 @@ export type UserSettingsCountAggregateInputType = {
   partialCashoutEnabled?: true
   partialCashoutPercent?: true
   waitFullSettlement?: true
+  brokerMode?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -407,6 +413,7 @@ export type UserSettingsGroupByOutputType = {
   partialCashoutEnabled: boolean
   partialCashoutPercent: number
   waitFullSettlement: boolean
+  brokerMode: string
   createdAt: Date
   updatedAt: Date
   _count: UserSettingsCountAggregateOutputType | null
@@ -462,6 +469,7 @@ export type UserSettingsWhereInput = {
   partialCashoutEnabled?: Prisma.BoolFilter<"UserSettings"> | boolean
   partialCashoutPercent?: Prisma.FloatFilter<"UserSettings"> | number
   waitFullSettlement?: Prisma.BoolFilter<"UserSettings"> | boolean
+  brokerMode?: Prisma.StringFilter<"UserSettings"> | string
   createdAt?: Prisma.DateTimeFilter<"UserSettings"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"UserSettings"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -495,6 +503,7 @@ export type UserSettingsOrderByWithRelationInput = {
   partialCashoutEnabled?: Prisma.SortOrder
   partialCashoutPercent?: Prisma.SortOrder
   waitFullSettlement?: Prisma.SortOrder
+  brokerMode?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
@@ -531,6 +540,7 @@ export type UserSettingsWhereUniqueInput = Prisma.AtLeast<{
   partialCashoutEnabled?: Prisma.BoolFilter<"UserSettings"> | boolean
   partialCashoutPercent?: Prisma.FloatFilter<"UserSettings"> | number
   waitFullSettlement?: Prisma.BoolFilter<"UserSettings"> | boolean
+  brokerMode?: Prisma.StringFilter<"UserSettings"> | string
   createdAt?: Prisma.DateTimeFilter<"UserSettings"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"UserSettings"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -564,6 +574,7 @@ export type UserSettingsOrderByWithAggregationInput = {
   partialCashoutEnabled?: Prisma.SortOrder
   partialCashoutPercent?: Prisma.SortOrder
   waitFullSettlement?: Prisma.SortOrder
+  brokerMode?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.UserSettingsCountOrderByAggregateInput
@@ -604,6 +615,7 @@ export type UserSettingsScalarWhereWithAggregatesInput = {
   partialCashoutEnabled?: Prisma.BoolWithAggregatesFilter<"UserSettings"> | boolean
   partialCashoutPercent?: Prisma.FloatWithAggregatesFilter<"UserSettings"> | number
   waitFullSettlement?: Prisma.BoolWithAggregatesFilter<"UserSettings"> | boolean
+  brokerMode?: Prisma.StringWithAggregatesFilter<"UserSettings"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"UserSettings"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"UserSettings"> | Date | string
 }
@@ -635,6 +647,7 @@ export type UserSettingsCreateInput = {
   partialCashoutEnabled?: boolean
   partialCashoutPercent?: number
   waitFullSettlement?: boolean
+  brokerMode?: string
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutSettingsInput
@@ -668,6 +681,7 @@ export type UserSettingsUncheckedCreateInput = {
   partialCashoutEnabled?: boolean
   partialCashoutPercent?: number
   waitFullSettlement?: boolean
+  brokerMode?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -699,6 +713,7 @@ export type UserSettingsUpdateInput = {
   partialCashoutEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
   waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  brokerMode?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutSettingsNestedInput
@@ -732,6 +747,7 @@ export type UserSettingsUncheckedUpdateInput = {
   partialCashoutEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
   waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  brokerMode?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -764,6 +780,7 @@ export type UserSettingsCreateManyInput = {
   partialCashoutEnabled?: boolean
   partialCashoutPercent?: number
   waitFullSettlement?: boolean
+  brokerMode?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -795,6 +812,7 @@ export type UserSettingsUpdateManyMutationInput = {
   partialCashoutEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
   waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  brokerMode?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -827,6 +845,7 @@ export type UserSettingsUncheckedUpdateManyInput = {
   partialCashoutEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
   waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  brokerMode?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -864,6 +883,7 @@ export type UserSettingsCountOrderByAggregateInput = {
   partialCashoutEnabled?: Prisma.SortOrder
   partialCashoutPercent?: Prisma.SortOrder
   waitFullSettlement?: Prisma.SortOrder
+  brokerMode?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -914,6 +934,7 @@ export type UserSettingsMaxOrderByAggregateInput = {
   partialCashoutEnabled?: Prisma.SortOrder
   partialCashoutPercent?: Prisma.SortOrder
   waitFullSettlement?: Prisma.SortOrder
+  brokerMode?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -946,6 +967,7 @@ export type UserSettingsMinOrderByAggregateInput = {
   partialCashoutEnabled?: Prisma.SortOrder
   partialCashoutPercent?: Prisma.SortOrder
   waitFullSettlement?: Prisma.SortOrder
+  brokerMode?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -1039,6 +1061,7 @@ export type UserSettingsCreateWithoutUserInput = {
   partialCashoutEnabled?: boolean
   partialCashoutPercent?: number
   waitFullSettlement?: boolean
+  brokerMode?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1070,6 +1093,7 @@ export type UserSettingsUncheckedCreateWithoutUserInput = {
   partialCashoutEnabled?: boolean
   partialCashoutPercent?: number
   waitFullSettlement?: boolean
+  brokerMode?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1117,6 +1141,7 @@ export type UserSettingsUpdateWithoutUserInput = {
   partialCashoutEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
   waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  brokerMode?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1148,6 +1173,7 @@ export type UserSettingsUncheckedUpdateWithoutUserInput = {
   partialCashoutEnabled?: Prisma.BoolFieldUpdateOperationsInput | boolean
   partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
   waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  brokerMode?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1182,6 +1208,7 @@ export type UserSettingsSelect<ExtArgs extends runtime.Types.Extensions.Internal
   partialCashoutEnabled?: boolean
   partialCashoutPercent?: boolean
   waitFullSettlement?: boolean
+  brokerMode?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -1215,6 +1242,7 @@ export type UserSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   partialCashoutEnabled?: boolean
   partialCashoutPercent?: boolean
   waitFullSettlement?: boolean
+  brokerMode?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -1248,6 +1276,7 @@ export type UserSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   partialCashoutEnabled?: boolean
   partialCashoutPercent?: boolean
   waitFullSettlement?: boolean
+  brokerMode?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -1281,11 +1310,12 @@ export type UserSettingsSelectScalar = {
   partialCashoutEnabled?: boolean
   partialCashoutPercent?: boolean
   waitFullSettlement?: boolean
+  brokerMode?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type UserSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "autoBettingEnabled" | "maxBetAmount" | "minOddsThreshold" | "maxOddsThreshold" | "riskLevel" | "autoCashoutEnabled" | "cashoutThreshold" | "commissionRate" | "preferredSports" | "notificationsEnabled" | "dailyBetLimit" | "kellyFraction" | "minEdgeThreshold" | "betTypes" | "maxAccumulatorLegs" | "minAiConfidence" | "stopLossDaily" | "stopLossWeekly" | "profitTargetDaily" | "profitTargetWeekly" | "betScheduleStart" | "betScheduleEnd" | "partialCashoutEnabled" | "partialCashoutPercent" | "waitFullSettlement" | "createdAt" | "updatedAt", ExtArgs["result"]["userSettings"]>
+export type UserSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "autoBettingEnabled" | "maxBetAmount" | "minOddsThreshold" | "maxOddsThreshold" | "riskLevel" | "autoCashoutEnabled" | "cashoutThreshold" | "commissionRate" | "preferredSports" | "notificationsEnabled" | "dailyBetLimit" | "kellyFraction" | "minEdgeThreshold" | "betTypes" | "maxAccumulatorLegs" | "minAiConfidence" | "stopLossDaily" | "stopLossWeekly" | "profitTargetDaily" | "profitTargetWeekly" | "betScheduleStart" | "betScheduleEnd" | "partialCashoutEnabled" | "partialCashoutPercent" | "waitFullSettlement" | "brokerMode" | "createdAt" | "updatedAt", ExtArgs["result"]["userSettings"]>
 export type UserSettingsInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
@@ -1329,6 +1359,7 @@ export type $UserSettingsPayload<ExtArgs extends runtime.Types.Extensions.Intern
     partialCashoutEnabled: boolean
     partialCashoutPercent: number
     waitFullSettlement: boolean
+    brokerMode: string
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["userSettings"]>
@@ -1782,6 +1813,7 @@ export interface UserSettingsFieldRefs {
   readonly partialCashoutEnabled: Prisma.FieldRef<"UserSettings", 'Boolean'>
   readonly partialCashoutPercent: Prisma.FieldRef<"UserSettings", 'Float'>
   readonly waitFullSettlement: Prisma.FieldRef<"UserSettings", 'Boolean'>
+  readonly brokerMode: Prisma.FieldRef<"UserSettings", 'String'>
   readonly createdAt: Prisma.FieldRef<"UserSettings", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"UserSettings", 'DateTime'>
 }

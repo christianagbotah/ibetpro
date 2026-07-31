@@ -83,9 +83,11 @@ export function BrokerConnect() {
   const { data, loading, refresh } = useFetch<{
     accounts: ConnectedAccount[];
     availablePlatforms: BrokerPlatformInfo[];
-  }>("/api/broker/connect", { accounts: [], availablePlatforms: [] });
+    brokerMode: "demo" | "real";
+  }>("/api/broker/connect", { accounts: [], availablePlatforms: [], brokerMode: "demo" });
 
   const accounts = data?.accounts || [];
+  const brokerMode = data?.brokerMode || "demo";
 
   // Get filtered regions based on search and continent
   const filteredRegions = useMemo(() => {
@@ -212,6 +214,9 @@ export function BrokerConnect() {
             <CardTitle className="flex items-center gap-2 text-base">
               <Link2 className="h-4 w-4 text-primary" />
               Connected Brokers
+              <Badge className={`text-[10px] ${brokerMode === "demo" ? "bg-blue-400/10 text-blue-400 border-blue-400/30" : "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"}`}>
+                {brokerMode === "demo" ? "Sandbox" : "Live"}
+              </Badge>
             </CardTitle>
             <Dialog open={connectDialogOpen} onOpenChange={handleDialogClose}>
               <Button
@@ -449,12 +454,21 @@ export function BrokerConnect() {
                         />
                       </div>
 
-                      <div className="rounded-lg bg-blue-400/5 border border-blue-400/10 p-3">
-                        <p className="text-xs text-blue-400">
-                          <Shield className="h-3 w-3 inline mr-1" />
-                          Sandbox Mode: Any credentials will work for testing. In production, real broker API credentials are required.
-                        </p>
-                      </div>
+                      {brokerMode === "demo" ? (
+                        <div className="rounded-lg bg-blue-400/5 border border-blue-400/10 p-3">
+                          <p className="text-xs text-blue-400">
+                            <Shield className="h-3 w-3 inline mr-1" />
+                            Sandbox Mode: Any credentials will work for testing. Switch to Real mode in the Mode tab to use live broker APIs.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="rounded-lg bg-amber-400/5 border border-amber-400/10 p-3">
+                          <p className="text-xs text-amber-400">
+                            <Shield className="h-3 w-3 inline mr-1" />
+                            Live Mode: Your real broker credentials will be used to connect. Real API calls will be made.
+                          </p>
+                        </div>
+                      )}
 
                       <Separator />
 

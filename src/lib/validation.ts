@@ -87,6 +87,7 @@ export const updateSettingsSchema = z.object({
   dailyBetLimit: z.number().min(10).max(1000000).optional(),
   kellyFraction: z.number().min(0.01).max(1).optional(),
   minEdgeThreshold: z.number().min(0).max(0.5).optional(),
+  brokerMode: z.enum(["demo", "real"]).optional(),
 });
 
 // ==================== ADMIN ====================

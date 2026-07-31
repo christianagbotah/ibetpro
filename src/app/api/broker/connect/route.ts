@@ -18,6 +18,17 @@ import {
 import { logBrokerEvent } from "@/lib/audit-log";
 
 /**
+ * Get the user's broker mode setting (demo or real)
+ */
+async function getUserBrokerMode(userId: string): Promise<"demo" | "real"> {
+  const settings = await prisma.userSettings.findUnique({
+    where: { userId },
+    select: { brokerMode: true },
+  });
+  return (settings?.brokerMode as "demo" | "real") || "demo";
+}
+
+/**
  * Broker Connect API
  * POST /api/broker/connect - Connect a broker account
  * GET /api/broker/connect - Get available regions, platforms, and connection status
@@ -50,8 +61,11 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
+    // Get the user's broker mode (demo or real)
+    const brokerMode = await getUserBrokerMode(userId);
+
     // Use the new adapter framework for authentication
-    const adapter = getBrokerAdapter(platformId);
+    const adapter = getBrokerAdapter(platformId, brokerMode === "demo");
     if (!adapter) {
       return NextResponse.json({
         error: `No adapter available for platform: ${platformId}`,
@@ -274,10 +288,14 @@ export async function GET(request: NextRequest) {
 
     const continents = getContinents();
 
+    // Get user's broker mode
+    const brokerMode = await getUserBrokerMode(userId);
+
     return NextResponse.json({
       accounts: accountsWithStatus,
       regions,
       continents,
+      brokerMode,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {

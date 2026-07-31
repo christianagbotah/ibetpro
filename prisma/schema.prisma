@@ -65,6 +65,8 @@ model UserSettings {
   partialCashoutEnabled Boolean @default(true)
   partialCashoutPercent Float  @default(0.5) // 50% partial cashout
   waitFullSettlement   Boolean @default(true) // wait for full match settlement for cashout
+  // Broker mode: "demo" = sandbox/simulated, "real" = live broker API
+  brokerMode           String  @default("demo") // "demo" | "real"
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
