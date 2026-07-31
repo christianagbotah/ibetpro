@@ -39,7 +39,7 @@ model User {
 model UserSettings {
   id                   String  @id @default(cuid())
   userId               String  @unique
-  autoBettingEnabled   Boolean @default(false)
+  autoBettingEnabled   Boolean @default(true)
   maxBetAmount         Float   @default(100)
   minOddsThreshold     Float   @default(1.5)
   maxOddsThreshold     Float   @default(5.0)

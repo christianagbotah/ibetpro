@@ -73,7 +73,8 @@ export async function POST(request: NextRequest) {
       update: { brokerMode: mode },
       create: {
         userId,
-        brokerMode: mode,
+        brokerMode,
+        autoBettingEnabled: true,
       },
     });
 

@@ -18,7 +18,7 @@ export async function GET() {
       const newSettings = await prisma.userSettings.create({
         data: {
           userId: user.id,
-          autoBettingEnabled: false,
+          autoBettingEnabled: true,
           maxBetAmount: 200,
           minOddsThreshold: 1.5,
           maxOddsThreshold: 5.0,

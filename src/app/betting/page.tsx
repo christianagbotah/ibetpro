@@ -9,6 +9,7 @@ import { BetCard } from "@/components/betting/bet-card";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Zap, Brain, Shield, DollarSign, Clock, TrendingUp, Play, Square, RefreshCw, Layers, Target } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
@@ -283,6 +284,47 @@ export default function BettingPage() {
 
   return (
     <div className="space-y-6">
+      {/* Auto-Betting Disabled Banner */}
+      {!settings.autoBettingEnabled && (
+        <div className="rounded-xl border-2 border-amber-400/30 bg-amber-400/5 p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3">
+              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-amber-400/10">
+                <Zap className="h-4 w-4 text-amber-400" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-amber-400">AI Auto-Betting is Disabled</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Toggle the switch to enable the AI bot, then click "Run Bot" to start placing bets automatically.
+                  You can also configure advanced settings in the Auto-Betting Configuration panel below.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <span className="text-xs text-muted-foreground">Enable</span>
+              <Switch
+                checked={settings.autoBettingEnabled}
+                onCheckedChange={async (checked) => {
+                  const updated = { ...settings, autoBettingEnabled: checked as boolean };
+                  setSettings(updated);
+                  try {
+                    await fetch("/api/settings", {
+                      method: "PUT",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ autoBettingEnabled: checked }),
+                    });
+                    addToast("success", checked ? "Auto-betting enabled! You can now run the bot." : "Auto-betting disabled");
+                  } catch {
+                    addToast("error", "Failed to update setting");
+                    setSettings(settings); // revert
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Automated Betting</h1>
