@@ -97,6 +97,20 @@ export const updateSettingsSchema = z.object({
   kellyFraction: z.number().min(0.01).max(1).optional(),
   minEdgeThreshold: z.number().min(0).max(0.5).optional(),
   brokerMode: z.enum(["demo", "real"]).optional(),
+  // Advisor mode fields
+  botMode: z.enum(["advisor", "auto"]).optional(),
+  minTipConfidence: z.number().min(0.1).max(1).optional(),
+  tipSports: z.string().optional(),
+  stopLossDaily: z.number().min(0).max(1000000).optional(),
+  stopLossWeekly: z.number().min(0).max(1000000).optional(),
+  profitTargetDaily: z.number().min(0).max(1000000).optional(),
+  profitTargetWeekly: z.number().min(0).max(1000000).optional(),
+  partialCashoutEnabled: z.boolean().optional(),
+  waitFullSettlement: z.boolean().optional(),
+  maxAccumulatorLegs: z.number().int().min(2).max(20).optional(),
+  betScheduleStart: z.string().optional(),
+  betScheduleEnd: z.string().optional(),
+  minAiConfidence: z.number().min(0.1).max(1).optional(),
 });
 
 // ==================== ADMIN ====================

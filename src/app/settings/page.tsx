@@ -51,6 +51,10 @@ interface UserSettings {
   maxAccumulatorLegs: number;
   betScheduleStart: string;
   betScheduleEnd: string;
+  botMode: string;
+  minTipConfidence: number;
+  tipSports: string;
+  minAiConfidence: number;
 }
 
 interface UserProfile {
@@ -90,6 +94,10 @@ export default function SettingsPage() {
     maxAccumulatorLegs: 5,
     betScheduleStart: "08:00",
     betScheduleEnd: "22:00",
+    botMode: "advisor",
+    minTipConfidence: 0.65,
+    tipSports: "football,basketball,tennis",
+    minAiConfidence: 0.6,
   });
   const [profile, setProfile] = useState<UserProfile>({
     name: "",
@@ -176,6 +184,10 @@ export default function SettingsPage() {
           maxAccumulatorLegs: data.maxAccumulatorLegs ?? 5,
           betScheduleStart: data.betScheduleStart ?? "08:00",
           betScheduleEnd: data.betScheduleEnd ?? "22:00",
+          botMode: data.botMode ?? "advisor",
+          minTipConfidence: data.minTipConfidence ?? 0.65,
+          tipSports: data.tipSports ?? "football,basketball,tennis",
+          minAiConfidence: data.minAiConfidence ?? 0.6,
         });
       }
 
@@ -485,6 +497,132 @@ export default function SettingsPage() {
             <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" />
               Switching mode...
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Bot Mode: Advisor vs Auto */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Zap className="h-4 w-4 text-primary" />
+            Bot Mode
+            <Badge className={`text-[10px] ${
+              settings.botMode === "advisor"
+                ? "bg-blue-400/10 text-blue-400 border-blue-400/30"
+                : "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"
+            }`}>
+              {settings.botMode === "advisor" ? "Advisor" : "Auto-Bet"}
+            </Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Choose how the AI bot operates. In <strong>Advisor</strong> mode, the AI sends you tips via Telegram and you place bets yourself.
+            In <strong>Auto-Bet</strong> mode, the AI places bets automatically via your connected broker.
+          </p>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setSettings({ ...settings, botMode: "advisor" })}
+              className={`relative flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all cursor-pointer ${
+                settings.botMode === "advisor"
+                  ? "border-blue-400 bg-blue-400/5 shadow-lg shadow-blue-400/10"
+                  : "border-border hover:border-blue-400/50 hover:bg-blue-400/5"
+              }`}
+            >
+              {settings.botMode === "advisor" && (
+                <div className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-blue-400 flex items-center justify-center">
+                  <CheckCircle2 className="h-3 w-3 text-white" />
+                </div>
+              )}
+              <div className={`h-10 w-10 rounded-full flex items-center justify-center ${settings.botMode === "advisor" ? "bg-blue-400/10" : "bg-secondary"}`}>
+                <Send className={`h-5 w-5 ${settings.botMode === "advisor" ? "text-blue-400" : "text-muted-foreground"}`} />
+              </div>
+              <div className="text-center">
+                <p className={`text-sm font-medium ${settings.botMode === "advisor" ? "text-blue-400" : "text-foreground"}`}>Advisor</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">AI tips, you place bets</p>
+              </div>
+            </button>
+
+            <button
+              onClick={() => setSettings({ ...settings, botMode: "auto" })}
+              className={`relative flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all cursor-pointer ${
+                settings.botMode === "auto"
+                  ? "border-emerald-400 bg-emerald-400/5 shadow-lg shadow-emerald-400/10"
+                  : "border-border hover:border-emerald-400/50 hover:bg-emerald-400/5"
+              }`}
+            >
+              {settings.botMode === "auto" && (
+                <div className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-emerald-400 flex items-center justify-center">
+                  <CheckCircle2 className="h-3 w-3 text-white" />
+                </div>
+              )}
+              <div className={`h-10 w-10 rounded-full flex items-center justify-center ${settings.botMode === "auto" ? "bg-emerald-400/10" : "bg-secondary"}`}>
+                <Zap className={`h-5 w-5 ${settings.botMode === "auto" ? "text-emerald-400" : "text-muted-foreground"}`} />
+              </div>
+              <div className="text-center">
+                <p className={`text-sm font-medium ${settings.botMode === "auto" ? "text-emerald-400" : "text-foreground"}`}>Auto-Bet</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">AI places bets for you</p>
+              </div>
+            </button>
+          </div>
+
+          {/* Advisor-specific settings */}
+          {settings.botMode === "advisor" && (
+            <div className="space-y-4 pt-2">
+              <Separator />
+              <div>
+                <Label className="text-sm font-medium">Min Tip Confidence</Label>
+                <div className="flex items-center gap-3 mt-1">
+                  <input
+                    type="range"
+                    min="30"
+                    max="95"
+                    step="5"
+                    value={settings.minTipConfidence * 100}
+                    onChange={(e) =>
+                      setSettings({ ...settings, minTipConfidence: parseInt(e.target.value) / 100 })
+                    }
+                    className="flex-1 h-1.5 rounded-full bg-secondary appearance-none cursor-pointer accent-primary"
+                  />
+                  <span className="text-sm font-medium text-primary w-12 text-right">
+                    {(settings.minTipConfidence * 100).toFixed(0)}%
+                  </span>
+                </div>
+                <p className="text-[10px] text-muted-foreground mt-0.5">
+                  Only send tips with AI confidence above this threshold
+                </p>
+              </div>
+
+              <div>
+                <Label className="text-sm font-medium">Tip Sports</Label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {sportsOptions.map((sport) => {
+                    const isSelected = settings.tipSports.split(",").includes(sport.id);
+                    return (
+                      <button
+                        key={sport.id}
+                        onClick={() => {
+                          const current = settings.tipSports.split(",").filter(Boolean);
+                          const updated = current.includes(sport.id)
+                            ? current.filter((s) => s !== sport.id)
+                            : [...current, sport.id];
+                          setSettings({ ...settings, tipSports: updated.join(",") });
+                        }}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+                          isSelected
+                            ? "bg-primary/10 text-primary border border-primary/30"
+                            : "bg-secondary/50 text-muted-foreground border border-border"
+                        }`}
+                      >
+                        {sport.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           )}
         </CardContent>
