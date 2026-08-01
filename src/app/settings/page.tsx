@@ -21,6 +21,9 @@ import {
   RefreshCw,
   FlaskConical,
   Globe,
+  Send,
+  Unlink,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useToast } from "@/components/ui/toast";
@@ -105,6 +108,9 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [brokerMode, setBrokerMode] = useState<"demo" | "real">("demo");
   const [switchingMode, setSwitchingMode] = useState(false);
+  const [telegramConnected, setTelegramConnected] = useState(false);
+  const [telegramDeepLink, setTelegramDeepLink] = useState<string | null>(null);
+  const [telegramLoading, setTelegramLoading] = useState(false);
   const { addToast } = useToast();
 
   // Switch broker mode
@@ -193,6 +199,16 @@ export default function SettingsPage() {
           role: user.role || "user",
         }));
       }
+
+      // Fetch Telegram connection status
+      try {
+        const tgRes = await fetch("/api/telegram/connect");
+        if (tgRes.ok) {
+          const tgData = await tgRes.json();
+          setTelegramConnected(tgData.connected);
+          setTelegramDeepLink(tgData.deepLink);
+        }
+      } catch {}
     } catch (err) {
       console.error("Failed to fetch settings:", err);
       setError("Failed to load settings. Using defaults.");
@@ -227,6 +243,23 @@ export default function SettingsPage() {
       setError(err instanceof Error ? err.message : "Failed to save settings");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleTelegramDisconnect = async () => {
+    setTelegramLoading(true);
+    try {
+      const res = await fetch("/api/telegram/connect", { method: "DELETE" });
+      if (res.ok) {
+        setTelegramConnected(false);
+        addToast("success", "Telegram disconnected");
+      } else {
+        addToast("error", "Failed to disconnect Telegram");
+      }
+    } catch {
+      addToast("error", "Failed to disconnect Telegram");
+    } finally {
+      setTelegramLoading(false);
     }
   };
 
@@ -835,6 +868,74 @@ export default function SettingsPage() {
               }
             />
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Telegram Notifications */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Send className="h-4 w-4 text-blue-400" />
+            Telegram Notifications
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {telegramConnected ? (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between rounded-lg bg-emerald-400/10 p-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-2 w-2 rounded-full bg-emerald-400" />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">Telegram Connected</p>
+                    <p className="text-xs text-muted-foreground">You&apos;ll receive AI tip alerts via Telegram</p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleTelegramDisconnect}
+                  disabled={telegramLoading}
+                  className="text-red-400 hover:text-red-300 hover:bg-red-400/10 h-8 text-xs"
+                >
+                  <Unlink className="h-3 w-3 mr-1" />
+                  Disconnect
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Use <span className="text-foreground font-mono">/stop</span> to pause tips or <span className="text-foreground font-mono">/resume</span> to restart directly in Telegram.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="rounded-lg bg-secondary/50 p-4">
+                <p className="text-sm text-foreground mb-1">Connect your Telegram to receive AI tips</p>
+                <p className="text-xs text-muted-foreground">
+                  When the AI finds a value bet, you&apos;ll get an instant alert on Telegram with the selection, odds, confidence, and reasoning.
+                </p>
+              </div>
+              {telegramDeepLink ? (
+                <a
+                  href={telegramDeepLink}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-blue-500 hover:bg-blue-600 text-white py-2.5 px-4 text-sm font-medium transition-colors"
+                >
+                  <Send className="h-4 w-4" />
+                  Connect Telegram
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              ) : (
+                <div className="rounded-lg bg-amber-400/10 p-3">
+                  <p className="text-xs text-amber-400">
+                    Telegram bot not configured yet. Contact admin to set up the bot.
+                  </p>
+                </div>
+              )}
+              <p className="text-[10px] text-muted-foreground">
+                Clicking the button opens Telegram. Send <span className="text-foreground font-mono">/start</span> to link your account.
+              </p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

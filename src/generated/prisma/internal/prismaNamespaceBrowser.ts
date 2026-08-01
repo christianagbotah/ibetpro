@@ -65,7 +65,9 @@ export const ModelName = {
   Allocation: 'Allocation',
   CommissionLedger: 'CommissionLedger',
   AIModelPerformance: 'AIModelPerformance',
-  PasswordResetToken: 'PasswordResetToken'
+  PasswordResetToken: 'PasswordResetToken',
+  Notification: 'Notification',
+  Tip: 'Tip'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -133,6 +135,10 @@ export const UserSettingsScalarFieldEnum = {
   partialCashoutPercent: 'partialCashoutPercent',
   waitFullSettlement: 'waitFullSettlement',
   brokerMode: 'brokerMode',
+  botMode: 'botMode',
+  telegramChatId: 'telegramChatId',
+  minTipConfidence: 'minTipConfidence',
+  tipSports: 'tipSports',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -456,6 +462,53 @@ export const PasswordResetTokenScalarFieldEnum = {
 } as const
 
 export type PasswordResetTokenScalarFieldEnum = (typeof PasswordResetTokenScalarFieldEnum)[keyof typeof PasswordResetTokenScalarFieldEnum]
+
+
+export const NotificationScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  title: 'title',
+  body: 'body',
+  type: 'type',
+  read: 'read',
+  matchId: 'matchId',
+  createdAt: 'createdAt'
+} as const
+
+export type NotificationScalarFieldEnum = (typeof NotificationScalarFieldEnum)[keyof typeof NotificationScalarFieldEnum]
+
+
+export const TipScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  matchId: 'matchId',
+  sport: 'sport',
+  league: 'league',
+  homeTeam: 'homeTeam',
+  awayTeam: 'awayTeam',
+  selection: 'selection',
+  odds: 'odds',
+  aiConfidence: 'aiConfidence',
+  valueEdge: 'valueEdge',
+  kellyStake: 'kellyStake',
+  riskLevel: 'riskLevel',
+  aiReasoning: 'aiReasoning',
+  tracked: 'tracked',
+  userStake: 'userStake',
+  userResult: 'userResult',
+  userProfit: 'userProfit',
+  userResultAt: 'userResultAt',
+  outcome: 'outcome',
+  actualOdds: 'actualOdds',
+  profit: 'profit',
+  commencesAt: 'commencesAt',
+  settledAt: 'settledAt',
+  telegramSent: 'telegramSent',
+  telegramSentAt: 'telegramSentAt',
+  createdAt: 'createdAt'
+} as const
+
+export type TipScalarFieldEnum = (typeof TipScalarFieldEnum)[keyof typeof TipScalarFieldEnum]
 
 
 export const SortOrder = {

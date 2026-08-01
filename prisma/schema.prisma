@@ -36,6 +36,8 @@ model User {
   commissions     CommissionLedger[]
   botSession      BotSession?
   passwordResetTokens PasswordResetToken[]
+  notifications        Notification[]
+  tips                 Tip[]
 }
 
 model UserSettings {
@@ -69,6 +71,12 @@ model UserSettings {
   waitFullSettlement   Boolean @default(true) // wait for full match settlement for cashout
   // Broker mode: "demo" = sandbox/simulated, "real" = live broker API
   brokerMode           String  @default("demo") // "demo" | "real"
+  // Bot mode: "advisor" = Phase 1, AI tips only (no auto-bet) | "auto" = Phase 2, auto-bet
+  botMode              String  @default("advisor") // "advisor" | "auto"
+  // Telegram notifications for AI tips
+  telegramChatId       String?  // Telegram chat ID for tip alerts
+  minTipConfidence     Float   @default(0.65) // minimum AI confidence to send tip alert
+  tipSports            String  @default("football,basketball,tennis") // sports to receive tips for
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 
@@ -142,6 +150,7 @@ model Match {
   updatedAt      DateTime @updatedAt
 
   bets Bet[]
+  tips Tip[]
 
   @@index([status])
   @@index([sport, league])
@@ -432,4 +441,66 @@ model PasswordResetToken {
   @@index([userId])
   @@index([token])
   @@index([expiresAt])
+}
+
+// In-app notifications for AI tips and system alerts
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  type      String   @default("info") // "ai_tip" | "info" | "warning" | "success"
+  read      Boolean  @default(false)
+  matchId   String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+// AI Tips - tracked recommendations with outcome tracking (Phase 1: Advisor Model)
+model Tip {
+  id              String    @id @default(cuid())
+  userId          String
+  matchId         String
+  sport           String
+  league          String
+  homeTeam        String
+  awayTeam        String
+  selection       String
+  odds            Float
+  aiConfidence    Float
+  valueEdge       Float
+  kellyStake      Float
+  riskLevel       String    @default("medium")
+  aiReasoning     String?
+  // User tracking: did they follow the tip?
+  tracked         Boolean   @default(false) // user marked "I'll bet this"
+  userStake       Float?    // how much the user actually staked
+  userResult      String?   // "won" | "lost" | "void" — user-reported result
+  userProfit      Float?    // user-reported profit/loss
+  userResultAt    DateTime? // when user reported the result
+  // Outcome (filled when match settles — AI outcome tracking)
+  outcome         String?   // "won" | "lost" | "void" | "pending"
+  actualOdds      Float?
+  profit          Float?
+  commencesAt     DateTime  // match start time
+  settledAt       DateTime?
+  // Notification delivery tracking
+  telegramSent    Boolean   @default(false) // whether Telegram alert was sent
+  telegramSentAt  DateTime? // when the Telegram alert was sent
+  createdAt       DateTime  @default(now())
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, outcome])
+  @@index([userId, tracked])
+  @@index([matchId])
+  @@index([commencesAt])
+  @@index([createdAt])
 }

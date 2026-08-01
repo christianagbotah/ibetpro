@@ -1,18 +1,20 @@
 // ============================================================================
-// iBetPro Bot Engine - Background Auto-Betting Engine
-// Runs continuously on the server using setInterval, independent of frontend
-// polling. Each user's bot gets its own timer that scans matches and places
-// bets automatically according to their settings.
+// iBetPro Bot Engine - Background AI Advisor & Auto-Betting Engine
+// Phase 1 (Advisor): AI scans matches → generates tips → sends Telegram alerts
+// Phase 2 (Auto):   AI scans matches → places bets automatically via broker
+// Runs continuously on the server using setInterval, independent of frontend.
 // ============================================================================
 
 import { prisma } from "./db";
 import { analyzeMatch, shouldAutoBet, checkRiskLimits, isWithinBetSchedule } from "./ai-engine-v2";
 import { placeBetOnBroker } from "./broker-integration";
+import { sendTipAlert, type TipAlert } from "./notifications/telegram";
 
 // ==================== TYPES ====================
 
 interface ScanResult {
   betsPlaced: number;
+  tipsGenerated: number;
   totalStake: number;
   matches: number;
   skipped: number;
@@ -108,7 +110,7 @@ class BotEngine {
       stats.totalBetsPlaced += result.betsPlaced;
       stats.totalStakeUsed += result.totalStake;
       stats.lastScanAt = new Date();
-      if (result.betsPlaced > 0) {
+      if (result.betsPlaced > 0 || result.tipsGenerated > 0) {
         stats.lastBetAt = new Date();
       }
       if (result.error) {
@@ -246,9 +248,11 @@ class BotEngine {
 
     return {
       success: true,
-      message: stats.totalBetsPlaced > 0
-        ? `Bot started! Placed ${stats.totalBetsPlaced} bet(s) in first scan. Running in background.`
-        : "Bot started! Scanning for matches in background. Will place bets automatically.",
+      message: stats.tipsGenerated > 0
+        ? `Advisor started! Generated ${stats.tipsGenerated} tip(s) in first scan. Running in background.`
+        : stats.betsPlaced > 0
+        ? `Bot started! Placed ${stats.betsPlaced} bet(s) in first scan. Running in background.`
+        : "Bot started! Scanning for matches in background. Will generate tips automatically.",
     };
   }
 
@@ -395,11 +399,12 @@ class BotEngine {
   // ==================== SCAN CYCLE ====================
 
   /**
-   * Run a single scan cycle - analyze matches and place bets.
-   * This is the core logic that runs on each interval tick.
+   * Run a single scan cycle - analyze matches and generate tips or place bets.
+   * In advisor mode: AI finds value bets → creates Tip → sends Telegram alert.
+   * In auto mode: AI finds value bets → places bet via broker → creates Tip.
    */
   private async runScanCycle(userId: string): Promise<ScanResult> {
-    const result: ScanResult = { betsPlaced: 0, totalStake: 0, matches: 0, skipped: 0 };
+    const result: ScanResult = { betsPlaced: 0, tipsGenerated: 0, totalStake: 0, matches: 0, skipped: 0 };
 
     try {
       // Get user settings
@@ -409,7 +414,9 @@ class BotEngine {
         return result;
       }
 
-      if (!settings.autoBettingEnabled) {
+      const isAdvisorMode = settings.botMode === "advisor";
+
+      if (!settings.autoBettingEnabled && !isAdvisorMode) {
         result.error = "Auto-betting is disabled";
         await this.stop(userId, "auto_betting_disabled");
         return result;
@@ -417,7 +424,6 @@ class BotEngine {
 
       // Check schedule
       if (!isWithinBetSchedule(settings.betScheduleStart, settings.betScheduleEnd)) {
-        // Don't stop the bot, just skip this scan
         return result;
       }
 
@@ -431,7 +437,6 @@ class BotEngine {
       });
 
       if (!riskCheck.canBet) {
-        // Auto-stop the bot if risk limits hit
         const reason = (user?.dailyPnl ?? 0) <= -settings.stopLossDaily ? "stop_loss" : "profit_target";
         await this.stop(userId, reason);
         await prisma.botLog.create({
@@ -444,58 +449,76 @@ class BotEngine {
         return result;
       }
 
-      // Get connected betting account
-      const bettingAccount = await prisma.bettingAccount.findFirst({
-        where: { userId, isConnected: true },
-        orderBy: { allocatedAmount: "desc" },
-      });
+      // ---- Advisor mode: no broker required ----
+      // ---- Auto mode: need connected broker ----
+      let bettingAccount: Awaited<ReturnType<typeof prisma.bettingAccount.findFirst>> = null;
+      let activeAllocation: Awaited<ReturnType<typeof prisma.allocation.findFirst>> = null;
+      let remainingDailyLimit = settings.dailyBetLimit;
+      let existingBetMatchIds: string[] = [];
 
-      if (!bettingAccount || bettingAccount.allocatedAmount <= 0) {
-        await this.stop(userId, "no_allocation");
-        await prisma.botLog.create({
-          data: {
+      if (!isAdvisorMode) {
+        bettingAccount = await prisma.bettingAccount.findFirst({
+          where: { userId, isConnected: true },
+          orderBy: { allocatedAmount: "desc" },
+        });
+
+        if (!bettingAccount || bettingAccount.allocatedAmount <= 0) {
+          await this.stop(userId, "no_allocation");
+          await prisma.botLog.create({
+            data: {
+              userId,
+              action: "bot_scan",
+              reasoning: "No connected broker or allocation available. Stopping bot.",
+            },
+          });
+          return result;
+        }
+
+        // Check daily limit
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayBets = await prisma.bet.findMany({
+          where: {
             userId,
-            action: "bot_scan",
-            reasoning: "No connected broker or allocation available. Stopping bot.",
+            placedAt: { gte: todayStart },
+            status: { in: ["pending", "won", "lost", "cashed_out", "partial_cashout"] },
           },
         });
-        return result;
+        const dailyStake = todayBets.reduce((sum, b) => sum + b.stake, 0);
+        existingBetMatchIds = todayBets.map((b) => b.matchId);
+
+        if (dailyStake >= settings.dailyBetLimit) {
+          return result;
+        }
+
+        remainingDailyLimit = Math.min(
+          settings.dailyBetLimit - dailyStake,
+          bettingAccount.allocatedAmount
+        );
+
+        if (remainingDailyLimit < 5) {
+          return result;
+        }
+
+        activeAllocation = await prisma.allocation.findFirst({
+          where: { userId, bettingAccountId: bettingAccount.id, status: "active" },
+        });
+      } else {
+        // In advisor mode, check for existing tips to avoid duplicates
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayTips = await prisma.tip.findMany({
+          where: { userId, createdAt: { gte: todayStart } },
+          select: { matchId: true },
+        });
+        existingBetMatchIds = todayTips.map((t) => t.matchId);
       }
-
-      // Check daily limit
-      const todayStart = new Date();
-      todayStart.setHours(0, 0, 0, 0);
-      const todayBets = await prisma.bet.findMany({
-        where: {
-          userId,
-          placedAt: { gte: todayStart },
-          status: { in: ["pending", "won", "lost", "cashed_out", "partial_cashout"] },
-        },
-      });
-      const dailyStake = todayBets.reduce((sum, b) => sum + b.stake, 0);
-      const existingBetMatchIds = todayBets.map((b) => b.matchId);
-
-      if (dailyStake >= settings.dailyBetLimit) {
-        // Don't stop the bot, just skip this scan
-        return result;
-      }
-
-      const remainingDailyLimit = Math.min(
-        settings.dailyBetLimit - dailyStake,
-        bettingAccount.allocatedAmount
-      );
-
-      if (remainingDailyLimit < 5) {
-        return result;
-      }
-
-      // Get active allocation
-      const activeAllocation = await prisma.allocation.findFirst({
-        where: { userId, bettingAccountId: bettingAccount.id, status: "active" },
-      });
 
       // Get upcoming matches
-      const preferredSports = settings.preferredSports?.split(",") || ["football"];
+      const preferredSports = isAdvisorMode
+        ? (settings.tipSports?.split(",") || ["football"])
+        : (settings.preferredSports?.split(",") || ["football"]);
+
       const upcomingMatches = await prisma.match.findMany({
         where: {
           status: "upcoming",
@@ -513,7 +536,7 @@ class BotEngine {
         return result;
       }
 
-      // Analyze and place bets
+      // Analyze matches
       for (const match of upcomingMatches) {
         try {
           const homeTeamStats = await prisma.teamStats.findFirst({
@@ -544,13 +567,16 @@ class BotEngine {
             settings.kellyFraction
           );
 
+          // In advisor mode, use minTipConfidence; in auto mode, use minAiConfidence
+          const minConfidence = isAdvisorMode ? settings.minTipConfidence : settings.minAiConfidence;
+
           const autoBetCheck = shouldAutoBet(prediction, {
             minOddsThreshold: settings.minOddsThreshold,
             maxOddsThreshold: settings.maxOddsThreshold,
-            minAiConfidence: settings.minAiConfidence,
+            minAiConfidence: minConfidence,
             minEdgeThreshold: settings.minEdgeThreshold,
             riskLevel: settings.riskLevel,
-            preferredSports: settings.preferredSports,
+            preferredSports: isAdvisorMode ? settings.tipSports : settings.preferredSports,
           }, match.sport);
 
           const recOdds = prediction.recommended === "home" ? match.homeOdds
@@ -568,143 +594,277 @@ class BotEngine {
             continue;
           }
 
-          // Calculate stake
-          const stake = Math.min(
-            autoBetCheck.suggestedStake || settings.maxBetAmount * 0.5,
-            settings.maxBetAmount,
-            remainingDailyLimit - result.totalStake
-          );
-
-          if (stake < 5) continue;
-
           const selection = prediction.recommended === "home" ? match.homeTeam
             : prediction.recommended === "away" ? match.awayTeam
             : prediction.recommended === "draw" ? "Draw"
             : prediction.recommended === "over" ? "Over 2.5"
             : "Under 2.5";
 
-          const potentialWin = Math.round(stake * recOdds * 100) / 100;
-
-          // Place bet on broker
-          const brokerResult = await placeBetOnBroker(
-            bettingAccount.platform,
-            bettingAccount.accessToken || "",
-            {
-              matchId: match.id,
-              selection,
-              odds: recOdds,
-              stake,
-              betType: "single",
-            }
-          );
-
-          // Create bet record
-          const bet = await prisma.bet.create({
-            data: {
-              userId,
-              bettingAccountId: bettingAccount.id,
-              matchId: match.id,
-              betType: "single",
-              selection,
-              odds: recOdds,
-              stake,
-              potentialWin,
-              isAutoPlaced: true,
-              aiConfidence: prediction.confidence,
-              aiReasoning: prediction.analysis,
-              aiModelUsed: "v2_ensemble",
-              kellyStake: prediction.kellyStake,
-              valueEdge: prediction.valueEdge,
-              riskScore: prediction.riskScore,
-            },
-          });
-
-          // Update allocation
-          if (activeAllocation) {
-            await prisma.allocation.update({
-              where: { id: activeAllocation.id },
+          // ============ ADVISOR MODE ============
+          if (isAdvisorMode) {
+            // Create a Tip (recommendation) — no bet placed
+            const tip = await prisma.tip.create({
               data: {
-                usedAmount: { increment: stake },
-                remainingAmount: { decrement: stake },
+                userId,
+                matchId: match.id,
+                sport: match.sport,
+                league: match.league,
+                homeTeam: match.homeTeam,
+                awayTeam: match.awayTeam,
+                selection,
+                odds: recOdds,
+                aiConfidence: prediction.confidence,
+                valueEdge: prediction.valueEdge,
+                kellyStake: prediction.kellyStake,
+                riskLevel: prediction.riskLevel || settings.riskLevel,
+                aiReasoning: prediction.analysis,
+                commencesAt: match.commenceTime,
               },
             });
-          }
 
-          // Update betting account
-          await prisma.bettingAccount.update({
-            where: { id: bettingAccount.id },
-            data: {
-              allocatedAmount: { decrement: stake },
-              lastBetPlacedAt: new Date(),
-              totalBrokerBets: { increment: 1 },
-            },
-          });
-
-          // Create transaction
-          await prisma.transaction.create({
-            data: {
-              userId,
-              type: "bet_placed",
-              amount: -stake,
-              currency: bettingAccount.currency || "USD",
-              status: "completed",
-              description: `Auto-bet via ${bettingAccount.platform}: ${match.homeTeam} vs ${match.awayTeam} - ${selection} @ ${recOdds}`,
-              betId: bet.id,
-            },
-          });
-
-          // Update match AI data
-          await prisma.match.update({
-            where: { id: match.id },
-            data: {
-              aiHomeWinProb: prediction.homeWinProb,
-              aiDrawProb: prediction.drawProb,
-              aiAwayWinProb: prediction.awayWinProb,
-              aiConfidence: prediction.confidence,
-              aiRecommended: prediction.recommended,
-              aiAnalysis: prediction.analysis,
-              aiRiskScore: prediction.riskScore,
-              aiValueEdge: prediction.valueEdge,
-              aiKellyStake: prediction.kellyStake,
-            },
-          });
-
-          // Log the bet
-          await prisma.botLog.create({
-            data: {
-              userId,
-              action: "bet_placed",
-              matchId: match.id,
-              betId: bet.id,
-              details: JSON.stringify({
-                stake,
-                odds: recOdds,
+            // Send Telegram + in-app notification
+            try {
+              const tipAlert: TipAlert = {
+                sport: match.sport,
+                league: match.league,
+                homeTeam: match.homeTeam,
+                awayTeam: match.awayTeam,
                 selection,
-                potentialWin,
-                broker: bettingAccount.platform,
-                brokerBetId: brokerResult.brokerBetId,
-              }),
-              reasoning: autoBetCheck.reason,
-              confidence: prediction.confidence,
-              profitImpact: -stake,
-            },
-          });
+                odds: recOdds,
+                confidence: prediction.confidence,
+                valueEdge: prediction.valueEdge,
+                kellyStake: prediction.kellyStake,
+                riskLevel: prediction.riskLevel || settings.riskLevel,
+                matchTime: new Date(match.commenceTime).toLocaleString(),
+                matchId: match.id,
+              };
+              const notifyResult = await sendTipAlert(userId, tipAlert);
 
-          result.betsPlaced++;
-          result.totalStake += stake;
+              // Update tip with delivery status
+              await prisma.tip.update({
+                where: { id: tip.id },
+                data: {
+                  telegramSent: notifyResult.telegram,
+                  telegramSentAt: notifyResult.telegram ? new Date() : undefined,
+                },
+              });
+            } catch (tipError) {
+              console.error("[BotEngine] Failed to send tip notification:", tipError);
+            }
+
+            // Update match AI data
+            await prisma.match.update({
+              where: { id: match.id },
+              data: {
+                aiHomeWinProb: prediction.homeWinProb,
+                aiDrawProb: prediction.drawProb,
+                aiAwayWinProb: prediction.awayWinProb,
+                aiConfidence: prediction.confidence,
+                aiRecommended: prediction.recommended,
+                aiAnalysis: prediction.analysis,
+                aiRiskScore: prediction.riskScore,
+                aiValueEdge: prediction.valueEdge,
+                aiKellyStake: prediction.kellyStake,
+              },
+            });
+
+            // Log the tip
+            await prisma.botLog.create({
+              data: {
+                userId,
+                action: "tip_generated",
+                matchId: match.id,
+                details: JSON.stringify({
+                  tipId: tip.id,
+                  odds: recOdds,
+                  selection,
+                  confidence: prediction.confidence,
+                  valueEdge: prediction.valueEdge,
+                  mode: "advisor",
+                }),
+                reasoning: autoBetCheck.reason,
+                confidence: prediction.confidence,
+              },
+            });
+
+            result.tipsGenerated++;
+            console.log(`[BotEngine] Advisor tip generated for ${match.homeTeam} vs ${match.awayTeam}`);
+          }
+          // ============ AUTO MODE ============
+          else {
+            const stake = Math.min(
+              autoBetCheck.suggestedStake || settings.maxBetAmount * 0.5,
+              settings.maxBetAmount,
+              remainingDailyLimit - result.totalStake
+            );
+
+            if (stake < 5) continue;
+
+            const potentialWin = Math.round(stake * recOdds * 100) / 100;
+
+            // Place bet on broker
+            const brokerResult = await placeBetOnBroker(
+              bettingAccount!.platform,
+              bettingAccount!.accessToken || "",
+              {
+                matchId: match.id,
+                selection,
+                odds: recOdds,
+                stake,
+                betType: "single",
+              }
+            );
+
+            // Create bet record
+            const bet = await prisma.bet.create({
+              data: {
+                userId,
+                bettingAccountId: bettingAccount!.id,
+                matchId: match.id,
+                betType: "single",
+                selection,
+                odds: recOdds,
+                stake,
+                potentialWin,
+                isAutoPlaced: true,
+                aiConfidence: prediction.confidence,
+                aiReasoning: prediction.analysis,
+                aiModelUsed: "v2_ensemble",
+                kellyStake: prediction.kellyStake,
+                valueEdge: prediction.valueEdge,
+                riskScore: prediction.riskScore,
+              },
+            });
+
+            // Update allocation
+            if (activeAllocation) {
+              await prisma.allocation.update({
+                where: { id: activeAllocation.id },
+                data: {
+                  usedAmount: { increment: stake },
+                  remainingAmount: { decrement: stake },
+                },
+              });
+            }
+
+            // Update betting account
+            await prisma.bettingAccount.update({
+              where: { id: bettingAccount!.id },
+              data: {
+                allocatedAmount: { decrement: stake },
+                lastBetPlacedAt: new Date(),
+                totalBrokerBets: { increment: 1 },
+              },
+            });
+
+            // Create transaction
+            await prisma.transaction.create({
+              data: {
+                userId,
+                type: "bet_placed",
+                amount: -stake,
+                currency: bettingAccount!.currency || "USD",
+                status: "completed",
+                description: `Auto-bet via ${bettingAccount!.platform}: ${match.homeTeam} vs ${match.awayTeam} - ${selection} @ ${recOdds}`,
+                betId: bet.id,
+              },
+            });
+
+            // Update match AI data
+            await prisma.match.update({
+              where: { id: match.id },
+              data: {
+                aiHomeWinProb: prediction.homeWinProb,
+                aiDrawProb: prediction.drawProb,
+                aiAwayWinProb: prediction.awayWinProb,
+                aiConfidence: prediction.confidence,
+                aiRecommended: prediction.recommended,
+                aiAnalysis: prediction.analysis,
+                aiRiskScore: prediction.riskScore,
+                aiValueEdge: prediction.valueEdge,
+                aiKellyStake: prediction.kellyStake,
+              },
+            });
+
+            // Log the bet
+            await prisma.botLog.create({
+              data: {
+                userId,
+                action: "bet_placed",
+                matchId: match.id,
+                betId: bet.id,
+                details: JSON.stringify({
+                  stake,
+                  odds: recOdds,
+                  selection,
+                  potentialWin,
+                  broker: bettingAccount!.platform,
+                  brokerBetId: brokerResult.brokerBetId,
+                }),
+                reasoning: autoBetCheck.reason,
+                confidence: prediction.confidence,
+                profitImpact: -stake,
+              },
+            });
+
+            // Also create a Tip for the auto-placed bet
+            try {
+              const tip = await prisma.tip.create({
+                data: {
+                  userId,
+                  matchId: match.id,
+                  sport: match.sport,
+                  league: match.league,
+                  homeTeam: match.homeTeam,
+                  awayTeam: match.awayTeam,
+                  selection,
+                  odds: recOdds,
+                  aiConfidence: prediction.confidence,
+                  valueEdge: prediction.valueEdge,
+                  kellyStake: prediction.kellyStake,
+                  riskLevel: settings.riskLevel,
+                  aiReasoning: prediction.analysis,
+                  tracked: true, // auto-placed = tracked
+                  commencesAt: match.commenceTime,
+                },
+              });
+
+              // Send Telegram + in-app notification
+              const tipAlert: TipAlert = {
+                sport: match.sport,
+                league: match.league,
+                homeTeam: match.homeTeam,
+                awayTeam: match.awayTeam,
+                selection,
+                odds: recOdds,
+                confidence: prediction.confidence,
+                valueEdge: prediction.valueEdge,
+                kellyStake: prediction.kellyStake,
+                riskLevel: settings.riskLevel,
+                matchTime: new Date(match.commenceTime).toLocaleString(),
+                matchId: match.id,
+              };
+              await sendTipAlert(userId, tipAlert);
+            } catch (tipError) {
+              console.error("[BotEngine] Failed to create tip/notification for auto-bet:", tipError);
+            }
+
+            result.betsPlaced++;
+            result.totalStake += stake;
+          }
         } catch (matchError) {
           console.error(`[BotEngine] Error processing match ${match.id}:`, matchError);
           result.skipped++;
         }
       }
 
-      // Check for accumulator opportunities
-      if (result.betsPlaced === 0 && result.skipped > 0) {
+      // Log scan summary
+      if (result.betsPlaced === 0 && result.tipsGenerated === 0 && result.skipped > 0) {
         await prisma.botLog.create({
           data: {
             userId,
             action: "bot_scan",
-            reasoning: `Scan completed: ${result.matches} matches found, ${result.skipped} skipped (no qualifying bets)`,
+            reasoning: `Scan completed: ${result.matches} matches found, ${result.skipped} skipped (no qualifying ${isAdvisorMode ? "tips" : "bets"})`,
           },
         });
       }
@@ -729,10 +889,18 @@ class BotEngine {
       return { valid: false, error: "Settings not found. Please configure your settings first." };
     }
 
-    if (!settings.autoBettingEnabled) {
+    const isAdvisorMode = settings.botMode === "advisor";
+
+    if (!settings.autoBettingEnabled && !isAdvisorMode) {
       return { valid: false, error: "Auto-betting is disabled. Enable it first." };
     }
 
+    // In advisor mode, no broker is required — just need settings
+    if (isAdvisorMode) {
+      return { valid: true };
+    }
+
+    // Auto mode requires a connected broker
     const connectedAccount = await prisma.bettingAccount.findFirst({
       where: { userId, isConnected: true },
     });

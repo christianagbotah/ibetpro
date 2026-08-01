@@ -485,6 +485,7 @@ export type MatchWhereInput = {
   createdAt?: Prisma.DateTimeFilter<"Match"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Match"> | Date | string
   bets?: Prisma.BetListRelationFilter
+  tips?: Prisma.TipListRelationFilter
 }
 
 export type MatchOrderByWithRelationInput = {
@@ -520,6 +521,7 @@ export type MatchOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   bets?: Prisma.BetOrderByRelationAggregateInput
+  tips?: Prisma.TipOrderByRelationAggregateInput
 }
 
 export type MatchWhereUniqueInput = Prisma.AtLeast<{
@@ -558,6 +560,7 @@ export type MatchWhereUniqueInput = Prisma.AtLeast<{
   createdAt?: Prisma.DateTimeFilter<"Match"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Match"> | Date | string
   bets?: Prisma.BetListRelationFilter
+  tips?: Prisma.TipListRelationFilter
 }, "id" | "externalId">
 
 export type MatchOrderByWithAggregationInput = {
@@ -669,6 +672,7 @@ export type MatchCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   bets?: Prisma.BetCreateNestedManyWithoutMatchInput
+  tips?: Prisma.TipCreateNestedManyWithoutMatchInput
 }
 
 export type MatchUncheckedCreateInput = {
@@ -704,6 +708,7 @@ export type MatchUncheckedCreateInput = {
   createdAt?: Date | string
   updatedAt?: Date | string
   bets?: Prisma.BetUncheckedCreateNestedManyWithoutMatchInput
+  tips?: Prisma.TipUncheckedCreateNestedManyWithoutMatchInput
 }
 
 export type MatchUpdateInput = {
@@ -739,6 +744,7 @@ export type MatchUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bets?: Prisma.BetUpdateManyWithoutMatchNestedInput
+  tips?: Prisma.TipUpdateManyWithoutMatchNestedInput
 }
 
 export type MatchUncheckedUpdateInput = {
@@ -774,6 +780,7 @@ export type MatchUncheckedUpdateInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   bets?: Prisma.BetUncheckedUpdateManyWithoutMatchNestedInput
+  tips?: Prisma.TipUncheckedUpdateManyWithoutMatchNestedInput
 }
 
 export type MatchCreateManyInput = {
@@ -1053,6 +1060,20 @@ export type MatchUpdateOneRequiredWithoutBetsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.MatchUpdateToOneWithWhereWithoutBetsInput, Prisma.MatchUpdateWithoutBetsInput>, Prisma.MatchUncheckedUpdateWithoutBetsInput>
 }
 
+export type MatchCreateNestedOneWithoutTipsInput = {
+  create?: Prisma.XOR<Prisma.MatchCreateWithoutTipsInput, Prisma.MatchUncheckedCreateWithoutTipsInput>
+  connectOrCreate?: Prisma.MatchCreateOrConnectWithoutTipsInput
+  connect?: Prisma.MatchWhereUniqueInput
+}
+
+export type MatchUpdateOneRequiredWithoutTipsNestedInput = {
+  create?: Prisma.XOR<Prisma.MatchCreateWithoutTipsInput, Prisma.MatchUncheckedCreateWithoutTipsInput>
+  connectOrCreate?: Prisma.MatchCreateOrConnectWithoutTipsInput
+  upsert?: Prisma.MatchUpsertWithoutTipsInput
+  connect?: Prisma.MatchWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.MatchUpdateToOneWithWhereWithoutTipsInput, Prisma.MatchUpdateWithoutTipsInput>, Prisma.MatchUncheckedUpdateWithoutTipsInput>
+}
+
 export type MatchCreateWithoutBetsInput = {
   id?: string
   externalId?: string | null
@@ -1085,6 +1106,7 @@ export type MatchCreateWithoutBetsInput = {
   aiKellyStake?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  tips?: Prisma.TipCreateNestedManyWithoutMatchInput
 }
 
 export type MatchUncheckedCreateWithoutBetsInput = {
@@ -1119,6 +1141,7 @@ export type MatchUncheckedCreateWithoutBetsInput = {
   aiKellyStake?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
+  tips?: Prisma.TipUncheckedCreateNestedManyWithoutMatchInput
 }
 
 export type MatchCreateOrConnectWithoutBetsInput = {
@@ -1169,6 +1192,7 @@ export type MatchUpdateWithoutBetsInput = {
   aiKellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  tips?: Prisma.TipUpdateManyWithoutMatchNestedInput
 }
 
 export type MatchUncheckedUpdateWithoutBetsInput = {
@@ -1203,6 +1227,163 @@ export type MatchUncheckedUpdateWithoutBetsInput = {
   aiKellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  tips?: Prisma.TipUncheckedUpdateManyWithoutMatchNestedInput
+}
+
+export type MatchCreateWithoutTipsInput = {
+  id?: string
+  externalId?: string | null
+  sport: string
+  league: string
+  homeTeam: string
+  awayTeam: string
+  homeOdds: number
+  drawOdds?: number | null
+  awayOdds: number
+  overUnderLine?: number | null
+  overOdds?: number | null
+  underOdds?: number | null
+  commenceTime: Date | string
+  status?: string
+  homeScore?: number | null
+  awayScore?: number | null
+  minute?: number | null
+  apiSource?: string | null
+  lastSyncedAt?: Date | string | null
+  aiHomeWinProb?: number | null
+  aiDrawProb?: number | null
+  aiAwayWinProb?: number | null
+  aiConfidence?: number | null
+  aiAnalysis?: string | null
+  aiRecommended?: string | null
+  aiRiskScore?: number | null
+  aiRiskLevel?: string | null
+  aiValueEdge?: number | null
+  aiKellyStake?: number | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bets?: Prisma.BetCreateNestedManyWithoutMatchInput
+}
+
+export type MatchUncheckedCreateWithoutTipsInput = {
+  id?: string
+  externalId?: string | null
+  sport: string
+  league: string
+  homeTeam: string
+  awayTeam: string
+  homeOdds: number
+  drawOdds?: number | null
+  awayOdds: number
+  overUnderLine?: number | null
+  overOdds?: number | null
+  underOdds?: number | null
+  commenceTime: Date | string
+  status?: string
+  homeScore?: number | null
+  awayScore?: number | null
+  minute?: number | null
+  apiSource?: string | null
+  lastSyncedAt?: Date | string | null
+  aiHomeWinProb?: number | null
+  aiDrawProb?: number | null
+  aiAwayWinProb?: number | null
+  aiConfidence?: number | null
+  aiAnalysis?: string | null
+  aiRecommended?: string | null
+  aiRiskScore?: number | null
+  aiRiskLevel?: string | null
+  aiValueEdge?: number | null
+  aiKellyStake?: number | null
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  bets?: Prisma.BetUncheckedCreateNestedManyWithoutMatchInput
+}
+
+export type MatchCreateOrConnectWithoutTipsInput = {
+  where: Prisma.MatchWhereUniqueInput
+  create: Prisma.XOR<Prisma.MatchCreateWithoutTipsInput, Prisma.MatchUncheckedCreateWithoutTipsInput>
+}
+
+export type MatchUpsertWithoutTipsInput = {
+  update: Prisma.XOR<Prisma.MatchUpdateWithoutTipsInput, Prisma.MatchUncheckedUpdateWithoutTipsInput>
+  create: Prisma.XOR<Prisma.MatchCreateWithoutTipsInput, Prisma.MatchUncheckedCreateWithoutTipsInput>
+  where?: Prisma.MatchWhereInput
+}
+
+export type MatchUpdateToOneWithWhereWithoutTipsInput = {
+  where?: Prisma.MatchWhereInput
+  data: Prisma.XOR<Prisma.MatchUpdateWithoutTipsInput, Prisma.MatchUncheckedUpdateWithoutTipsInput>
+}
+
+export type MatchUpdateWithoutTipsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sport?: Prisma.StringFieldUpdateOperationsInput | string
+  league?: Prisma.StringFieldUpdateOperationsInput | string
+  homeTeam?: Prisma.StringFieldUpdateOperationsInput | string
+  awayTeam?: Prisma.StringFieldUpdateOperationsInput | string
+  homeOdds?: Prisma.FloatFieldUpdateOperationsInput | number
+  drawOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  awayOdds?: Prisma.FloatFieldUpdateOperationsInput | number
+  overUnderLine?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  overOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  underOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  commenceTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  homeScore?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  awayScore?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  minute?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  apiSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  aiHomeWinProb?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  aiDrawProb?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  aiAwayWinProb?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  aiConfidence?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  aiAnalysis?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiRecommended?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiRiskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  aiRiskLevel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiValueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  aiKellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bets?: Prisma.BetUpdateManyWithoutMatchNestedInput
+}
+
+export type MatchUncheckedUpdateWithoutTipsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  externalId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  sport?: Prisma.StringFieldUpdateOperationsInput | string
+  league?: Prisma.StringFieldUpdateOperationsInput | string
+  homeTeam?: Prisma.StringFieldUpdateOperationsInput | string
+  awayTeam?: Prisma.StringFieldUpdateOperationsInput | string
+  homeOdds?: Prisma.FloatFieldUpdateOperationsInput | number
+  drawOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  awayOdds?: Prisma.FloatFieldUpdateOperationsInput | number
+  overUnderLine?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  overOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  underOdds?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  commenceTime?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  homeScore?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  awayScore?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  minute?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  apiSource?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  lastSyncedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  aiHomeWinProb?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  aiDrawProb?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  aiAwayWinProb?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  aiConfidence?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  aiAnalysis?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiRecommended?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiRiskScore?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  aiRiskLevel?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  aiValueEdge?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  aiKellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  bets?: Prisma.BetUncheckedUpdateManyWithoutMatchNestedInput
 }
 
 
@@ -1212,10 +1393,12 @@ export type MatchUncheckedUpdateWithoutBetsInput = {
 
 export type MatchCountOutputType = {
   bets: number
+  tips: number
 }
 
 export type MatchCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   bets?: boolean | MatchCountOutputTypeCountBetsArgs
+  tips?: boolean | MatchCountOutputTypeCountTipsArgs
 }
 
 /**
@@ -1233,6 +1416,13 @@ export type MatchCountOutputTypeDefaultArgs<ExtArgs extends runtime.Types.Extens
  */
 export type MatchCountOutputTypeCountBetsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   where?: Prisma.BetWhereInput
+}
+
+/**
+ * MatchCountOutputType without action
+ */
+export type MatchCountOutputTypeCountTipsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.TipWhereInput
 }
 
 
@@ -1269,6 +1459,7 @@ export type MatchSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   createdAt?: boolean
   updatedAt?: boolean
   bets?: boolean | Prisma.Match$betsArgs<ExtArgs>
+  tips?: boolean | Prisma.Match$tipsArgs<ExtArgs>
   _count?: boolean | Prisma.MatchCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["match"]>
 
@@ -1377,6 +1568,7 @@ export type MatchSelectScalar = {
 export type MatchOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "externalId" | "sport" | "league" | "homeTeam" | "awayTeam" | "homeOdds" | "drawOdds" | "awayOdds" | "overUnderLine" | "overOdds" | "underOdds" | "commenceTime" | "status" | "homeScore" | "awayScore" | "minute" | "apiSource" | "lastSyncedAt" | "aiHomeWinProb" | "aiDrawProb" | "aiAwayWinProb" | "aiConfidence" | "aiAnalysis" | "aiRecommended" | "aiRiskScore" | "aiRiskLevel" | "aiValueEdge" | "aiKellyStake" | "createdAt" | "updatedAt", ExtArgs["result"]["match"]>
 export type MatchInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   bets?: boolean | Prisma.Match$betsArgs<ExtArgs>
+  tips?: boolean | Prisma.Match$tipsArgs<ExtArgs>
   _count?: boolean | Prisma.MatchCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type MatchIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
@@ -1386,6 +1578,7 @@ export type $MatchPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   name: "Match"
   objects: {
     bets: Prisma.$BetPayload<ExtArgs>[]
+    tips: Prisma.$TipPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1814,6 +2007,7 @@ readonly fields: MatchFieldRefs;
 export interface Prisma__MatchClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   bets<T extends Prisma.Match$betsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Match$betsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BetPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  tips<T extends Prisma.Match$tipsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Match$tipsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TipPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2286,6 +2480,30 @@ export type Match$betsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs
   take?: number
   skip?: number
   distinct?: Prisma.BetScalarFieldEnum | Prisma.BetScalarFieldEnum[]
+}
+
+/**
+ * Match.tips
+ */
+export type Match$tipsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Tip
+   */
+  select?: Prisma.TipSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Tip
+   */
+  omit?: Prisma.TipOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TipInclude<ExtArgs> | null
+  where?: Prisma.TipWhereInput
+  orderBy?: Prisma.TipOrderByWithRelationInput | Prisma.TipOrderByWithRelationInput[]
+  cursor?: Prisma.TipWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.TipScalarFieldEnum | Prisma.TipScalarFieldEnum[]
 }
 
 /**

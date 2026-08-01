@@ -92,3 +92,13 @@ export type AIModelPerformance = Prisma.AIModelPerformanceModel
  * 
  */
 export type PasswordResetToken = Prisma.PasswordResetTokenModel
+/**
+ * Model Notification
+ * 
+ */
+export type Notification = Prisma.NotificationModel
+/**
+ * Model Tip
+ * 
+ */
+export type Tip = Prisma.TipModel

@@ -42,6 +42,7 @@ export type UserSettingsAvgAggregateOutputType = {
   profitTargetDaily: number | null
   profitTargetWeekly: number | null
   partialCashoutPercent: number | null
+  minTipConfidence: number | null
 }
 
 export type UserSettingsSumAggregateOutputType = {
@@ -60,6 +61,7 @@ export type UserSettingsSumAggregateOutputType = {
   profitTargetDaily: number | null
   profitTargetWeekly: number | null
   partialCashoutPercent: number | null
+  minTipConfidence: number | null
 }
 
 export type UserSettingsMinAggregateOutputType = {
@@ -91,6 +93,10 @@ export type UserSettingsMinAggregateOutputType = {
   partialCashoutPercent: number | null
   waitFullSettlement: boolean | null
   brokerMode: string | null
+  botMode: string | null
+  telegramChatId: string | null
+  minTipConfidence: number | null
+  tipSports: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -124,6 +130,10 @@ export type UserSettingsMaxAggregateOutputType = {
   partialCashoutPercent: number | null
   waitFullSettlement: boolean | null
   brokerMode: string | null
+  botMode: string | null
+  telegramChatId: string | null
+  minTipConfidence: number | null
+  tipSports: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -157,6 +167,10 @@ export type UserSettingsCountAggregateOutputType = {
   partialCashoutPercent: number
   waitFullSettlement: number
   brokerMode: number
+  botMode: number
+  telegramChatId: number
+  minTipConfidence: number
+  tipSports: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -179,6 +193,7 @@ export type UserSettingsAvgAggregateInputType = {
   profitTargetDaily?: true
   profitTargetWeekly?: true
   partialCashoutPercent?: true
+  minTipConfidence?: true
 }
 
 export type UserSettingsSumAggregateInputType = {
@@ -197,6 +212,7 @@ export type UserSettingsSumAggregateInputType = {
   profitTargetDaily?: true
   profitTargetWeekly?: true
   partialCashoutPercent?: true
+  minTipConfidence?: true
 }
 
 export type UserSettingsMinAggregateInputType = {
@@ -228,6 +244,10 @@ export type UserSettingsMinAggregateInputType = {
   partialCashoutPercent?: true
   waitFullSettlement?: true
   brokerMode?: true
+  botMode?: true
+  telegramChatId?: true
+  minTipConfidence?: true
+  tipSports?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -261,6 +281,10 @@ export type UserSettingsMaxAggregateInputType = {
   partialCashoutPercent?: true
   waitFullSettlement?: true
   brokerMode?: true
+  botMode?: true
+  telegramChatId?: true
+  minTipConfidence?: true
+  tipSports?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -294,6 +318,10 @@ export type UserSettingsCountAggregateInputType = {
   partialCashoutPercent?: true
   waitFullSettlement?: true
   brokerMode?: true
+  botMode?: true
+  telegramChatId?: true
+  minTipConfidence?: true
+  tipSports?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -414,6 +442,10 @@ export type UserSettingsGroupByOutputType = {
   partialCashoutPercent: number
   waitFullSettlement: boolean
   brokerMode: string
+  botMode: string
+  telegramChatId: string | null
+  minTipConfidence: number
+  tipSports: string
   createdAt: Date
   updatedAt: Date
   _count: UserSettingsCountAggregateOutputType | null
@@ -470,6 +502,10 @@ export type UserSettingsWhereInput = {
   partialCashoutPercent?: Prisma.FloatFilter<"UserSettings"> | number
   waitFullSettlement?: Prisma.BoolFilter<"UserSettings"> | boolean
   brokerMode?: Prisma.StringFilter<"UserSettings"> | string
+  botMode?: Prisma.StringFilter<"UserSettings"> | string
+  telegramChatId?: Prisma.StringNullableFilter<"UserSettings"> | string | null
+  minTipConfidence?: Prisma.FloatFilter<"UserSettings"> | number
+  tipSports?: Prisma.StringFilter<"UserSettings"> | string
   createdAt?: Prisma.DateTimeFilter<"UserSettings"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"UserSettings"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -504,6 +540,10 @@ export type UserSettingsOrderByWithRelationInput = {
   partialCashoutPercent?: Prisma.SortOrder
   waitFullSettlement?: Prisma.SortOrder
   brokerMode?: Prisma.SortOrder
+  botMode?: Prisma.SortOrder
+  telegramChatId?: Prisma.SortOrderInput | Prisma.SortOrder
+  minTipConfidence?: Prisma.SortOrder
+  tipSports?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
@@ -541,6 +581,10 @@ export type UserSettingsWhereUniqueInput = Prisma.AtLeast<{
   partialCashoutPercent?: Prisma.FloatFilter<"UserSettings"> | number
   waitFullSettlement?: Prisma.BoolFilter<"UserSettings"> | boolean
   brokerMode?: Prisma.StringFilter<"UserSettings"> | string
+  botMode?: Prisma.StringFilter<"UserSettings"> | string
+  telegramChatId?: Prisma.StringNullableFilter<"UserSettings"> | string | null
+  minTipConfidence?: Prisma.FloatFilter<"UserSettings"> | number
+  tipSports?: Prisma.StringFilter<"UserSettings"> | string
   createdAt?: Prisma.DateTimeFilter<"UserSettings"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"UserSettings"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -575,6 +619,10 @@ export type UserSettingsOrderByWithAggregationInput = {
   partialCashoutPercent?: Prisma.SortOrder
   waitFullSettlement?: Prisma.SortOrder
   brokerMode?: Prisma.SortOrder
+  botMode?: Prisma.SortOrder
+  telegramChatId?: Prisma.SortOrderInput | Prisma.SortOrder
+  minTipConfidence?: Prisma.SortOrder
+  tipSports?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.UserSettingsCountOrderByAggregateInput
@@ -616,6 +664,10 @@ export type UserSettingsScalarWhereWithAggregatesInput = {
   partialCashoutPercent?: Prisma.FloatWithAggregatesFilter<"UserSettings"> | number
   waitFullSettlement?: Prisma.BoolWithAggregatesFilter<"UserSettings"> | boolean
   brokerMode?: Prisma.StringWithAggregatesFilter<"UserSettings"> | string
+  botMode?: Prisma.StringWithAggregatesFilter<"UserSettings"> | string
+  telegramChatId?: Prisma.StringNullableWithAggregatesFilter<"UserSettings"> | string | null
+  minTipConfidence?: Prisma.FloatWithAggregatesFilter<"UserSettings"> | number
+  tipSports?: Prisma.StringWithAggregatesFilter<"UserSettings"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"UserSettings"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"UserSettings"> | Date | string
 }
@@ -648,6 +700,10 @@ export type UserSettingsCreateInput = {
   partialCashoutPercent?: number
   waitFullSettlement?: boolean
   brokerMode?: string
+  botMode?: string
+  telegramChatId?: string | null
+  minTipConfidence?: number
+  tipSports?: string
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutSettingsInput
@@ -682,6 +738,10 @@ export type UserSettingsUncheckedCreateInput = {
   partialCashoutPercent?: number
   waitFullSettlement?: boolean
   brokerMode?: string
+  botMode?: string
+  telegramChatId?: string | null
+  minTipConfidence?: number
+  tipSports?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -714,6 +774,10 @@ export type UserSettingsUpdateInput = {
   partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
   waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
   brokerMode?: Prisma.StringFieldUpdateOperationsInput | string
+  botMode?: Prisma.StringFieldUpdateOperationsInput | string
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  minTipConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
+  tipSports?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutSettingsNestedInput
@@ -748,6 +812,10 @@ export type UserSettingsUncheckedUpdateInput = {
   partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
   waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
   brokerMode?: Prisma.StringFieldUpdateOperationsInput | string
+  botMode?: Prisma.StringFieldUpdateOperationsInput | string
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  minTipConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
+  tipSports?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -781,6 +849,10 @@ export type UserSettingsCreateManyInput = {
   partialCashoutPercent?: number
   waitFullSettlement?: boolean
   brokerMode?: string
+  botMode?: string
+  telegramChatId?: string | null
+  minTipConfidence?: number
+  tipSports?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -813,6 +885,10 @@ export type UserSettingsUpdateManyMutationInput = {
   partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
   waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
   brokerMode?: Prisma.StringFieldUpdateOperationsInput | string
+  botMode?: Prisma.StringFieldUpdateOperationsInput | string
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  minTipConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
+  tipSports?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -846,6 +922,10 @@ export type UserSettingsUncheckedUpdateManyInput = {
   partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
   waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
   brokerMode?: Prisma.StringFieldUpdateOperationsInput | string
+  botMode?: Prisma.StringFieldUpdateOperationsInput | string
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  minTipConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
+  tipSports?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -884,6 +964,10 @@ export type UserSettingsCountOrderByAggregateInput = {
   partialCashoutPercent?: Prisma.SortOrder
   waitFullSettlement?: Prisma.SortOrder
   brokerMode?: Prisma.SortOrder
+  botMode?: Prisma.SortOrder
+  telegramChatId?: Prisma.SortOrder
+  minTipConfidence?: Prisma.SortOrder
+  tipSports?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -904,6 +988,7 @@ export type UserSettingsAvgOrderByAggregateInput = {
   profitTargetDaily?: Prisma.SortOrder
   profitTargetWeekly?: Prisma.SortOrder
   partialCashoutPercent?: Prisma.SortOrder
+  minTipConfidence?: Prisma.SortOrder
 }
 
 export type UserSettingsMaxOrderByAggregateInput = {
@@ -935,6 +1020,10 @@ export type UserSettingsMaxOrderByAggregateInput = {
   partialCashoutPercent?: Prisma.SortOrder
   waitFullSettlement?: Prisma.SortOrder
   brokerMode?: Prisma.SortOrder
+  botMode?: Prisma.SortOrder
+  telegramChatId?: Prisma.SortOrder
+  minTipConfidence?: Prisma.SortOrder
+  tipSports?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -968,6 +1057,10 @@ export type UserSettingsMinOrderByAggregateInput = {
   partialCashoutPercent?: Prisma.SortOrder
   waitFullSettlement?: Prisma.SortOrder
   brokerMode?: Prisma.SortOrder
+  botMode?: Prisma.SortOrder
+  telegramChatId?: Prisma.SortOrder
+  minTipConfidence?: Prisma.SortOrder
+  tipSports?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -988,6 +1081,7 @@ export type UserSettingsSumOrderByAggregateInput = {
   profitTargetDaily?: Prisma.SortOrder
   profitTargetWeekly?: Prisma.SortOrder
   partialCashoutPercent?: Prisma.SortOrder
+  minTipConfidence?: Prisma.SortOrder
 }
 
 export type UserSettingsCreateNestedOneWithoutUserInput = {
@@ -1062,6 +1156,10 @@ export type UserSettingsCreateWithoutUserInput = {
   partialCashoutPercent?: number
   waitFullSettlement?: boolean
   brokerMode?: string
+  botMode?: string
+  telegramChatId?: string | null
+  minTipConfidence?: number
+  tipSports?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1094,6 +1192,10 @@ export type UserSettingsUncheckedCreateWithoutUserInput = {
   partialCashoutPercent?: number
   waitFullSettlement?: boolean
   brokerMode?: string
+  botMode?: string
+  telegramChatId?: string | null
+  minTipConfidence?: number
+  tipSports?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1142,6 +1244,10 @@ export type UserSettingsUpdateWithoutUserInput = {
   partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
   waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
   brokerMode?: Prisma.StringFieldUpdateOperationsInput | string
+  botMode?: Prisma.StringFieldUpdateOperationsInput | string
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  minTipConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
+  tipSports?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1174,6 +1280,10 @@ export type UserSettingsUncheckedUpdateWithoutUserInput = {
   partialCashoutPercent?: Prisma.FloatFieldUpdateOperationsInput | number
   waitFullSettlement?: Prisma.BoolFieldUpdateOperationsInput | boolean
   brokerMode?: Prisma.StringFieldUpdateOperationsInput | string
+  botMode?: Prisma.StringFieldUpdateOperationsInput | string
+  telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  minTipConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
+  tipSports?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1209,6 +1319,10 @@ export type UserSettingsSelect<ExtArgs extends runtime.Types.Extensions.Internal
   partialCashoutPercent?: boolean
   waitFullSettlement?: boolean
   brokerMode?: boolean
+  botMode?: boolean
+  telegramChatId?: boolean
+  minTipConfidence?: boolean
+  tipSports?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -1243,6 +1357,10 @@ export type UserSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   partialCashoutPercent?: boolean
   waitFullSettlement?: boolean
   brokerMode?: boolean
+  botMode?: boolean
+  telegramChatId?: boolean
+  minTipConfidence?: boolean
+  tipSports?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -1277,6 +1395,10 @@ export type UserSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   partialCashoutPercent?: boolean
   waitFullSettlement?: boolean
   brokerMode?: boolean
+  botMode?: boolean
+  telegramChatId?: boolean
+  minTipConfidence?: boolean
+  tipSports?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -1311,11 +1433,15 @@ export type UserSettingsSelectScalar = {
   partialCashoutPercent?: boolean
   waitFullSettlement?: boolean
   brokerMode?: boolean
+  botMode?: boolean
+  telegramChatId?: boolean
+  minTipConfidence?: boolean
+  tipSports?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type UserSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "autoBettingEnabled" | "maxBetAmount" | "minOddsThreshold" | "maxOddsThreshold" | "riskLevel" | "autoCashoutEnabled" | "cashoutThreshold" | "commissionRate" | "preferredSports" | "notificationsEnabled" | "dailyBetLimit" | "kellyFraction" | "minEdgeThreshold" | "betTypes" | "maxAccumulatorLegs" | "minAiConfidence" | "stopLossDaily" | "stopLossWeekly" | "profitTargetDaily" | "profitTargetWeekly" | "betScheduleStart" | "betScheduleEnd" | "partialCashoutEnabled" | "partialCashoutPercent" | "waitFullSettlement" | "brokerMode" | "createdAt" | "updatedAt", ExtArgs["result"]["userSettings"]>
+export type UserSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "autoBettingEnabled" | "maxBetAmount" | "minOddsThreshold" | "maxOddsThreshold" | "riskLevel" | "autoCashoutEnabled" | "cashoutThreshold" | "commissionRate" | "preferredSports" | "notificationsEnabled" | "dailyBetLimit" | "kellyFraction" | "minEdgeThreshold" | "betTypes" | "maxAccumulatorLegs" | "minAiConfidence" | "stopLossDaily" | "stopLossWeekly" | "profitTargetDaily" | "profitTargetWeekly" | "betScheduleStart" | "betScheduleEnd" | "partialCashoutEnabled" | "partialCashoutPercent" | "waitFullSettlement" | "brokerMode" | "botMode" | "telegramChatId" | "minTipConfidence" | "tipSports" | "createdAt" | "updatedAt", ExtArgs["result"]["userSettings"]>
 export type UserSettingsInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
@@ -1360,6 +1486,10 @@ export type $UserSettingsPayload<ExtArgs extends runtime.Types.Extensions.Intern
     partialCashoutPercent: number
     waitFullSettlement: boolean
     brokerMode: string
+    botMode: string
+    telegramChatId: string | null
+    minTipConfidence: number
+    tipSports: string
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["userSettings"]>
@@ -1814,6 +1944,10 @@ export interface UserSettingsFieldRefs {
   readonly partialCashoutPercent: Prisma.FieldRef<"UserSettings", 'Float'>
   readonly waitFullSettlement: Prisma.FieldRef<"UserSettings", 'Boolean'>
   readonly brokerMode: Prisma.FieldRef<"UserSettings", 'String'>
+  readonly botMode: Prisma.FieldRef<"UserSettings", 'String'>
+  readonly telegramChatId: Prisma.FieldRef<"UserSettings", 'String'>
+  readonly minTipConfidence: Prisma.FieldRef<"UserSettings", 'Float'>
+  readonly tipSports: Prisma.FieldRef<"UserSettings", 'String'>
   readonly createdAt: Prisma.FieldRef<"UserSettings", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"UserSettings", 'DateTime'>
 }

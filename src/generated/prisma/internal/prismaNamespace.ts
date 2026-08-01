@@ -411,7 +411,9 @@ export const ModelName = {
   Allocation: 'Allocation',
   CommissionLedger: 'CommissionLedger',
   AIModelPerformance: 'AIModelPerformance',
-  PasswordResetToken: 'PasswordResetToken'
+  PasswordResetToken: 'PasswordResetToken',
+  Notification: 'Notification',
+  Tip: 'Tip'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -427,7 +429,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "userSettings" | "bettingAccount" | "match" | "teamStats" | "bet" | "accumulator" | "botLog" | "botSession" | "transaction" | "adminSettings" | "allocation" | "commissionLedger" | "aIModelPerformance" | "passwordResetToken"
+    modelProps: "user" | "userSettings" | "bettingAccount" | "match" | "teamStats" | "bet" | "accumulator" | "botLog" | "botSession" | "transaction" | "adminSettings" | "allocation" | "commissionLedger" | "aIModelPerformance" | "passwordResetToken" | "notification" | "tip"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -1541,6 +1543,154 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    Notification: {
+      payload: Prisma.$NotificationPayload<ExtArgs>
+      fields: Prisma.NotificationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.NotificationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NotificationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.NotificationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NotificationPayload>
+        }
+        findFirst: {
+          args: Prisma.NotificationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NotificationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.NotificationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NotificationPayload>
+        }
+        findMany: {
+          args: Prisma.NotificationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NotificationPayload>[]
+        }
+        create: {
+          args: Prisma.NotificationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NotificationPayload>
+        }
+        createMany: {
+          args: Prisma.NotificationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.NotificationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NotificationPayload>[]
+        }
+        delete: {
+          args: Prisma.NotificationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NotificationPayload>
+        }
+        update: {
+          args: Prisma.NotificationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NotificationPayload>
+        }
+        deleteMany: {
+          args: Prisma.NotificationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.NotificationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.NotificationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NotificationPayload>[]
+        }
+        upsert: {
+          args: Prisma.NotificationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$NotificationPayload>
+        }
+        aggregate: {
+          args: Prisma.NotificationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateNotification>
+        }
+        groupBy: {
+          args: Prisma.NotificationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NotificationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.NotificationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.NotificationCountAggregateOutputType> | number
+        }
+      }
+    }
+    Tip: {
+      payload: Prisma.$TipPayload<ExtArgs>
+      fields: Prisma.TipFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.TipFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TipPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.TipFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TipPayload>
+        }
+        findFirst: {
+          args: Prisma.TipFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TipPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.TipFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TipPayload>
+        }
+        findMany: {
+          args: Prisma.TipFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TipPayload>[]
+        }
+        create: {
+          args: Prisma.TipCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TipPayload>
+        }
+        createMany: {
+          args: Prisma.TipCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.TipCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TipPayload>[]
+        }
+        delete: {
+          args: Prisma.TipDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TipPayload>
+        }
+        update: {
+          args: Prisma.TipUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TipPayload>
+        }
+        deleteMany: {
+          args: Prisma.TipDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.TipUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.TipUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TipPayload>[]
+        }
+        upsert: {
+          args: Prisma.TipUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$TipPayload>
+        }
+        aggregate: {
+          args: Prisma.TipAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateTip>
+        }
+        groupBy: {
+          args: Prisma.TipGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TipGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.TipCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.TipCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1629,6 +1779,10 @@ export const UserSettingsScalarFieldEnum = {
   partialCashoutPercent: 'partialCashoutPercent',
   waitFullSettlement: 'waitFullSettlement',
   brokerMode: 'brokerMode',
+  botMode: 'botMode',
+  telegramChatId: 'telegramChatId',
+  minTipConfidence: 'minTipConfidence',
+  tipSports: 'tipSports',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -1954,6 +2108,53 @@ export const PasswordResetTokenScalarFieldEnum = {
 export type PasswordResetTokenScalarFieldEnum = (typeof PasswordResetTokenScalarFieldEnum)[keyof typeof PasswordResetTokenScalarFieldEnum]
 
 
+export const NotificationScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  title: 'title',
+  body: 'body',
+  type: 'type',
+  read: 'read',
+  matchId: 'matchId',
+  createdAt: 'createdAt'
+} as const
+
+export type NotificationScalarFieldEnum = (typeof NotificationScalarFieldEnum)[keyof typeof NotificationScalarFieldEnum]
+
+
+export const TipScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  matchId: 'matchId',
+  sport: 'sport',
+  league: 'league',
+  homeTeam: 'homeTeam',
+  awayTeam: 'awayTeam',
+  selection: 'selection',
+  odds: 'odds',
+  aiConfidence: 'aiConfidence',
+  valueEdge: 'valueEdge',
+  kellyStake: 'kellyStake',
+  riskLevel: 'riskLevel',
+  aiReasoning: 'aiReasoning',
+  tracked: 'tracked',
+  userStake: 'userStake',
+  userResult: 'userResult',
+  userProfit: 'userProfit',
+  userResultAt: 'userResultAt',
+  outcome: 'outcome',
+  actualOdds: 'actualOdds',
+  profit: 'profit',
+  commencesAt: 'commencesAt',
+  settledAt: 'settledAt',
+  telegramSent: 'telegramSent',
+  telegramSentAt: 'telegramSentAt',
+  createdAt: 'createdAt'
+} as const
+
+export type TipScalarFieldEnum = (typeof TipScalarFieldEnum)[keyof typeof TipScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -2176,6 +2377,8 @@ export type GlobalOmitConfig = {
   commissionLedger?: Prisma.CommissionLedgerOmit
   aIModelPerformance?: Prisma.AIModelPerformanceOmit
   passwordResetToken?: Prisma.PasswordResetTokenOmit
+  notification?: Prisma.NotificationOmit
+  tip?: Prisma.TipOmit
 }
 
 /* Types for Logging */
