@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Radio, Eye, DollarSign, Clock, Zap, Volume2, VolumeX, Play, TrendingUp, RefreshCw, Layers, Brain } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
+import { getSportShortName, getSportName } from "@/lib/sports";
 import Link from "next/link";
 
 interface LiveMatch {
@@ -344,7 +345,7 @@ export default function MonitorPage() {
                       <span className="text-xs text-muted-foreground">{match.minute}&apos;</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{match.league}</span>
+                      <span className="text-xs text-muted-foreground">{match.league || getSportShortName(match.sport)}</span>
                       <Button
                         size="xs"
                         variant="outline"
@@ -419,7 +420,7 @@ export default function MonitorPage() {
                             {match.homeTeam} vs {match.awayTeam}
                           </p>
                           <p className="text-xs text-muted-foreground">
-                            {match.league} &middot; {new Date(match.commenceTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                            {match.league || getSportName(match.sport)} &middot; {new Date(match.commenceTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                           </p>
                         </div>
                         <div className="flex items-center gap-1">

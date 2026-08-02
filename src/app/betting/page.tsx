@@ -1007,7 +1007,7 @@ function EnhancedBetCard({
 
         {/* Platform & Time */}
         <div className="mt-2 flex items-center justify-between text-[10px] text-muted-foreground">
-          <span>Platform: {bet.bettingAccount?.platform || "N/A"}</span>
+          <span>Platform: {bet.bettingAccount?.platform || "Simulated"}</span>
           <span>{new Date(bet.placedAt).toLocaleDateString()}</span>
         </div>
       </CardContent>

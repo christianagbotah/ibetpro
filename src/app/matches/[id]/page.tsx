@@ -199,9 +199,10 @@ export default function MatchDetailPage() {
     (m) => m.id !== match.id && m.league === match.league
   ).slice(0, 4);
 
-  const homeWinProb = match.aiHomeWinProb || analysisResult?.prediction.homeWinProb || 0;
-  const drawProb = match.aiDrawProb || analysisResult?.prediction.drawProb || 0;
-  const awayWinProb = match.aiAwayWinProb || analysisResult?.prediction.awayWinProb || 0;
+  const homeWinProb = match.aiHomeWinProb || analysisResult?.prediction.homeWinProb || null;
+  const drawProb = match.aiDrawProb || analysisResult?.prediction.drawProb || null;
+  const awayWinProb = match.aiAwayWinProb || analysisResult?.prediction.awayWinProb || null;
+  const hasAiData = homeWinProb !== null || drawProb !== null || awayWinProb !== null;
 
   return (
     <div className="space-y-6">
@@ -364,44 +365,64 @@ export default function MatchDetailPage() {
           </CardHeader>
           <CardContent className="space-y-4">
             {/* Probability Bars */}
+            {hasAiData ? (
             <div className="space-y-3">
               <div>
                 <div className="flex items-center justify-between text-sm mb-1">
                   <span className="text-foreground font-medium">{match.homeTeam}</span>
-                  <span className="text-primary font-bold">{Math.round(homeWinProb * 100)}%</span>
+                  <span className="text-primary font-bold">{Math.round((homeWinProb || 0) * 100)}%</span>
                 </div>
                 <div className="h-3 rounded-full bg-secondary overflow-hidden">
                   <div
                     className="h-full rounded-full bg-primary transition-all"
-                    style={{ width: `${homeWinProb * 100}%` }}
+                    style={{ width: `${(homeWinProb || 0) * 100}%` }}
                   />
                 </div>
               </div>
               <div>
                 <div className="flex items-center justify-between text-sm mb-1">
                   <span className="text-foreground font-medium">Draw</span>
-                  <span className="text-muted-foreground font-bold">{Math.round(drawProb * 100)}%</span>
+                  <span className="text-muted-foreground font-bold">{Math.round((drawProb || 0) * 100)}%</span>
                 </div>
                 <div className="h-3 rounded-full bg-secondary overflow-hidden">
                   <div
                     className="h-full rounded-full bg-muted-foreground/50 transition-all"
-                    style={{ width: `${drawProb * 100}%` }}
+                    style={{ width: `${(drawProb || 0) * 100}%` }}
                   />
                 </div>
               </div>
               <div>
                 <div className="flex items-center justify-between text-sm mb-1">
                   <span className="text-foreground font-medium">{match.awayTeam}</span>
-                  <span className="text-amber-400 font-bold">{Math.round(awayWinProb * 100)}%</span>
+                  <span className="text-amber-400 font-bold">{Math.round((awayWinProb || 0) * 100)}%</span>
                 </div>
                 <div className="h-3 rounded-full bg-secondary overflow-hidden">
                   <div
                     className="h-full rounded-full bg-amber-400 transition-all"
-                    style={{ width: `${awayWinProb * 100}%` }}
+                    style={{ width: `${(awayWinProb || 0) * 100}%` }}
                   />
                 </div>
               </div>
             </div>
+            ) : (
+              <div className="text-center py-8">
+                <Brain className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <p className="text-sm text-muted-foreground mb-3">No AI analysis yet</p>
+                <Button
+                  size="sm"
+                  onClick={handleAnalyze}
+                  disabled={analyzing}
+                  className="bg-primary text-primary-foreground hover:bg-primary/80"
+                >
+                  {analyzing ? (
+                    <div className="h-3 w-3 border-2 border-primary-foreground border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Brain className="h-3 w-3" />
+                  )}
+                  {analyzing ? "Analyzing..." : "Run AI Analysis"}
+                </Button>
+              </div>
+            )}
 
             {/* Confidence */}
             {match.aiConfidence && (
@@ -455,37 +476,45 @@ export default function MatchDetailPage() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            {[
-              { label: "Attack", home: homeWinProb * 100, away: awayWinProb * 100, homeLabel: `${Math.round(homeWinProb * 100)}`, awayLabel: `${Math.round(awayWinProb * 100)}` },
-              { label: "Defense", home: (1 - awayWinProb) * 50, away: (1 - homeWinProb) * 50, homeLabel: `${Math.round((1 - awayWinProb) * 50)}`, awayLabel: `${Math.round((1 - homeWinProb) * 50)}` },
-              { label: "Overall", home: homeWinProb * 80, away: awayWinProb * 80, homeLabel: `${Math.round(homeWinProb * 80)}`, awayLabel: `${Math.round(awayWinProb * 80)}` },
-              { label: "Form", home: homeWinProb * 90, away: awayWinProb * 90, homeLabel: `${Math.round(homeWinProb * 90)}`, awayLabel: `${Math.round(awayWinProb * 90)}` },
-            ].map((stat) => {
-              const maxVal = Math.max(stat.home, stat.away, 1);
-              return (
-                <div key={stat.label} className="space-y-1">
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-foreground font-medium w-8 text-right">{stat.homeLabel}</span>
-                    <span className="text-muted-foreground">{stat.label}</span>
-                    <span className="text-foreground font-medium w-8">{stat.awayLabel}</span>
-                  </div>
-                  <div className="flex gap-1">
-                    <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-primary transition-all"
-                        style={{ width: `${(stat.home / maxVal) * 100}%` }}
-                      />
+            {hasAiData ? (
+              <>
+                {[
+                  { label: "Attack", home: (homeWinProb || 0) * 100, away: (awayWinProb || 0) * 100, homeLabel: `${Math.round((homeWinProb || 0) * 100)}`, awayLabel: `${Math.round((awayWinProb || 0) * 100)}` },
+                  { label: "Defense", home: (1 - (awayWinProb || 0)) * 50, away: (1 - (homeWinProb || 0)) * 50, homeLabel: `${Math.round((1 - (awayWinProb || 0)) * 50)}`, awayLabel: `${Math.round((1 - (homeWinProb || 0)) * 50)}` },
+                  { label: "Overall", home: (homeWinProb || 0) * 80, away: (awayWinProb || 0) * 80, homeLabel: `${Math.round((homeWinProb || 0) * 80)}`, awayLabel: `${Math.round((awayWinProb || 0) * 80)}` },
+                  { label: "Form", home: (homeWinProb || 0) * 90, away: (awayWinProb || 0) * 90, homeLabel: `${Math.round((homeWinProb || 0) * 90)}`, awayLabel: `${Math.round((awayWinProb || 0) * 90)}` },
+                ].map((stat) => {
+                  const maxVal = Math.max(stat.home, stat.away, 1);
+                  return (
+                    <div key={stat.label} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="text-foreground font-medium w-8 text-right">{stat.homeLabel}</span>
+                        <span className="text-muted-foreground">{stat.label}</span>
+                        <span className="text-foreground font-medium w-8">{stat.awayLabel}</span>
+                      </div>
+                      <div className="flex gap-1">
+                        <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-primary transition-all"
+                            style={{ width: `${(stat.home / maxVal) * 100}%` }}
+                          />
+                        </div>
+                        <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
+                          <div
+                            className="h-full rounded-full bg-amber-400 transition-all ml-auto"
+                            style={{ width: `${(stat.away / maxVal) * 100}%` }}
+                          />
+                        </div>
+                      </div>
                     </div>
-                    <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-amber-400 transition-all ml-auto"
-                        style={{ width: `${(stat.away / maxVal) * 100}%` }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </>
+            ) : (
+              <div className="text-center py-6">
+                <p className="text-sm text-muted-foreground">Run AI analysis to see team comparison</p>
+              </div>
+            )}
 
             <Separator className="my-3" />
 

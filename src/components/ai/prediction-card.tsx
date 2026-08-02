@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Brain, ChevronDown, ChevronUp, Zap } from "lucide-react";
+import { getSportShortName, getSportName } from "@/lib/sports";
 import { useState } from "react";
 
 interface PredictionCardProps {
@@ -47,7 +48,7 @@ export function PredictionCard({ match, onQuickBet }: PredictionCardProps) {
       : "bg-red-400/10";
 
   const getRecommendationLabel = (rec: string | null) => {
-    if (!rec) return "N/A";
+    if (!rec) return null;
     switch (rec) {
       case "home": return match.homeTeam;
       case "away": return match.awayTeam;
@@ -65,9 +66,9 @@ export function PredictionCard({ match, onQuickBet }: PredictionCardProps) {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               <Badge variant="secondary" className="text-[10px]">
-                {match.sport}
+                {getSportShortName(match.sport)}
               </Badge>
-              <span className="text-xs text-muted-foreground">{match.league}</span>
+              <span className="text-xs text-muted-foreground">{match.league || getSportName(match.sport)}</span>
               {match.status === "live" && (
                 <Badge className="text-[10px] bg-red-500/20 text-red-400 border-red-500/30">
                   LIVE
@@ -83,7 +84,7 @@ export function PredictionCard({ match, onQuickBet }: PredictionCardProps) {
               <div className="text-center">
                 <div className="text-[10px] text-muted-foreground mb-1">Home</div>
                 <div className="text-sm font-bold text-foreground">
-                  {match.aiHomeWinProb ? `${Math.round(match.aiHomeWinProb * 100)}%` : "N/A"}
+                  {match.aiHomeWinProb ? `${Math.round(match.aiHomeWinProb * 100)}%` : "\u2014"}
                 </div>
                 <div className="text-[10px] text-primary">{match.homeOdds}</div>
               </div>
@@ -91,7 +92,7 @@ export function PredictionCard({ match, onQuickBet }: PredictionCardProps) {
                 <div className="text-center">
                   <div className="text-[10px] text-muted-foreground mb-1">Draw</div>
                   <div className="text-sm font-bold text-foreground">
-                    {match.aiDrawProb ? `${Math.round(match.aiDrawProb * 100)}%` : "N/A"}
+                    {match.aiDrawProb ? `${Math.round(match.aiDrawProb * 100)}%` : "\u2014"}
                   </div>
                   <div className="text-[10px] text-muted-foreground">{match.drawOdds}</div>
                 </div>
@@ -99,7 +100,7 @@ export function PredictionCard({ match, onQuickBet }: PredictionCardProps) {
               <div className="text-center">
                 <div className="text-[10px] text-muted-foreground mb-1">Away</div>
                 <div className="text-sm font-bold text-foreground">
-                  {match.aiAwayWinProb ? `${Math.round(match.aiAwayWinProb * 100)}%` : "N/A"}
+                  {match.aiAwayWinProb ? `${Math.round(match.aiAwayWinProb * 100)}%` : "\u2014"}
                 </div>
                 <div className="text-[10px] text-amber-400">{match.awayOdds}</div>
               </div>
@@ -120,7 +121,7 @@ export function PredictionCard({ match, onQuickBet }: PredictionCardProps) {
             <Brain className="h-3.5 w-3.5 text-primary" />
             <span className="text-xs text-muted-foreground">AI recommends:</span>
             <span className="text-sm font-medium text-primary">
-              {getRecommendationLabel(match.aiRecommended)}
+              {getRecommendationLabel(match.aiRecommended) || "Run analysis"}
             </span>
           </div>
           <div className="flex items-center gap-2">
