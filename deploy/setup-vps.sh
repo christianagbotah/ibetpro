@@ -1,18 +1,27 @@
 #!/bin/bash
 # ============================================================================
 # iBetPro — VPS First-Time Setup (run as root on a Webuzo VPS)
-# VPS: ibetpro.lightworldtech.com
-# This installs Node.js, PM2, Nginx, and prepares the server
-# Usage: sudo bash deploy/setup-vps.sh
+# 
+# This only needs to run ONCE on a fresh VPS. It installs:
+#   - Node.js 20
+#   - PM2 process manager
+#   - Nginx (if not already via Webuzo)
+#   - Certbot for SSL
+#   - Clones the repo and runs the first deployment
+#
+# Usage: sudo bash /home/lightworld/ibetpro-src/deploy/setup-vps.sh
 # ============================================================================
 
 set -euo pipefail
 
 APP_USER="lightworld"
+SRC_DIR="/home/lightworld/ibetpro-src"
 APP_DIR="/home/lightworld/webapps/ibetpro"
 LOG_DIR="/home/lightworld/webapps/ibetpro/logs"
+REPO_URL="https://github.com/christianagbotah/ibetpro.git"
 NODE_MAJOR=20
 PORT=3007
+DOMAIN="ibetpro.lightworldtech.com"
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -29,6 +38,13 @@ err()  { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 if [ "$(id -u)" -ne 0 ]; then
     err "This script must be run as root. Use: sudo bash deploy/setup-vps.sh"
 fi
+
+echo ""
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${BLUE}  iBetPro — VPS First-Time Setup${NC}"
+echo -e "${BLUE}  Domain: ${DOMAIN}  Port: ${PORT}${NC}"
+echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
 
 log "Starting VPS setup for iBetPro..."
 
@@ -83,24 +99,32 @@ mkdir -p "${APP_DIR}/prisma/migrations"
 chown -R "${APP_USER}:${APP_USER}" "${APP_DIR}" 2>/dev/null || true
 ok "Directories created"
 
-# ---- 7. Configure PM2 startup ----
-log "Step 7: Configuring PM2 startup..."
+# ---- 7. Clone the repo ----
+log "Step 7: Cloning repository..."
+if [ -d "${SRC_DIR}/.git" ]; then
+    warn "Source directory already exists at ${SRC_DIR}"
+    cd "${SRC_DIR}" && git pull origin main
+else
+    su - "${APP_USER}" -c "git clone ${REPO_URL} ${SRC_DIR}"
+fi
+ok "Source code ready at ${SRC_DIR}"
+
+# ---- 8. Configure PM2 startup ----
+log "Step 8: Configuring PM2 startup..."
 su - "${APP_USER}" -c "pm2 startup systemd -u ${APP_USER} --hp /home/${APP_USER}" 2>/dev/null || true
 ok "PM2 startup configured"
 
-# ---- 8. Optimize system for Node.js ----
-log "Step 8: Optimizing system for Node.js..."
+# ---- 9. Optimize system for Node.js ----
+log "Step 9: Optimizing system for Node.js..."
 
-# Increase file watch limit
 if ! grep -q "fs.inotify" /etc/sysctl.conf; then
     echo "fs.inotify.max_user_watches=524288" >> /etc/sysctl.conf
     sysctl -p
 fi
-
 ok "System optimized"
 
-# ---- 9. Open port in firewall ----
-log "Step 9: Configuring firewall..."
+# ---- 10. Open port in firewall ----
+log "Step 10: Configuring firewall..."
 if command -v ufw &> /dev/null; then
     ufw allow OpenSSH
     ufw allow 'Nginx Full'
@@ -116,20 +140,26 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 echo -e "${GREEN}  VPS SETUP COMPLETE!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo "  App user:       ${APP_USER}"
-echo "  App directory:  ${APP_DIR}"
-echo "  App port:       ${PORT}"
-echo "  Logs:           ${LOG_DIR}"
+echo "  Source code:   ${SRC_DIR}"
+echo "  App runtime:   ${APP_DIR}"
+echo "  Port:          ${PORT}"
+echo "  Logs:          ${LOG_DIR}"
 echo ""
 echo "  Node.js:  $(node -v)"
 echo "  PM2:      $(pm2 -v)"
 echo "  Nginx:    $(nginx -v 2>&1)"
 echo ""
-echo "  Next steps:"
-echo "    1. From your LOCAL machine, run:"
-echo "       bash deploy/deploy.sh"
+echo -e "${YELLOW}  ━━━ NEXT STEPS ━━━${NC}"
 echo ""
-echo "    2. Set up SSL:"
-echo "       sudo certbot --nginx -d ibetpro.lightworldtech.com"
+echo "  1. Run the full deployment (as lightworld user):"
+echo "     su - lightworld"
+echo "     bash ${SRC_DIR}/deploy/deploy.sh"
+echo ""
+echo "  2. Set up SSL (first time only):"
+echo "     sudo certbot --nginx -d ${DOMAIN}"
+echo "     Then re-run: bash ${SRC_DIR}/deploy/deploy.sh --ssl"
+echo ""
+echo "  3. For future updates, just run:"
+echo "     bash ${SRC_DIR}/deploy/update.sh"
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
