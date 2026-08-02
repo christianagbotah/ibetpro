@@ -22,6 +22,7 @@ import {
   XCircle,
 } from "lucide-react";
 import { useState, useCallback } from "react";
+import { getSportName, getSportShortName } from "@/lib/sports";
 
 interface MatchDetail {
   id: string;
@@ -212,7 +213,7 @@ export default function MatchDetailPage() {
         <div>
           <h1 className="text-2xl font-bold text-foreground">Match Details</h1>
           <p className="text-sm text-muted-foreground mt-1">
-            {match.league} &middot; {match.sport.charAt(0).toUpperCase() + match.sport.slice(1)}
+            {match.league || getSportName(match.sport)} &middot; {getSportShortName(match.sport)}
           </p>
         </div>
       </div>
@@ -578,7 +579,7 @@ export default function MatchDetailPage() {
                     <Badge variant="secondary" className="text-[10px]">
                       {rm.status === "live" ? "🔴 LIVE" : rm.status}
                     </Badge>
-                    <span className="text-[10px] text-muted-foreground">{rm.sport}</span>
+                    <span className="text-[10px] text-muted-foreground">{getSportShortName(rm.sport)}</span>
                   </div>
                   <p className="text-sm font-medium text-foreground">
                     {rm.homeTeam} vs {rm.awayTeam}

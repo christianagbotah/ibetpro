@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Radio } from "lucide-react";
+import { getSportName, getSportShortName } from "@/lib/sports";
 
 interface Match {
   id: string;
@@ -68,10 +69,10 @@ export function LiveMatches({ matches }: LiveMatchesProps) {
                 </div>
                 <div className="text-right">
                   <Badge variant="secondary" className="text-[10px]">
-                    {match.league}
+                    {match.league || getSportName(match.sport)}
                   </Badge>
                   <p className="text-xs text-muted-foreground mt-1">
-                    {match.sport}
+                    {getSportShortName(match.sport)}
                   </p>
                 </div>
               </div>
@@ -94,7 +95,7 @@ export function LiveMatches({ matches }: LiveMatchesProps) {
                     {match.homeTeam} vs {match.awayTeam}
                   </p>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {match.league} &middot; {match.sport}
+                    {match.league || getSportName(match.sport)} &middot; {getSportShortName(match.sport)}
                   </p>
                 </div>
                 <div className="flex items-center gap-2 text-right">

@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useFetch } from "@/lib/hooks";
+import { getSportName } from "@/lib/sports";
 import { PredictionCard } from "@/components/ai/prediction-card";
 import { AnalysisPanel } from "@/components/ai/analysis-panel";
 import { Card, CardContent } from "@/components/ui/card";
@@ -160,7 +161,7 @@ export default function AnalysisPage() {
               <SelectItem value="all">All Sports</SelectItem>
               {sports.map((sport) => (
                 <SelectItem key={sport} value={sport}>
-                  {sport.charAt(0).toUpperCase() + sport.slice(1)}
+                  {getSportName(sport)}
                 </SelectItem>
               ))}
             </SelectContent>

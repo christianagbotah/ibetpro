@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Brain, Sparkles, Zap, Radio, TrendingUp, DollarSign, Activity, ArrowRight } from "lucide-react";
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
+import { getSportShortName } from "@/lib/sports";
 
 interface Match {
   id: string;
@@ -311,7 +312,7 @@ export default function DashboardPage() {
                 <div className="rounded-lg bg-secondary/50 p-3 border border-primary/10 hover:bg-secondary transition-colors cursor-pointer">
                   <div className="flex items-center justify-between mb-2">
                     <Badge variant="secondary" className="text-[10px]">
-                      {match.sport}
+                      {getSportShortName(match.sport)}
                     </Badge>
                     <div className="flex items-center gap-1">
                       <Brain className="h-3 w-3 text-primary" />

@@ -3,6 +3,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useFetch } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
+import { getSportShortName, getSportName } from "@/lib/sports";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -264,7 +265,7 @@ export default function HistoryPage() {
                 <SelectItem value="all">All Sports</SelectItem>
                 {sports.map((sport) => (
                   <SelectItem key={sport} value={sport!}>
-                    {sport!.charAt(0).toUpperCase() + sport!.slice(1)}
+                    {getSportName(sport!)}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -336,9 +337,9 @@ export default function HistoryPage() {
                       {/* Match Info */}
                       <div className="flex items-center gap-2 mb-1">
                         <Badge variant="secondary" className="text-[10px]">
-                          {bet.match?.sport}
+                          {getSportShortName(bet.match?.sport || "")}
                         </Badge>
-                        <span className="text-xs text-muted-foreground">{bet.match?.league}</span>
+                        <span className="text-xs text-muted-foreground">{bet.match?.league || getSportName(bet.match?.sport || "")}</span>
                         {bet.isAutoPlaced && (
                           <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20">
                             <Brain className="h-3 w-3 mr-0.5" />
