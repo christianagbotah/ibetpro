@@ -24,6 +24,9 @@ import {
   Send,
   Unlink,
   ExternalLink,
+  KeyRound,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useToast } from "@/components/ui/toast";
@@ -119,6 +122,12 @@ export default function SettingsPage() {
   const [telegramConnected, setTelegramConnected] = useState(false);
   const [telegramDeepLink, setTelegramDeepLink] = useState<string | null>(null);
   const [telegramLoading, setTelegramLoading] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
   const { addToast } = useToast();
 
   // Switch broker mode
@@ -272,6 +281,58 @@ export default function SettingsPage() {
       addToast("error", "Failed to disconnect Telegram");
     } finally {
       setTelegramLoading(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    setPasswordError(null);
+    setPasswordSuccess(false);
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError("All fields are required");
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      setPasswordError("New password must be at least 8 characters");
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError("New passwords do not match");
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      setPasswordError("New password must be different from current password");
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const res = await fetch("/api/auth/change-password", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      });
+
+      const data = await res.json();
+
+      if (res.ok && data.success) {
+        setPasswordSuccess(true);
+        setCurrentPassword("");
+        setNewPassword("");
+        setConfirmPassword("");
+        addToast("success", "Password changed successfully");
+        // Reset success message after 5 seconds so they can change again if needed
+        setTimeout(() => setPasswordSuccess(false), 5000);
+      } else {
+        setPasswordError(data.error || "Failed to change password");
+      }
+    } catch {
+      setPasswordError("Network error. Please try again.");
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -1101,6 +1162,82 @@ export default function SettingsPage() {
             Commission is deducted automatically from profits and transferred to the admin account.
             Your displayed profit is always net of commission.
           </p>
+        </CardContent>
+      </Card>
+
+      {/* Change Password */}
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <KeyRound className="h-4 w-4 text-primary" />
+            Change Password
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {passwordSuccess ? (
+            <div className="flex items-center gap-3 rounded-lg bg-emerald-400/10 p-4">
+              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Password changed successfully!</p>
+                <p className="text-xs text-muted-foreground">Use your new password next time you log in.</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="space-y-2">
+                <Label htmlFor="currentPassword" className="text-sm font-medium">Current Password</Label>
+                <Input
+                  id="currentPassword"
+                  type="password"
+                  placeholder="Enter your current password"
+                  value={currentPassword}
+                  onChange={(e) => { setCurrentPassword(e.target.value); setPasswordError(null); }}
+                  className="bg-background"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newPassword" className="text-sm font-medium">New Password</Label>
+                <Input
+                  id="newPassword"
+                  type="password"
+                  placeholder="At least 8 characters"
+                  value={newPassword}
+                  onChange={(e) => { setNewPassword(e.target.value); setPasswordError(null); }}
+                  className="bg-background"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm New Password</Label>
+                <Input
+                  id="confirmPassword"
+                  type="password"
+                  placeholder="Re-enter your new password"
+                  value={confirmPassword}
+                  onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(null); }}
+                  className="bg-background"
+                  onKeyDown={(e) => { if (e.key === "Enter") handleChangePassword(); }}
+                />
+              </div>
+              {passwordError && (
+                <div className="flex items-center gap-2 rounded-lg bg-red-400/10 p-3">
+                  <AlertCircle className="h-4 w-4 text-red-400" />
+                  <p className="text-xs text-red-400">{passwordError}</p>
+                </div>
+              )}
+              <Button
+                onClick={handleChangePassword}
+                disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
+                className="w-full bg-primary text-primary-foreground hover:bg-primary/80 h-9"
+              >
+                {changingPassword ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <KeyRound className="h-4 w-4" />
+                )}
+                {changingPassword ? "Changing..." : "Change Password"}
+              </Button>
+            </>
+          )}
         </CardContent>
       </Card>
 
