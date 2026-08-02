@@ -9,7 +9,7 @@ export function PWAInstallBanner() {
   if (!showBanner) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 p-3 sm:p-4">
+    <div className="fixed bottom-16 left-0 right-0 z-[60] p-3 sm:p-4 sm:bottom-0">
       <div className="max-w-lg mx-auto bg-card border border-primary/20 rounded-xl p-3 shadow-lg shadow-primary/5 flex items-center gap-3 animate-slide-in-right">
         <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
           <Smartphone className="h-4 w-4 text-primary" />
