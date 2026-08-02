@@ -1,0 +1,30 @@
+[Unit]
+Description=iBetPro Next.js Application
+Documentation=https://yourdomain.com
+After=network.target
+
+[Service]
+Type=simple
+User=ibetpro
+Group=ibetpro
+WorkingDirectory=/home/ibetpro/app/.next/standalone
+EnvironmentFile=/home/ibetpro/app/.next/standalone/.env
+ExecStart=/usr/bin/node /home/ibetpro/app/.next/standalone/server.js
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/home/ibetpro/logs/out.log
+StandardError=append:/home/ibetpro/logs/error.log
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/ibetpro/db /home/ibetpro/logs
+PrivateTmp=true
+
+# Resource limits
+LimitNOFILE=65536
+MemoryMax=512M
+
+[Install]
+WantedBy=multi-user.target
