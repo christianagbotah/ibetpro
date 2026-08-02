@@ -48,21 +48,37 @@ interface Transaction {
   createdAt: string;
 }
 
-const monthlyProfitData = [
-  { month: "Jan", profit: 450, loss: 200, commission: 45 },
-  { month: "Feb", profit: 380, loss: 250, commission: 38 },
-  { month: "Mar", profit: 620, loss: 180, commission: 62 },
-  { month: "Apr", profit: 290, loss: 310, commission: 29 },
-  { month: "May", profit: 510, loss: 220, commission: 51 },
-  { month: "Jun", profit: 730, loss: 190, commission: 73 },
-  { month: "Jul", profit: 580, loss: 280, commission: 58 },
-];
-
-const platformBreakdown = [
-  { platform: "Bet365", profit: 1240.5, bets: 45, winRate: 68 },
-  { platform: "Betway", profit: 607.0, bets: 28, winRate: 57 },
-  { platform: "Sportybet", profit: 0, bets: 0, winRate: 0 },
-];
+interface UserStats {
+  balance: number;
+  bankroll: number;
+  totalProfit: number;
+  totalLoss: number;
+  commissionPaid: number;
+  commissionRate: number;
+  dailyPnl: number;
+  weeklyPnl: number;
+  totalBets: number;
+  wonBets: number;
+  lostBets: number;
+  pendingBets: number;
+  winRate: number;
+  roi: number;
+  totalStaked: number;
+  activeAccounts: number;
+  monthlyData: Array<{ month: string; profit: number; loss: number; commission: number }>;
+  recentBets: Array<{
+    id: string;
+    betType: string;
+    selection: string;
+    odds: number;
+    stake: number;
+    status: string;
+    profit: number | null;
+    placedAt: string;
+    match: { homeTeam: string; awayTeam: string; sport: string };
+  }>;
+  memberSince: string;
+}
 
 const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; dataKey: string; color: string }>; label?: string }) => {
   if (active && payload && payload.length) {
@@ -82,15 +98,37 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 };
 
 export default function ProfitsPage() {
-  const { data: transactions, loading } = useFetch<Transaction[]>("/api/transactions", []);
+  const { data: transactions, loading: txLoading } = useFetch<Transaction[]>("/api/transactions", []);
+  const { data: stats, loading: statsLoading } = useFetch<UserStats>("/api/stats/user", {
+    balance: 0,
+    bankroll: 0,
+    totalProfit: 0,
+    totalLoss: 0,
+    commissionPaid: 0,
+    commissionRate: 0.10,
+    dailyPnl: 0,
+    weeklyPnl: 0,
+    totalBets: 0,
+    wonBets: 0,
+    lostBets: 0,
+    pendingBets: 0,
+    winRate: 0,
+    roi: 0,
+    totalStaked: 0,
+    activeAccounts: 0,
+    monthlyData: [],
+    recentBets: [],
+    memberSince: "",
+  });
   const [txFilter, setTxFilter] = useState<string>("all");
 
-  const totalProfit = 2847.5;
-  const totalLoss = 1235.0;
+  const totalProfit = stats.totalProfit;
+  const totalLoss = stats.totalLoss;
   const netProfit = totalProfit - totalLoss;
-  const totalCommission = 284.75;
-  const roi = totalProfit > 0 ? ((netProfit / totalLoss) * 100).toFixed(1) : "0";
+  const totalCommission = stats.commissionPaid;
+  const roi = stats.totalStaked > 0 ? stats.roi : 0;
 
+  const monthlyData = stats.monthlyData || [];
   const filteredTransactions =
     txFilter === "all"
       ? transactions
@@ -126,6 +164,8 @@ export default function ProfitsPage() {
         return "bg-secondary text-muted-foreground";
     }
   };
+
+  const loading = txLoading || statsLoading;
 
   if (loading) {
     return (
@@ -191,7 +231,7 @@ export default function ProfitsPage() {
               <span className="text-xs text-muted-foreground">ROI</span>
               <DollarSign className="h-4 w-4 text-primary" />
             </div>
-            <p className="text-2xl font-bold text-primary">{roi}%</p>
+            <p className="text-2xl font-bold text-primary">{roi.toFixed(1)}%</p>
           </CardContent>
         </Card>
       </div>
@@ -206,22 +246,28 @@ export default function ProfitsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={monthlyProfitData}>
-                  <defs>
-                    <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="month" tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} />
-                  <YAxis tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} tickFormatter={(v) => `$${v}`} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Area type="monotone" dataKey="profit" stroke="#10b981" fill="url(#profitGrad)" strokeWidth={2} />
-                  <Area type="monotone" dataKey="loss" stroke="#ef4444" fill="transparent" strokeWidth={2} strokeDasharray="4 4" />
-                </AreaChart>
-              </ResponsiveContainer>
+              {monthlyData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={monthlyData}>
+                    <defs>
+                      <linearGradient id="profitGrad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="month" tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} />
+                    <YAxis tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} tickFormatter={(v) => `$${v}`} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Area type="monotone" dataKey="profit" stroke="#10b981" fill="url(#profitGrad)" strokeWidth={2} />
+                    <Area type="monotone" dataKey="loss" stroke="#ef4444" fill="transparent" strokeWidth={2} strokeDasharray="4 4" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                  No profit data yet. Place bets to see your trend.
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -235,45 +281,25 @@ export default function ProfitsPage() {
           </CardHeader>
           <CardContent>
             <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyProfitData}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
-                  <XAxis dataKey="month" tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} />
-                  <YAxis tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} tickFormatter={(v) => `$${v}`} />
-                  <Tooltip content={<CustomTooltip />} />
-                  <Bar dataKey="commission" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+              {monthlyData.length > 0 ? (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={monthlyData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                    <XAxis dataKey="month" tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} />
+                    <YAxis tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} tickFormatter={(v) => `$${v}`} />
+                    <Tooltip content={<CustomTooltip />} />
+                    <Bar dataKey="commission" fill="#f59e0b" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
+                  No commission data yet.
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
       </div>
-
-      <Card className="bg-card border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base">Per-Platform Profit</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {platformBreakdown.map((p) => (
-              <div key={p.platform} className="rounded-lg bg-secondary/50 p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-foreground">{p.platform}</span>
-                  <Badge variant="secondary" className="text-[10px]">
-                    {p.bets} bets
-                  </Badge>
-                </div>
-                <p className={`text-xl font-bold ${p.profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                  {p.profit >= 0 ? "+" : ""}${p.profit.toFixed(2)}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Win Rate: {p.winRate}%
-                </p>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
 
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
@@ -295,36 +321,42 @@ export default function ProfitsPage() {
         </CardHeader>
         <CardContent>
           <div className="max-h-96 overflow-y-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="border-border">
-                  <TableHead className="text-muted-foreground">Type</TableHead>
-                  <TableHead className="text-muted-foreground">Description</TableHead>
-                  <TableHead className="text-muted-foreground">Amount</TableHead>
-                  <TableHead className="text-muted-foreground">Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredTransactions.map((tx) => (
-                  <TableRow key={tx.id} className="border-border">
-                    <TableCell>
-                      <Badge className={`text-[10px] ${getTypeBadge(tx.type)}`}>
-                        {tx.type.replace("_", " ")}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-foreground">
-                      {tx.description || "N/A"}
-                    </TableCell>
-                    <TableCell className={`text-sm font-medium ${getTypeColor(tx.type)}`}>
-                      {tx.amount >= 0 ? "+" : ""}${Math.abs(tx.amount).toFixed(2)}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {new Date(tx.createdAt).toLocaleDateString()}
-                    </TableCell>
+            {filteredTransactions.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                No transactions yet. Place bets to see your history.
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow className="border-border">
+                    <TableHead className="text-muted-foreground">Type</TableHead>
+                    <TableHead className="text-muted-foreground">Description</TableHead>
+                    <TableHead className="text-muted-foreground">Amount</TableHead>
+                    <TableHead className="text-muted-foreground">Date</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {filteredTransactions.map((tx) => (
+                    <TableRow key={tx.id} className="border-border">
+                      <TableCell>
+                        <Badge className={`text-[10px] ${getTypeBadge(tx.type)}`}>
+                          {tx.type.replace("_", " ")}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-foreground">
+                        {tx.description || "N/A"}
+                      </TableCell>
+                      <TableCell className={`text-sm font-medium ${getTypeColor(tx.type)}`}>
+                        {tx.amount >= 0 ? "+" : ""}${Math.abs(tx.amount).toFixed(2)}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(tx.createdAt).toLocaleDateString()}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </div>
         </CardContent>
       </Card>

@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
     const userId = await requireAuth();
 
     const body = await request.json();
-    const {
+    let {
       bettingAccountId,
       matchId,
       betType,
@@ -49,8 +49,31 @@ export async function POST(request: NextRequest) {
       aiReasoning,
     } = body;
 
-    if (!bettingAccountId || !matchId || !betType || !selection || !odds || !stake) {
+    if (!matchId || !betType || !selection || !odds || !stake) {
       return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+    }
+
+    // Auto-create a simulated betting account if user doesn't have one
+    if (!bettingAccountId) {
+      let simulatedAccount = await prisma.bettingAccount.findFirst({
+        where: { userId, platform: "simulated" },
+      });
+      if (!simulatedAccount) {
+        simulatedAccount = await prisma.bettingAccount.create({
+          data: {
+            userId,
+            platform: "simulated",
+            accountId: `sim_${userId.slice(0, 8)}_${Date.now()}`,
+            accountName: "Simulated Account",
+            balance: 0,
+            currency: "USD",
+            isConnected: true,
+            brokerType: "manual",
+            lastSyncedAt: new Date(),
+          },
+        });
+      }
+      bettingAccountId = simulatedAccount.id;
     }
 
     const potentialWin = Math.round(odds * stake * 100) / 100;

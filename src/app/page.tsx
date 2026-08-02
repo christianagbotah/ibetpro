@@ -146,6 +146,9 @@ export default function DashboardPage() {
         profit={stats.totalProfit - stats.totalLoss}
         activeBets={activeBets}
         winRate={winRate}
+        dailyPnl={stats.dailyPnl}
+        weeklyPnl={stats.weeklyPnl}
+        pendingBets={stats.pendingBets}
       />
 
       {/* Quick Actions */}

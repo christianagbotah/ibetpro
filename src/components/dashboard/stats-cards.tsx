@@ -8,40 +8,47 @@ interface StatsCardsProps {
   profit: number;
   activeBets: number;
   winRate: number;
+  dailyPnl?: number;
+  weeklyPnl?: number;
+  pendingBets?: number;
 }
 
-export function StatsCards({ balance, profit, activeBets, winRate }: StatsCardsProps) {
+export function StatsCards({ balance, profit, activeBets, winRate, dailyPnl, weeklyPnl, pendingBets }: StatsCardsProps) {
   const cards = [
     {
       title: "Total Balance",
       value: `$${balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
       icon: DollarSign,
-      change: "+12.5%",
-      changeType: "positive" as const,
+      subtext: dailyPnl !== undefined
+        ? `${dailyPnl >= 0 ? "+" : ""}$${dailyPnl.toFixed(2)} today`
+        : undefined,
+      subtextType: (dailyPnl ?? 0) >= 0 ? "positive" as const : "negative" as const,
       color: "text-primary",
     },
     {
       title: "Total Profit",
       value: `$${profit.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
       icon: TrendingUp,
-      change: "+$134.50",
-      changeType: "positive" as const,
+      subtext: weeklyPnl !== undefined
+        ? `${weeklyPnl >= 0 ? "+" : ""}$${weeklyPnl.toFixed(2)} this week`
+        : undefined,
+      subtextType: (weeklyPnl ?? 0) >= 0 ? "positive" as const : "negative" as const,
       color: "text-emerald-400",
     },
     {
       title: "Active Bets",
       value: activeBets.toString(),
       icon: Zap,
-      change: "5 pending",
-      changeType: "neutral" as const,
+      subtext: pendingBets !== undefined ? `${pendingBets} pending` : undefined,
+      subtextType: "neutral" as const,
       color: "text-amber-400",
     },
     {
       title: "Win Rate",
       value: `${winRate}%`,
       icon: Trophy,
-      change: "+3.2%",
-      changeType: "positive" as const,
+      subtext: undefined,
+      subtextType: "neutral" as const,
       color: "text-primary",
     },
   ];
@@ -58,12 +65,15 @@ export function StatsCards({ balance, profit, activeBets, winRate }: StatsCardsP
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-foreground">{card.value}</div>
-            <p className={`text-xs mt-1 ${
-              card.changeType === "positive" ? "text-emerald-400" : "text-muted-foreground"
-            }`}>
-              {card.changeType === "positive" && "+"}
-              {card.change} from last week
-            </p>
+            {card.subtext && (
+              <p className={`text-xs mt-1 ${
+                card.subtextType === "positive" ? "text-emerald-400" :
+                card.subtextType === "negative" ? "text-red-400" :
+                "text-muted-foreground"
+              }`}>
+                {card.subtext}
+              </p>
+            )}
           </CardContent>
         </Card>
       ))}
