@@ -17,6 +17,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -45,6 +46,7 @@ const moreNavItems = [
 export function MobileNav() {
   const pathname = usePathname();
   const { user } = useAuth();
+  const [moreOpen, setMoreOpen] = useState(false);
 
   // Don't show on login page
   if (pathname === "/login") return null;
@@ -52,6 +54,11 @@ export function MobileNav() {
   const isActive = (href: string) => {
     if (href === "/") return pathname === "/";
     return pathname.startsWith(href);
+  };
+
+  // Close "More" sheet when navigating
+  const handleMoreNavigate = () => {
+    setMoreOpen(false);
   };
 
   // Haptic feedback on tap (if supported)
@@ -105,7 +112,7 @@ export function MobileNav() {
           })}
 
           {/* More button */}
-          <Sheet>
+          <Sheet open={moreOpen} onOpenChange={setMoreOpen}>
             <SheetTrigger asChild>
               <button
                 onClick={handleTap}
@@ -139,6 +146,7 @@ export function MobileNav() {
                       <Link
                         key={item.href}
                         href={item.href}
+                        onClick={handleMoreNavigate}
                         className={cn(
                           "flex flex-col items-center gap-2 rounded-xl p-4 transition-all active:scale-95",
                           active

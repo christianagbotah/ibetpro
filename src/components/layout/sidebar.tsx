@@ -42,7 +42,7 @@ const adminItems = [
   { href: "/admin", label: "Admin Panel", icon: Shield },
 ];
 
-export function Sidebar() {
+export function Sidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const { user, isAuthenticated, isAdmin: isAdminUser } = useAuth();
@@ -74,6 +74,7 @@ export function Sidebar() {
             <Link
               key={item.href}
               href={item.href}
+              onClick={() => onNavigate?.()}
               className={cn(
                 "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
                 isActive
@@ -96,6 +97,7 @@ export function Sidebar() {
                 <Link
                   key={item.href}
                   href={item.href}
+                  onClick={() => onNavigate?.()}
                   className={cn(
                     "flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all",
                     isActive
@@ -140,7 +142,7 @@ export function Sidebar() {
               </div>
             </div>
           ) : (
-            <Link href="/login">
+            <Link href="/login" onClick={() => onNavigate?.()}>
               <Button variant="outline" className="w-full border-primary/30 text-primary hover:bg-primary/10">
                 <LogIn className="h-4 w-4 mr-2" />
                 Sign In

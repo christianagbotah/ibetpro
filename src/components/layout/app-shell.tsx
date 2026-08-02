@@ -32,7 +32,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile sidebar */}
       <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
         <SheetContent side="left" className="p-0 w-64 bg-card border-border">
-          <Sidebar />
+          <Sidebar onNavigate={() => setMobileOpen(false)} />
         </SheetContent>
       </Sheet>
 
