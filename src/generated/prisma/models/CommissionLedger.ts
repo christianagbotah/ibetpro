@@ -330,6 +330,7 @@ export type CommissionLedgerOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
   bettingAccount?: Prisma.BettingAccountOrderByWithRelationInput
+  _relevance?: Prisma.CommissionLedgerOrderByRelevanceInput
 }
 
 export type CommissionLedgerWhereUniqueInput = Prisma.AtLeast<{
@@ -533,6 +534,12 @@ export type CommissionLedgerOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
+export type CommissionLedgerOrderByRelevanceInput = {
+  fields: Prisma.CommissionLedgerOrderByRelevanceFieldEnum | Prisma.CommissionLedgerOrderByRelevanceFieldEnum[]
+  sort: Prisma.SortOrder
+  search: string
+}
+
 export type CommissionLedgerCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   userId?: Prisma.SortOrder
@@ -726,6 +733,7 @@ export type CommissionLedgerCreateOrConnectWithoutUserInput = {
 
 export type CommissionLedgerCreateManyUserInputEnvelope = {
   data: Prisma.CommissionLedgerCreateManyUserInput | Prisma.CommissionLedgerCreateManyUserInput[]
+  skipDuplicates?: boolean
 }
 
 export type CommissionLedgerUpsertWithWhereUniqueWithoutUserInput = {
@@ -806,6 +814,7 @@ export type CommissionLedgerCreateOrConnectWithoutBettingAccountInput = {
 
 export type CommissionLedgerCreateManyBettingAccountInputEnvelope = {
   data: Prisma.CommissionLedgerCreateManyBettingAccountInput | Prisma.CommissionLedgerCreateManyBettingAccountInput[]
+  skipDuplicates?: boolean
 }
 
 export type CommissionLedgerUpsertWithWhereUniqueWithoutBettingAccountInput = {
@@ -982,45 +991,7 @@ export type CommissionLedgerSelect<ExtArgs extends runtime.Types.Extensions.Inte
   bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["commissionLedger"]>
 
-export type CommissionLedgerSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  userId?: boolean
-  bettingAccountId?: boolean
-  betId?: boolean
-  accumulatorId?: boolean
-  grossProfit?: boolean
-  commissionRate?: boolean
-  commissionAmount?: boolean
-  netProfit?: boolean
-  status?: boolean
-  transferRef?: boolean
-  transferredAt?: boolean
-  failureReason?: boolean
-  createdAt?: boolean
-  updatedAt?: boolean
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
-}, ExtArgs["result"]["commissionLedger"]>
 
-export type CommissionLedgerSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  userId?: boolean
-  bettingAccountId?: boolean
-  betId?: boolean
-  accumulatorId?: boolean
-  grossProfit?: boolean
-  commissionRate?: boolean
-  commissionAmount?: boolean
-  netProfit?: boolean
-  status?: boolean
-  transferRef?: boolean
-  transferredAt?: boolean
-  failureReason?: boolean
-  createdAt?: boolean
-  updatedAt?: boolean
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
-}, ExtArgs["result"]["commissionLedger"]>
 
 export type CommissionLedgerSelectScalar = {
   id?: boolean
@@ -1042,14 +1013,6 @@ export type CommissionLedgerSelectScalar = {
 
 export type CommissionLedgerOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "bettingAccountId" | "betId" | "accumulatorId" | "grossProfit" | "commissionRate" | "commissionAmount" | "netProfit" | "status" | "transferRef" | "transferredAt" | "failureReason" | "createdAt" | "updatedAt", ExtArgs["result"]["commissionLedger"]>
 export type CommissionLedgerInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
-}
-export type CommissionLedgerIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
-}
-export type CommissionLedgerIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
 }
@@ -1194,30 +1157,6 @@ export interface CommissionLedgerDelegate<ExtArgs extends runtime.Types.Extensio
   createMany<T extends CommissionLedgerCreateManyArgs>(args?: Prisma.SelectSubset<T, CommissionLedgerCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
 
   /**
-   * Create many CommissionLedgers and returns the data saved in the database.
-   * @param {CommissionLedgerCreateManyAndReturnArgs} args - Arguments to create many CommissionLedgers.
-   * @example
-   * // Create many CommissionLedgers
-   * const commissionLedger = await prisma.commissionLedger.createManyAndReturn({
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Create many CommissionLedgers and only return the `id`
-   * const commissionLedgerWithIdOnly = await prisma.commissionLedger.createManyAndReturn({
-   *   select: { id: true },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  createManyAndReturn<T extends CommissionLedgerCreateManyAndReturnArgs>(args?: Prisma.SelectSubset<T, CommissionLedgerCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CommissionLedgerPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-  /**
    * Delete a CommissionLedger.
    * @param {CommissionLedgerDeleteArgs} args - Arguments to delete one CommissionLedger.
    * @example
@@ -1280,36 +1219,6 @@ export interface CommissionLedgerDelegate<ExtArgs extends runtime.Types.Extensio
    * 
    */
   updateMany<T extends CommissionLedgerUpdateManyArgs>(args: Prisma.SelectSubset<T, CommissionLedgerUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
-
-  /**
-   * Update zero or more CommissionLedgers and returns the data updated in the database.
-   * @param {CommissionLedgerUpdateManyAndReturnArgs} args - Arguments to update many CommissionLedgers.
-   * @example
-   * // Update many CommissionLedgers
-   * const commissionLedger = await prisma.commissionLedger.updateManyAndReturn({
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Update zero or more CommissionLedgers and only return the `id`
-   * const commissionLedgerWithIdOnly = await prisma.commissionLedger.updateManyAndReturn({
-   *   select: { id: true },
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  updateManyAndReturn<T extends CommissionLedgerUpdateManyAndReturnArgs>(args: Prisma.SelectSubset<T, CommissionLedgerUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CommissionLedgerPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
 
   /**
    * Create or update one CommissionLedger.
@@ -1750,28 +1659,7 @@ export type CommissionLedgerCreateManyArgs<ExtArgs extends runtime.Types.Extensi
    * The data used to create many CommissionLedgers.
    */
   data: Prisma.CommissionLedgerCreateManyInput | Prisma.CommissionLedgerCreateManyInput[]
-}
-
-/**
- * CommissionLedger createManyAndReturn
- */
-export type CommissionLedgerCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the CommissionLedger
-   */
-  select?: Prisma.CommissionLedgerSelectCreateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the CommissionLedger
-   */
-  omit?: Prisma.CommissionLedgerOmit<ExtArgs> | null
-  /**
-   * The data used to create many CommissionLedgers.
-   */
-  data: Prisma.CommissionLedgerCreateManyInput | Prisma.CommissionLedgerCreateManyInput[]
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.CommissionLedgerIncludeCreateManyAndReturn<ExtArgs> | null
+  skipDuplicates?: boolean
 }
 
 /**
@@ -1816,36 +1704,6 @@ export type CommissionLedgerUpdateManyArgs<ExtArgs extends runtime.Types.Extensi
    * Limit how many CommissionLedgers to update.
    */
   limit?: number
-}
-
-/**
- * CommissionLedger updateManyAndReturn
- */
-export type CommissionLedgerUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the CommissionLedger
-   */
-  select?: Prisma.CommissionLedgerSelectUpdateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the CommissionLedger
-   */
-  omit?: Prisma.CommissionLedgerOmit<ExtArgs> | null
-  /**
-   * The data used to update CommissionLedgers.
-   */
-  data: Prisma.XOR<Prisma.CommissionLedgerUpdateManyMutationInput, Prisma.CommissionLedgerUncheckedUpdateManyInput>
-  /**
-   * Filter which CommissionLedgers to update
-   */
-  where?: Prisma.CommissionLedgerWhereInput
-  /**
-   * Limit how many CommissionLedgers to update.
-   */
-  limit?: number
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.CommissionLedgerIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**

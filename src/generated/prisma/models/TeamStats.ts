@@ -517,6 +517,7 @@ export type TeamStatsOrderByWithRelationInput = {
   apiSource?: Prisma.SortOrderInput | Prisma.SortOrder
   lastUpdated?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
+  _relevance?: Prisma.TeamStatsOrderByRelevanceInput
 }
 
 export type TeamStatsWhereUniqueInput = Prisma.AtLeast<{
@@ -861,6 +862,12 @@ export type TeamStatsUncheckedUpdateManyInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+export type TeamStatsOrderByRelevanceInput = {
+  fields: Prisma.TeamStatsOrderByRelevanceFieldEnum | Prisma.TeamStatsOrderByRelevanceFieldEnum[]
+  sort: Prisma.SortOrder
+  search: string
+}
+
 export type TeamStatsTeamNameSportLeagueSeasonCompoundUniqueInput = {
   teamName: string
   sport: string
@@ -1044,71 +1051,7 @@ export type TeamStatsSelect<ExtArgs extends runtime.Types.Extensions.InternalArg
   createdAt?: boolean
 }, ExtArgs["result"]["teamStats"]>
 
-export type TeamStatsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  teamName?: boolean
-  sport?: boolean
-  league?: boolean
-  season?: boolean
-  matchesPlayed?: boolean
-  wins?: boolean
-  draws?: boolean
-  losses?: boolean
-  goalsFor?: boolean
-  goalsAgainst?: boolean
-  form?: boolean
-  homeRecord?: boolean
-  awayRecord?: boolean
-  attackRating?: boolean
-  defenseRating?: boolean
-  overallRating?: boolean
-  eloRating?: boolean
-  xgFor?: boolean
-  xgAgainst?: boolean
-  shotsPerGame?: boolean
-  shotsOnTargetPerGame?: boolean
-  possessionAvg?: boolean
-  cornersPerGame?: boolean
-  cardsPerGame?: boolean
-  keyPlayers?: boolean
-  externalTeamId?: boolean
-  apiSource?: boolean
-  lastUpdated?: boolean
-  createdAt?: boolean
-}, ExtArgs["result"]["teamStats"]>
 
-export type TeamStatsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  teamName?: boolean
-  sport?: boolean
-  league?: boolean
-  season?: boolean
-  matchesPlayed?: boolean
-  wins?: boolean
-  draws?: boolean
-  losses?: boolean
-  goalsFor?: boolean
-  goalsAgainst?: boolean
-  form?: boolean
-  homeRecord?: boolean
-  awayRecord?: boolean
-  attackRating?: boolean
-  defenseRating?: boolean
-  overallRating?: boolean
-  eloRating?: boolean
-  xgFor?: boolean
-  xgAgainst?: boolean
-  shotsPerGame?: boolean
-  shotsOnTargetPerGame?: boolean
-  possessionAvg?: boolean
-  cornersPerGame?: boolean
-  cardsPerGame?: boolean
-  keyPlayers?: boolean
-  externalTeamId?: boolean
-  apiSource?: boolean
-  lastUpdated?: boolean
-  createdAt?: boolean
-}, ExtArgs["result"]["teamStats"]>
 
 export type TeamStatsSelectScalar = {
   id?: boolean
@@ -1297,30 +1240,6 @@ export interface TeamStatsDelegate<ExtArgs extends runtime.Types.Extensions.Inte
   createMany<T extends TeamStatsCreateManyArgs>(args?: Prisma.SelectSubset<T, TeamStatsCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
 
   /**
-   * Create many TeamStats and returns the data saved in the database.
-   * @param {TeamStatsCreateManyAndReturnArgs} args - Arguments to create many TeamStats.
-   * @example
-   * // Create many TeamStats
-   * const teamStats = await prisma.teamStats.createManyAndReturn({
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Create many TeamStats and only return the `id`
-   * const teamStatsWithIdOnly = await prisma.teamStats.createManyAndReturn({
-   *   select: { id: true },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  createManyAndReturn<T extends TeamStatsCreateManyAndReturnArgs>(args?: Prisma.SelectSubset<T, TeamStatsCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TeamStatsPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-  /**
    * Delete a TeamStats.
    * @param {TeamStatsDeleteArgs} args - Arguments to delete one TeamStats.
    * @example
@@ -1383,36 +1302,6 @@ export interface TeamStatsDelegate<ExtArgs extends runtime.Types.Extensions.Inte
    * 
    */
   updateMany<T extends TeamStatsUpdateManyArgs>(args: Prisma.SelectSubset<T, TeamStatsUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
-
-  /**
-   * Update zero or more TeamStats and returns the data updated in the database.
-   * @param {TeamStatsUpdateManyAndReturnArgs} args - Arguments to update many TeamStats.
-   * @example
-   * // Update many TeamStats
-   * const teamStats = await prisma.teamStats.updateManyAndReturn({
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Update zero or more TeamStats and only return the `id`
-   * const teamStatsWithIdOnly = await prisma.teamStats.updateManyAndReturn({
-   *   select: { id: true },
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  updateManyAndReturn<T extends TeamStatsUpdateManyAndReturnArgs>(args: Prisma.SelectSubset<T, TeamStatsUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TeamStatsPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
 
   /**
    * Create or update one TeamStats.
@@ -1842,24 +1731,7 @@ export type TeamStatsCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Int
    * The data used to create many TeamStats.
    */
   data: Prisma.TeamStatsCreateManyInput | Prisma.TeamStatsCreateManyInput[]
-}
-
-/**
- * TeamStats createManyAndReturn
- */
-export type TeamStatsCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the TeamStats
-   */
-  select?: Prisma.TeamStatsSelectCreateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the TeamStats
-   */
-  omit?: Prisma.TeamStatsOmit<ExtArgs> | null
-  /**
-   * The data used to create many TeamStats.
-   */
-  data: Prisma.TeamStatsCreateManyInput | Prisma.TeamStatsCreateManyInput[]
+  skipDuplicates?: boolean
 }
 
 /**
@@ -1888,32 +1760,6 @@ export type TeamStatsUpdateArgs<ExtArgs extends runtime.Types.Extensions.Interna
  * TeamStats updateMany
  */
 export type TeamStatsUpdateManyArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * The data used to update TeamStats.
-   */
-  data: Prisma.XOR<Prisma.TeamStatsUpdateManyMutationInput, Prisma.TeamStatsUncheckedUpdateManyInput>
-  /**
-   * Filter which TeamStats to update
-   */
-  where?: Prisma.TeamStatsWhereInput
-  /**
-   * Limit how many TeamStats to update.
-   */
-  limit?: number
-}
-
-/**
- * TeamStats updateManyAndReturn
- */
-export type TeamStatsUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the TeamStats
-   */
-  select?: Prisma.TeamStatsSelectUpdateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the TeamStats
-   */
-  omit?: Prisma.TeamStatsOmit<ExtArgs> | null
   /**
    * The data used to update TeamStats.
    */

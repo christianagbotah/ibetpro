@@ -332,6 +332,7 @@ export type BotSessionOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
+  _relevance?: Prisma.BotSessionOrderByRelevanceInput
 }
 
 export type BotSessionWhereUniqueInput = Prisma.AtLeast<{
@@ -528,6 +529,12 @@ export type BotSessionUncheckedUpdateManyInput = {
 export type BotSessionNullableScalarRelationFilter = {
   is?: Prisma.BotSessionWhereInput | null
   isNot?: Prisma.BotSessionWhereInput | null
+}
+
+export type BotSessionOrderByRelevanceInput = {
+  fields: Prisma.BotSessionOrderByRelevanceFieldEnum | Prisma.BotSessionOrderByRelevanceFieldEnum[]
+  sort: Prisma.SortOrder
+  search: string
 }
 
 export type BotSessionCountOrderByAggregateInput = {
@@ -737,43 +744,7 @@ export type BotSessionSelect<ExtArgs extends runtime.Types.Extensions.InternalAr
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["botSession"]>
 
-export type BotSessionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  userId?: boolean
-  status?: boolean
-  startedAt?: boolean
-  stoppedAt?: boolean
-  totalScans?: boolean
-  totalBetsPlaced?: boolean
-  totalStakeUsed?: boolean
-  totalProfit?: boolean
-  lastScanAt?: boolean
-  lastBetAt?: boolean
-  scanIntervalSec?: boolean
-  stopReason?: boolean
-  createdAt?: boolean
-  updatedAt?: boolean
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-}, ExtArgs["result"]["botSession"]>
 
-export type BotSessionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  userId?: boolean
-  status?: boolean
-  startedAt?: boolean
-  stoppedAt?: boolean
-  totalScans?: boolean
-  totalBetsPlaced?: boolean
-  totalStakeUsed?: boolean
-  totalProfit?: boolean
-  lastScanAt?: boolean
-  lastBetAt?: boolean
-  scanIntervalSec?: boolean
-  stopReason?: boolean
-  createdAt?: boolean
-  updatedAt?: boolean
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-}, ExtArgs["result"]["botSession"]>
 
 export type BotSessionSelectScalar = {
   id?: boolean
@@ -795,12 +766,6 @@ export type BotSessionSelectScalar = {
 
 export type BotSessionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "status" | "startedAt" | "stoppedAt" | "totalScans" | "totalBetsPlaced" | "totalStakeUsed" | "totalProfit" | "lastScanAt" | "lastBetAt" | "scanIntervalSec" | "stopReason" | "createdAt" | "updatedAt", ExtArgs["result"]["botSession"]>
 export type BotSessionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-}
-export type BotSessionIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-}
-export type BotSessionIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
 
@@ -943,30 +908,6 @@ export interface BotSessionDelegate<ExtArgs extends runtime.Types.Extensions.Int
   createMany<T extends BotSessionCreateManyArgs>(args?: Prisma.SelectSubset<T, BotSessionCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
 
   /**
-   * Create many BotSessions and returns the data saved in the database.
-   * @param {BotSessionCreateManyAndReturnArgs} args - Arguments to create many BotSessions.
-   * @example
-   * // Create many BotSessions
-   * const botSession = await prisma.botSession.createManyAndReturn({
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Create many BotSessions and only return the `id`
-   * const botSessionWithIdOnly = await prisma.botSession.createManyAndReturn({
-   *   select: { id: true },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  createManyAndReturn<T extends BotSessionCreateManyAndReturnArgs>(args?: Prisma.SelectSubset<T, BotSessionCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BotSessionPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-  /**
    * Delete a BotSession.
    * @param {BotSessionDeleteArgs} args - Arguments to delete one BotSession.
    * @example
@@ -1029,36 +970,6 @@ export interface BotSessionDelegate<ExtArgs extends runtime.Types.Extensions.Int
    * 
    */
   updateMany<T extends BotSessionUpdateManyArgs>(args: Prisma.SelectSubset<T, BotSessionUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
-
-  /**
-   * Update zero or more BotSessions and returns the data updated in the database.
-   * @param {BotSessionUpdateManyAndReturnArgs} args - Arguments to update many BotSessions.
-   * @example
-   * // Update many BotSessions
-   * const botSession = await prisma.botSession.updateManyAndReturn({
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Update zero or more BotSessions and only return the `id`
-   * const botSessionWithIdOnly = await prisma.botSession.updateManyAndReturn({
-   *   select: { id: true },
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  updateManyAndReturn<T extends BotSessionUpdateManyAndReturnArgs>(args: Prisma.SelectSubset<T, BotSessionUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BotSessionPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
 
   /**
    * Create or update one BotSession.
@@ -1498,28 +1409,7 @@ export type BotSessionCreateManyArgs<ExtArgs extends runtime.Types.Extensions.In
    * The data used to create many BotSessions.
    */
   data: Prisma.BotSessionCreateManyInput | Prisma.BotSessionCreateManyInput[]
-}
-
-/**
- * BotSession createManyAndReturn
- */
-export type BotSessionCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the BotSession
-   */
-  select?: Prisma.BotSessionSelectCreateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the BotSession
-   */
-  omit?: Prisma.BotSessionOmit<ExtArgs> | null
-  /**
-   * The data used to create many BotSessions.
-   */
-  data: Prisma.BotSessionCreateManyInput | Prisma.BotSessionCreateManyInput[]
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.BotSessionIncludeCreateManyAndReturn<ExtArgs> | null
+  skipDuplicates?: boolean
 }
 
 /**
@@ -1564,36 +1454,6 @@ export type BotSessionUpdateManyArgs<ExtArgs extends runtime.Types.Extensions.In
    * Limit how many BotSessions to update.
    */
   limit?: number
-}
-
-/**
- * BotSession updateManyAndReturn
- */
-export type BotSessionUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the BotSession
-   */
-  select?: Prisma.BotSessionSelectUpdateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the BotSession
-   */
-  omit?: Prisma.BotSessionOmit<ExtArgs> | null
-  /**
-   * The data used to update BotSessions.
-   */
-  data: Prisma.XOR<Prisma.BotSessionUpdateManyMutationInput, Prisma.BotSessionUncheckedUpdateManyInput>
-  /**
-   * Filter which BotSessions to update
-   */
-  where?: Prisma.BotSessionWhereInput
-  /**
-   * Limit how many BotSessions to update.
-   */
-  limit?: number
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.BotSessionIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**

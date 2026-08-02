@@ -77,6 +77,9 @@ export type ModelName = (typeof ModelName)[keyof typeof ModelName]
  */
 
 export const TransactionIsolationLevel = runtime.makeStrictEnum({
+  ReadUncommitted: 'ReadUncommitted',
+  ReadCommitted: 'ReadCommitted',
+  RepeatableRead: 'RepeatableRead',
   Serializable: 'Serializable'
 } as const)
 
@@ -525,4 +528,237 @@ export const NullsOrder = {
 } as const
 
 export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
+export const UserOrderByRelevanceFieldEnum = {
+  id: 'id',
+  email: 'email',
+  name: 'name',
+  passwordHash: 'passwordHash',
+  avatar: 'avatar',
+  role: 'role',
+  region: 'region',
+  currency: 'currency'
+} as const
+
+export type UserOrderByRelevanceFieldEnum = (typeof UserOrderByRelevanceFieldEnum)[keyof typeof UserOrderByRelevanceFieldEnum]
+
+
+export const UserSettingsOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  riskLevel: 'riskLevel',
+  preferredSports: 'preferredSports',
+  betTypes: 'betTypes',
+  betScheduleStart: 'betScheduleStart',
+  betScheduleEnd: 'betScheduleEnd',
+  brokerMode: 'brokerMode',
+  botMode: 'botMode',
+  telegramChatId: 'telegramChatId',
+  tipSports: 'tipSports'
+} as const
+
+export type UserSettingsOrderByRelevanceFieldEnum = (typeof UserSettingsOrderByRelevanceFieldEnum)[keyof typeof UserSettingsOrderByRelevanceFieldEnum]
+
+
+export const BettingAccountOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  platform: 'platform',
+  accountId: 'accountId',
+  accountName: 'accountName',
+  accessToken: 'accessToken',
+  refreshToken: 'refreshToken',
+  currency: 'currency',
+  brokerType: 'brokerType',
+  brokerRegion: 'brokerRegion',
+  brokerUserId: 'brokerUserId',
+  sessionToken: 'sessionToken'
+} as const
+
+export type BettingAccountOrderByRelevanceFieldEnum = (typeof BettingAccountOrderByRelevanceFieldEnum)[keyof typeof BettingAccountOrderByRelevanceFieldEnum]
+
+
+export const MatchOrderByRelevanceFieldEnum = {
+  id: 'id',
+  externalId: 'externalId',
+  sport: 'sport',
+  league: 'league',
+  homeTeam: 'homeTeam',
+  awayTeam: 'awayTeam',
+  status: 'status',
+  apiSource: 'apiSource',
+  aiAnalysis: 'aiAnalysis',
+  aiRecommended: 'aiRecommended',
+  aiRiskLevel: 'aiRiskLevel'
+} as const
+
+export type MatchOrderByRelevanceFieldEnum = (typeof MatchOrderByRelevanceFieldEnum)[keyof typeof MatchOrderByRelevanceFieldEnum]
+
+
+export const TeamStatsOrderByRelevanceFieldEnum = {
+  id: 'id',
+  teamName: 'teamName',
+  sport: 'sport',
+  league: 'league',
+  season: 'season',
+  form: 'form',
+  homeRecord: 'homeRecord',
+  awayRecord: 'awayRecord',
+  keyPlayers: 'keyPlayers',
+  apiSource: 'apiSource'
+} as const
+
+export type TeamStatsOrderByRelevanceFieldEnum = (typeof TeamStatsOrderByRelevanceFieldEnum)[keyof typeof TeamStatsOrderByRelevanceFieldEnum]
+
+
+export const BetOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  bettingAccountId: 'bettingAccountId',
+  matchId: 'matchId',
+  accumulatorId: 'accumulatorId',
+  betType: 'betType',
+  selection: 'selection',
+  status: 'status',
+  aiReasoning: 'aiReasoning',
+  aiModelUsed: 'aiModelUsed',
+  settlementReason: 'settlementReason'
+} as const
+
+export type BetOrderByRelevanceFieldEnum = (typeof BetOrderByRelevanceFieldEnum)[keyof typeof BetOrderByRelevanceFieldEnum]
+
+
+export const AccumulatorOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  status: 'status'
+} as const
+
+export type AccumulatorOrderByRelevanceFieldEnum = (typeof AccumulatorOrderByRelevanceFieldEnum)[keyof typeof AccumulatorOrderByRelevanceFieldEnum]
+
+
+export const BotLogOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  action: 'action',
+  matchId: 'matchId',
+  betId: 'betId',
+  accumulatorId: 'accumulatorId',
+  details: 'details',
+  reasoning: 'reasoning'
+} as const
+
+export type BotLogOrderByRelevanceFieldEnum = (typeof BotLogOrderByRelevanceFieldEnum)[keyof typeof BotLogOrderByRelevanceFieldEnum]
+
+
+export const BotSessionOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  status: 'status',
+  stopReason: 'stopReason'
+} as const
+
+export type BotSessionOrderByRelevanceFieldEnum = (typeof BotSessionOrderByRelevanceFieldEnum)[keyof typeof BotSessionOrderByRelevanceFieldEnum]
+
+
+export const TransactionOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  type: 'type',
+  currency: 'currency',
+  status: 'status',
+  description: 'description',
+  betId: 'betId',
+  accumulatorId: 'accumulatorId'
+} as const
+
+export type TransactionOrderByRelevanceFieldEnum = (typeof TransactionOrderByRelevanceFieldEnum)[keyof typeof TransactionOrderByRelevanceFieldEnum]
+
+
+export const AdminSettingsOrderByRelevanceFieldEnum = {
+  id: 'id',
+  platformName: 'platformName',
+  oddsApiKey: 'oddsApiKey',
+  apiFootballKey: 'apiFootballKey',
+  accumulatorBonusThresholds: 'accumulatorBonusThresholds',
+  adminWalletAddress: 'adminWalletAddress',
+  adminBankName: 'adminBankName',
+  adminAccountNumber: 'adminAccountNumber'
+} as const
+
+export type AdminSettingsOrderByRelevanceFieldEnum = (typeof AdminSettingsOrderByRelevanceFieldEnum)[keyof typeof AdminSettingsOrderByRelevanceFieldEnum]
+
+
+export const AllocationOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  bettingAccountId: 'bettingAccountId',
+  status: 'status'
+} as const
+
+export type AllocationOrderByRelevanceFieldEnum = (typeof AllocationOrderByRelevanceFieldEnum)[keyof typeof AllocationOrderByRelevanceFieldEnum]
+
+
+export const CommissionLedgerOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  bettingAccountId: 'bettingAccountId',
+  betId: 'betId',
+  accumulatorId: 'accumulatorId',
+  status: 'status',
+  transferRef: 'transferRef',
+  failureReason: 'failureReason'
+} as const
+
+export type CommissionLedgerOrderByRelevanceFieldEnum = (typeof CommissionLedgerOrderByRelevanceFieldEnum)[keyof typeof CommissionLedgerOrderByRelevanceFieldEnum]
+
+
+export const AIModelPerformanceOrderByRelevanceFieldEnum = {
+  id: 'id',
+  modelVersion: 'modelVersion',
+  sport: 'sport',
+  period: 'period'
+} as const
+
+export type AIModelPerformanceOrderByRelevanceFieldEnum = (typeof AIModelPerformanceOrderByRelevanceFieldEnum)[keyof typeof AIModelPerformanceOrderByRelevanceFieldEnum]
+
+
+export const PasswordResetTokenOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  token: 'token'
+} as const
+
+export type PasswordResetTokenOrderByRelevanceFieldEnum = (typeof PasswordResetTokenOrderByRelevanceFieldEnum)[keyof typeof PasswordResetTokenOrderByRelevanceFieldEnum]
+
+
+export const NotificationOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  title: 'title',
+  body: 'body',
+  type: 'type',
+  matchId: 'matchId'
+} as const
+
+export type NotificationOrderByRelevanceFieldEnum = (typeof NotificationOrderByRelevanceFieldEnum)[keyof typeof NotificationOrderByRelevanceFieldEnum]
+
+
+export const TipOrderByRelevanceFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  matchId: 'matchId',
+  sport: 'sport',
+  league: 'league',
+  homeTeam: 'homeTeam',
+  awayTeam: 'awayTeam',
+  selection: 'selection',
+  riskLevel: 'riskLevel',
+  aiReasoning: 'aiReasoning',
+  userResult: 'userResult',
+  outcome: 'outcome'
+} as const
+
+export type TipOrderByRelevanceFieldEnum = (typeof TipOrderByRelevanceFieldEnum)[keyof typeof TipOrderByRelevanceFieldEnum]
 

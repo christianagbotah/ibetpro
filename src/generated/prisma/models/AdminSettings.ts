@@ -357,6 +357,7 @@ export type AdminSettingsOrderByWithRelationInput = {
   minimumCommissionPayout?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  _relevance?: Prisma.AdminSettingsOrderByRelevanceInput
 }
 
 export type AdminSettingsWhereUniqueInput = Prisma.AtLeast<{
@@ -580,6 +581,12 @@ export type AdminSettingsUncheckedUpdateManyInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+export type AdminSettingsOrderByRelevanceInput = {
+  fields: Prisma.AdminSettingsOrderByRelevanceFieldEnum | Prisma.AdminSettingsOrderByRelevanceFieldEnum[]
+  sort: Prisma.SortOrder
+  search: string
+}
+
 export type AdminSettingsCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   defaultCommissionRate?: Prisma.SortOrder
@@ -682,47 +689,7 @@ export type AdminSettingsSelect<ExtArgs extends runtime.Types.Extensions.Interna
   updatedAt?: boolean
 }, ExtArgs["result"]["adminSettings"]>
 
-export type AdminSettingsSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  defaultCommissionRate?: boolean
-  minCommissionRate?: boolean
-  maxCommissionRate?: boolean
-  platformName?: boolean
-  maintenanceMode?: boolean
-  maxUsers?: boolean
-  autoApproveAccounts?: boolean
-  oddsApiKey?: boolean
-  apiFootballKey?: boolean
-  accumulatorBonusThresholds?: boolean
-  adminWalletAddress?: boolean
-  adminBankName?: boolean
-  adminAccountNumber?: boolean
-  autoCommissionTransfer?: boolean
-  minimumCommissionPayout?: boolean
-  createdAt?: boolean
-  updatedAt?: boolean
-}, ExtArgs["result"]["adminSettings"]>
 
-export type AdminSettingsSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  defaultCommissionRate?: boolean
-  minCommissionRate?: boolean
-  maxCommissionRate?: boolean
-  platformName?: boolean
-  maintenanceMode?: boolean
-  maxUsers?: boolean
-  autoApproveAccounts?: boolean
-  oddsApiKey?: boolean
-  apiFootballKey?: boolean
-  accumulatorBonusThresholds?: boolean
-  adminWalletAddress?: boolean
-  adminBankName?: boolean
-  adminAccountNumber?: boolean
-  autoCommissionTransfer?: boolean
-  minimumCommissionPayout?: boolean
-  createdAt?: boolean
-  updatedAt?: boolean
-}, ExtArgs["result"]["adminSettings"]>
 
 export type AdminSettingsSelectScalar = {
   id?: boolean
@@ -887,30 +854,6 @@ export interface AdminSettingsDelegate<ExtArgs extends runtime.Types.Extensions.
   createMany<T extends AdminSettingsCreateManyArgs>(args?: Prisma.SelectSubset<T, AdminSettingsCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
 
   /**
-   * Create many AdminSettings and returns the data saved in the database.
-   * @param {AdminSettingsCreateManyAndReturnArgs} args - Arguments to create many AdminSettings.
-   * @example
-   * // Create many AdminSettings
-   * const adminSettings = await prisma.adminSettings.createManyAndReturn({
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Create many AdminSettings and only return the `id`
-   * const adminSettingsWithIdOnly = await prisma.adminSettings.createManyAndReturn({
-   *   select: { id: true },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  createManyAndReturn<T extends AdminSettingsCreateManyAndReturnArgs>(args?: Prisma.SelectSubset<T, AdminSettingsCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AdminSettingsPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-  /**
    * Delete a AdminSettings.
    * @param {AdminSettingsDeleteArgs} args - Arguments to delete one AdminSettings.
    * @example
@@ -973,36 +916,6 @@ export interface AdminSettingsDelegate<ExtArgs extends runtime.Types.Extensions.
    * 
    */
   updateMany<T extends AdminSettingsUpdateManyArgs>(args: Prisma.SelectSubset<T, AdminSettingsUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
-
-  /**
-   * Update zero or more AdminSettings and returns the data updated in the database.
-   * @param {AdminSettingsUpdateManyAndReturnArgs} args - Arguments to update many AdminSettings.
-   * @example
-   * // Update many AdminSettings
-   * const adminSettings = await prisma.adminSettings.updateManyAndReturn({
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Update zero or more AdminSettings and only return the `id`
-   * const adminSettingsWithIdOnly = await prisma.adminSettings.updateManyAndReturn({
-   *   select: { id: true },
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  updateManyAndReturn<T extends AdminSettingsUpdateManyAndReturnArgs>(args: Prisma.SelectSubset<T, AdminSettingsUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AdminSettingsPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
 
   /**
    * Create or update one AdminSettings.
@@ -1420,24 +1333,7 @@ export type AdminSettingsCreateManyArgs<ExtArgs extends runtime.Types.Extensions
    * The data used to create many AdminSettings.
    */
   data: Prisma.AdminSettingsCreateManyInput | Prisma.AdminSettingsCreateManyInput[]
-}
-
-/**
- * AdminSettings createManyAndReturn
- */
-export type AdminSettingsCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the AdminSettings
-   */
-  select?: Prisma.AdminSettingsSelectCreateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the AdminSettings
-   */
-  omit?: Prisma.AdminSettingsOmit<ExtArgs> | null
-  /**
-   * The data used to create many AdminSettings.
-   */
-  data: Prisma.AdminSettingsCreateManyInput | Prisma.AdminSettingsCreateManyInput[]
+  skipDuplicates?: boolean
 }
 
 /**
@@ -1466,32 +1362,6 @@ export type AdminSettingsUpdateArgs<ExtArgs extends runtime.Types.Extensions.Int
  * AdminSettings updateMany
  */
 export type AdminSettingsUpdateManyArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * The data used to update AdminSettings.
-   */
-  data: Prisma.XOR<Prisma.AdminSettingsUpdateManyMutationInput, Prisma.AdminSettingsUncheckedUpdateManyInput>
-  /**
-   * Filter which AdminSettings to update
-   */
-  where?: Prisma.AdminSettingsWhereInput
-  /**
-   * Limit how many AdminSettings to update.
-   */
-  limit?: number
-}
-
-/**
- * AdminSettings updateManyAndReturn
- */
-export type AdminSettingsUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the AdminSettings
-   */
-  select?: Prisma.AdminSettingsSelectUpdateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the AdminSettings
-   */
-  omit?: Prisma.AdminSettingsOmit<ExtArgs> | null
   /**
    * The data used to update AdminSettings.
    */

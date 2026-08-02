@@ -42,6 +42,13 @@ if [ -d "src/generated" ]; then
     rsync -av src/generated/ "${APP_DIR}/.next/standalone/src/generated/"
 fi
 
+# Prisma schema and migrations
+mkdir -p "${APP_DIR}/prisma/migrations"
+cp prisma/schema.prisma "${APP_DIR}/prisma/"
+if [ -d "prisma/migrations" ]; then
+    rsync -av prisma/migrations/ "${APP_DIR}/prisma/migrations/"
+fi
+
 # Environment file
 if [ -f ".env.production" ]; then
     cp .env.production "${APP_DIR}/.next/standalone/.env"

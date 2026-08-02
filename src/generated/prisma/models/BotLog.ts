@@ -284,6 +284,7 @@ export type BotLogOrderByWithRelationInput = {
   profitImpact?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
+  _relevance?: Prisma.BotLogOrderByRelevanceInput
 }
 
 export type BotLogWhereUniqueInput = Prisma.AtLeast<{
@@ -447,6 +448,12 @@ export type BotLogOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
+export type BotLogOrderByRelevanceInput = {
+  fields: Prisma.BotLogOrderByRelevanceFieldEnum | Prisma.BotLogOrderByRelevanceFieldEnum[]
+  sort: Prisma.SortOrder
+  search: string
+}
+
 export type BotLogCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   userId?: Prisma.SortOrder
@@ -574,6 +581,7 @@ export type BotLogCreateOrConnectWithoutUserInput = {
 
 export type BotLogCreateManyUserInputEnvelope = {
   data: Prisma.BotLogCreateManyUserInput | Prisma.BotLogCreateManyUserInput[]
+  skipDuplicates?: boolean
 }
 
 export type BotLogUpsertWithWhereUniqueWithoutUserInput = {
@@ -678,35 +686,7 @@ export type BotLogSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["botLog"]>
 
-export type BotLogSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  userId?: boolean
-  action?: boolean
-  matchId?: boolean
-  betId?: boolean
-  accumulatorId?: boolean
-  details?: boolean
-  reasoning?: boolean
-  confidence?: boolean
-  profitImpact?: boolean
-  createdAt?: boolean
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-}, ExtArgs["result"]["botLog"]>
 
-export type BotLogSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  userId?: boolean
-  action?: boolean
-  matchId?: boolean
-  betId?: boolean
-  accumulatorId?: boolean
-  details?: boolean
-  reasoning?: boolean
-  confidence?: boolean
-  profitImpact?: boolean
-  createdAt?: boolean
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-}, ExtArgs["result"]["botLog"]>
 
 export type BotLogSelectScalar = {
   id?: boolean
@@ -724,12 +704,6 @@ export type BotLogSelectScalar = {
 
 export type BotLogOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "action" | "matchId" | "betId" | "accumulatorId" | "details" | "reasoning" | "confidence" | "profitImpact" | "createdAt", ExtArgs["result"]["botLog"]>
 export type BotLogInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-}
-export type BotLogIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-}
-export type BotLogIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
 
@@ -868,30 +842,6 @@ export interface BotLogDelegate<ExtArgs extends runtime.Types.Extensions.Interna
   createMany<T extends BotLogCreateManyArgs>(args?: Prisma.SelectSubset<T, BotLogCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
 
   /**
-   * Create many BotLogs and returns the data saved in the database.
-   * @param {BotLogCreateManyAndReturnArgs} args - Arguments to create many BotLogs.
-   * @example
-   * // Create many BotLogs
-   * const botLog = await prisma.botLog.createManyAndReturn({
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Create many BotLogs and only return the `id`
-   * const botLogWithIdOnly = await prisma.botLog.createManyAndReturn({
-   *   select: { id: true },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  createManyAndReturn<T extends BotLogCreateManyAndReturnArgs>(args?: Prisma.SelectSubset<T, BotLogCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BotLogPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-  /**
    * Delete a BotLog.
    * @param {BotLogDeleteArgs} args - Arguments to delete one BotLog.
    * @example
@@ -954,36 +904,6 @@ export interface BotLogDelegate<ExtArgs extends runtime.Types.Extensions.Interna
    * 
    */
   updateMany<T extends BotLogUpdateManyArgs>(args: Prisma.SelectSubset<T, BotLogUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
-
-  /**
-   * Update zero or more BotLogs and returns the data updated in the database.
-   * @param {BotLogUpdateManyAndReturnArgs} args - Arguments to update many BotLogs.
-   * @example
-   * // Update many BotLogs
-   * const botLog = await prisma.botLog.updateManyAndReturn({
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Update zero or more BotLogs and only return the `id`
-   * const botLogWithIdOnly = await prisma.botLog.updateManyAndReturn({
-   *   select: { id: true },
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  updateManyAndReturn<T extends BotLogUpdateManyAndReturnArgs>(args: Prisma.SelectSubset<T, BotLogUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BotLogPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
 
   /**
    * Create or update one BotLog.
@@ -1419,28 +1339,7 @@ export type BotLogCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * The data used to create many BotLogs.
    */
   data: Prisma.BotLogCreateManyInput | Prisma.BotLogCreateManyInput[]
-}
-
-/**
- * BotLog createManyAndReturn
- */
-export type BotLogCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the BotLog
-   */
-  select?: Prisma.BotLogSelectCreateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the BotLog
-   */
-  omit?: Prisma.BotLogOmit<ExtArgs> | null
-  /**
-   * The data used to create many BotLogs.
-   */
-  data: Prisma.BotLogCreateManyInput | Prisma.BotLogCreateManyInput[]
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.BotLogIncludeCreateManyAndReturn<ExtArgs> | null
+  skipDuplicates?: boolean
 }
 
 /**
@@ -1485,36 +1384,6 @@ export type BotLogUpdateManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * Limit how many BotLogs to update.
    */
   limit?: number
-}
-
-/**
- * BotLog updateManyAndReturn
- */
-export type BotLogUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the BotLog
-   */
-  select?: Prisma.BotLogSelectUpdateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the BotLog
-   */
-  omit?: Prisma.BotLogOmit<ExtArgs> | null
-  /**
-   * The data used to update BotLogs.
-   */
-  data: Prisma.XOR<Prisma.BotLogUpdateManyMutationInput, Prisma.BotLogUncheckedUpdateManyInput>
-  /**
-   * Filter which BotLogs to update
-   */
-  where?: Prisma.BotLogWhereInput
-  /**
-   * Limit how many BotLogs to update.
-   */
-  limit?: number
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.BotLogIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**

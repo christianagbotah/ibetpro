@@ -10,7 +10,6 @@ set -euo pipefail
 # ---- Configuration ----
 APP_NAME="ibetpro"
 APP_DIR="/home/ibetpro/app"
-DB_DIR="/home/ibetpro/db"
 LOG_DIR="/home/ibetpro/logs"
 NODE_VERSION="20"
 DOMAIN="${1:-}"
@@ -62,9 +61,8 @@ ok "System dependencies installed"
 log "Step 2: Creating application directories..."
 
 sudo mkdir -p "${APP_DIR}"
-sudo mkdir -p "${DB_DIR}"
 sudo mkdir -p "${LOG_DIR}"
-sudo chown -R "$(whoami)" "${APP_DIR}" "${DB_DIR}" "${LOG_DIR}" 2>/dev/null || true
+sudo chown -R "$(whoami)" "${APP_DIR}" "${LOG_DIR}" 2>/dev/null || true
 
 ok "Directories created"
 
@@ -84,18 +82,14 @@ else
     err "No standalone build found! Run 'npm run build' first."
 fi
 
-# Copy database if it doesn't exist on server
-if [ ! -f "${DB_DIR}/custom.db" ]; then
-    cp db/custom.db "${DB_DIR}/custom.db" 2>/dev/null || warn "No database file to copy — will be created on first run"
-    ok "Database copied"
-else
-    warn "Database already exists on server — NOT overwriting"
-fi
-
-# Copy Prisma schema (needed for migrations)
-mkdir -p "${APP_DIR}/prisma"
+# Copy Prisma schema and migrations
+mkdir -p "${APP_DIR}/prisma/migrations"
 cp prisma/schema.prisma "${APP_DIR}/prisma/"
 cp prisma.config.ts "${APP_DIR}/" 2>/dev/null || true
+# Copy migration SQL files
+if [ -d "prisma/migrations" ]; then
+    rsync -av prisma/migrations/ "${APP_DIR}/prisma/migrations/"
+fi
 
 # Copy ecosystem config
 cp ecosystem.config.js "${APP_DIR}/"
@@ -110,25 +104,18 @@ else
     warn "No .env.production found! You'll need to create it manually."
 fi
 
-# Copy node_modules for Prisma (needed for migrations)
-mkdir -p "${APP_DIR}/.next/standalone/node_modules"
-if [ -d "node_modules/.prisma" ]; then
-    rsync -av node_modules/.prisma/ "${APP_DIR}/.next/standalone/node_modules/.prisma/" 2>/dev/null || true
-fi
+# Copy Prisma generated client
 if [ -d "src/generated" ]; then
     mkdir -p "${APP_DIR}/.next/standalone/src/generated"
-    rsync -av src/generated/ "${APP_DIR}/.next/standalone/src/generated/" 2>/dev/null || true
+    rsync -av src/generated/ "${APP_DIR}/.next/standalone/src/generated/"
 fi
 
 ok "Application files copied"
 
-# ---- 4. Update .env paths for production ----
+# ---- 4. Update .env for production ----
 log "Step 4: Updating production environment..."
 
 if [ -f "${APP_DIR}/.next/standalone/.env" ]; then
-    # Update DATABASE_URL to absolute path
-    sed -i "s|DATABASE_URL=file:.*|DATABASE_URL=file:${DB_DIR}/custom.db|g" "${APP_DIR}/.next/standalone/.env"
-    
     # Update NEXTAUTH_URL if domain is provided
     if [ -n "${DOMAIN}" ]; then
         sed -i "s|NEXTAUTH_URL=.*|NEXTAUTH_URL=https://${DOMAIN}|g" "${APP_DIR}/.next/standalone/.env"
@@ -137,8 +124,38 @@ if [ -f "${APP_DIR}/.next/standalone/.env" ]; then
     ok "Environment updated"
 fi
 
-# ---- 5. Configure Nginx ----
-log "Step 5: Configuring Nginx..."
+# ---- 5. Run database migration ----
+log "Step 5: Running database migration..."
+
+# Check if MySQL is accessible
+if command -v mysql &> /dev/null; then
+    # Source the DATABASE_URL from .env
+    source_env() {
+        grep -v '^#' "${APP_DIR}/.next/standalone/.env" | grep '=' | while IFS='=' read -r key value; do
+            export "$key=$value"
+        done
+    }
+    
+    # Run the migration SQL directly
+    MIGRATION_FILE="${APP_DIR}/prisma/migrations/0001_mysql_init/migration.sql"
+    if [ -f "${MIGRATION_FILE}" ]; then
+        # Extract MySQL connection info from DATABASE_URL
+        DB_URL=$(grep DATABASE_URL "${APP_DIR}/.next/standalone/.env" | cut -d= -f2-)
+        log "Running migration with: ${DB_URL%%@*}@***"
+        
+        mysql "${DB_URL}" < "${MIGRATION_FILE}" 2>/dev/null && \
+            ok "Database migration completed" || \
+            warn "Migration failed or already applied. Check manually."
+    else
+        warn "No migration file found. Run 'npx prisma migrate deploy' manually."
+    fi
+else
+    warn "MySQL client not found. Run migration manually:"
+    echo "  mysql -u lightworld_db_user -p lightworld_ibetpro_db < prisma/migrations/0001_mysql_init/migration.sql"
+fi
+
+# ---- 6. Configure Nginx ----
+log "Step 6: Configuring Nginx..."
 
 if [ -n "${DOMAIN}" ]; then
     # Update domain in nginx config
@@ -163,8 +180,8 @@ else
     warn "No domain provided. Skip Nginx config. Usage: bash deploy/deploy.sh yourdomain.com"
 fi
 
-# ---- 6. Start with PM2 ----
-log "Step 6: Starting application with PM2..."
+# ---- 7. Start with PM2 ----
+log "Step 7: Starting application with PM2..."
 
 cd "${APP_DIR}"
 
@@ -179,8 +196,8 @@ pm2 save
 
 ok "Application started with PM2"
 
-# ---- 7. Wait for health check ----
-log "Step 7: Running health check..."
+# ---- 8. Wait for health check ----
+log "Step 8: Running health check..."
 
 sleep 5
 if curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 | grep -q "200\|302"; then
@@ -189,11 +206,10 @@ else
     warn "Application may not be responding. Check: pm2 logs ibetpro"
 fi
 
-# ---- 8. Register Telegram webhook ----
+# ---- 9. Register Telegram webhook ----
 if [ -n "${DOMAIN}" ]; then
-    log "Step 8: Registering Telegram webhook..."
+    log "Step 9: Registering Telegram webhook..."
     
-    # Need to get admin session token — this is a manual step
     echo ""
     echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
     echo -e "${YELLOW}  TELEGRAM WEBHOOK SETUP${NC}"
@@ -216,7 +232,7 @@ echo -e "${GREEN}  DEPLOYMENT COMPLETE!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo "  App directory: ${APP_DIR}"
-echo "  Database:      ${DB_DIR}/custom.db"
+echo "  Database:      MySQL (lightworld_ibetpro_db)"
 echo "  Logs:          ${LOG_DIR}/"
 echo ""
 if [ -n "${DOMAIN}" ]; then

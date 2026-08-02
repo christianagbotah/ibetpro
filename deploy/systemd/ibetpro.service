@@ -1,7 +1,7 @@
 [Unit]
 Description=iBetPro Next.js Application
 Documentation=https://yourdomain.com
-After=network.target
+After=network.target mysql.service
 
 [Service]
 Type=simple
@@ -19,7 +19,7 @@ StandardError=append:/home/ibetpro/logs/error.log
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/ibetpro/db /home/ibetpro/logs
+ReadWritePaths=/home/ibetpro/logs
 PrivateTmp=true
 
 # Resource limits

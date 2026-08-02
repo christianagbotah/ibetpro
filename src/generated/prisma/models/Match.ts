@@ -522,6 +522,7 @@ export type MatchOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   bets?: Prisma.BetOrderByRelationAggregateInput
   tips?: Prisma.TipOrderByRelationAggregateInput
+  _relevance?: Prisma.MatchOrderByRelevanceInput
 }
 
 export type MatchWhereUniqueInput = Prisma.AtLeast<{
@@ -883,6 +884,12 @@ export type MatchUncheckedUpdateManyInput = {
   aiKellyStake?: Prisma.NullableFloatFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type MatchOrderByRelevanceInput = {
+  fields: Prisma.MatchOrderByRelevanceFieldEnum | Prisma.MatchOrderByRelevanceFieldEnum[]
+  sort: Prisma.SortOrder
+  search: string
 }
 
 export type MatchCountOrderByAggregateInput = {
@@ -1463,73 +1470,7 @@ export type MatchSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   _count?: boolean | Prisma.MatchCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["match"]>
 
-export type MatchSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  externalId?: boolean
-  sport?: boolean
-  league?: boolean
-  homeTeam?: boolean
-  awayTeam?: boolean
-  homeOdds?: boolean
-  drawOdds?: boolean
-  awayOdds?: boolean
-  overUnderLine?: boolean
-  overOdds?: boolean
-  underOdds?: boolean
-  commenceTime?: boolean
-  status?: boolean
-  homeScore?: boolean
-  awayScore?: boolean
-  minute?: boolean
-  apiSource?: boolean
-  lastSyncedAt?: boolean
-  aiHomeWinProb?: boolean
-  aiDrawProb?: boolean
-  aiAwayWinProb?: boolean
-  aiConfidence?: boolean
-  aiAnalysis?: boolean
-  aiRecommended?: boolean
-  aiRiskScore?: boolean
-  aiRiskLevel?: boolean
-  aiValueEdge?: boolean
-  aiKellyStake?: boolean
-  createdAt?: boolean
-  updatedAt?: boolean
-}, ExtArgs["result"]["match"]>
 
-export type MatchSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  externalId?: boolean
-  sport?: boolean
-  league?: boolean
-  homeTeam?: boolean
-  awayTeam?: boolean
-  homeOdds?: boolean
-  drawOdds?: boolean
-  awayOdds?: boolean
-  overUnderLine?: boolean
-  overOdds?: boolean
-  underOdds?: boolean
-  commenceTime?: boolean
-  status?: boolean
-  homeScore?: boolean
-  awayScore?: boolean
-  minute?: boolean
-  apiSource?: boolean
-  lastSyncedAt?: boolean
-  aiHomeWinProb?: boolean
-  aiDrawProb?: boolean
-  aiAwayWinProb?: boolean
-  aiConfidence?: boolean
-  aiAnalysis?: boolean
-  aiRecommended?: boolean
-  aiRiskScore?: boolean
-  aiRiskLevel?: boolean
-  aiValueEdge?: boolean
-  aiKellyStake?: boolean
-  createdAt?: boolean
-  updatedAt?: boolean
-}, ExtArgs["result"]["match"]>
 
 export type MatchSelectScalar = {
   id?: boolean
@@ -1571,8 +1512,6 @@ export type MatchInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   tips?: boolean | Prisma.Match$tipsArgs<ExtArgs>
   _count?: boolean | Prisma.MatchCountOutputTypeDefaultArgs<ExtArgs>
 }
-export type MatchIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
-export type MatchIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
 
 export type $MatchPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Match"
@@ -1730,30 +1669,6 @@ export interface MatchDelegate<ExtArgs extends runtime.Types.Extensions.Internal
   createMany<T extends MatchCreateManyArgs>(args?: Prisma.SelectSubset<T, MatchCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
 
   /**
-   * Create many Matches and returns the data saved in the database.
-   * @param {MatchCreateManyAndReturnArgs} args - Arguments to create many Matches.
-   * @example
-   * // Create many Matches
-   * const match = await prisma.match.createManyAndReturn({
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Create many Matches and only return the `id`
-   * const matchWithIdOnly = await prisma.match.createManyAndReturn({
-   *   select: { id: true },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  createManyAndReturn<T extends MatchCreateManyAndReturnArgs>(args?: Prisma.SelectSubset<T, MatchCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MatchPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-  /**
    * Delete a Match.
    * @param {MatchDeleteArgs} args - Arguments to delete one Match.
    * @example
@@ -1816,36 +1731,6 @@ export interface MatchDelegate<ExtArgs extends runtime.Types.Extensions.Internal
    * 
    */
   updateMany<T extends MatchUpdateManyArgs>(args: Prisma.SelectSubset<T, MatchUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
-
-  /**
-   * Update zero or more Matches and returns the data updated in the database.
-   * @param {MatchUpdateManyAndReturnArgs} args - Arguments to update many Matches.
-   * @example
-   * // Update many Matches
-   * const match = await prisma.match.updateManyAndReturn({
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Update zero or more Matches and only return the `id`
-   * const matchWithIdOnly = await prisma.match.updateManyAndReturn({
-   *   select: { id: true },
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  updateManyAndReturn<T extends MatchUpdateManyAndReturnArgs>(args: Prisma.SelectSubset<T, MatchUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$MatchPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
 
   /**
    * Create or update one Match.
@@ -2302,24 +2187,7 @@ export type MatchCreateManyArgs<ExtArgs extends runtime.Types.Extensions.Interna
    * The data used to create many Matches.
    */
   data: Prisma.MatchCreateManyInput | Prisma.MatchCreateManyInput[]
-}
-
-/**
- * Match createManyAndReturn
- */
-export type MatchCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the Match
-   */
-  select?: Prisma.MatchSelectCreateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the Match
-   */
-  omit?: Prisma.MatchOmit<ExtArgs> | null
-  /**
-   * The data used to create many Matches.
-   */
-  data: Prisma.MatchCreateManyInput | Prisma.MatchCreateManyInput[]
+  skipDuplicates?: boolean
 }
 
 /**
@@ -2352,32 +2220,6 @@ export type MatchUpdateArgs<ExtArgs extends runtime.Types.Extensions.InternalArg
  * Match updateMany
  */
 export type MatchUpdateManyArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * The data used to update Matches.
-   */
-  data: Prisma.XOR<Prisma.MatchUpdateManyMutationInput, Prisma.MatchUncheckedUpdateManyInput>
-  /**
-   * Filter which Matches to update
-   */
-  where?: Prisma.MatchWhereInput
-  /**
-   * Limit how many Matches to update.
-   */
-  limit?: number
-}
-
-/**
- * Match updateManyAndReturn
- */
-export type MatchUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the Match
-   */
-  select?: Prisma.MatchSelectUpdateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the Match
-   */
-  omit?: Prisma.MatchOmit<ExtArgs> | null
   /**
    * The data used to update Matches.
    */

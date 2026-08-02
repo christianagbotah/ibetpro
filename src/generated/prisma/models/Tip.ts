@@ -454,6 +454,7 @@ export type TipOrderByWithRelationInput = {
   createdAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
   match?: Prisma.MatchOrderByWithRelationInput
+  _relevance?: Prisma.TipOrderByRelevanceInput
 }
 
 export type TipWhereUniqueInput = Prisma.AtLeast<{
@@ -777,6 +778,12 @@ export type TipOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
+export type TipOrderByRelevanceInput = {
+  fields: Prisma.TipOrderByRelevanceFieldEnum | Prisma.TipOrderByRelevanceFieldEnum[]
+  sort: Prisma.SortOrder
+  search: string
+}
+
 export type TipCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   userId?: Prisma.SortOrder
@@ -1038,6 +1045,7 @@ export type TipCreateOrConnectWithoutUserInput = {
 
 export type TipCreateManyUserInputEnvelope = {
   data: Prisma.TipCreateManyUserInput | Prisma.TipCreateManyUserInput[]
+  skipDuplicates?: boolean
 }
 
 export type TipUpsertWithWhereUniqueWithoutUserInput = {
@@ -1154,6 +1162,7 @@ export type TipCreateOrConnectWithoutMatchInput = {
 
 export type TipCreateManyMatchInputEnvelope = {
   data: Prisma.TipCreateManyMatchInput | Prisma.TipCreateManyMatchInput[]
+  skipDuplicates?: boolean
 }
 
 export type TipUpsertWithWhereUniqueWithoutMatchInput = {
@@ -1438,69 +1447,7 @@ export type TipSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = ru
   match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["tip"]>
 
-export type TipSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  userId?: boolean
-  matchId?: boolean
-  sport?: boolean
-  league?: boolean
-  homeTeam?: boolean
-  awayTeam?: boolean
-  selection?: boolean
-  odds?: boolean
-  aiConfidence?: boolean
-  valueEdge?: boolean
-  kellyStake?: boolean
-  riskLevel?: boolean
-  aiReasoning?: boolean
-  tracked?: boolean
-  userStake?: boolean
-  userResult?: boolean
-  userProfit?: boolean
-  userResultAt?: boolean
-  outcome?: boolean
-  actualOdds?: boolean
-  profit?: boolean
-  commencesAt?: boolean
-  settledAt?: boolean
-  telegramSent?: boolean
-  telegramSentAt?: boolean
-  createdAt?: boolean
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
-}, ExtArgs["result"]["tip"]>
 
-export type TipSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  userId?: boolean
-  matchId?: boolean
-  sport?: boolean
-  league?: boolean
-  homeTeam?: boolean
-  awayTeam?: boolean
-  selection?: boolean
-  odds?: boolean
-  aiConfidence?: boolean
-  valueEdge?: boolean
-  kellyStake?: boolean
-  riskLevel?: boolean
-  aiReasoning?: boolean
-  tracked?: boolean
-  userStake?: boolean
-  userResult?: boolean
-  userProfit?: boolean
-  userResultAt?: boolean
-  outcome?: boolean
-  actualOdds?: boolean
-  profit?: boolean
-  commencesAt?: boolean
-  settledAt?: boolean
-  telegramSent?: boolean
-  telegramSentAt?: boolean
-  createdAt?: boolean
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
-}, ExtArgs["result"]["tip"]>
 
 export type TipSelectScalar = {
   id?: boolean
@@ -1534,14 +1481,6 @@ export type TipSelectScalar = {
 
 export type TipOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "matchId" | "sport" | "league" | "homeTeam" | "awayTeam" | "selection" | "odds" | "aiConfidence" | "valueEdge" | "kellyStake" | "riskLevel" | "aiReasoning" | "tracked" | "userStake" | "userResult" | "userProfit" | "userResultAt" | "outcome" | "actualOdds" | "profit" | "commencesAt" | "settledAt" | "telegramSent" | "telegramSentAt" | "createdAt", ExtArgs["result"]["tip"]>
 export type TipInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
-}
-export type TipIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
-}
-export type TipIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
 }
@@ -1698,30 +1637,6 @@ export interface TipDelegate<ExtArgs extends runtime.Types.Extensions.InternalAr
   createMany<T extends TipCreateManyArgs>(args?: Prisma.SelectSubset<T, TipCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
 
   /**
-   * Create many Tips and returns the data saved in the database.
-   * @param {TipCreateManyAndReturnArgs} args - Arguments to create many Tips.
-   * @example
-   * // Create many Tips
-   * const tip = await prisma.tip.createManyAndReturn({
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Create many Tips and only return the `id`
-   * const tipWithIdOnly = await prisma.tip.createManyAndReturn({
-   *   select: { id: true },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  createManyAndReturn<T extends TipCreateManyAndReturnArgs>(args?: Prisma.SelectSubset<T, TipCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TipPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-  /**
    * Delete a Tip.
    * @param {TipDeleteArgs} args - Arguments to delete one Tip.
    * @example
@@ -1784,36 +1699,6 @@ export interface TipDelegate<ExtArgs extends runtime.Types.Extensions.InternalAr
    * 
    */
   updateMany<T extends TipUpdateManyArgs>(args: Prisma.SelectSubset<T, TipUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
-
-  /**
-   * Update zero or more Tips and returns the data updated in the database.
-   * @param {TipUpdateManyAndReturnArgs} args - Arguments to update many Tips.
-   * @example
-   * // Update many Tips
-   * const tip = await prisma.tip.updateManyAndReturn({
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Update zero or more Tips and only return the `id`
-   * const tipWithIdOnly = await prisma.tip.updateManyAndReturn({
-   *   select: { id: true },
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  updateManyAndReturn<T extends TipUpdateManyAndReturnArgs>(args: Prisma.SelectSubset<T, TipUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TipPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
 
   /**
    * Create or update one Tip.
@@ -2266,28 +2151,7 @@ export type TipCreateManyArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    * The data used to create many Tips.
    */
   data: Prisma.TipCreateManyInput | Prisma.TipCreateManyInput[]
-}
-
-/**
- * Tip createManyAndReturn
- */
-export type TipCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the Tip
-   */
-  select?: Prisma.TipSelectCreateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the Tip
-   */
-  omit?: Prisma.TipOmit<ExtArgs> | null
-  /**
-   * The data used to create many Tips.
-   */
-  data: Prisma.TipCreateManyInput | Prisma.TipCreateManyInput[]
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.TipIncludeCreateManyAndReturn<ExtArgs> | null
+  skipDuplicates?: boolean
 }
 
 /**
@@ -2332,36 +2196,6 @@ export type TipUpdateManyArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    * Limit how many Tips to update.
    */
   limit?: number
-}
-
-/**
- * Tip updateManyAndReturn
- */
-export type TipUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the Tip
-   */
-  select?: Prisma.TipSelectUpdateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the Tip
-   */
-  omit?: Prisma.TipOmit<ExtArgs> | null
-  /**
-   * The data used to update Tips.
-   */
-  data: Prisma.XOR<Prisma.TipUpdateManyMutationInput, Prisma.TipUncheckedUpdateManyInput>
-  /**
-   * Filter which Tips to update
-   */
-  where?: Prisma.TipWhereInput
-  /**
-   * Limit how many Tips to update.
-   */
-  limit?: number
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.TipIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**

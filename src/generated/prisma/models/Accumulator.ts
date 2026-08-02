@@ -377,6 +377,7 @@ export type AccumulatorOrderByWithRelationInput = {
   updatedAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
   bets?: Prisma.BetOrderByRelationAggregateInput
+  _relevance?: Prisma.AccumulatorOrderByRelevanceInput
 }
 
 export type AccumulatorWhereUniqueInput = Prisma.AtLeast<{
@@ -620,6 +621,12 @@ export type AccumulatorNullableScalarRelationFilter = {
   isNot?: Prisma.AccumulatorWhereInput | null
 }
 
+export type AccumulatorOrderByRelevanceInput = {
+  fields: Prisma.AccumulatorOrderByRelevanceFieldEnum | Prisma.AccumulatorOrderByRelevanceFieldEnum[]
+  sort: Prisma.SortOrder
+  search: string
+}
+
 export type AccumulatorCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   userId?: Prisma.SortOrder
@@ -814,6 +821,7 @@ export type AccumulatorCreateOrConnectWithoutUserInput = {
 
 export type AccumulatorCreateManyUserInputEnvelope = {
   data: Prisma.AccumulatorCreateManyUserInput | Prisma.AccumulatorCreateManyUserInput[]
+  skipDuplicates?: boolean
 }
 
 export type AccumulatorUpsertWithWhereUniqueWithoutUserInput = {
@@ -1093,49 +1101,7 @@ export type AccumulatorSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   _count?: boolean | Prisma.AccumulatorCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["accumulator"]>
 
-export type AccumulatorSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  userId?: boolean
-  totalOdds?: boolean
-  stake?: boolean
-  potentialWin?: boolean
-  status?: boolean
-  cashoutAmount?: boolean
-  completedLegs?: boolean
-  totalLegs?: boolean
-  isAutoPlaced?: boolean
-  bonusPercent?: boolean
-  profit?: boolean
-  commission?: boolean
-  placedAt?: boolean
-  settledAt?: boolean
-  cashedOutAt?: boolean
-  createdAt?: boolean
-  updatedAt?: boolean
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-}, ExtArgs["result"]["accumulator"]>
 
-export type AccumulatorSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  userId?: boolean
-  totalOdds?: boolean
-  stake?: boolean
-  potentialWin?: boolean
-  status?: boolean
-  cashoutAmount?: boolean
-  completedLegs?: boolean
-  totalLegs?: boolean
-  isAutoPlaced?: boolean
-  bonusPercent?: boolean
-  profit?: boolean
-  commission?: boolean
-  placedAt?: boolean
-  settledAt?: boolean
-  cashedOutAt?: boolean
-  createdAt?: boolean
-  updatedAt?: boolean
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-}, ExtArgs["result"]["accumulator"]>
 
 export type AccumulatorSelectScalar = {
   id?: boolean
@@ -1163,12 +1129,6 @@ export type AccumulatorInclude<ExtArgs extends runtime.Types.Extensions.Internal
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   bets?: boolean | Prisma.Accumulator$betsArgs<ExtArgs>
   _count?: boolean | Prisma.AccumulatorCountOutputTypeDefaultArgs<ExtArgs>
-}
-export type AccumulatorIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-}
-export type AccumulatorIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
 
 export type $AccumulatorPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1314,30 +1274,6 @@ export interface AccumulatorDelegate<ExtArgs extends runtime.Types.Extensions.In
   createMany<T extends AccumulatorCreateManyArgs>(args?: Prisma.SelectSubset<T, AccumulatorCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
 
   /**
-   * Create many Accumulators and returns the data saved in the database.
-   * @param {AccumulatorCreateManyAndReturnArgs} args - Arguments to create many Accumulators.
-   * @example
-   * // Create many Accumulators
-   * const accumulator = await prisma.accumulator.createManyAndReturn({
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Create many Accumulators and only return the `id`
-   * const accumulatorWithIdOnly = await prisma.accumulator.createManyAndReturn({
-   *   select: { id: true },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  createManyAndReturn<T extends AccumulatorCreateManyAndReturnArgs>(args?: Prisma.SelectSubset<T, AccumulatorCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AccumulatorPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-  /**
    * Delete a Accumulator.
    * @param {AccumulatorDeleteArgs} args - Arguments to delete one Accumulator.
    * @example
@@ -1400,36 +1336,6 @@ export interface AccumulatorDelegate<ExtArgs extends runtime.Types.Extensions.In
    * 
    */
   updateMany<T extends AccumulatorUpdateManyArgs>(args: Prisma.SelectSubset<T, AccumulatorUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
-
-  /**
-   * Update zero or more Accumulators and returns the data updated in the database.
-   * @param {AccumulatorUpdateManyAndReturnArgs} args - Arguments to update many Accumulators.
-   * @example
-   * // Update many Accumulators
-   * const accumulator = await prisma.accumulator.updateManyAndReturn({
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Update zero or more Accumulators and only return the `id`
-   * const accumulatorWithIdOnly = await prisma.accumulator.updateManyAndReturn({
-   *   select: { id: true },
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  updateManyAndReturn<T extends AccumulatorUpdateManyAndReturnArgs>(args: Prisma.SelectSubset<T, AccumulatorUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AccumulatorPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
 
   /**
    * Create or update one Accumulator.
@@ -1873,28 +1779,7 @@ export type AccumulatorCreateManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * The data used to create many Accumulators.
    */
   data: Prisma.AccumulatorCreateManyInput | Prisma.AccumulatorCreateManyInput[]
-}
-
-/**
- * Accumulator createManyAndReturn
- */
-export type AccumulatorCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the Accumulator
-   */
-  select?: Prisma.AccumulatorSelectCreateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the Accumulator
-   */
-  omit?: Prisma.AccumulatorOmit<ExtArgs> | null
-  /**
-   * The data used to create many Accumulators.
-   */
-  data: Prisma.AccumulatorCreateManyInput | Prisma.AccumulatorCreateManyInput[]
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.AccumulatorIncludeCreateManyAndReturn<ExtArgs> | null
+  skipDuplicates?: boolean
 }
 
 /**
@@ -1939,36 +1824,6 @@ export type AccumulatorUpdateManyArgs<ExtArgs extends runtime.Types.Extensions.I
    * Limit how many Accumulators to update.
    */
   limit?: number
-}
-
-/**
- * Accumulator updateManyAndReturn
- */
-export type AccumulatorUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the Accumulator
-   */
-  select?: Prisma.AccumulatorSelectUpdateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the Accumulator
-   */
-  omit?: Prisma.AccumulatorOmit<ExtArgs> | null
-  /**
-   * The data used to update Accumulators.
-   */
-  data: Prisma.XOR<Prisma.AccumulatorUpdateManyMutationInput, Prisma.AccumulatorUncheckedUpdateManyInput>
-  /**
-   * Filter which Accumulators to update
-   */
-  where?: Prisma.AccumulatorWhereInput
-  /**
-   * Limit how many Accumulators to update.
-   */
-  limit?: number
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.AccumulatorIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**

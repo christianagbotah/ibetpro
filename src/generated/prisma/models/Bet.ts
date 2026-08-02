@@ -505,6 +505,7 @@ export type BetOrderByWithRelationInput = {
   bettingAccount?: Prisma.BettingAccountOrderByWithRelationInput
   match?: Prisma.MatchOrderByWithRelationInput
   accumulator?: Prisma.AccumulatorOrderByWithRelationInput
+  _relevance?: Prisma.BetOrderByRelevanceInput
 }
 
 export type BetWhereUniqueInput = Prisma.AtLeast<{
@@ -856,6 +857,12 @@ export type BetListRelationFilter = {
 
 export type BetOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
+}
+
+export type BetOrderByRelevanceInput = {
+  fields: Prisma.BetOrderByRelevanceFieldEnum | Prisma.BetOrderByRelevanceFieldEnum[]
+  sort: Prisma.SortOrder
+  search: string
 }
 
 export type BetCountOrderByAggregateInput = {
@@ -1228,6 +1235,7 @@ export type BetCreateOrConnectWithoutUserInput = {
 
 export type BetCreateManyUserInputEnvelope = {
   data: Prisma.BetCreateManyUserInput | Prisma.BetCreateManyUserInput[]
+  skipDuplicates?: boolean
 }
 
 export type BetUpsertWithWhereUniqueWithoutUserInput = {
@@ -1353,6 +1361,7 @@ export type BetCreateOrConnectWithoutBettingAccountInput = {
 
 export type BetCreateManyBettingAccountInputEnvelope = {
   data: Prisma.BetCreateManyBettingAccountInput | Prisma.BetCreateManyBettingAccountInput[]
+  skipDuplicates?: boolean
 }
 
 export type BetUpsertWithWhereUniqueWithoutBettingAccountInput = {
@@ -1442,6 +1451,7 @@ export type BetCreateOrConnectWithoutMatchInput = {
 
 export type BetCreateManyMatchInputEnvelope = {
   data: Prisma.BetCreateManyMatchInput | Prisma.BetCreateManyMatchInput[]
+  skipDuplicates?: boolean
 }
 
 export type BetUpsertWithWhereUniqueWithoutMatchInput = {
@@ -1531,6 +1541,7 @@ export type BetCreateOrConnectWithoutAccumulatorInput = {
 
 export type BetCreateManyAccumulatorInputEnvelope = {
   data: Prisma.BetCreateManyAccumulatorInput | Prisma.BetCreateManyAccumulatorInput[]
+  skipDuplicates?: boolean
 }
 
 export type BetUpsertWithWhereUniqueWithoutAccumulatorInput = {
@@ -2100,79 +2111,7 @@ export type BetSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = ru
   accumulator?: boolean | Prisma.Bet$accumulatorArgs<ExtArgs>
 }, ExtArgs["result"]["bet"]>
 
-export type BetSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  userId?: boolean
-  bettingAccountId?: boolean
-  matchId?: boolean
-  accumulatorId?: boolean
-  betType?: boolean
-  selection?: boolean
-  odds?: boolean
-  stake?: boolean
-  potentialWin?: boolean
-  status?: boolean
-  cashoutAmount?: boolean
-  cashoutOdds?: boolean
-  partialCashoutAmount?: boolean
-  partialCashoutPercent?: boolean
-  profit?: boolean
-  commission?: boolean
-  isAutoPlaced?: boolean
-  aiConfidence?: boolean
-  aiReasoning?: boolean
-  aiModelUsed?: boolean
-  kellyStake?: boolean
-  valueEdge?: boolean
-  riskScore?: boolean
-  settlementReason?: boolean
-  placedAt?: boolean
-  settledAt?: boolean
-  cashedOutAt?: boolean
-  createdAt?: boolean
-  updatedAt?: boolean
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
-  match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
-  accumulator?: boolean | Prisma.Bet$accumulatorArgs<ExtArgs>
-}, ExtArgs["result"]["bet"]>
 
-export type BetSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  userId?: boolean
-  bettingAccountId?: boolean
-  matchId?: boolean
-  accumulatorId?: boolean
-  betType?: boolean
-  selection?: boolean
-  odds?: boolean
-  stake?: boolean
-  potentialWin?: boolean
-  status?: boolean
-  cashoutAmount?: boolean
-  cashoutOdds?: boolean
-  partialCashoutAmount?: boolean
-  partialCashoutPercent?: boolean
-  profit?: boolean
-  commission?: boolean
-  isAutoPlaced?: boolean
-  aiConfidence?: boolean
-  aiReasoning?: boolean
-  aiModelUsed?: boolean
-  kellyStake?: boolean
-  valueEdge?: boolean
-  riskScore?: boolean
-  settlementReason?: boolean
-  placedAt?: boolean
-  settledAt?: boolean
-  cashedOutAt?: boolean
-  createdAt?: boolean
-  updatedAt?: boolean
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
-  match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
-  accumulator?: boolean | Prisma.Bet$accumulatorArgs<ExtArgs>
-}, ExtArgs["result"]["bet"]>
 
 export type BetSelectScalar = {
   id?: boolean
@@ -2209,18 +2148,6 @@ export type BetSelectScalar = {
 
 export type BetOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "bettingAccountId" | "matchId" | "accumulatorId" | "betType" | "selection" | "odds" | "stake" | "potentialWin" | "status" | "cashoutAmount" | "cashoutOdds" | "partialCashoutAmount" | "partialCashoutPercent" | "profit" | "commission" | "isAutoPlaced" | "aiConfidence" | "aiReasoning" | "aiModelUsed" | "kellyStake" | "valueEdge" | "riskScore" | "settlementReason" | "placedAt" | "settledAt" | "cashedOutAt" | "createdAt" | "updatedAt", ExtArgs["result"]["bet"]>
 export type BetInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
-  match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
-  accumulator?: boolean | Prisma.Bet$accumulatorArgs<ExtArgs>
-}
-export type BetIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
-  bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
-  match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
-  accumulator?: boolean | Prisma.Bet$accumulatorArgs<ExtArgs>
-}
-export type BetIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
   bettingAccount?: boolean | Prisma.BettingAccountDefaultArgs<ExtArgs>
   match?: boolean | Prisma.MatchDefaultArgs<ExtArgs>
@@ -2384,30 +2311,6 @@ export interface BetDelegate<ExtArgs extends runtime.Types.Extensions.InternalAr
   createMany<T extends BetCreateManyArgs>(args?: Prisma.SelectSubset<T, BetCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
 
   /**
-   * Create many Bets and returns the data saved in the database.
-   * @param {BetCreateManyAndReturnArgs} args - Arguments to create many Bets.
-   * @example
-   * // Create many Bets
-   * const bet = await prisma.bet.createManyAndReturn({
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Create many Bets and only return the `id`
-   * const betWithIdOnly = await prisma.bet.createManyAndReturn({
-   *   select: { id: true },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  createManyAndReturn<T extends BetCreateManyAndReturnArgs>(args?: Prisma.SelectSubset<T, BetCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BetPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-  /**
    * Delete a Bet.
    * @param {BetDeleteArgs} args - Arguments to delete one Bet.
    * @example
@@ -2470,36 +2373,6 @@ export interface BetDelegate<ExtArgs extends runtime.Types.Extensions.InternalAr
    * 
    */
   updateMany<T extends BetUpdateManyArgs>(args: Prisma.SelectSubset<T, BetUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
-
-  /**
-   * Update zero or more Bets and returns the data updated in the database.
-   * @param {BetUpdateManyAndReturnArgs} args - Arguments to update many Bets.
-   * @example
-   * // Update many Bets
-   * const bet = await prisma.bet.updateManyAndReturn({
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Update zero or more Bets and only return the `id`
-   * const betWithIdOnly = await prisma.bet.updateManyAndReturn({
-   *   select: { id: true },
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  updateManyAndReturn<T extends BetUpdateManyAndReturnArgs>(args: Prisma.SelectSubset<T, BetUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$BetPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
 
   /**
    * Create or update one Bet.
@@ -2957,28 +2830,7 @@ export type BetCreateManyArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    * The data used to create many Bets.
    */
   data: Prisma.BetCreateManyInput | Prisma.BetCreateManyInput[]
-}
-
-/**
- * Bet createManyAndReturn
- */
-export type BetCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the Bet
-   */
-  select?: Prisma.BetSelectCreateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the Bet
-   */
-  omit?: Prisma.BetOmit<ExtArgs> | null
-  /**
-   * The data used to create many Bets.
-   */
-  data: Prisma.BetCreateManyInput | Prisma.BetCreateManyInput[]
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.BetIncludeCreateManyAndReturn<ExtArgs> | null
+  skipDuplicates?: boolean
 }
 
 /**
@@ -3023,36 +2875,6 @@ export type BetUpdateManyArgs<ExtArgs extends runtime.Types.Extensions.InternalA
    * Limit how many Bets to update.
    */
   limit?: number
-}
-
-/**
- * Bet updateManyAndReturn
- */
-export type BetUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the Bet
-   */
-  select?: Prisma.BetSelectUpdateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the Bet
-   */
-  omit?: Prisma.BetOmit<ExtArgs> | null
-  /**
-   * The data used to update Bets.
-   */
-  data: Prisma.XOR<Prisma.BetUpdateManyMutationInput, Prisma.BetUncheckedUpdateManyInput>
-  /**
-   * Filter which Bets to update
-   */
-  where?: Prisma.BetWhereInput
-  /**
-   * Limit how many Bets to update.
-   */
-  limit?: number
-  /**
-   * Choose, which related nodes to fetch as well
-   */
-  include?: Prisma.BetIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**

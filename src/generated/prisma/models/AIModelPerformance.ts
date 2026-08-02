@@ -377,6 +377,7 @@ export type AIModelPerformanceOrderByWithRelationInput = {
   periodEnd?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  _relevance?: Prisma.AIModelPerformanceOrderByRelevanceInput
 }
 
 export type AIModelPerformanceWhereUniqueInput = Prisma.AtLeast<{
@@ -600,6 +601,12 @@ export type AIModelPerformanceUncheckedUpdateManyInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+export type AIModelPerformanceOrderByRelevanceInput = {
+  fields: Prisma.AIModelPerformanceOrderByRelevanceFieldEnum | Prisma.AIModelPerformanceOrderByRelevanceFieldEnum[]
+  sort: Prisma.SortOrder
+  search: string
+}
+
 export type AIModelPerformanceCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   modelVersion?: Prisma.SortOrder
@@ -712,47 +719,7 @@ export type AIModelPerformanceSelect<ExtArgs extends runtime.Types.Extensions.In
   updatedAt?: boolean
 }, ExtArgs["result"]["aIModelPerformance"]>
 
-export type AIModelPerformanceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  modelVersion?: boolean
-  totalPredictions?: boolean
-  correctPredictions?: boolean
-  accuracyRate?: boolean
-  avgConfidence?: boolean
-  avgValueEdge?: boolean
-  totalProfit?: boolean
-  totalLoss?: boolean
-  roi?: boolean
-  sharpeRatio?: boolean
-  maxDrawdown?: boolean
-  sport?: boolean
-  period?: boolean
-  periodStart?: boolean
-  periodEnd?: boolean
-  createdAt?: boolean
-  updatedAt?: boolean
-}, ExtArgs["result"]["aIModelPerformance"]>
 
-export type AIModelPerformanceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
-  id?: boolean
-  modelVersion?: boolean
-  totalPredictions?: boolean
-  correctPredictions?: boolean
-  accuracyRate?: boolean
-  avgConfidence?: boolean
-  avgValueEdge?: boolean
-  totalProfit?: boolean
-  totalLoss?: boolean
-  roi?: boolean
-  sharpeRatio?: boolean
-  maxDrawdown?: boolean
-  sport?: boolean
-  period?: boolean
-  periodStart?: boolean
-  periodEnd?: boolean
-  createdAt?: boolean
-  updatedAt?: boolean
-}, ExtArgs["result"]["aIModelPerformance"]>
 
 export type AIModelPerformanceSelectScalar = {
   id?: boolean
@@ -917,30 +884,6 @@ export interface AIModelPerformanceDelegate<ExtArgs extends runtime.Types.Extens
   createMany<T extends AIModelPerformanceCreateManyArgs>(args?: Prisma.SelectSubset<T, AIModelPerformanceCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
 
   /**
-   * Create many AIModelPerformances and returns the data saved in the database.
-   * @param {AIModelPerformanceCreateManyAndReturnArgs} args - Arguments to create many AIModelPerformances.
-   * @example
-   * // Create many AIModelPerformances
-   * const aIModelPerformance = await prisma.aIModelPerformance.createManyAndReturn({
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Create many AIModelPerformances and only return the `id`
-   * const aIModelPerformanceWithIdOnly = await prisma.aIModelPerformance.createManyAndReturn({
-   *   select: { id: true },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  createManyAndReturn<T extends AIModelPerformanceCreateManyAndReturnArgs>(args?: Prisma.SelectSubset<T, AIModelPerformanceCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AIModelPerformancePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-  /**
    * Delete a AIModelPerformance.
    * @param {AIModelPerformanceDeleteArgs} args - Arguments to delete one AIModelPerformance.
    * @example
@@ -1003,36 +946,6 @@ export interface AIModelPerformanceDelegate<ExtArgs extends runtime.Types.Extens
    * 
    */
   updateMany<T extends AIModelPerformanceUpdateManyArgs>(args: Prisma.SelectSubset<T, AIModelPerformanceUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<Prisma.BatchPayload>
-
-  /**
-   * Update zero or more AIModelPerformances and returns the data updated in the database.
-   * @param {AIModelPerformanceUpdateManyAndReturnArgs} args - Arguments to update many AIModelPerformances.
-   * @example
-   * // Update many AIModelPerformances
-   * const aIModelPerformance = await prisma.aIModelPerformance.updateManyAndReturn({
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * 
-   * // Update zero or more AIModelPerformances and only return the `id`
-   * const aIModelPerformanceWithIdOnly = await prisma.aIModelPerformance.updateManyAndReturn({
-   *   select: { id: true },
-   *   where: {
-   *     // ... provide filter here
-   *   },
-   *   data: [
-   *     // ... provide data here
-   *   ]
-   * })
-   * Note, that providing `undefined` is treated as the value not being there.
-   * Read more here: https://pris.ly/d/null-undefined
-   * 
-   */
-  updateManyAndReturn<T extends AIModelPerformanceUpdateManyAndReturnArgs>(args: Prisma.SelectSubset<T, AIModelPerformanceUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$AIModelPerformancePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
 
   /**
    * Create or update one AIModelPerformance.
@@ -1450,24 +1363,7 @@ export type AIModelPerformanceCreateManyArgs<ExtArgs extends runtime.Types.Exten
    * The data used to create many AIModelPerformances.
    */
   data: Prisma.AIModelPerformanceCreateManyInput | Prisma.AIModelPerformanceCreateManyInput[]
-}
-
-/**
- * AIModelPerformance createManyAndReturn
- */
-export type AIModelPerformanceCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the AIModelPerformance
-   */
-  select?: Prisma.AIModelPerformanceSelectCreateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the AIModelPerformance
-   */
-  omit?: Prisma.AIModelPerformanceOmit<ExtArgs> | null
-  /**
-   * The data used to create many AIModelPerformances.
-   */
-  data: Prisma.AIModelPerformanceCreateManyInput | Prisma.AIModelPerformanceCreateManyInput[]
+  skipDuplicates?: boolean
 }
 
 /**
@@ -1496,32 +1392,6 @@ export type AIModelPerformanceUpdateArgs<ExtArgs extends runtime.Types.Extension
  * AIModelPerformance updateMany
  */
 export type AIModelPerformanceUpdateManyArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * The data used to update AIModelPerformances.
-   */
-  data: Prisma.XOR<Prisma.AIModelPerformanceUpdateManyMutationInput, Prisma.AIModelPerformanceUncheckedUpdateManyInput>
-  /**
-   * Filter which AIModelPerformances to update
-   */
-  where?: Prisma.AIModelPerformanceWhereInput
-  /**
-   * Limit how many AIModelPerformances to update.
-   */
-  limit?: number
-}
-
-/**
- * AIModelPerformance updateManyAndReturn
- */
-export type AIModelPerformanceUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
-  /**
-   * Select specific fields to fetch from the AIModelPerformance
-   */
-  select?: Prisma.AIModelPerformanceSelectUpdateManyAndReturn<ExtArgs> | null
-  /**
-   * Omit specific fields from the AIModelPerformance
-   */
-  omit?: Prisma.AIModelPerformanceOmit<ExtArgs> | null
   /**
    * The data used to update AIModelPerformances.
    */
