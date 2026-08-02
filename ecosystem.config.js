@@ -21,8 +21,8 @@ module.exports = {
         HOSTNAME: "0.0.0.0",
       },
       // Process management
-      instances: 1,               // Single instance for SQLite (not cluster-safe)
-      exec_mode: "fork",          // Fork mode (not cluster) for SQLite compatibility
+      instances: 2,               // 2 instances — MySQL supports concurrent connections
+      exec_mode: "cluster",       // Cluster mode for better performance & reliability
       max_memory_restart: "512M",  // Auto-restart if memory exceeds 512MB
       autorestart: true,           // Auto-restart on crash
       max_restarts: 10,           // Max restarts within min_uptime

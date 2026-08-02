@@ -125,33 +125,18 @@ if [ -f "${APP_DIR}/.next/standalone/.env" ]; then
 fi
 
 # ---- 5. Run database migration ----
-log "Step 5: Running database migration..."
+log "Step 5: Running database migration (prisma db push)..."
 
-# Check if MySQL is accessible
-if command -v mysql &> /dev/null; then
-    # Source the DATABASE_URL from .env
-    source_env() {
-        grep -v '^#' "${APP_DIR}/.next/standalone/.env" | grep '=' | while IFS='=' read -r key value; do
-            export "$key=$value"
-        done
-    }
-    
-    # Run the migration SQL directly
-    MIGRATION_FILE="${APP_DIR}/prisma/migrations/0001_mysql_init/migration.sql"
-    if [ -f "${MIGRATION_FILE}" ]; then
-        # Extract MySQL connection info from DATABASE_URL
-        DB_URL=$(grep DATABASE_URL "${APP_DIR}/.next/standalone/.env" | cut -d= -f2-)
-        log "Running migration with: ${DB_URL%%@*}@***"
-        
-        mysql "${DB_URL}" < "${MIGRATION_FILE}" 2>/dev/null && \
-            ok "Database migration completed" || \
-            warn "Migration failed or already applied. Check manually."
-    else
-        warn "No migration file found. Run 'npx prisma migrate deploy' manually."
-    fi
+# Load DATABASE_URL from .env for Prisma CLI
+export $(grep -v '^#' "${APP_DIR}/.next/standalone/.env" | grep DATABASE_URL | xargs)
+
+# Use prisma db push to sync schema to MySQL (handles both fresh and existing DBs)
+cd "${APP_DIR}"
+if npx prisma db push --accept-data-loss 2>&1; then
+    ok "Database schema synced to MySQL"
 else
-    warn "MySQL client not found. Run migration manually:"
-    echo "  mysql -u lightworld_db_user -p lightworld_ibetpro_db < prisma/migrations/0001_mysql_init/migration.sql"
+    warn "Prisma db push failed. Check MySQL connection and credentials."
+    echo "  Manual fallback: mysql -u lightworld_db_user -p lightworld_ibetpro_db < prisma/migrations/0001_mysql_init/migration.sql"
 fi
 
 # ---- 6. Configure Nginx ----

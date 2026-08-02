@@ -37,3 +37,27 @@ Stage Summary:
 - Telegram integration complete: webhook, connect, deep link, commands
 - Users can mark tips as "I'll Bet This" and report Won/Lost
 - All new API endpoints created and working
+
+---
+Task ID: 2
+Agent: Main Agent
+Task: Switch database from SQLite to MySQL for VPS deployment
+
+Work Log:
+- Verified prisma/schema.prisma already had provider = "mysql"
+- Verified prisma.config.ts already had MySQL URL as default
+- Verified .env and .env.production already had MySQL connection string
+- Removed @libsql/client and @prisma/adapter-libsql from package.json
+- Installed @prisma/adapter-mariadb (Prisma 7.x MySQL driver adapter)
+- Updated src/lib/db.ts to use PrismaMariaDb adapter instead of bare PrismaClient
+- Updated ecosystem.config.js: instances=2, exec_mode="cluster" (MySQL supports concurrent connections)
+- Generated MySQL migration SQL via prisma migrate diff (531 lines, saved to prisma/migrations/0001_mysql_init/)
+- Updated deploy/deploy.sh to use `prisma db push` instead of raw SQL migration
+- Clean build passes successfully
+
+Stage Summary:
+- Database fully switched from SQLite/libsql to MySQL/MariaDB adapter
+- Prisma 7.x requires driver adapter — using @prisma/adapter-mariadb
+- PM2 cluster mode enabled (2 instances) for MySQL
+- Migration SQL saved for manual fallback
+- Build verified working with MySQL configuration
