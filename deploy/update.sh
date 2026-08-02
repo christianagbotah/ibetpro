@@ -1,14 +1,16 @@
 #!/bin/bash
 # ============================================================================
 # iBetPro — Quick Update Script
+# VPS: ibetpro.lightworldtech.com
 # Run this after making code changes to rebuild and redeploy
 # Usage: bash deploy/update.sh
 # ============================================================================
 
 set -euo pipefail
 
-APP_DIR="/home/ibetpro/app"
-DOMAIN="${1:-}"
+APP_DIR="/home/lightworld/webapps/ibetpro"
+DOMAIN="ibetpro.lightworldtech.com"
+PORT=3007
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -68,14 +70,12 @@ ok "Application restarted"
 # ---- 4. Health check ----
 log "Running health check..."
 sleep 3
-if curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 | grep -q "200\|302"; then
+if curl -s -o /dev/null -w "%{http_code}" http://localhost:${PORT} | grep -q "200\|302"; then
     ok "Application is healthy!"
 else
     err "Application not responding! Check: pm2 logs ibetpro"
 fi
 
 echo ""
-ok "Update complete! App is running at http://localhost:3000"
-if [ -n "${DOMAIN}" ]; then
-    echo "  Public URL: https://${DOMAIN}"
-fi
+ok "Update complete! App is running at http://localhost:${PORT}"
+echo "  Public URL: https://${DOMAIN}"

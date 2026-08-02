@@ -1,17 +1,18 @@
 #!/bin/bash
 # ============================================================================
-# iBetPro — VPS First-Time Setup (run as root on a fresh Webuzo VPS)
+# iBetPro — VPS First-Time Setup (run as root on a Webuzo VPS)
+# VPS: ibetpro.lightworldtech.com
 # This installs Node.js, PM2, Nginx, and prepares the server
 # Usage: sudo bash deploy/setup-vps.sh
 # ============================================================================
 
 set -euo pipefail
 
-APP_USER="ibetpro"
-APP_DIR="/home/ibetpro/app"
-DB_DIR="/home/ibetpro/db"
-LOG_DIR="/home/ibetpro/logs"
+APP_USER="lightworld"
+APP_DIR="/home/lightworld/webapps/ibetpro"
+LOG_DIR="/home/lightworld/webapps/ibetpro/logs"
 NODE_MAJOR=20
+PORT=3007
 
 RED='\033[0;31m'
 GREEN='\033[0;32m'
@@ -56,14 +57,16 @@ if ! command -v pm2 &> /dev/null; then
 fi
 ok "PM2 $(pm2 -v) installed"
 
-# ---- 4. Install Nginx ----
+# ---- 4. Install Nginx (Webuzo may already have it) ----
 if ! command -v nginx &> /dev/null; then
     log "Step 4: Installing Nginx..."
     apt-get install -y nginx
     systemctl enable nginx
     systemctl start nginx
+else
+    log "Step 4: Nginx already installed (Webuzo managed)"
 fi
-ok "Nginx installed"
+ok "Nginx ready"
 
 # ---- 5. Install Certbot (Let's Encrypt) ----
 if ! command -v certbot &> /dev/null; then
@@ -72,43 +75,21 @@ if ! command -v certbot &> /dev/null; then
 fi
 ok "Certbot installed"
 
-# ---- 6. Create application user ----
-if ! id "${APP_USER}" &> /dev/null; then
-    log "Step 6: Creating application user '${APP_USER}'..."
-    useradd -m -s /bin/bash "${APP_USER}"
-    ok "User '${APP_USER}' created"
-else
-    warn "User '${APP_USER}' already exists"
-fi
-
-# ---- 7. Create directories ----
-log "Step 7: Creating application directories..."
+# ---- 6. Create directories ----
+log "Step 6: Creating application directories..."
 mkdir -p "${APP_DIR}"
-mkdir -p "${DB_DIR}"
 mkdir -p "${LOG_DIR}"
-chown -R "${APP_USER}:${APP_USER}" "/home/${APP_USER}"
+mkdir -p "${APP_DIR}/prisma/migrations"
+chown -R "${APP_USER}:${APP_USER}" "${APP_DIR}" 2>/dev/null || true
 ok "Directories created"
 
-# ---- 8. Configure firewall ----
-log "Step 8: Configuring firewall (UFW)..."
-if command -v ufw &> /dev/null; then
-    ufw allow OpenSSH
-    ufw allow 'Nginx Full'
-    ufw --force enable
-    ok "Firewall configured (SSH + HTTP/HTTPS)"
-else
-    warn "UFW not available. Configure firewall manually."
-fi
-
-# ---- 9. Configure PM2 startup ----
-log "Step 9: Configuring PM2 startup..."
+# ---- 7. Configure PM2 startup ----
+log "Step 7: Configuring PM2 startup..."
 su - "${APP_USER}" -c "pm2 startup systemd -u ${APP_USER} --hp /home/${APP_USER}" 2>/dev/null || true
-# The command above outputs a sudo command — run it
-eval "$(su - ${APP_USER} -c 'pm2 startup systemd -u ibetpro --hp /home/ibetpro 2>/dev/null')" 2>/dev/null || true
 ok "PM2 startup configured"
 
-# ---- 10. Optimize system for Node.js ----
-log "Step 10: Optimizing system for Node.js..."
+# ---- 8. Optimize system for Node.js ----
+log "Step 8: Optimizing system for Node.js..."
 
 # Increase file watch limit
 if ! grep -q "fs.inotify" /etc/sysctl.conf; then
@@ -116,13 +97,18 @@ if ! grep -q "fs.inotify" /etc/sysctl.conf; then
     sysctl -p
 fi
 
-# Increase default file descriptors
-if ! grep -q "ibetpro soft nofile" /etc/security/limits.conf; then
-    echo "ibetpro soft nofile 65536" >> /etc/security/limits.conf
-    echo "ibetpro hard nofile 65536" >> /etc/security/limits.conf
-fi
-
 ok "System optimized"
+
+# ---- 9. Open port in firewall ----
+log "Step 9: Configuring firewall..."
+if command -v ufw &> /dev/null; then
+    ufw allow OpenSSH
+    ufw allow 'Nginx Full'
+    ufw --force enable
+    ok "Firewall configured (SSH + HTTP/HTTPS)"
+else
+    warn "UFW not available. If using Webuzo firewall, ensure ports 80/443 are open."
+fi
 
 # ---- Summary ----
 echo ""
@@ -130,9 +116,9 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 echo -e "${GREEN}  VPS SETUP COMPLETE!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo "  App user:      ${APP_USER}"
+echo "  App user:       ${APP_USER}"
 echo "  App directory:  ${APP_DIR}"
-echo "  Database:       ${DB_DIR}"
+echo "  App port:       ${PORT}"
 echo "  Logs:           ${LOG_DIR}"
 echo ""
 echo "  Node.js:  $(node -v)"
@@ -141,14 +127,9 @@ echo "  Nginx:    $(nginx -v 2>&1)"
 echo ""
 echo "  Next steps:"
 echo "    1. From your LOCAL machine, run:"
-echo "       bash deploy/deploy.sh yourdomain.com"
+echo "       bash deploy/deploy.sh"
 echo ""
-echo "    2. Or manually upload and build:"
-echo "       scp -r .next/standalone/ ${APP_USER}@YOUR_VPS:${APP_DIR}/"
-echo "       scp -r .next/static/ ${APP_USER}@YOUR_VPS:${APP_DIR}/.next/standalone/.next/"
-echo "       scp -r public/ ${APP_USER}@YOUR_VPS:${APP_DIR}/.next/standalone/"
-echo ""
-echo "    3. Set up SSL:"
-echo "       sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com"
+echo "    2. Set up SSL:"
+echo "       sudo certbot --nginx -d ibetpro.lightworldtech.com"
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"

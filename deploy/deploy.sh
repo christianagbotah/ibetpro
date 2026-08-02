@@ -1,18 +1,19 @@
 #!/bin/bash
 # ============================================================================
 # iBetPro — VPS Deployment Script
-# Usage: bash deploy/deploy.sh [domain]
-# Example: bash deploy/deploy.sh ibetpro.example.com
+# VPS: ibetpro.lightworldtech.com
+# Usage: bash deploy/deploy.sh
 # ============================================================================
 
 set -euo pipefail
 
 # ---- Configuration ----
 APP_NAME="ibetpro"
-APP_DIR="/home/ibetpro/app"
-LOG_DIR="/home/ibetpro/logs"
+APP_DIR="/home/lightworld/webapps/ibetpro"
+LOG_DIR="/home/lightworld/webapps/ibetpro/logs"
 NODE_VERSION="20"
-DOMAIN="${1:-}"
+DOMAIN="ibetpro.lightworldtech.com"
+PORT=3007
 TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # Colors
@@ -28,14 +29,14 @@ warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 err()  { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
 # ---- Pre-flight checks ----
-log "Starting iBetPro deployment..."
+log "Starting iBetPro deployment to ${DOMAIN}..."
 
 if [ "$(id -u)" -eq 0 ]; then
-    warn "Running as root. Consider creating a dedicated user."
+    warn "Running as root. Consider running as lightworld user."
 fi
 
 # ---- 1. Install system dependencies ----
-log "Step 1: Installing system dependencies..."
+log "Step 1: Checking system dependencies..."
 
 if ! command -v node &> /dev/null; then
     log "Installing Node.js ${NODE_VERSION}..."
@@ -46,23 +47,16 @@ fi
 if ! command -v pm2 &> /dev/null; then
     log "Installing PM2..."
     sudo npm install -g pm2
-    pm2 startup systemd -u ibetpro --hp /home/ibetpro 2>/dev/null || true
 fi
 
-if ! command -v nginx &> /dev/null; then
-    log "Installing Nginx..."
-    sudo apt-get update
-    sudo apt-get install -y nginx
-fi
-
-ok "System dependencies installed"
+ok "System dependencies ready"
 
 # ---- 2. Create directories ----
 log "Step 2: Creating application directories..."
 
-sudo mkdir -p "${APP_DIR}"
-sudo mkdir -p "${LOG_DIR}"
-sudo chown -R "$(whoami)" "${APP_DIR}" "${LOG_DIR}" 2>/dev/null || true
+mkdir -p "${APP_DIR}"
+mkdir -p "${LOG_DIR}"
+mkdir -p "${APP_DIR}/prisma/migrations"
 
 ok "Directories created"
 
@@ -83,7 +77,6 @@ else
 fi
 
 # Copy Prisma schema and migrations
-mkdir -p "${APP_DIR}/prisma/migrations"
 cp prisma/schema.prisma "${APP_DIR}/prisma/"
 cp prisma.config.ts "${APP_DIR}/" 2>/dev/null || true
 # Copy migration SQL files
@@ -116,12 +109,11 @@ ok "Application files copied"
 log "Step 4: Updating production environment..."
 
 if [ -f "${APP_DIR}/.next/standalone/.env" ]; then
-    # Update NEXTAUTH_URL if domain is provided
-    if [ -n "${DOMAIN}" ]; then
-        sed -i "s|NEXTAUTH_URL=.*|NEXTAUTH_URL=https://${DOMAIN}|g" "${APP_DIR}/.next/standalone/.env"
-    fi
-    
-    ok "Environment updated"
+    # Ensure NEXTAUTH_URL points to correct domain
+    sed -i "s|NEXTAUTH_URL=.*|NEXTAUTH_URL=https://${DOMAIN}|g" "${APP_DIR}/.next/standalone/.env"
+    # Ensure PORT is 3007
+    sed -i "s|PORT=.*|PORT=${PORT}|g" "${APP_DIR}/.next/standalone/.env"
+    ok "Environment updated for ${DOMAIN}:${PORT}"
 fi
 
 # ---- 5. Run database migration ----
@@ -142,31 +134,29 @@ fi
 # ---- 6. Configure Nginx ----
 log "Step 6: Configuring Nginx..."
 
-if [ -n "${DOMAIN}" ]; then
-    # Update domain in nginx config
-    NGINX_CONF="deploy/nginx/ibetpro-http.conf"
-    if [ -f "${NGINX_CONF}" ]; then
-        sed "s/yourdomain.com/${DOMAIN}/g; s/www\.yourdomain\.com/www.${DOMAIN}/g" "${NGINX_CONF}" | \
-            sudo tee /etc/nginx/sites-available/ibetpro > /dev/null
-        
-        # Enable site
-        sudo ln -sf /etc/nginx/sites-available/ibetpro /etc/nginx/sites-enabled/ibetpro
-        
-        # Remove default site
-        sudo rm -f /etc/nginx/sites-enabled/default
-        
-        # Test and reload
-        sudo nginx -t && sudo systemctl reload nginx
-        ok "Nginx configured for ${DOMAIN}"
-    else
-        warn "Nginx config template not found. Configure manually."
-    fi
+NGINX_CONF="deploy/nginx/ibetpro-http.conf"
+if [ -f "${NGINX_CONF}" ]; then
+    # Replace domain and port in nginx config
+    sed -e "s/yourdomain.com/${DOMAIN}/g" \
+        -e "s/www\.yourdomain\.com/www.${DOMAIN}/g" \
+        -e "s/127\.0\.0\.1:3000/127.0.0.1:${PORT}/g" \
+        "${NGINX_CONF}" | sudo tee /etc/nginx/sites-available/ibetpro > /dev/null
+
+    # Enable site
+    sudo ln -sf /etc/nginx/sites-available/ibetpro /etc/nginx/sites-enabled/ibetpro
+
+    # Remove default site if it exists
+    sudo rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+
+    # Test and reload
+    sudo nginx -t && sudo systemctl reload nginx
+    ok "Nginx configured for ${DOMAIN} → :${PORT}"
 else
-    warn "No domain provided. Skip Nginx config. Usage: bash deploy/deploy.sh yourdomain.com"
+    warn "Nginx config template not found. Configure manually."
 fi
 
 # ---- 7. Start with PM2 ----
-log "Step 7: Starting application with PM2..."
+log "Step 7: Starting application with PM2 on port ${PORT}..."
 
 cd "${APP_DIR}"
 
@@ -185,30 +175,28 @@ ok "Application started with PM2"
 log "Step 8: Running health check..."
 
 sleep 5
-if curl -s -o /dev/null -w "%{http_code}" http://localhost:3000 | grep -q "200\|302"; then
+if curl -s -o /dev/null -w "%{http_code}" http://localhost:${PORT} | grep -q "200\|302"; then
     ok "Application is healthy!"
 else
     warn "Application may not be responding. Check: pm2 logs ibetpro"
 fi
 
 # ---- 9. Register Telegram webhook ----
-if [ -n "${DOMAIN}" ]; then
-    log "Step 9: Registering Telegram webhook..."
-    
-    echo ""
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo -e "${YELLOW}  TELEGRAM WEBHOOK SETUP${NC}"
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-    echo ""
-    echo "  To register the webhook, login as admin and call:"
-    echo ""
-    echo -e "  ${GREEN}curl -X POST https://${DOMAIN}/api/telegram/setup \\${NC}"
-    echo -e "  ${GREEN}    -H 'Content-Type: application/json' \\${NC}"
-    echo -e "  ${GREEN}    -H 'Cookie: next-auth.session-token=YOUR_SESSION_TOKEN' \\${NC}"
-    echo -e "  ${GREEN}    -d '{\"webhookUrl\": \"https://${DOMAIN}\"}'${NC}"
-    echo ""
-    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
-fi
+log "Step 9: Telegram webhook setup..."
+
+echo ""
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo -e "${YELLOW}  TELEGRAM WEBHOOK SETUP${NC}"
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+echo ""
+echo "  To register the webhook, login as admin and call:"
+echo ""
+echo -e "  ${GREEN}curl -X POST https://${DOMAIN}/api/telegram/setup \\${NC}"
+echo -e "  ${GREEN}    -H 'Content-Type: application/json' \\${NC}"
+echo -e "  ${GREEN}    -H 'Cookie: next-auth.session-token=YOUR_SESSION_TOKEN' \\${NC}"
+echo -e "  ${GREEN}    -d '{\"webhookUrl\": \"https://${DOMAIN}\"}'${NC}"
+echo ""
+echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 
 # ---- Summary ----
 echo ""
@@ -217,25 +205,16 @@ echo -e "${GREEN}  DEPLOYMENT COMPLETE!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 echo "  App directory: ${APP_DIR}"
+echo "  Port:          ${PORT}"
 echo "  Database:      MySQL (lightworld_ibetpro_db)"
 echo "  Logs:          ${LOG_DIR}/"
+echo "  URL:           https://${DOMAIN}"
 echo ""
-if [ -n "${DOMAIN}" ]; then
-    echo "  URL:           https://${DOMAIN}"
-    echo ""
-    echo "  Next steps:"
-    echo "    1. Set up SSL:  sudo certbot --nginx -d ${DOMAIN} -d www.${DOMAIN}"
-    echo "    2. Register Telegram webhook (see above)"
-    echo "    3. Connect Telegram: Settings → Connect Telegram"
-    echo "    4. Start the bot from the dashboard"
-else
-    echo "  URL:           http://YOUR_VPS_IP:3000"
-    echo ""
-    echo "  Next steps:"
-    echo "    1. Update .env with your domain and NEXTAUTH_SECRET"
-    echo "    2. Configure Nginx: bash deploy/deploy.sh yourdomain.com"
-    echo "    3. Set up SSL with certbot"
-fi
+echo "  Next steps:"
+echo "    1. Set up SSL:  sudo certbot --nginx -d ${DOMAIN}"
+echo "    2. Register Telegram webhook (see above)"
+echo "    3. Connect Telegram: Settings → Connect Telegram"
+echo "    4. Start the bot from the dashboard"
 echo ""
 echo "  Useful commands:"
 echo "    pm2 logs ibetpro          # View logs"

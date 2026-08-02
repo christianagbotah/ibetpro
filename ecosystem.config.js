@@ -1,5 +1,6 @@
 // ============================================================================
 // PM2 Ecosystem Config for iBetPro
+// VPS: ibetpro.lightworldtech.com
 // Usage: pm2 start ecosystem.config.js --env production
 // ============================================================================
 
@@ -8,16 +9,16 @@ module.exports = {
     {
       name: "ibetpro",
       script: "./.next/standalone/server.js",
-      cwd: "/home/ibetpro/app",
+      cwd: "/home/lightworld/webapps/ibetpro",
       env: {
         NODE_ENV: "production",
-        PORT: 3000,
+        PORT: 3007,
         HOSTNAME: "0.0.0.0",
       },
       // Production environment overrides
       env_production: {
         NODE_ENV: "production",
-        PORT: 3000,
+        PORT: 3007,
         HOSTNAME: "0.0.0.0",
       },
       // Process management
@@ -31,8 +32,8 @@ module.exports = {
       watch: false,               // Don't watch files in production
       // Logging
       log_date_format: "YYYY-MM-DD HH:mm:ss Z",
-      error_file: "/home/ibetpro/logs/error.log",
-      out_file: "/home/ibetpro/logs/out.log",
+      error_file: "/home/lightworld/webapps/ibetpro/logs/error.log",
+      out_file: "/home/lightworld/webapps/ibetpro/logs/out.log",
       merge_logs: true,
       // Graceful shutdown
       kill_timeout: 5000,

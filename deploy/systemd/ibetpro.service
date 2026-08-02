@@ -1,25 +1,25 @@
 [Unit]
 Description=iBetPro Next.js Application
-Documentation=https://yourdomain.com
+Documentation=https://ibetpro.lightworldtech.com
 After=network.target mysql.service
 
 [Service]
 Type=simple
-User=ibetpro
-Group=ibetpro
-WorkingDirectory=/home/ibetpro/app/.next/standalone
-EnvironmentFile=/home/ibetpro/app/.next/standalone/.env
-ExecStart=/usr/bin/node /home/ibetpro/app/.next/standalone/server.js
+User=lightworld
+Group=lightworld
+WorkingDirectory=/home/lightworld/webapps/ibetpro/.next/standalone
+EnvironmentFile=/home/lightworld/webapps/ibetpro/.next/standalone/.env
+ExecStart=/usr/bin/node /home/lightworld/webapps/ibetpro/.next/standalone/server.js
 Restart=on-failure
 RestartSec=10
-StandardOutput=append:/home/ibetpro/logs/out.log
-StandardError=append:/home/ibetpro/logs/error.log
+StandardOutput=append:/home/lightworld/webapps/ibetpro/logs/out.log
+StandardError=append:/home/lightworld/webapps/ibetpro/logs/error.log
 
 # Security hardening
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=read-only
-ReadWritePaths=/home/ibetpro/logs
+ReadWritePaths=/home/lightworld/webapps/ibetpro/logs
 PrivateTmp=true
 
 # Resource limits
