@@ -7,6 +7,8 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  // Ensure database driver packages are included in standalone build
+  serverExternalPackages: ["@prisma/adapter-mariadb", "mariadb"],
 };
 
 export default nextConfig;
