@@ -22,8 +22,8 @@ module.exports = {
         HOSTNAME: "0.0.0.0",
       },
       // Process management
-      instances: 2,               // 2 instances — MySQL supports concurrent connections
-      exec_mode: "cluster",       // Cluster mode for better performance & reliability
+      instances: 1,               // Single instance — avoids connection pool confusion with MySQL
+      exec_mode: "fork",          // Fork mode — simpler, one process, no cluster overhead
       max_memory_restart: "512M",  // Auto-restart if memory exceeds 512MB
       autorestart: true,           // Auto-restart on crash
       max_restarts: 10,           // Max restarts within min_uptime

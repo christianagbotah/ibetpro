@@ -6,14 +6,9 @@ const globalForPrisma = globalThis as unknown as {
 };
 
 function createPrismaClient() {
-  const adapter = new PrismaMariaDb({
-    url: process.env.DATABASE_URL,
-    pool: {
-      connectionLimit: 10,
-      connectTimeout: 30000,  // 30s to establish connection
-      idleTimeout: 60000,     // 60s before idle connections are closed
-    },
-  });
+  // PrismaMariaDb constructor accepts: mariadb.PoolConfig | string
+  // Passing the URL string directly — the mariadb driver parses it automatically
+  const adapter = new PrismaMariaDb(process.env.DATABASE_URL!);
   return new PrismaClient({ adapter });
 }
 
