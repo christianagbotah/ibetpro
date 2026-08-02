@@ -1,23 +1,14 @@
 #!/bin/bash
 # ============================================================================
-# iBetPro — VPS First-Time Setup (run as root on a Webuzo VPS)
-# 
-# This only needs to run ONCE on a fresh VPS. It installs:
-#   - Node.js 20
-#   - PM2 process manager
-#   - Nginx (if not already via Webuzo)
-#   - Certbot for SSL
-#   - Clones the repo and runs the first deployment
-#
-# Usage: sudo bash /home/lightworld/ibetpro-src/deploy/setup-vps.sh
+# iBetPro — VPS First-Time Setup (run as root ONCE)
+# Installs Node.js, PM2, Nginx, Certbot, clones the repo
+# Usage: sudo bash deploy/setup-vps.sh
 # ============================================================================
 
 set -euo pipefail
 
 APP_USER="lightworld"
-SRC_DIR="/home/lightworld/ibetpro-src"
 APP_DIR="/home/lightworld/webapps/ibetpro"
-LOG_DIR="/home/lightworld/webapps/ibetpro/logs"
 REPO_URL="https://github.com/christianagbotah/ibetpro.git"
 NODE_MAJOR=20
 PORT=3007
@@ -34,104 +25,85 @@ ok()   { echo -e "${GREEN}[OK]${NC} $1"; }
 warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 err()  { echo -e "${RED}[ERROR]${NC} $1"; exit 1; }
 
-# ---- Check root ----
-if [ "$(id -u)" -ne 0 ]; then
-    err "This script must be run as root. Use: sudo bash deploy/setup-vps.sh"
-fi
+[ "$(id -u)" -ne 0 ] && err "Run as root: sudo bash deploy/setup-vps.sh"
 
 echo ""
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo -e "${BLUE}  iBetPro — VPS First-Time Setup${NC}"
-echo -e "${BLUE}  Domain: ${DOMAIN}  Port: ${PORT}${NC}"
 echo -e "${BLUE}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
 
-log "Starting VPS setup for iBetPro..."
-
-# ---- 1. Update system ----
-log "Step 1: Updating system packages..."
-apt-get update -y
-apt-get upgrade -y
+# ---- 1. System ----
+log "Step 1: Updating system..."
+apt-get update -y && apt-get upgrade -y
 ok "System updated"
 
-# ---- 2. Install Node.js ----
+# ---- 2. Node.js ----
 if ! command -v node &> /dev/null; then
     log "Step 2: Installing Node.js ${NODE_MAJOR}..."
     apt-get install -y ca-certificates curl gnupg
     mkdir -p /etc/apt/keyrings
     curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg
     echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" | tee /etc/apt/sources.list.d/nodesource.list
-    apt-get update -y
-    apt-get install -y nodejs
+    apt-get update -y && apt-get install -y nodejs
 fi
-ok "Node.js $(node -v) installed"
+ok "Node.js $(node -v)"
 
-# ---- 3. Install PM2 ----
+# ---- 3. PM2 ----
 if ! command -v pm2 &> /dev/null; then
     log "Step 3: Installing PM2..."
     npm install -g pm2
 fi
-ok "PM2 $(pm2 -v) installed"
+ok "PM2 $(pm2 -v)"
 
-# ---- 4. Install Nginx (Webuzo may already have it) ----
+# ---- 4. Nginx ----
 if ! command -v nginx &> /dev/null; then
     log "Step 4: Installing Nginx..."
-    apt-get install -y nginx
-    systemctl enable nginx
-    systemctl start nginx
+    apt-get install -y nginx && systemctl enable nginx && systemctl start nginx
 else
-    log "Step 4: Nginx already installed (Webuzo managed)"
+    log "Step 4: Nginx already installed"
 fi
 ok "Nginx ready"
 
-# ---- 5. Install Certbot (Let's Encrypt) ----
+# ---- 5. Certbot ----
 if ! command -v certbot &> /dev/null; then
     log "Step 5: Installing Certbot..."
     apt-get install -y certbot python3-certbot-nginx
 fi
-ok "Certbot installed"
+ok "Certbot ready"
 
-# ---- 6. Create directories ----
-log "Step 6: Creating application directories..."
-mkdir -p "${APP_DIR}"
-mkdir -p "${LOG_DIR}"
-mkdir -p "${APP_DIR}/prisma/migrations"
-chown -R "${APP_USER}:${APP_USER}" "${APP_DIR}" 2>/dev/null || true
-ok "Directories created"
-
-# ---- 7. Clone the repo ----
-log "Step 7: Cloning repository..."
-if [ -d "${SRC_DIR}/.git" ]; then
-    warn "Source directory already exists at ${SRC_DIR}"
-    cd "${SRC_DIR}" && git pull origin main
+# ---- 6. Clone repo ----
+log "Step 6: Cloning repository to ${APP_DIR}..."
+if [ -d "${APP_DIR}/.git" ]; then
+    warn "Directory already exists. Pulling latest..."
+    cd "${APP_DIR}" && git pull origin main
 else
-    su - "${APP_USER}" -c "git clone ${REPO_URL} ${SRC_DIR}"
+    mkdir -p "$(dirname "${APP_DIR}")"
+    git clone "${REPO_URL}" "${APP_DIR}"
 fi
-ok "Source code ready at ${SRC_DIR}"
+chown -R "${APP_USER}:${APP_USER}" "${APP_DIR}" 2>/dev/null || true
+ok "Source code ready at ${APP_DIR}"
 
-# ---- 8. Configure PM2 startup ----
-log "Step 8: Configuring PM2 startup..."
+# ---- 7. PM2 startup ----
+log "Step 7: Configuring PM2 startup..."
 su - "${APP_USER}" -c "pm2 startup systemd -u ${APP_USER} --hp /home/${APP_USER}" 2>/dev/null || true
 ok "PM2 startup configured"
 
-# ---- 9. Optimize system for Node.js ----
-log "Step 9: Optimizing system for Node.js..."
-
+# ---- 8. System tuning ----
+log "Step 8: Optimizing system..."
 if ! grep -q "fs.inotify" /etc/sysctl.conf; then
     echo "fs.inotify.max_user_watches=524288" >> /etc/sysctl.conf
     sysctl -p
 fi
 ok "System optimized"
 
-# ---- 10. Open port in firewall ----
-log "Step 10: Configuring firewall..."
+# ---- 9. Firewall ----
+log "Step 9: Firewall..."
 if command -v ufw &> /dev/null; then
-    ufw allow OpenSSH
-    ufw allow 'Nginx Full'
-    ufw --force enable
-    ok "Firewall configured (SSH + HTTP/HTTPS)"
+    ufw allow OpenSSH && ufw allow 'Nginx Full' && ufw --force enable
+    ok "Firewall configured"
 else
-    warn "UFW not available. If using Webuzo firewall, ensure ports 80/443 are open."
+    warn "UFW not available. Ensure ports 80/443 are open in Webuzo firewall."
 fi
 
 # ---- Summary ----
@@ -140,26 +112,17 @@ echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━
 echo -e "${GREEN}  VPS SETUP COMPLETE!${NC}"
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
 echo ""
-echo "  Source code:   ${SRC_DIR}"
-echo "  App runtime:   ${APP_DIR}"
-echo "  Port:          ${PORT}"
-echo "  Logs:          ${LOG_DIR}"
-echo ""
-echo "  Node.js:  $(node -v)"
+echo "  Repo:     ${APP_DIR}"
+echo "  Node:     $(node -v)"
 echo "  PM2:      $(pm2 -v)"
-echo "  Nginx:    $(nginx -v 2>&1)"
 echo ""
-echo -e "${YELLOW}  ━━━ NEXT STEPS ━━━${NC}"
+echo "  Now run the deployment (as lightworld user):"
+echo "    su - lightworld"
+echo "    cd ${APP_DIR}"
+echo "    bash deploy/deploy.sh"
 echo ""
-echo "  1. Run the full deployment (as lightworld user):"
-echo "     su - lightworld"
-echo "     bash ${SRC_DIR}/deploy/deploy.sh"
-echo ""
-echo "  2. Set up SSL (first time only):"
-echo "     sudo certbot --nginx -d ${DOMAIN}"
-echo "     Then re-run: bash ${SRC_DIR}/deploy/deploy.sh --ssl"
-echo ""
-echo "  3. For future updates, just run:"
-echo "     bash ${SRC_DIR}/deploy/update.sh"
+echo "  Then set up SSL:"
+echo "    sudo certbot --nginx -d ${DOMAIN}"
+echo "    bash deploy/deploy.sh --ssl"
 echo ""
 echo -e "${GREEN}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
