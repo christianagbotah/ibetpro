@@ -58,91 +58,118 @@ npm install --production=false 2>&1 | tail -5
 ok "Dependencies installed"
 
 # ============================================================================
-# STEP 3: Generate Prisma client
+# STEP 3: Create .env.production if missing
 # ============================================================================
-log "Step 3: Generating Prisma client..."
-if [ -f ".env.production" ]; then
-    export $(grep -v '^#' ".env.production" | grep DATABASE_URL | xargs)
+log "Step 3: Checking environment..."
+
+if [ ! -f ".env.production" ]; then
+    log "Creating .env.production with default values..."
+    cat > .env.production << 'ENVEOF'
+DATABASE_URL=mysql://lightworld_db_user:myjesus4mE2018@localhost:3306/lightworld_ibetpro_db
+NEXTAUTH_URL=https://ibetpro.lightworldtech.com
+NEXTAUTH_SECRET=CHANGE_ME_TO_A_RANDOM_64_CHAR_STRING
+TELEGRAM_BOT_TOKEN=8667289261:AAFry07KkbkHEvIgVOP5D2OXgQ0zxdm3i8c
+NODE_ENV=production
+PORT=3007
+HOSTNAME=0.0.0.0
+ENVEOF
+    warn "Created .env.production — UPDATE NEXTAUTH_SECRET with: openssl rand -base64 48"
 fi
+
+ok "Environment file ready"
+
+# ============================================================================
+# STEP 4: Generate Prisma client
+# ============================================================================
+log "Step 4: Generating Prisma client..."
+export $(grep -v '^#' ".env.production" | grep DATABASE_URL | xargs)
 npx prisma generate 2>&1
 ok "Prisma client generated"
 
 # ============================================================================
-# STEP 4: Build production bundle
+# STEP 5: Build production bundle
 # ============================================================================
-log "Step 4: Building production bundle..."
+log "Step 5: Building production bundle..."
 npm run build 2>&1 | tail -10
 ok "Build complete"
 
 # ============================================================================
-# STEP 5: Copy .env.production → standalone .env
+# STEP 6: Copy .env.production → standalone .env
 # ============================================================================
-log "Step 5: Setting up environment..."
+log "Step 6: Setting up environment..."
 
 mkdir -p logs
 
-if [ -f ".env.production" ]; then
-    cp .env.production .next/standalone/.env
-    # Ensure correct domain and port
-    sed -i "s|NEXTAUTH_URL=.*|NEXTAUTH_URL=https://${DOMAIN}|g" .next/standalone/.env
-    sed -i "s|PORT=.*|PORT=${PORT}|g" .next/standalone/.env
-    ok "Environment configured for ${DOMAIN}:${PORT}"
-else
-    warn "No .env.production found! Create it manually."
-fi
+cp .env.production .next/standalone/.env
+# Ensure correct domain and port
+sed -i "s|NEXTAUTH_URL=.*|NEXTAUTH_URL=https://${DOMAIN}|g" .next/standalone/.env
+sed -i "s|PORT=.*|PORT=${PORT}|g" .next/standalone/.env
+ok "Environment configured for ${DOMAIN}:${PORT}"
 
 # ============================================================================
-# STEP 6: Run database migration
+# STEP 7: Run database migration
 # ============================================================================
-log "Step 6: Running database migration..."
-if [ -f ".next/standalone/.env" ]; then
-    export $(grep -v '^#' ".next/standalone/.env" | grep DATABASE_URL | xargs)
-fi
+log "Step 7: Running database migration..."
+export $(grep -v '^#' ".next/standalone/.env" | grep DATABASE_URL | xargs)
 npx prisma db push --accept-data-loss 2>&1 && ok "Database schema synced" || warn "DB migration failed — check MySQL connection"
 
 # ============================================================================
-# STEP 7: Configure Nginx
+# STEP 8: Configure Nginx (Webuzo-compatible)
 # ============================================================================
-log "Step 7: Configuring Nginx..."
+log "Step 8: Configuring Nginx..."
 
-NGINX_CONF="deploy/nginx/ibetpro-http.conf"
+NGINX_TEMPLATE="deploy/nginx/ibetpro-http.conf"
 if [ "${SETUP_SSL}" = "--ssl" ] && [ -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]; then
-    NGINX_CONF="deploy/nginx/ibetpro-ssl.conf"
+    NGINX_TEMPLATE="deploy/nginx/ibetpro-ssl.conf"
     log "Using SSL config"
 fi
 
-if [ -f "${NGINX_CONF}" ]; then
-    sed -e "s/yourdomain.com/${DOMAIN}/g" \
-        -e "s/www\.yourdomain\.com/www.${DOMAIN}/g" \
-        -e "s/127\.0\.0\.1:3000/127.0.0.1:${PORT}/g" \
-        "${NGINX_CONF}" | sudo tee /etc/nginx/sites-available/ibetpro > /dev/null
+# Generate the config content with domain and port replaced
+NGINX_CONTENT=$(sed -e "s/yourdomain.com/${DOMAIN}/g" \
+    -e "s/www\.yourdomain\.com/www.${DOMAIN}/g" \
+    -e "s/127\.0\.0\.1:3000/127.0.0.1:${PORT}/g" \
+    "${NGINX_TEMPLATE}" 2>/dev/null || echo "")
 
-    sudo ln -sf /etc/nginx/sites-available/ibetpro /etc/nginx/sites-enabled/ibetpro
-    sudo rm -f /etc/nginx/sites-enabled/default 2>/dev/null || true
+if [ -n "${NGINX_CONTENT}" ]; then
+    # Try standard Debian/Ubuntu paths first
+    if [ -d "/etc/nginx/sites-available" ]; then
+        echo "${NGINX_CONTENT}" | sudo tee /etc/nginx/sites-available/ibetpro > /dev/null
+        sudo ln -sf /etc/nginx/sites-available/ibetpro /etc/nginx/sites-enabled/ibetpro 2>/dev/null || true
+    # Webuzo uses conf.d
+    elif [ -d "/etc/nginx/conf.d" ]; then
+        echo "${NGINX_CONTENT}" | sudo tee /etc/nginx/conf.d/ibetpro.conf > /dev/null
+    # Fallback: try vhosts
+    elif [ -d "/etc/nginx/vhosts" ]; then
+        echo "${NGINX_CONTENT}" | sudo tee /etc/nginx/vhosts/ibetpro.conf > /dev/null
+    else
+        warn "Can't find Nginx config directory. Config saved to: ${APP_DIR}/nginx-ibetpro.conf"
+        echo "${NGINX_CONTENT}" > "${APP_DIR}/nginx-ibetpro.conf"
+        echo "  Install it manually to your Nginx config."
+    fi
 
     if sudo nginx -t 2>&1; then
-        sudo systemctl reload nginx
+        sudo systemctl reload nginx 2>/dev/null || sudo nginx -s reload 2>/dev/null || true
         ok "Nginx configured for ${DOMAIN} → :${PORT}"
     else
         warn "Nginx config test failed. Check: sudo nginx -t"
     fi
 else
-    warn "Nginx config not found at ${NGINX_CONF}"
+    warn "Nginx template not found. Configure manually."
 fi
 
 # ============================================================================
-# STEP 8: Start with PM2
+# STEP 9: Start with PM2
 # ============================================================================
-log "Step 8: Starting application with PM2..."
+log "Step 9: Starting application with PM2..."
 pm2 delete ibetpro 2>/dev/null || true
 pm2 start ecosystem.config.js --env production
 pm2 save 2>/dev/null || true
 ok "Application started"
 
 # ============================================================================
-# STEP 9: Health check
+# STEP 10: Health check
 # ============================================================================
-log "Step 9: Running health check..."
+log "Step 10: Running health check..."
 sleep 5
 if curl -s -o /dev/null -w "%{http_code}" http://localhost:${PORT} | grep -q "200\|302"; then
     ok "Application is healthy!"
@@ -164,10 +191,19 @@ echo "  URL:        https://${DOMAIN}"
 echo "  Commit:     ${CURRENT_COMMIT}"
 echo ""
 echo "  Next steps:"
-echo "    1. SSL (first time): sudo certbot --nginx -d ${DOMAIN}"
+echo "    1. Generate NEXTAUTH_SECRET:"
+echo "       openssl rand -base64 48"
+echo "       Then update .env.production and re-run: bash deploy/deploy.sh"
+echo ""
+echo "    2. SSL (first time):"
+echo "       sudo certbot --nginx -d ${DOMAIN}"
 echo "       Then re-run: bash deploy/deploy.sh --ssl"
-echo "    2. Telegram webhook: curl -X POST https://${DOMAIN}/api/telegram/setup"
-echo "    3. Future updates:   bash deploy/deploy.sh"
+echo ""
+echo "    3. Telegram webhook:"
+echo "       curl -X POST https://${DOMAIN}/api/telegram/setup"
+echo ""
+echo "    4. Future updates:"
+echo "       bash deploy/deploy.sh"
 echo ""
 echo "  Commands:"
 echo "    pm2 logs ibetpro     pm2 restart ibetpro     pm2 status"
