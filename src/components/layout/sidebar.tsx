@@ -19,11 +19,13 @@ import {
   LogIn,
   Link2,
   DollarSign,
+  Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/components/auth/auth-provider";
+import { usePWAInstall } from "@/hooks/use-pwa-install";
 import { useState } from "react";
 
 const navItems = [
@@ -46,6 +48,7 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const { user, isAuthenticated, isAdmin: isAdminUser } = useAuth();
+  const { canInstall, install, isInstalled } = usePWAInstall();
 
   return (
     <aside
@@ -113,6 +116,22 @@ export function Sidebar({ onNavigate }: { onNavigate?: () => void } = {}) {
           </>
         )}
       </nav>
+
+      {/* Install App button — shown when not installed and can install */}
+      {canInstall && !isInstalled && (
+        <div className={cn("px-2 py-2", !collapsed && "px-3")}>
+          <Button
+            onClick={install}
+            className={cn(
+              "w-full bg-primary hover:bg-primary/90 text-primary-foreground gap-2",
+              collapsed ? "px-0 justify-center" : ""
+            )}
+          >
+            <Download className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>Install App</span>}
+          </Button>
+        </div>
+      )}
 
       {/* Collapse toggle */}
       <div className="border-t border-border p-2">

@@ -29,8 +29,13 @@ export const metadata: Metadata = {
     title: "iBetPro",
   },
   icons: {
-    icon: "/favicon.svg",
-    apple: "/icons/icon-192x192.svg",
+    icon: [
+      { url: "/favicon.svg", type: "image/svg+xml" },
+      { url: "/favicon-32x32.png", sizes: "32x32", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icons/apple-touch-icon-180x180.png", sizes: "180x180", type: "image/png" },
+    ],
   },
   openGraph: {
     title: "iBetPro - AI Betting Platform",
@@ -59,6 +64,22 @@ export default function RootLayout({
             <AppShell>{children}</AppShell>
           </ToastProvider>
         </AuthProvider>
+        {/* Service Worker Registration */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              if ('serviceWorker' in navigator) {
+                window.addEventListener('load', function() {
+                  navigator.serviceWorker.register('/sw.js').then(function(registration) {
+                    console.log('SW registered:', registration.scope);
+                  }).catch(function(error) {
+                    console.log('SW registration failed:', error);
+                  });
+                });
+              }
+            `,
+          }}
+        />
       </body>
     </html>
   );

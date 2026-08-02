@@ -15,6 +15,7 @@ import {
   MoreHorizontal,
   Shield,
   TrendingUp,
+  Download,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -27,6 +28,7 @@ import {
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/auth-provider";
+import { usePWAInstall } from "@/hooks/use-pwa-install";
 
 const primaryNavItems = [
   { href: "/", label: "Home", icon: Home },
@@ -47,6 +49,7 @@ export function MobileNav() {
   const pathname = usePathname();
   const { user } = useAuth();
   const [moreOpen, setMoreOpen] = useState(false);
+  const { canInstall, install, isInstalled } = usePWAInstall();
 
   // Don't show on login page
   if (pathname === "/login") return null;
@@ -138,6 +141,53 @@ export function MobileNav() {
               </SheetHeader>
 
               <div className="px-6 pb-8">
+                {/* Install App Card — prominent, shown when not installed */}
+                {!isInstalled && (
+                  <button
+                    onClick={() => {
+                      if (canInstall) {
+                        install();
+                      }
+                      // On iOS/manual, the banner already shows instructions
+                      handleMoreNavigate();
+                    }}
+                    className={cn(
+                      "w-full mt-3 rounded-xl p-4 flex items-center gap-3 transition-all active:scale-[0.98]",
+                      canInstall
+                        ? "bg-primary/15 border border-primary/30 hover:bg-primary/20"
+                        : "bg-secondary/50 border border-border hover:bg-secondary"
+                    )}
+                  >
+                    <div className={cn(
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl",
+                      canInstall ? "bg-primary/20" : "bg-secondary"
+                    )}>
+                      <Download className={cn(
+                        "h-5 w-5",
+                        canInstall ? "text-primary" : "text-muted-foreground"
+                      )} />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <p className={cn(
+                        "text-sm font-semibold",
+                        canInstall ? "text-primary" : "text-foreground"
+                      )}>
+                        Install iBetPro App
+                      </p>
+                      <p className="text-[10px] text-muted-foreground mt-0.5">
+                        {canInstall
+                          ? "Tap to install instantly — no app store needed!"
+                          : "Add to home screen for the best experience"}
+                      </p>
+                    </div>
+                    {canInstall && (
+                      <span className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-primary-foreground">
+                        Install
+                      </span>
+                    )}
+                  </button>
+                )}
+
                 <div className="grid grid-cols-3 gap-3 mt-4">
                   {moreNavItems.map((item) => {
                     const active = isActive(item.href);
