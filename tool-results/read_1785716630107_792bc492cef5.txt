@@ -1,0 +1,764 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useState, useCallback, useMemo } from "react";
+     4→     4→import { useFetch } from "@/lib/hooks";
+     5→     5→import { useToast } from "@/components/ui/toast";
+     6→     6→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+     7→     7→import { Button } from "@/components/ui/button";
+     8→     8→import { Badge } from "@/components/ui/badge";
+     9→     9→import { Input } from "@/components/ui/input";
+    10→    10→import { Label } from "@/components/ui/label";
+    11→    11→import { Separator } from "@/components/ui/separator";
+    12→    12→import {
+    13→    13→  Dialog,
+    14→    14→  DialogContent,
+    15→    15→  DialogHeader,
+    16→    16→  DialogTitle,
+    17→    17→} from "@/components/ui/dialog";
+    18→    18→import {
+    19→    19→  Link2, RefreshCw, Wallet, Shield, CheckCircle2,
+    20→    20→  AlertCircle, Key, User, Lock, ChevronRight,
+    21→    21→  Search, MapPin, Smartphone, Star, ArrowLeft,
+    22→    22→  FlaskConical, Globe, Loader2,
+    23→    23→} from "lucide-react";
+    24→    24→import { BrokerLogo } from "@/components/broker/broker-logo";
+    25→    25→import {
+    26→    26→  REGIONS,
+    27→    27→  getPlatformsForRegion,
+    28→    28→  getCurrencyForRegion,
+    29→    29→  getContinents,
+    30→    30→  searchRegions,
+    31→    31→  type RegionInfo,
+    32→    32→  type BrokerPlatformInfo,
+    33→    33→} from "@/lib/regions";
+    34→    34→
+    35→    35→interface ConnectedAccount {
+    36→    36→  id: string;
+    37→    37→  platform: string;
+    38→    38→  platformName: string;
+    39→    39→  accountName: string;
+    40→    40→  isConnected: boolean;
+    41→    41→  sessionValid: boolean;
+    42→    42→  needsRefresh: boolean;
+    43→    43→  sessionExpiry: string | null;
+    44→    44→  brokerType: string;
+    45→    45→  brokerRegion: string | null;
+    46→    46→  balance: number;
+    47→    47→  currency: string;
+    48→    48→  allocatedAmount: number;
+    49→    49→  allocationLock: boolean;
+    50→    50→  totalBrokerBets: number;
+    51→    51→  totalBrokerProfit: number;
+    52→    52→  lastBetPlacedAt: string | null;
+    53→    53→  features: {
+    54→    54→    liveBetting: boolean;
+    55→    55→    cashout: boolean;
+    56→    56→    partialCashout: boolean;
+    57→    57→    accumulators: boolean;
+    58→    58→    maxAccumulatorLegs: number;
+    59→    59→    minStake: number;
+    60→    60→    maxStake: number;
+    61→    61→  } | null;
+    62→    62→}
+    63→    63→
+    64→    64→type ConnectStep = "region" | "platform" | "credentials";
+    65→    65→
+    66→    66→export function BrokerConnect() {
+    67→    67→  const { addToast } = useToast();
+    68→    68→  const [connectDialogOpen, setConnectDialogOpen] = useState(false);
+    69→    69→  const [step, setStep] = useState<ConnectStep>("region");
+    70→    70→  const [selectedRegion, setSelectedRegion] = useState<string>("");
+    71→    71→  const [selectedPlatform, setSelectedPlatform] = useState<string | null>(null);
+    72→    72→  const [connecting, setConnecting] = useState(false);
+    73→    73→  const [credentials, setCredentials] = useState({
+    74→    74→    username: "",
+    75→    75→    password: "",
+    76→    76→    apiKey: "",
+    77→    77→    token: "",
+    78→    78→  });
+    79→    79→  const [accountName, setAccountName] = useState("");
+    80→    80→  const [regionSearch, setRegionSearch] = useState("");
+    81→    81→  const [brokerSearch, setBrokerSearch] = useState("");
+    82→    82→  const [selectedContinent, setSelectedContinent] = useState<string>("all");
+    83→    83→
+    84→    84→  const { data, loading, refetch } = useFetch<{
+    85→    85→    accounts: ConnectedAccount[];
+    86→    86→    availablePlatforms: BrokerPlatformInfo[];
+    87→    87→    brokerMode: "demo" | "real";
+    88→    88→  }>("/api/broker/connect", { accounts: [], availablePlatforms: [], brokerMode: "demo" });
+    89→    89→
+    90→    90→  const accounts = data?.accounts || [];
+    91→    91→  const brokerMode = data?.brokerMode || "demo";
+    92→    92→
+    93→    93→  // Get filtered regions based on search and continent
+    94→    94→  const filteredRegions = useMemo(() => {
+    95→    95→    let regions = regionSearch ? searchRegions(regionSearch) : REGIONS;
+    96→    96→    if (selectedContinent !== "all") {
+    97→    97→      regions = regions.filter((r) => r.continent === selectedContinent);
+    98→    98→    }
+    99→    99→    // Deduplicate by region code to prevent React key warnings
+   100→   100→    const seen = new Set<string>();
+   101→   101→    return regions.filter((r) => {
+   102→   102→      if (seen.has(r.code)) return false;
+   103→   103→      seen.add(r.code);
+   104→   104→      return true;
+   105→   105→    });
+   106→   106→  }, [regionSearch, selectedContinent]);
+   107→   107→
+   108→   108→  // Get platforms for selected region
+   109→   109→  const platformsForRegion = useMemo(() => {
+   110→   110→    if (!selectedRegion) return [];
+   111→   111→    return getPlatformsForRegion(selectedRegion);
+   112→   112→  }, [selectedRegion]);
+   113→   113→
+   114→   114→  // Filter platforms by search query
+   115→   115→  const filteredPlatforms = useMemo(() => {
+   116→   116→    if (!brokerSearch.trim()) return platformsForRegion;
+   117→   117→    const q = brokerSearch.toLowerCase().trim();
+   118→   118→    return platformsForRegion.filter(
+   119→   119→      (p) =>
+   120→   120→        p.name.toLowerCase().includes(q) ||
+   121→   121→        p.id.toLowerCase().includes(q) ||
+   122→   122→        p.authType.toLowerCase().includes(q)
+   123→   123→    );
+   124→   124→  }, [platformsForRegion, brokerSearch]);
+   125→   125→
+   126→   126→  const selectedRegionInfo = useMemo(() => {
+   127→   127→    return REGIONS.find((r) => r.code === selectedRegion);
+   128→   128→  }, [selectedRegion]);
+   129→   129→
+   130→   130→  const selectedPlatformData = platformsForRegion.find((p) => p.id === selectedPlatform);
+   131→   131→
+   132→   132→  const handleConnect = useCallback(async () => {
+   133→   133→    if (!selectedPlatform) return;
+   134→   134→    setConnecting(true);
+   135→   135→
+   136→   136→    try {
+   137→   137→      const res = await fetch("/api/broker/connect", {
+   138→   138→        method: "POST",
+   139→   139→        headers: { "Content-Type": "application/json" },
+   140→   140→        body: JSON.stringify({
+   141→   141→          platformId: selectedPlatform,
+   142→   142→          credentials,
+   143→   143→          region: selectedRegion,
+   144→   144→          accountName: accountName || undefined,
+   145→   145→        }),
+   146→   146→      });
+   147→   147→
+   148→   148→      const result = await res.json();
+   149→   149→
+   150→   150→      if (result.success) {
+   151→   151→        addToast("success", `${result.account.accountName} connected successfully!`);
+   152→   152→        setConnectDialogOpen(false);
+   153→   153→        resetForm();
+   154→   154→        refetch();
+   155→   155→      } else {
+   156→   156→        addToast("error", result.error || "Failed to connect broker");
+   157→   157→      }
+   158→   158→    } catch {
+   159→   159→      addToast("error", "Failed to connect broker");
+   160→   160→    } finally {
+   161→   161→      setConnecting(false);
+   162→   162→    }
+   163→   163→  }, [selectedPlatform, credentials, accountName, selectedRegion, addToast, refetch]);
+   164→   164→
+   165→   165→  const handleSync = useCallback(async (accountId: string) => {
+   166→   166→    try {
+   167→   167→      const res = await fetch("/api/broker/sync", {
+   168→   168→        method: "POST",
+   169→   169→        headers: { "Content-Type": "application/json" },
+   170→   170→        body: JSON.stringify({ bettingAccountId: accountId }),
+   171→   171→      });
+   172→   172→
+   173→   173→      const result = await res.json();
+   174→   174→
+   175→   175→      if (result.success) {
+   176→   176→        const currency = result.balance?.currency || "USD";
+   177→   177→        addToast("success", `Account synced! Balance: ${currency} ${result.balance.total.toFixed(2)}`);
+   178→   178→        refetch();
+   179→   179→      } else {
+   180→   180→        addToast("error", result.error || "Sync failed");
+   181→   181→      }
+   182→   182→    } catch {
+   183→   183→      addToast("error", "Sync error occurred");
+   184→   184→    }
+   185→   185→  }, [addToast, refetch]);
+   186→   186→
+   187→   187→  const resetForm = () => {
+   188→   188→    setCredentials({ username: "", password: "", apiKey: "", token: "" });
+   189→   189→    setAccountName("");
+   190→   190→    setSelectedPlatform(null);
+   191→   191→    setStep("region");
+   192→   192→    setRegionSearch("");
+   193→   193→    setBrokerSearch("");
+   194→   194→    setSelectedContinent("all");
+   195→   195→  };
+   196→   196→
+   197→   197→  const handleDialogClose = (open: boolean) => {
+   198→   198→    setConnectDialogOpen(open);
+   199→   199→    if (!open) resetForm();
+   200→   200→  };
+   201→   201→
+   202→   202→  const [switchingMode, setSwitchingMode] = useState(false);
+   203→   203→
+   204→   204→  // Switch broker mode
+   205→   205→  const handleBrokerModeSwitch = useCallback(async (mode: "demo" | "real") => {
+   206→   206→    setSwitchingMode(true);
+   207→   207→    try {
+   208→   208→      const res = await fetch("/api/user/broker-mode", {
+   209→   209→        method: "PATCH",
+   210→   210→        headers: { "Content-Type": "application/json" },
+   211→   211→        body: JSON.stringify({ brokerMode: mode }),
+   212→   212→      });
+   213→   213→      if (res.ok) {
+   214→   214→        addToast("success", `Switched to ${mode === "demo" ? "Demo (Sandbox)" : "Live (Real)"} mode`);
+   215→   215→        refetch();
+   216→   216→      } else {
+   217→   217→        addToast("error", "Failed to switch broker mode");
+   218→   218→      }
+   219→   219→    } catch {
+   220→   220→      addToast("error", "Failed to switch broker mode");
+   221→   221→    } finally {
+   222→   222→      setSwitchingMode(false);
+   223→   223→    }
+   224→   224→  }, [addToast, refetch]);
+   225→   225→
+   226→   226→  const formatBalance = (amount: number, currency: string) => {
+   227→   227→    const region = REGIONS.find((r) => r.currencyCode === currency);
+   228→   228→    const symbol = region?.currencySymbol || "$";
+   229→   229→    return `${symbol}${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+   230→   230→  };
+   231→   231→
+   232→   232→  const continents = getContinents();
+   233→   233→
+   234→   234→  return (
+   235→   235→    <div className="space-y-6">
+   236→   236→      <Card className="bg-card border-border">
+   237→   237→        <CardHeader className="pb-3">
+   238→   238→          <div className="flex items-center justify-between">
+   239→   239→            <CardTitle className="flex items-center gap-2 text-base">
+   240→   240→              <Link2 className="h-4 w-4 text-primary" />
+   241→   241→              Connected Brokers
+   242→   242→              <button
+   243→   243→                onClick={() => handleBrokerModeSwitch(brokerMode === "demo" ? "real" : "demo")}
+   244→   244→                disabled={switchingMode}
+   245→   245→                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium border transition-all cursor-pointer ${
+   246→   246→                  brokerMode === "demo"
+   247→   247→                    ? "bg-blue-400/10 text-blue-400 border-blue-400/30 hover:bg-blue-400/20"
+   248→   248→                    : "bg-emerald-400/10 text-emerald-400 border-emerald-400/30 hover:bg-emerald-400/20"
+   249→   249→                } ${switchingMode ? "opacity-50" : ""}`}
+   250→   250→                title={`Click to switch to ${brokerMode === "demo" ? "Live" : "Demo"} mode`}
+   251→   251→              >
+   252→   252→                {switchingMode ? (
+   253→   253→                  <Loader2 className="h-3 w-3 animate-spin" />
+   254→   254→                ) : brokerMode === "demo" ? (
+   255→   255→                  <FlaskConical className="h-3 w-3" />
+   256→   256→                ) : (
+   257→   257→                  <Globe className="h-3 w-3" />
+   258→   258→                )}
+   259→   259→                {brokerMode === "demo" ? "Sandbox" : "Live"}
+   260→   260→              </button>
+   261→   261→            </CardTitle>
+   262→   262→            <Dialog open={connectDialogOpen} onOpenChange={handleDialogClose}>
+   263→   263→              <Button
+   264→   264→                size="sm"
+   265→   265→                className="bg-primary text-primary-foreground"
+   266→   266→                onClick={() => setConnectDialogOpen(true)}
+   267→   267→              >
+   268→   268→                <Link2 className="h-3.5 w-3.5 mr-1.5" />
+   269→   269→                Connect Broker
+   270→   270→              </Button>
+   271→   271→
+   272→   272→              <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto sm:max-h-[90vh] max-[640px]:h-screen max-[640px]:max-h-screen max-[640px]:w-screen max-[640px]:max-w-screen max-[640px]:rounded-none max-[640px]:p-4">
+   273→   273→                <DialogHeader>
+   274→   274→                  <DialogTitle>Connect Your Broker Account</DialogTitle>
+   275→   275→                </DialogHeader>
+   276→   276→
+   277→   277→                {/* Step indicator */}
+   278→   278→                <div className="flex items-center gap-2 mb-2">
+   279→   279→                  <div className={`flex items-center gap-1.5 text-xs ${step === "region" ? "text-primary font-medium" : "text-muted-foreground"}`}>
+   280→   280→                    <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step === "region" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
+   281→   281→                      {step !== "region" ? "✓" : "1"}
+   282→   282→                    </div>
+   283→   283→                    Region
+   284→   284→                  </div>
+   285→   285→                  <div className="h-px flex-1 bg-border" />
+   286→   286→                  <div className={`flex items-center gap-1.5 text-xs ${step === "platform" ? "text-primary font-medium" : "text-muted-foreground"}`}>
+   287→   287→                    <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step === "platform" ? "bg-primary text-primary-foreground" : step === "credentials" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
+   288→   288→                      {step === "credentials" ? "✓" : "2"}
+   289→   289→                    </div>
+   290→   290→                    Platform
+   291→   291→                  </div>
+   292→   292→                  <div className="h-px flex-1 bg-border" />
+   293→   293→                  <div className={`flex items-center gap-1.5 text-xs ${step === "credentials" ? "text-primary font-medium" : "text-muted-foreground"}`}>
+   294→   294→                    <div className={`h-5 w-5 rounded-full flex items-center justify-center text-[10px] font-bold ${step === "credentials" ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"}`}>
+   295→   295→                      3
+   296→   296→                    </div>
+   297→   297→                    Connect
+   298→   298→                  </div>
+   299→   299→                </div>
+   300→   300→
+   301→   301→                {/* ====== STEP 1: REGION SELECTION ====== */}
+   302→   302→                {step === "region" && (
+   303→   303→                  <div className="space-y-3">
+   304→   304→                    <p className="text-sm text-muted-foreground">
+   305→   305→                      Select your country or region. This helps us show betting platforms available in your area and set the right currency.
+   306→   306→                    </p>
+   307→   307→
+   308→   308→                    <div className="relative">
+   309→   309→                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   310→   310→                      <Input
+   311→   311→                        value={regionSearch}
+   312→   312→                        onChange={(e) => setRegionSearch(e.target.value)}
+   313→   313→                        placeholder="Search country or currency..."
+   314→   314→                        className="bg-secondary border-border pl-9"
+   315→   315→                      />
+   316→   316→                    </div>
+   317→   317→
+   318→   318→                    <div className="flex flex-wrap gap-1.5">
+   319→   319→                      <button
+   320→   320→                        onClick={() => setSelectedContinent("all")}
+   321→   321→                        className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
+   322→   322→                          selectedContinent === "all"
+   323→   323→                            ? "bg-primary/10 text-primary border border-primary/30"
+   324→   324→                            : "bg-secondary/50 text-muted-foreground border border-border"
+   325→   325→                        }`}
+   326→   326→                      >
+   327→   327→                        All
+   328→   328→                      </button>
+   329→   329→                      {continents.map((c) => (
+   330→   330→                        <button
+   331→   331→                          key={c}
+   332→   332→                          onClick={() => setSelectedContinent(c)}
+   333→   333→                          className={`rounded-full px-3 py-1 text-xs font-medium transition-all ${
+   334→   334→                            selectedContinent === c
+   335→   335→                              ? "bg-primary/10 text-primary border border-primary/30"
+   336→   336→                              : "bg-secondary/50 text-muted-foreground border border-border"
+   337→   337→                          }`}
+   338→   338→                        >
+   339→   339→                          {c}
+   340→   340→                        </button>
+   341→   341→                      ))}
+   342→   342→                    </div>
+   343→   343→
+   344→   344→                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-64 overflow-y-auto -webkit-overflow-scrolling-touch">
+   345→   345→                      {filteredRegions.map((region) => {
+   346→   346→                        const platformCount = getPlatformsForRegion(region.code).length;
+   347→   347→                        return (
+   348→   348→                          <button
+   349→   349→                            key={region.code}
+   350→   350→                            onClick={() => {
+   351→   351→                              setSelectedRegion(region.code);
+   352→   352→                              setStep("platform");
+   353→   353→                            }}
+   354→   354→                            className={`flex items-center gap-2 rounded-lg border p-2.5 transition-all text-left hover:bg-primary/5 active:scale-[0.98] ${
+   355→   355→                              selectedRegion === region.code
+   356→   356→                                ? "border-primary/30 bg-primary/5"
+   357→   357→                                : "border-border"
+   358→   358→                            }`}
+   359→   359→                          >
+   360→   360→                            <span className="text-lg">{region.flag}</span>
+   361→   361→                            <div className="min-w-0 flex-1">
+   362→   362→                              <p className="text-xs font-medium text-foreground truncate">{region.name}</p>
+   363→   363→                              <p className="text-[10px] text-muted-foreground">
+   364→   364→                                {region.currencySymbol} {region.currencyCode} · {platformCount} platforms
+   365→   365→                              </p>
+   366→   366→                            </div>
+   367→   367→                          </button>
+   368→   368→                        );
+   369→   369→                      })}
+   370→   370→                    </div>
+   371→   371→
+   372→   372→                    {filteredRegions.length === 0 && (
+   373→   373→                      <div className="text-center py-4">
+   374→   374→                        <p className="text-sm text-muted-foreground">No regions found matching your search</p>
+   375→   375→                      </div>
+   376→   376→                    )}
+   377→   377→                  </div>
+   378→   378→                )}
+   379→   379→
+   380→   380→                {/* ====== STEP 2: PLATFORM SELECTION ====== */}
+   381→   381→                {step === "platform" && selectedRegionInfo && (
+   382→   382→                  <div className="space-y-3">
+   383→   383→                    <button
+   384→   384→                      onClick={() => {
+   385→   385→                        setStep("region");
+   386→   386→                        setSelectedPlatform(null);
+   387→   387→                      }}
+   388→   388→                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+   389→   389→                    >
+   390→   390→                      <ArrowLeft className="h-3 w-3" /> Change region
+   391→   391→                    </button>
+   392→   392→
+   393→   393→                    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-primary/5 border border-primary/10">
+   394→   394→                      <span className="text-lg">{selectedRegionInfo.flag}</span>
+   395→   395→                      <div>
+   396→   396→                        <p className="text-sm font-medium text-foreground">{selectedRegionInfo.name}</p>
+   397→   397→                        <p className="text-xs text-muted-foreground">
+   398→   398→                          Currency: {selectedRegionInfo.currencySymbol} {selectedRegionInfo.currencyCode} ({selectedRegionInfo.currencyName})
+   399→   399→                        </p>
+   400→   400→                      </div>
+   401→   401→                    </div>
+   402→   402→
+   403→   403→                    <p className="text-sm text-muted-foreground">
+   404→   404→                      {platformsForRegion.length} platforms available in {selectedRegionInfo.name}. Select your betting platform.
+   405→   405→                    </p>
+   406→   406→
+   407→   407→                    <div className="relative">
+   408→   408→                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+   409→   409→                      <Input
+   410→   410→                        type="text"
+   411→   411→                        placeholder="Search brokers..."
+   412→   412→                        value={brokerSearch}
+   413→   413→                        onChange={(e) => setBrokerSearch(e.target.value)}
+   414→   414→                        className="pl-9 h-9 text-sm"
+   415→   415→                      />
+   416→   416→                    </div>
+   417→   417→
+   418→   418→                    <div className="space-y-2 max-h-64 overflow-y-auto -webkit-overflow-scrolling-touch">
+   419→   419→                      {filteredPlatforms.length === 0 ? (
+   420→   420→                        <div className="text-center py-4 text-sm text-muted-foreground">
+   421→   421→                          No brokers found matching &quot;{brokerSearch}&quot;
+   422→   422→                        </div>
+   423→   423→                      ) : (
+   424→   424→                        filteredPlatforms.map((platform) => {
+   425→   425→                        const isPopular = platform.popularIn.includes(selectedRegion);
+   426→   426→                        return (
+   427→   427→                          <button
+   428→   428→                            key={platform.id}
+   429→   429→                            onClick={() => {
+   430→   430→                              setSelectedPlatform(platform.id);
+   431→   431→                              setStep("credentials");
+   432→   432→                            }}
+   433→   433→                            className="flex items-center justify-between rounded-lg border border-border p-3 hover:bg-primary/5 active:scale-[0.98] transition-colors text-left w-full"
+   434→   434→                          >
+   435→   435→                            <div className="flex items-center gap-3">
+   436→   436→                              <BrokerLogo platform={platform} size={40} className="shrink-0" />
+   437→   437→                              <div>
+   438→   438→                                <div className="flex items-center gap-1.5">
+   439→   439→                                  <p className="text-sm font-medium text-foreground">{platform.name}</p>
+   440→   440→                                  {isPopular && (
+   441→   441→                                    <Badge className="bg-amber-400/10 text-amber-400 border-amber-400/30 text-[9px] px-1 py-0">
+   442→   442→                                      <Star className="h-2.5 w-2.5 mr-0.5" /> Popular
+   443→   443→                                    </Badge>
+   444→   444→                                  )}
+   445→   445→                                </div>
+   446→   446→                                <p className="text-xs text-muted-foreground">
+   447→   447→                                  {platform.authType.replace(/_/g, " ")} · {platform.mobileApp ? "📱 App" : "Web only"}
+   448→   448→                                </p>
+   449→   449→                              </div>
+   450→   450→                            </div>
+   451→   451→                            <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+   452→   452→                          </button>
+   453→   453→                        );
+   454→   454→                      })
+   455→   455→                      )}
+   456→   456→                    </div>
+   457→   457→                  </div>
+   458→   458→                )}
+   459→   459→
+   460→   460→                {/* ====== STEP 3: CREDENTIALS ====== */}
+   461→   461→                {step === "credentials" && selectedPlatformData && selectedRegionInfo && (
+   462→   462→                  <div className="space-y-4">
+   463→   463→                    <button
+   464→   464→                      onClick={() => {
+   465→   465→                        setStep("platform");
+   466→   466→                        setSelectedPlatform(null);
+   467→   467→                      }}
+   468→   468→                      className="flex items-center gap-1 text-xs text-muted-foreground hover:text-primary transition-colors"
+   469→   469→                    >
+   470→   470→                      <ArrowLeft className="h-3 w-3" /> Change platform
+   471→   471→                    </button>
+   472→   472→
+   473→   473→                    <div className="flex items-center gap-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
+   474→   474→                      <BrokerLogo platform={selectedPlatformData} size={40} className="shrink-0" />
+   475→   475→                      <div className="flex-1 min-w-0">
+   476→   476→                        <p className="text-sm font-medium text-foreground">{selectedPlatformData.name}</p>
+   477→   477→                        <p className="text-xs text-muted-foreground">
+   478→   478→                          {selectedPlatformData.authType.replace(/_/g, " ")} authentication
+   479→   479→                        </p>
+   480→   480→                      </div>
+   481→   481→                      <div className="text-right shrink-0">
+   482→   482→                        <p className="text-xs text-muted-foreground">{selectedRegionInfo.flag} {selectedRegionInfo.name}</p>
+   483→   483→                        <p className="text-xs font-medium text-primary">{selectedRegionInfo.currencySymbol} {selectedRegionInfo.currencyCode}</p>
+   484→   484→                      </div>
+   485→   485→                    </div>
+   486→   486→
+   487→   487→                    {/* Sandbox/Demo mode banner */}
+   488→   488→                    {brokerMode === "demo" && (
+   489→   489→                      <div className="flex items-center gap-2 p-2.5 rounded-lg bg-blue-400/5 border border-blue-400/20 text-xs text-blue-400">
+   490→   490→                        <FlaskConical className="h-4 w-4 shrink-0" />
+   491→   491→                        <div>
+   492→   492→                          <span className="font-medium">Sandbox Mode</span> — Your credentials are simulated. No real API calls will be made. Switch to Live mode in Settings for real broker connections.
+   493→   493→                        </div>
+   494→   494→                      </div>
+   495→   495→                    )}
+   496→   496→
+   497→   497→                    <div className="space-y-3">
+   498→   498→                      <div>
+   499→   499→                        <Label className="text-xs text-muted-foreground">Account Name</Label>
+   500→   500→                        <Input
+   501→   501→                          value={accountName}
+   502→   502→                          onChange={(e) => setAccountName(e.target.value)}
+   503→   503→                          placeholder={`My ${selectedPlatformData?.name} Account`}
+   504→   504→                          className="bg-secondary border-border mt-1"
+   505→   505→                        />
+   506→   506→                      </div>
+   507→   507→
+   508→   508→                      {brokerMode === "demo" ? (
+   509→   509→                        <div className="rounded-lg bg-blue-400/5 border border-blue-400/10 p-3">
+   510→   510→                          <p className="text-xs text-blue-400">
+   511→   511→                            <Shield className="h-3 w-3 inline mr-1" />
+   512→   512→                            Sandbox Mode: Any credentials will work for testing. Switch to Real mode in the Mode tab to use live broker APIs.
+   513→   513→                          </p>
+   514→   514→                        </div>
+   515→   515→                      ) : (
+   516→   516→                        <div className="rounded-lg bg-amber-400/5 border border-amber-400/10 p-3">
+   517→   517→                          <p className="text-xs text-amber-400">
+   518→   518→                            <Shield className="h-3 w-3 inline mr-1" />
+   519→   519→                            Live Mode: Your real broker credentials will be used to connect. Real API calls will be made.
+   520→   520→                          </p>
+   521→   521→                        </div>
+   522→   522→                      )}
+   523→   523→
+   524→   524→                      <Separator />
+   525→   525→
+   526→   526→                      {selectedPlatformData?.authType === "web_session" && (
+   527→   527→                        <>
+   528→   528→                          <div>
+   529→   529→                            <Label className="text-xs text-muted-foreground flex items-center gap-1">
+   530→   530→                              <User className="h-3 w-3" /> Username / Email
+   531→   531→                              {brokerMode === "demo" && <span className="text-blue-400 ml-1">(optional in demo)</span>}
+   532→   532→                            </Label>
+   533→   533→                            <Input
+   534→   534→                              value={credentials.username}
+   535→   535→                              onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
+   536→   536→                              placeholder={brokerMode === "demo" ? "Any username (demo mode)" : "Your broker username"}
+   537→   537→                              className="bg-secondary border-border mt-1"
+   538→   538→                            />
+   539→   539→                          </div>
+   540→   540→                          <div>
+   541→   541→                            <Label className="text-xs text-muted-foreground flex items-center gap-1">
+   542→   542→                              <Lock className="h-3 w-3" /> Password
+   543→   543→                              {brokerMode === "demo" && <span className="text-blue-400 ml-1">(optional in demo)</span>}
+   544→   544→                            </Label>
+   545→   545→                            <Input
+   546→   546→                              type="password"
+   547→   547→                              value={credentials.password}
+   548→   548→                              onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+   549→   549→                              placeholder={brokerMode === "demo" ? "Any password (demo mode)" : "Your broker password"}
+   550→   550→                              className="bg-secondary border-border mt-1"
+   551→   551→                            />
+   552→   552→                          </div>
+   553→   553→                        </>
+   554→   554→                      )}
+   555→   555→
+   556→   556→                      {selectedPlatformData?.authType === "api_key" && (
+   557→   557→                        <div>
+   558→   558→                          <Label className="text-xs text-muted-foreground flex items-center gap-1">
+   559→   559→                            <Key className="h-3 w-3" /> API Key
+   560→   560→                            {brokerMode === "demo" && <span className="text-blue-400 ml-1">(optional in demo)</span>}
+   561→   561→                          </Label>
+   562→   562→                          <Input
+   563→   563→                            value={credentials.apiKey}
+   564→   564→                            onChange={(e) => setCredentials({ ...credentials, apiKey: e.target.value })}
+   565→   565→                            placeholder={brokerMode === "demo" ? "Any API key (demo mode)" : "Your broker API key"}
+   566→   566→                            className="bg-secondary border-border mt-1"
+   567→   567→                          />
+   568→   568→                        </div>
+   569→   569→                      )}
+   570→   570→
+   571→   571→                      {selectedPlatformData?.authType === "oauth" && (
+   572→   572→                        <div>
+   573→   573→                          <Label className="text-xs text-muted-foreground flex items-center gap-1">
+   574→   574→                            <Shield className="h-3 w-3" /> OAuth Token
+   575→   575→                            {brokerMode === "demo" && <span className="text-blue-400 ml-1">(optional in demo)</span>}
+   576→   576→                          </Label>
+   577→   577→                          <Input
+   578→   578→                            value={credentials.token}
+   579→   579→                            onChange={(e) => setCredentials({ ...credentials, token: e.target.value })}
+   580→   580→                            placeholder={brokerMode === "demo" ? "Any token (demo mode)" : "OAuth access token"}
+   581→   581→                            className="bg-secondary border-border mt-1"
+   582→   582→                          />
+   583→   583→                        </div>
+   584→   584→                      )}
+   585→   585→
+   586→   586→                      {selectedPlatformData?.authType === "manual" && (
+   587→   587→                        <div className="rounded-lg bg-amber-400/5 border border-amber-400/10 p-3">
+   588→   588→                          <p className="text-xs text-muted-foreground">
+   589→   589→                            Manual connection: You provide your account details and manage bets manually.
+   590→   590→                            The app will track your allocation and commission.
+   591→   591→                          </p>
+   592→   592→                        </div>
+   593→   593→                      )}
+   594→   594→                    </div>
+   595→   595→
+   596→   596→                    {/* Platform features */}
+   597→   597→                    <div className="rounded-lg bg-secondary/30 p-3 space-y-2">
+   598→   598→                      <p className="text-xs font-medium text-muted-foreground">Platform Features</p>
+   599→   599→                      <div className="flex flex-wrap gap-1.5">
+   600→   600→                        {selectedPlatformData.features.liveBetting && (
+   601→   601→                          <Badge variant="secondary" className="text-[10px]">Live Betting</Badge>
+   602→   602→                        )}
+   603→   603→                        {selectedPlatformData.features.cashout && (
+   604→   604→                          <Badge variant="secondary" className="text-[10px]">Cashout</Badge>
+   605→   605→                        )}
+   606→   606→                        {selectedPlatformData.features.partialCashout && (
+   607→   607→                          <Badge variant="secondary" className="text-[10px]">Partial Cashout</Badge>
+   608→   608→                        )}
+   609→   609→                        {selectedPlatformData.features.accumulators && (
+   610→   610→                          <Badge variant="secondary" className="text-[10px]">Accumulators (up to {selectedPlatformData.features.maxAccumulatorLegs} legs)</Badge>
+   611→   611→                        )}
+   612→   612→                        {selectedPlatformData.mobileApp && (
+   613→   613→                          <Badge variant="secondary" className="text-[10px]">
+   614→   614→                            <Smartphone className="h-2.5 w-2.5 mr-0.5" /> Mobile App
+   615→   615→                          </Badge>
+   616→   616→                        )}
+   617→   617→                      </div>
+   618→   618→                      <p className="text-[10px] text-muted-foreground">
+   619→   619→                        Min stake: {selectedRegionInfo.currencySymbol}{selectedPlatformData.features.minStake.toLocaleString()} ·
+   620→   620→                        Max stake: {selectedRegionInfo.currencySymbol}{selectedPlatformData.features.maxStake.toLocaleString()}
+   621→   621→                      </p>
+   622→   622→                    </div>
+   623→   623→
+   624→   624→                    <div className="rounded-lg bg-primary/5 border border-primary/10 p-3">
+   625→   625→                      <p className="text-xs text-muted-foreground">
+   626→   626→                        <Shield className="h-3 w-3 inline mr-1" />
+   627→   627→                        Your credentials are encrypted and stored securely. The app only uses your
+   628→   628→                        allocation to place bets and never withdraws more than you authorize.
+   629→   629→                      </p>
+   630→   630→                    </div>
+   631→   631→
+   632→   632→                    <Button
+   633→   633→                      className="w-full bg-primary text-primary-foreground"
+   634→   634→                      onClick={handleConnect}
+   635→   635→                      disabled={connecting}
+   636→   636→                    >
+   637→   637→                      {connecting ? (
+   638→   638→                        <><RefreshCw className="h-4 w-4 mr-2 animate-spin" /> Connecting...</>
+   639→   639→                      ) : (
+   640→   640→                        <><Link2 className="h-4 w-4 mr-2" /> Connect {selectedPlatformData?.name}</>
+   641→   641→                      )}
+   642→   642→                    </Button>
+   643→   643→                  </div>
+   644→   644→                )}
+   645→   645→              </DialogContent>
+   646→   646→            </Dialog>
+   647→   647→          </div>
+   648→   648→        </CardHeader>
+   649→   649→        <CardContent>
+   650→   650→          {accounts.length === 0 ? (
+   651→   651→            <div className="text-center py-8">
+   652→   652→              <Link2 className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+   653→   653→              <p className="text-sm text-muted-foreground">
+   654→   654→                No brokers connected yet. Connect your betting platform to get started.
+   655→   655→              </p>
+   656→   656→              <p className="text-xs text-muted-foreground mt-1">
+   657→   657→                Select your region, pick a platform, and connect your account. No deposits needed.
+   658→   658→              </p>
+   659→   659→              <Button
+   660→   660→                size="sm"
+   661→   661→                className="mt-4 bg-primary text-primary-foreground"
+   662→   662→                onClick={() => setConnectDialogOpen(true)}
+   663→   663→              >
+   664→   664→                <MapPin className="h-3.5 w-3.5 mr-1.5" />
+   665→   665→                Select Your Region
+   666→   666→              </Button>
+   667→   667→            </div>
+   668→   668→          ) : (
+   669→   669→            <div className="space-y-3">
+   670→   670→              {accounts.map((account) => {
+   671→   671→                const regionInfo = account.brokerRegion ? REGIONS.find((r) => r.code === account.brokerRegion) : null;
+   672→   672→                return (
+   673→   673→                  <div
+   674→   674→                    key={account.id}
+   675→   675→                    className="rounded-lg border border-border p-4 space-y-3"
+   676→   676→                  >
+   677→   677→                    <div className="flex items-center justify-between">
+   678→   678→                      <div className="flex items-center gap-3">
+   679→   679→                        <BrokerLogo platform={{ id: account.platform, name: account.platformName, color: "#10b981" }} size={40} className="shrink-0" />
+   680→   680→                        <div>
+   681→   681→                          <p className="text-sm font-medium text-foreground">{account.accountName}</p>
+   682→   682→                          <p className="text-xs text-muted-foreground">
+   683→   683→                            {account.platformName}
+   684→   684→                            {regionInfo && ` · ${regionInfo.flag} ${regionInfo.name}`}
+   685→   685→                          </p>
+   686→   686→                        </div>
+   687→   687→                      </div>
+   688→   688→                      <div className="flex items-center gap-2">
+   689→   689→                        {account.isConnected ? (
+   690→   690→                          <Badge className="bg-emerald-400/10 text-emerald-400 border-emerald-400/30">
+   691→   691→                            <CheckCircle2 className="h-3 w-3 mr-1" /> Connected
+   692→   692→                          </Badge>
+   693→   693→                        ) : (
+   694→   694→                          <Badge className="bg-red-400/10 text-red-400 border-red-400/30">
+   695→   695→                            <AlertCircle className="h-3 w-3 mr-1" /> Disconnected
+   696→   696→                          </Badge>
+   697→   697→                        )}
+   698→   698→                        <Button
+   699→   699→                          variant="ghost"
+   700→   700→                          size="sm"
+   701→   701→                          onClick={() => handleSync(account.id)}
+   702→   702→                        >
+   703→   703→                          <RefreshCw className="h-3.5 w-3.5" />
+   704→   704→                        </Button>
+   705→   705→                      </div>
+   706→   706→                    </div>
+   707→   707→
+   708→   708→                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+   709→   709→                      <div className="rounded-lg bg-secondary/50 p-2.5">
+   710→   710→                        <p className="text-[10px] text-muted-foreground">Balance</p>
+   711→   711→                        <p className="text-sm font-bold text-foreground">{formatBalance(account.balance, account.currency)}</p>
+   712→   712→                      </div>
+   713→   713→                      <div className="rounded-lg bg-secondary/50 p-2.5">
+   714→   714→                        <p className="text-[10px] text-muted-foreground">Allocated</p>
+   715→   715→                        <p className="text-sm font-bold text-primary">{formatBalance(account.allocatedAmount, account.currency)}</p>
+   716→   716→                      </div>
+   717→   717→                      <div className="rounded-lg bg-secondary/50 p-2.5">
+   718→   718→                        <p className="text-[10px] text-muted-foreground">Bets Placed</p>
+   719→   719→                        <p className="text-sm font-bold text-foreground">{account.totalBrokerBets}</p>
+   720→   720→                      </div>
+   721→   721→                      <div className="rounded-lg bg-secondary/50 p-2.5">
+   722→   722→                        <p className="text-[10px] text-muted-foreground">Profit</p>
+   723→   723→                        <p className={`text-sm font-bold ${account.totalBrokerProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+   724→   724→                          {formatBalance(account.totalBrokerProfit, account.currency)}
+   725→   725→                        </p>
+   726→   726→                      </div>
+   727→   727→                    </div>
+   728→   728→
+   729→   729→                    {account.needsRefresh && (
+   730→   730→                      <div className="rounded-lg bg-amber-400/5 border border-amber-400/10 p-2">
+   731→   731→                        <p className="text-xs text-amber-400">
+   732→   732→                          <AlertCircle className="h-3 w-3 inline mr-1" />
+   733→   733→                          Session needs refresh. Click sync to reconnect.
+   734→   734→                        </p>
+   735→   735→                      </div>
+   736→   736→                    )}
+   737→   737→
+   738→   738→                    {account.features && (
+   739→   739→                      <div className="flex flex-wrap gap-1.5">
+   740→   740→                        {account.features.liveBetting && (
+   741→   741→                          <Badge variant="secondary" className="text-[10px]">Live Betting</Badge>
+   742→   742→                        )}
+   743→   743→                        {account.features.cashout && (
+   744→   744→                          <Badge variant="secondary" className="text-[10px]">Cashout</Badge>
+   745→   745→                        )}
+   746→   746→                        {account.features.partialCashout && (
+   747→   747→                          <Badge variant="secondary" className="text-[10px]">Partial Cashout</Badge>
+   748→   748→                        )}
+   749→   749→                        {account.features.accumulators && (
+   750→   750→                          <Badge variant="secondary" className="text-[10px]">Accumulators</Badge>
+   751→   751→                        )}
+   752→   752→                      </div>
+   753→   753→                    )}
+   754→   754→                  </div>
+   755→   755→                );
+   756→   756→              })}
+   757→   757→            </div>
+   758→   758→          )}
+   759→   759→        </CardContent>
+   760→   760→      </Card>
+   761→   761→    </div>
+   762→   762→  );
+   763→   763→}
+   764→   764→
