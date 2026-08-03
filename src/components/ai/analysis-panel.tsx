@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Brain, Loader2, Shield } from "lucide-react";
-import { useState } from "react";
 
 interface AnalysisPanelProps {
   match: {
@@ -44,33 +43,15 @@ interface AnalysisPanelProps {
     defenseRating: number;
     overallRating: number;
   } | null;
+  onAnalyze?: (matchId: string) => void;
+  analyzing?: boolean;
 }
 
-export function AnalysisPanel({ match, homeTeamStats, awayTeamStats }: AnalysisPanelProps) {
-  const [analyzing, setAnalyzing] = useState(false);
-
-  const handleAnalyze = async () => {
-    setAnalyzing(true);
-    try {
-      const res = await fetch("/api/ai/analyze", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ matchId: match.id }),
-      });
-      if (res.ok) {
-        // Could trigger a refresh here
-      }
-    } catch (error) {
-      console.error("Analysis failed:", error);
-    } finally {
-      setAnalyzing(false);
-    }
-  };
-
+export function AnalysisPanel({ match, homeTeamStats, awayTeamStats, onAnalyze, analyzing }: AnalysisPanelProps) {
   return (
     <Card className="bg-card border-border">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-2">
           <CardTitle className="flex items-center gap-2 text-base">
             <Brain className="h-4 w-4 text-primary" />
             AI Analysis
@@ -78,7 +59,7 @@ export function AnalysisPanel({ match, homeTeamStats, awayTeamStats }: AnalysisP
           <Button
             size="xs"
             variant="outline"
-            onClick={handleAnalyze}
+            onClick={() => onAnalyze?.(match.id)}
             disabled={analyzing}
           >
             {analyzing ? (
@@ -91,6 +72,30 @@ export function AnalysisPanel({ match, homeTeamStats, awayTeamStats }: AnalysisP
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* No analysis yet — prompt to run */}
+        {!match.aiAnalysis && !match.aiRecommended && (
+          <div className="rounded-lg bg-secondary/30 border border-border p-4 text-center">
+            <Brain className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground mb-3">
+              No analysis yet for this match.
+            </p>
+            <Button
+              size="sm"
+              variant="default"
+              className="bg-primary text-primary-foreground hover:bg-primary/80"
+              onClick={() => onAnalyze?.(match.id)}
+              disabled={analyzing}
+            >
+              {analyzing ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Brain className="h-4 w-4" />
+              )}
+              {analyzing ? "Analyzing..." : "Run Analysis"}
+            </Button>
+          </div>
+        )}
+
         {/* AI Analysis Text */}
         {match.aiAnalysis && (
           <div className="rounded-lg bg-primary/5 border border-primary/10 p-3">

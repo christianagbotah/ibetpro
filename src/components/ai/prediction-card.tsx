@@ -3,7 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Brain, ChevronDown, ChevronUp, Zap } from "lucide-react";
+import { Brain, ChevronDown, ChevronUp, Zap, Loader2 } from "lucide-react";
 import { getSportShortName, getSportName } from "@/lib/sports";
 import { useState } from "react";
 
@@ -27,9 +27,11 @@ interface PredictionCardProps {
     status: string;
   };
   onQuickBet?: (matchId: string, selection: string) => void;
+  onAnalyze?: (matchId: string) => void;
+  analyzing?: boolean;
 }
 
-export function PredictionCard({ match, onQuickBet }: PredictionCardProps) {
+export function PredictionCard({ match, onQuickBet, onAnalyze, analyzing }: PredictionCardProps) {
   const [expanded, setExpanded] = useState(false);
 
   const confidencePct = match.aiConfidence ? Math.round(match.aiConfidence * 100) : 0;
@@ -59,95 +61,134 @@ export function PredictionCard({ match, onQuickBet }: PredictionCardProps) {
     }
   };
 
+  const hasAnalysis = match.aiRecommended && match.aiConfidence;
+
   return (
     <Card className="bg-card border-border overflow-hidden">
-      <CardContent className="p-4">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-1">
-              <Badge variant="secondary" className="text-[10px]">
-                {getSportShortName(match.sport)}
+      <CardContent className="p-3 sm:p-4">
+        {/* Top row: Sport badge + League + Confidence */}
+        <div className="flex items-start justify-between gap-2 mb-2">
+          <div className="flex items-center gap-1.5 flex-wrap min-w-0 flex-1">
+            <Badge variant="secondary" className="text-[10px] shrink-0">
+              {getSportShortName(match.sport)}
+            </Badge>
+            <span className="text-[10px] sm:text-xs text-muted-foreground truncate">
+              {match.league || getSportName(match.sport)}
+            </span>
+            {match.status === "live" && (
+              <Badge className="text-[10px] bg-red-500/20 text-red-400 border-red-500/30 shrink-0">
+                LIVE
               </Badge>
-              <span className="text-xs text-muted-foreground">{match.league || getSportName(match.sport)}</span>
-              {match.status === "live" && (
-                <Badge className="text-[10px] bg-red-500/20 text-red-400 border-red-500/30">
-                  LIVE
-                </Badge>
-              )}
-            </div>
-            <p className="text-sm font-medium text-foreground">
-              {match.homeTeam} vs {match.awayTeam}
-            </p>
-
-            {/* AI Probabilities */}
-            <div className="mt-3 grid grid-cols-3 gap-2">
-              <div className="text-center">
-                <div className="text-[10px] text-muted-foreground mb-1">Home</div>
-                <div className="text-sm font-bold text-foreground">
-                  {match.aiHomeWinProb ? `${Math.round(match.aiHomeWinProb * 100)}%` : "\u2014"}
-                </div>
-                <div className="text-[10px] text-primary">{match.homeOdds}</div>
-              </div>
-              {match.drawOdds && (
-                <div className="text-center">
-                  <div className="text-[10px] text-muted-foreground mb-1">Draw</div>
-                  <div className="text-sm font-bold text-foreground">
-                    {match.aiDrawProb ? `${Math.round(match.aiDrawProb * 100)}%` : "\u2014"}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground">{match.drawOdds}</div>
-                </div>
-              )}
-              <div className="text-center">
-                <div className="text-[10px] text-muted-foreground mb-1">Away</div>
-                <div className="text-sm font-bold text-foreground">
-                  {match.aiAwayWinProb ? `${Math.round(match.aiAwayWinProb * 100)}%` : "\u2014"}
-                </div>
-                <div className="text-[10px] text-amber-400">{match.awayOdds}</div>
-              </div>
-            </div>
+            )}
           </div>
-
-          {/* Confidence Badge */}
-          <div className={`flex flex-col items-center gap-1 rounded-lg px-3 py-2 ${confidenceBg}`}>
-            <Brain className={`h-5 w-5 ${confidenceColor}`} />
-            <span className={`text-lg font-bold ${confidenceColor}`}>{confidencePct}%</span>
-            <span className="text-[10px] text-muted-foreground">Confidence</span>
+          {/* Confidence Badge — compact on mobile */}
+          <div className={`flex items-center gap-1.5 rounded-lg px-2 py-1 sm:px-3 sm:py-2 shrink-0 ${confidenceBg}`}>
+            <Brain className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${confidenceColor}`} />
+            <span className={`text-sm sm:text-base font-bold ${confidenceColor}`}>{confidencePct}%</span>
+            <span className="text-[9px] text-muted-foreground hidden sm:inline">Confidence</span>
           </div>
         </div>
 
-        {/* Recommendation */}
-        <div className="mt-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Brain className="h-3.5 w-3.5 text-primary" />
-            <span className="text-xs text-muted-foreground">AI recommends:</span>
-            <span className="text-sm font-medium text-primary">
+        {/* Match title */}
+        <p className="text-sm font-medium text-foreground mb-2">
+          {match.homeTeam} vs {match.awayTeam}
+        </p>
+
+        {/* AI Probabilities — 3 columns */}
+        <div className="grid grid-cols-3 gap-2">
+          <div className="text-center rounded-lg bg-secondary/30 p-1.5 sm:p-2">
+            <div className="text-[9px] sm:text-[10px] text-muted-foreground mb-0.5">Home</div>
+            <div className="text-xs sm:text-sm font-bold text-foreground">
+              {match.aiHomeWinProb ? `${Math.round(match.aiHomeWinProb * 100)}%` : "\u2014"}
+            </div>
+            <div className="text-[10px] text-primary font-medium">{match.homeOdds}</div>
+          </div>
+          {match.drawOdds ? (
+            <div className="text-center rounded-lg bg-secondary/30 p-1.5 sm:p-2">
+              <div className="text-[9px] sm:text-[10px] text-muted-foreground mb-0.5">Draw</div>
+              <div className="text-xs sm:text-sm font-bold text-foreground">
+                {match.aiDrawProb ? `${Math.round(match.aiDrawProb * 100)}%` : "\u2014"}
+              </div>
+              <div className="text-[10px] text-muted-foreground font-medium">{match.drawOdds}</div>
+            </div>
+          ) : (
+            <div className="text-center rounded-lg bg-secondary/30 p-1.5 sm:p-2">
+              <div className="text-[9px] sm:text-[10px] text-muted-foreground mb-0.5">Draw</div>
+              <div className="text-xs sm:text-sm font-bold text-foreground">{"\u2014"}</div>
+              <div className="text-[10px] text-muted-foreground font-medium">{"\u2014"}</div>
+            </div>
+          )}
+          <div className="text-center rounded-lg bg-secondary/30 p-1.5 sm:p-2">
+            <div className="text-[9px] sm:text-[10px] text-muted-foreground mb-0.5">Away</div>
+            <div className="text-xs sm:text-sm font-bold text-foreground">
+              {match.aiAwayWinProb ? `${Math.round(match.aiAwayWinProb * 100)}%` : "\u2014"}
+            </div>
+            <div className="text-[10px] text-amber-400 font-medium">{match.awayOdds}</div>
+          </div>
+        </div>
+
+        {/* Recommendation + Action row — stacks on mobile */}
+        <div className="mt-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+          {/* AI Recommendation */}
+          <div className="flex items-center gap-1.5 min-w-0">
+            <Brain className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span className="text-[10px] sm:text-xs text-muted-foreground shrink-0">AI recommends:</span>
+            <span className="text-xs sm:text-sm font-medium text-primary truncate">
               {getRecommendationLabel(match.aiRecommended) || "Run analysis"}
             </span>
           </div>
-          <div className="flex items-center gap-2">
-            {onQuickBet && match.aiRecommended && (
+          {/* Action buttons — always on their own row on mobile, inline on desktop */}
+          <div className="flex items-center gap-1.5 shrink-0">
+            {hasAnalysis && onQuickBet && match.aiRecommended && (
               <Button
                 size="xs"
                 variant="default"
                 className="bg-primary text-primary-foreground hover:bg-primary/80"
-                onClick={() => onQuickBet(match.id, match.aiRecommended!)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onQuickBet(match.id, match.aiRecommended!);
+                }}
               >
                 <Zap className="h-3 w-3" />
                 Quick Bet
               </Button>
             )}
-            <Button
-              size="xs"
-              variant="ghost"
-              onClick={() => setExpanded(!expanded)}
-            >
-              {expanded ? (
-                <ChevronUp className="h-3 w-3" />
-              ) : (
-                <ChevronDown className="h-3 w-3" />
-              )}
-              {expanded ? "Less" : "More"}
-            </Button>
+            {!hasAnalysis && onAnalyze && (
+              <Button
+                size="xs"
+                variant="default"
+                className="bg-primary text-primary-foreground hover:bg-primary/80"
+                disabled={analyzing}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onAnalyze(match.id);
+                }}
+              >
+                {analyzing ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Brain className="h-3 w-3" />
+                )}
+                {analyzing ? "Analyzing..." : "Analyze"}
+              </Button>
+            )}
+            {hasAnalysis && (
+              <Button
+                size="xs"
+                variant="ghost"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setExpanded(!expanded);
+                }}
+              >
+                {expanded ? (
+                  <ChevronUp className="h-3 w-3" />
+                ) : (
+                  <ChevronDown className="h-3 w-3" />
+                )}
+                {expanded ? "Less" : "More"}
+              </Button>
+            )}
           </div>
         </div>
 

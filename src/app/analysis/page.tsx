@@ -14,7 +14,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Brain, Filter, SortAsc, Loader2 } from "lucide-react";
+import { Brain, Filter, SortAsc, Loader2, Sparkles } from "lucide-react";
+import { toast } from "sonner";
 
 interface Match {
   id: string;
@@ -60,7 +61,7 @@ export default function AnalysisPage() {
   const [sportFilter, setSportFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("confidence");
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
-  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzing, setAnalyzing] = useState<string | null>(null); // track which match is being analyzed
   const [analysisResult, setAnalysisResult] = useState<{
     prediction: {
       homeWinProb: number;
@@ -75,7 +76,7 @@ export default function AnalysisPage() {
   } | null>(null);
 
   const handleAnalyze = useCallback(async (matchId: string) => {
-    setAnalyzing(true);
+    setAnalyzing(matchId);
     try {
       const res = await fetch("/api/ai/analyze", {
         method: "POST",
@@ -85,32 +86,49 @@ export default function AnalysisPage() {
       if (res.ok) {
         const result = await res.json();
         setAnalysisResult(result);
+
+        // Update the selected match if it matches
+        setSelectedMatch((prev) => {
+          if (prev?.id === matchId) {
+            return {
+              ...prev,
+              aiHomeWinProb: result.prediction.homeWinProb,
+              aiDrawProb: result.prediction.drawProb,
+              aiAwayWinProb: result.prediction.awayWinProb,
+              aiConfidence: result.prediction.confidence,
+              aiRecommended: result.prediction.recommended,
+              aiAnalysis: result.prediction.analysis,
+            };
+          }
+          return prev;
+        });
+
+        // Refresh the match list to pick up the new analysis
         refetch();
-        if (selectedMatch?.id === matchId) {
-          setSelectedMatch((prev) =>
-            prev
-              ? {
-                  ...prev,
-                  aiHomeWinProb: result.prediction.homeWinProb,
-                  aiDrawProb: result.prediction.drawProb,
-                  aiAwayWinProb: result.prediction.awayWinProb,
-                  aiConfidence: result.prediction.confidence,
-                  aiRecommended: result.prediction.recommended,
-                  aiAnalysis: result.prediction.analysis,
-                }
-              : prev
-          );
-        }
+        toast.success("Analysis complete!", {
+          description: "AI prediction has been updated.",
+        });
+      } else {
+        const errorData = await res.json().catch(() => ({}));
+        toast.error("Analysis failed", {
+          description: errorData.error || "Something went wrong. Please try again.",
+        });
       }
     } catch (error) {
       console.error("Analysis failed:", error);
+      toast.error("Analysis failed", {
+        description: "Network error. Please check your connection and try again.",
+      });
     } finally {
-      setAnalyzing(false);
+      setAnalyzing(null);
     }
-  }, [refetch, selectedMatch]);
+  }, [refetch]);
 
   const handleQuickBet = async (matchId: string, selection: string) => {
     console.log("Quick bet:", matchId, selection);
+    toast.info("Quick Bet", {
+      description: `Bet on ${selection} — feature coming soon!`,
+    });
   };
 
   const filteredMatches = matches
@@ -186,16 +204,18 @@ export default function AnalysisPage() {
           variant="outline"
           className="border-primary/30 text-primary hover:bg-primary/10"
           onClick={() => {
-            if (filteredMatches.length > 0) {
-              handleAnalyze(filteredMatches[0].id);
+            // Analyze the selected match if one is selected, otherwise the first match
+            const targetId = selectedMatch?.id || (filteredMatches.length > 0 ? filteredMatches[0].id : null);
+            if (targetId) {
+              handleAnalyze(targetId);
             }
           }}
-          disabled={analyzing}
+          disabled={!!analyzing}
         >
           {analyzing ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <Brain className="h-4 w-4" />
+            <Sparkles className="h-4 w-4" />
           )}
           {analyzing ? "Analyzing..." : "Run AI Analysis"}
         </Button>
@@ -221,7 +241,12 @@ export default function AnalysisPage() {
                   selectedMatch?.id === match.id ? "ring-1 ring-primary" : ""
                 }`}
               >
-                <PredictionCard match={match} onQuickBet={handleQuickBet} />
+                <PredictionCard
+                  match={match}
+                  onQuickBet={handleQuickBet}
+                  onAnalyze={handleAnalyze}
+                  analyzing={analyzing === match.id}
+                />
               </div>
             ))
           )}
@@ -233,6 +258,8 @@ export default function AnalysisPage() {
               match={selectedMatch}
               homeTeamStats={analysisResult?.homeTeamStats || null}
               awayTeamStats={analysisResult?.awayTeamStats || null}
+              onAnalyze={handleAnalyze}
+              analyzing={analyzing === selectedMatch.id}
             />
           ) : (
             <Card className="bg-card border-border">

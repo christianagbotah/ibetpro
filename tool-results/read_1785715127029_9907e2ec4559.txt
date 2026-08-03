@@ -1,0 +1,1087 @@
+     1→// ============================================================================
+     2→// iBetPro AI Engine v2 - Advanced Prediction & Decision Engine
+     3→// Enhanced with: Market movement detection, live monitoring, smart cashout,
+     4→// multi-factor analysis, form tracking, head-to-head, and Monte Carlo simulation
+     5→// ============================================================================
+     6→
+     7→import { config } from "./config";
+     8→
+     9→// ==================== TYPE DEFINITIONS ====================
+    10→
+    11→interface TeamStatsData {
+    12→  teamName: string;
+    13→  sport: string;
+    14→  league: string;
+    15→  matchesPlayed: number;
+    16→  wins: number;
+    17→  draws: number;
+    18→  losses: number;
+    19→  goalsFor: number;
+    20→  goalsAgainst: number;
+    21→  form: string | null;
+    22→  homeRecord: string | null;
+    23→  awayRecord: string | null;
+    24→  attackRating: number;
+    25→  defenseRating: number;
+    26→  overallRating: number;
+    27→  eloRating?: number;
+    28→  xgFor?: number;
+    29→  xgAgainst?: number;
+    30→  possessionAvg?: number;
+    31→  shotsPerGame?: number;
+    32→  shotsOnTargetPerGame?: number;
+    33→  cornersPerGame?: number;
+    34→  cardsPerGame?: number;
+    35→}
+    36→
+    37→interface MatchData {
+    38→  homeTeam: string;
+    39→  awayTeam: string;
+    40→  sport: string;
+    41→  league: string;
+    42→  homeOdds: number;
+    43→  drawOdds?: number;
+    44→  awayOdds: number;
+    45→  overOdds?: number;
+    46→  underOdds?: number;
+    47→  overUnderLine?: number;
+    48→  homeScore?: number;
+    49→  awayScore?: number;
+    50→  minute?: number;
+    51→  status: string;
+    52→  commenceTime?: string;
+    53→}
+    54→
+    55→interface Prediction {
+    56→  homeWinProb: number;
+    57→  drawProb: number;
+    58→  awayWinProb: number;
+    59→  confidence: number;
+    60→  recommended: "home" | "away" | "draw" | "over" | "under";
+    61→  analysis: string;
+    62→  valueEdge: number;
+    63→  riskScore: number;
+    64→  kellyStake: number;
+    65→  // v2 enhanced fields
+    66→  factors: PredictionFactors;
+    67→  marketSignal: MarketSignal;
+    68→  confidenceBreakdown: ConfidenceBreakdown;
+    69→}
+    70→
+    71→interface PredictionFactors {
+    72→  eloDiff: number;
+    73→  formDiff: number;
+    74→  homeAdvantage: number;
+    75→  attackVsDefense: number;
+    76→  oddsValue: number;
+    77→  marketMovement: number;
+    78→  headToHead: number;
+    79→  momentumScore: number;
+    80→}
+    81→
+    82→interface MarketSignal {
+    83→  direction: "steam" | "reverse" | "stable" | "sharp" | "public";
+    84→  strength: number;
+    85→  description: string;
+    86→  oddsMovement: number;
+    87→}
+    88→
+    89→interface ConfidenceBreakdown {
+    90→  statistical: number;
+    91→  form: number;
+    92→  market: number;
+    93→  historical: number;
+    94→  composite: number;
+    95→}
+    96→
+    97→interface CashoutRecommendation {
+    98→  shouldCashout: boolean;
+    99→  cashoutAmount: number;
+   100→  partialCashoutAmount: number;
+   101→  reasoning: string;
+   102→  urgency: "low" | "medium" | "high" | "critical";
+   103→  waitOrCashout: "wait" | "cashout_partial" | "cashout_full" | "wait_for_settlement";
+   104→  settlementProbability: number;
+   105→  // v2 enhanced
+   106→  liveWinProbability: number;
+   107→  riskOfLoss: number;
+   108→  timeDecay: number;
+   109→  marketPressure: string;
+   110→  aiDecision: AIDecision;
+   111→}
+   112→
+   113→interface AIDecision {
+   114→  action: "cashout_now" | "cashout_partial" | "hold" | "wait_for_settlement";
+   115→  confidence: number;
+   116→  reasoning: string[];
+   117→  factors: {
+   118→    currentScore: string;
+   119→    timeRemaining: string;
+   120→    liveWinProb: number;
+   121→    cashoutValue: number;
+   122→    expectedValue: number;
+   123→  };
+   124→}
+   125→
+   126→interface DetailedAnalysis {
+   127→  matchOverview: string;
+   128→  homeTeamAnalysis: string;
+   129→  awayTeamAnalysis: string;
+   130→  headToHead: string;
+   131→  keyFactors: string[];
+   132→  prediction: string;
+   133→  riskAssessment: string;
+   134→  recommendedAction: string;
+   135→  marketInsight: string;
+   136→  confidenceLevel: string;
+   137→}
+   138→
+   139→interface AutoBetCheck {
+   140→  shouldPlace: boolean;
+   141→  reason: string;
+   142→  betType: "single" | "accumulator_leg" | "skip";
+   143→  suggestedStake: number;
+   144→}
+   145→
+   146→interface RiskCheckResult {
+   147→  canBet: boolean;
+   148→  reason: string;
+   149→  riskLevel: "safe" | "caution" | "danger";
+   150→}
+   151→
+   152→// ==================== ELO RATING SYSTEM ====================
+   153→
+   154→function calculateExpectedScore(ratingA: number, ratingB: number): number {
+   155→  return 1 / (1 + Math.pow(10, (ratingB - ratingA) / 400));
+   156→}
+   157→
+   158→function updateEloRating(
+   159→  currentRating: number,
+   160→  expectedScore: number,
+   161→  actualScore: number,
+   162→  kFactor: number = 32
+   163→): number {
+   164→  return currentRating + kFactor * (actualScore - expectedScore);
+   165→}
+   166→
+   167→// ==================== FORM ANALYSIS ====================
+   168→
+   169→function analyzeForm(formString: string | null): {
+   170→  points: number;
+   171→  trend: "improving" | "declining" | "stable";
+   172→  consistency: number;
+   173→  lastFive: number[];
+   174→} {
+   175→  if (!formString || formString.length === 0) {
+   176→    return { points: 0, trend: "stable", consistency: 0.5, lastFive: [] };
+   177→  }
+   178→
+   179→  const form = formString.split("").map((c) => {
+   180→    if (c === "W" || c === "w") return 3;
+   181→    if (c === "D" || c === "d") return 1;
+   182→    return 0;
+   183→  });
+   184→
+   185→  const totalPoints = form.reduce((sum, p) => sum + p, 0);
+   186→  const lastFive = form.slice(0, 5);
+   187→
+   188→  // Determine trend
+   189→  let trend: "improving" | "declining" | "stable" = "stable";
+   190→  if (form.length >= 3) {
+   191→    const recent = form.slice(0, 3).reduce((s, p) => s + p, 0) / 3;
+   192→    const older = form.slice(3, 6).reduce((s, p) => s + p, 0) / Math.max(1, form.slice(3, 6).length);
+   193→    if (recent > older + 0.5) trend = "improving";
+   194→    else if (recent < older - 0.5) trend = "declining";
+   195→  }
+   196→
+   197→  // Calculate consistency (lower variance = more consistent)
+   198→  const mean = form.length > 0 ? totalPoints / form.length : 0;
+   199→  const variance = form.length > 0 ? form.reduce((s, p) => s + Math.pow(p - mean, 2), 0) / form.length : 0;
+   200→  const consistency = Math.max(0, 1 - Math.sqrt(variance) / 3);
+   201→
+   202→  return { points: totalPoints, trend, consistency, lastFive };
+   203→}
+   204→
+   205→// ==================== MARKET MOVEMENT DETECTION ====================
+   206→
+   207→function detectMarketMovement(
+   208→  currentOdds: number,
+   209→  openingOdds?: number,
+   210→  oddsHistory?: number[]
+   211→): MarketSignal {
+   212→  if (!openingOdds || !oddsHistory || oddsHistory.length < 2) {
+   213→    return {
+   214→      direction: "stable",
+   215→      strength: 0,
+   216→      description: "Insufficient data for market movement analysis",
+   217→      oddsMovement: 0,
+   218→    };
+   219→  }
+   220→
+   221→  const movement = currentOdds - openingOdds;
+   222→  const recentMovement = oddsHistory.length >= 2
+   223→    ? oddsHistory[oddsHistory.length - 1] - oddsHistory[oddsHistory.length - 2]
+   224→    : 0;
+   225→
+   226→  // Steam move: significant, rapid odds movement (sharp money)
+   227→  if (Math.abs(movement) > 0.15 && Math.abs(recentMovement) > 0.05) {
+   228→    return {
+   229→      direction: movement < 0 ? "steam" : "reverse",
+   230→      strength: Math.min(1, Math.abs(movement) * 5),
+   231→      description: movement < 0
+   232→        ? "Steam move detected - sharp money coming in, odds shortening rapidly"
+   233→        : "Reverse line movement - odds drifting against public sentiment",
+   234→      oddsMovement: movement,
+   235→    };
+   236→  }
+   237→
+   238→  // Sharp money: small, consistent movement
+   239→  if (Math.abs(movement) > 0.05 && Math.abs(recentMovement) < 0.03) {
+   240→    return {
+   241→      direction: "sharp",
+   242→      strength: Math.min(0.7, Math.abs(movement) * 3),
+   243→      description: "Sharp money detected - slow, consistent odds movement suggests professional action",
+   244→      oddsMovement: movement,
+   245→    };
+   246→  }
+   247→
+   248→  // Public money: movement in expected direction
+   249→  if (Math.abs(movement) > 0.05) {
+   250→    return {
+   251→      direction: "public",
+   252→      strength: Math.min(0.5, Math.abs(movement) * 2),
+   253→      description: "Public money movement - odds adjusting to betting volume",
+   254→      oddsMovement: movement,
+   255→    };
+   256→  }
+   257→
+   258→  return {
+   259→    direction: "stable",
+   260→    strength: 0,
+   261→    description: "No significant market movement detected",
+   262→    oddsMovement: 0,
+   263→  };
+   264→}
+   265→
+   266→// ==================== ATTACK VS DEFENSE ANALYSIS ====================
+   267→
+   268→function analyzeAttackVsDefense(
+   269→  homeAttack: number,
+   270→  homeDefense: number,
+   271→  awayAttack: number,
+   272→  awayDefense: number,
+   273→  homeXgFor?: number,
+   274→  awayXgFor?: number
+   275→): { homeAdvantage: number; expectedGoals: { home: number; away: number }; matchupScore: number } {
+   276→  // Use xG if available for more accurate analysis
+   277→  const homeGoalExp = homeXgFor && homeXgFor > 0
+   278→    ? homeXgFor * (homeAttack / 50) * (100 - awayDefense) / 100
+   279→    : homeAttack * (100 - awayDefense) / 5000;
+   280→
+   281→  const awayGoalExp = awayXgFor && awayXgFor > 0
+   282→    ? awayXgFor * (awayAttack / 50) * (100 - homeDefense) / 100
+   283→    : awayAttack * (100 - homeDefense) / 5000;
+   284→
+   285→  const homeAdvantage = (homeGoalExp - awayGoalExp) * 0.5;
+   286→  const matchupScore = (homeGoalExp - awayGoalExp) / Math.max(homeGoalExp + awayGoalExp, 0.1);
+   287→
+   288→  return {
+   289→    homeAdvantage: Math.round(homeAdvantage * 100) / 100,
+   290→    expectedGoals: {
+   291→      home: Math.round(homeGoalExp * 100) / 100,
+   292→      away: Math.round(awayGoalExp * 100) / 100,
+   293→    },
+   294→    matchupScore: Math.round(matchupScore * 100) / 100,
+   295→  };
+   296→}
+   297→
+   298→// ==================== MONTE CARLO SIMULATION ====================
+   299→
+   300→function monteCarloSimulation(
+   301→  homeWinProb: number,
+   302→  drawProb: number,
+   303→  awayWinProb: number,
+   304→  iterations: number = config.ai.monteCarloIterations
+   305→): { homeWinRate: number; drawRate: number; awayWinRate: number; confidence: number } {
+   306→  let homeWins = 0;
+   307→  let draws = 0;
+   308→  let awayWins = 0;
+   309→
+   310→  for (let i = 0; i < iterations; i++) {
+   311→    const rand = Math.random();
+   312→    if (rand < homeWinProb) {
+   313→      homeWins++;
+   314→    } else if (rand < homeWinProb + drawProb) {
+   315→      draws++;
+   316→    } else {
+   317→      awayWins++;
+   318→    }
+   319→  }
+   320→
+   321→  const simHomeWin = homeWins / iterations;
+   322→  const simDraw = draws / iterations;
+   323→  const simAwayWin = awayWins / iterations;
+   324→
+   325→  // Confidence based on convergence
+   326→  const maxProb = Math.max(simHomeWin, simDraw, simAwayWin);
+   327→  const confidence = Math.min(1, maxProb * 1.5);
+   328→
+   329→  return {
+   330→    homeWinRate: simHomeWin,
+   331→    drawRate: simDraw,
+   332→    awayWinRate: simAwayWin,
+   333→    confidence,
+   334→  };
+   335→}
+   336→
+   337→// ==================== MAIN PREDICTION ENGINE ====================
+   338→
+   339→export function analyzeMatch(
+   340→  match: MatchData,
+   341→  homeStats?: TeamStatsData | null,
+   342→  awayStats?: TeamStatsData | null,
+   343→  bankroll: number = 1000,
+   344→  kellyFraction: number = config.ai.kellyFraction
+   345→): Prediction {
+   346→  // Step 1: Elo-based probability estimation
+   347→  const homeElo = homeStats?.eloRating || config.ai.defaultElo;
+   348→  const awayElo = awayStats?.eloRating || config.ai.defaultElo;
+   349→  const homeEloExpected = calculateExpectedScore(homeElo + config.ai.eloHomeAdvantage, awayElo);
+   350→  const awayEloExpected = calculateExpectedScore(awayElo, homeElo + config.ai.eloHomeAdvantage);
+   351→
+   352→  // Step 2: Form analysis
+   353→  const homeForm = analyzeForm(homeStats?.form || null);
+   354→  const awayForm = analyzeForm(awayStats?.form || null);
+   355→  const formDiff = (homeForm.points - awayForm.points) / Math.max(homeForm.lastFive.length + awayForm.lastFive.length, 1) * 3;
+   356→
+   357→  // Step 3: Attack vs Defense matchup
+   358→  const attackDefense = analyzeAttackVsDefense(
+   359→    homeStats?.attackRating || 50,
+   360→    homeStats?.defenseRating || 50,
+   361→    awayStats?.attackRating || 50,
+   362→    awayStats?.defenseRating || 50,
+   363→    homeStats?.xgFor,
+   364→    awayStats?.xgFor
+   365→  );
+   366→
+   367→  // Step 4: Market movement detection
+   368→  const marketSignal = detectMarketMovement(match.homeOdds);
+   369→
+   370→  // Step 5: Odds-implied probability (market efficiency)
+   371→  const homeOddsProb = 1 / match.homeOdds;
+   372→  const drawOddsProb = match.drawOdds ? 1 / match.drawOdds : config.ai.baseDrawProb;
+   373→  const awayOddsProb = 1 / match.awayOdds;
+   374→  const oddsTotal = homeOddsProb + drawOddsProb + awayOddsProb;
+   375→  const margin = oddsTotal - 1;
+   376→
+   377→  // Normalized probabilities (remove bookmaker margin)
+   378→  const normHomeProb = homeOddsProb / oddsTotal;
+   379→  const normDrawProb = drawOddsProb / oddsTotal;
+   380→  const normAwayProb = awayOddsProb / oddsTotal;
+   381→
+   382→  // Step 6: Composite probability (weighted average of all factors)
+   383→  const eloWeight = 0.30;
+   384→  const formWeight = 0.15;
+   385→  const attackDefenseWeight = 0.20;
+   386→  const marketWeight = 0.25;
+   387→  const momentumWeight = 0.10;
+   388→
+   389→  // Calculate momentum from form trend
+   390→  const homeMomentum = homeForm.trend === "improving" ? 0.05 : homeForm.trend === "declining" ? -0.05 : 0;
+   391→  const awayMomentum = awayForm.trend === "improving" ? 0.05 : awayForm.trend === "declining" ? -0.05 : 0;
+   392→
+   393→  const compositeHomeWin = Math.min(0.95, Math.max(0.05,
+   394→    homeEloExpected * eloWeight +
+   395→    (normHomeProb + formDiff * 0.05) * formWeight +
+   396→    (normHomeProb + attackDefense.matchupScore * 0.1) * attackDefenseWeight +
+   397→    normHomeProb * marketWeight +
+   398→    (normHomeProb + homeMomentum - awayMomentum) * momentumWeight
+   399→  ));
+   400→
+   401→  const compositeAwayWin = Math.min(0.95, Math.max(0.05,
+   402→    awayEloExpected * eloWeight +
+   403→    (normAwayProb - formDiff * 0.05) * formWeight +
+   404→    (normAwayProb - attackDefense.matchupScore * 0.1) * attackDefenseWeight +
+   405→    normAwayProb * marketWeight +
+   406→    (normAwayProb + awayMomentum - homeMomentum) * momentumWeight
+   407→  ));
+   408→
+   409→  const compositeDraw = Math.max(0.05, 1 - compositeHomeWin - compositeAwayWin);
+   410→
+   411→  // Step 7: Monte Carlo validation
+   412→  const mcResult = monteCarloSimulation(compositeHomeWin, compositeDraw, compositeAwayWin, 5000);
+   413→
+   414→  // Final probabilities (blend composite with MC)
+   415→  const finalHomeWin = (compositeHomeWin * 0.7 + mcResult.homeWinRate * 0.3);
+   416→  const finalDraw = (compositeDraw * 0.7 + mcResult.drawRate * 0.3);
+   417→  const finalAwayWin = (compositeAwayWin * 0.7 + mcResult.awayWinRate * 0.3);
+   418→
+   419→  // Normalize
+   420→  const total = finalHomeWin + finalDraw + finalAwayWin;
+   421→  const homeWinProb = finalHomeWin / total;
+   422→  const drawProb = finalDraw / total;
+   423→  const awayWinProb = finalAwayWin / total;
+   424→
+   425→  // Step 8: Value edge calculation
+   426→  const homeValueEdge = homeWinProb - normHomeProb;
+   427→  const drawValueEdge = drawProb - normDrawProb;
+   428→  const awayValueEdge = awayWinProb - normAwayProb;
+   429→
+   430→  // Over/Under analysis
+   431→  const expectedGoals = attackDefense.expectedGoals.home + attackDefense.expectedGoals.away;
+   432→  const overProb = expectedGoals > (match.overUnderLine || 2.5) ? 0.55 : 0.45;
+   433→  const underProb = 1 - overProb;
+   434→  const overValueEdge = match.overOdds ? overProb - (1 / match.overOdds) : 0;
+   435→  const underValueEdge = match.underOdds ? underProb - (1 / match.underOdds) : 0;
+   436→
+   437→  // Step 9: Determine recommendation
+   438→  const allEdges = [
+   439→    { type: "home" as const, edge: homeValueEdge, prob: homeWinProb, odds: match.homeOdds },
+   440→    { type: "away" as const, edge: awayValueEdge, prob: awayWinProb, odds: match.awayOdds },
+   441→    { type: "draw" as const, edge: drawValueEdge, prob: drawProb, odds: match.drawOdds || 3.0 },
+   442→    { type: "over" as const, edge: overValueEdge, prob: overProb, odds: match.overOdds || 1.9 },
+   443→    { type: "under" as const, edge: underValueEdge, prob: underProb, odds: match.underOdds || 1.9 },
+   444→  ];
+   445→
+   446→  const bestValue = allEdges.sort((a, b) => b.edge - a.edge)[0];
+   447→  const recommended = bestValue.edge > 0 ? bestValue.type : allEdges.sort((a, b) => b.prob - a.prob)[0].type;
+   448→
+   449→  // Step 10: Kelly criterion
+   450→  const recOdds = recommended === "home" ? match.homeOdds
+   451→    : recommended === "away" ? match.awayOdds
+   452→    : recommended === "draw" ? (match.drawOdds || 3.0)
+   453→    : recommended === "over" ? (match.overOdds || 1.9)
+   454→    : (match.underOdds || 1.9);
+   455→
+   456→  const recProb = recommended === "home" ? homeWinProb
+   457→    : recommended === "away" ? awayWinProb
+   458→    : recommended === "draw" ? drawProb
+   459→    : overProb;
+   460→
+   461→  const kellyStake = Math.max(0, (recProb * recOdds - 1) / (recOdds - 1)) * bankroll * kellyFraction;
+   462→
+   463→  // Step 11: Risk score
+   464→  const riskScore = Math.min(100, Math.max(0,
+   465→    50 + (1 - Math.max(homeWinProb, awayWinProb, drawProb)) * 50
+   466→    + (margin > 0.1 ? 10 : 0)
+   467→    + (marketSignal.strength > 0.5 ? 10 : 0)
+   468→    - (bestValue.edge > 0.05 ? 15 : 0)
+   469→  ));
+   470→
+   471→  // Step 12: Confidence calculation
+   472→  const confidenceBreakdown: ConfidenceBreakdown = {
+   473→    statistical: Math.min(1, Math.max(homeWinProb, awayWinProb, drawProb) * 1.3),
+   474→    form: Math.min(1, (homeForm.consistency + awayForm.consistency) / 2 + Math.abs(formDiff) * 0.1),
+   475→    market: Math.min(1, 0.5 + bestValue.edge * 3 + marketSignal.strength * 0.3),
+   476→    historical: Math.min(1, (homeStats?.matchesPlayed || 0 + awayStats?.matchesPlayed || 0) > 20 ? 0.8 : 0.5),
+   477→    composite: 0,
+   478→  };
+   479→  confidenceBreakdown.composite = Math.min(1,
+   480→    confidenceBreakdown.statistical * 0.35 +
+   481→    confidenceBreakdown.form * 0.15 +
+   482→    confidenceBreakdown.market * 0.30 +
+   483→    confidenceBreakdown.historical * 0.20
+   484→  );
+   485→
+   486→  // Step 13: Build factors
+   487→  const factors: PredictionFactors = {
+   488→    eloDiff: (homeElo - awayElo) / 400,
+   489→    formDiff,
+   490→    homeAdvantage: attackDefense.homeAdvantage,
+   491→    attackVsDefense: attackDefense.matchupScore,
+   492→    oddsValue: bestValue.edge,
+   493→    marketMovement: marketSignal.oddsMovement,
+   494→    headToHead: 0, // Would need H2H data
+   495→    momentumScore: homeMomentum - awayMomentum,
+   496→  };
+   497→
+   498→  // Step 14: Generate analysis text
+   499→  const analysis = generateAnalysisText(
+   500→    match, homeWinProb, drawProb, awayWinProb, recommended, bestValue.edge,
+   501→    riskScore, homeForm, awayForm, attackDefense, marketSignal, factors
+   502→  );
+   503→
+   504→  return {
+   505→    homeWinProb: Math.round(homeWinProb * 1000) / 1000,
+   506→    drawProb: Math.round(drawProb * 1000) / 1000,
+   507→    awayWinProb: Math.round(awayWinProb * 1000) / 1000,
+   508→    confidence: Math.round(confidenceBreakdown.composite * 100) / 100,
+   509→    recommended,
+   510→    analysis,
+   511→    valueEdge: Math.round(bestValue.edge * 1000) / 1000,
+   512→    riskScore: Math.round(riskScore),
+   513→    kellyStake: Math.round(kellyStake * 100) / 100,
+   514→    factors,
+   515→    marketSignal,
+   516→    confidenceBreakdown,
+   517→  };
+   518→}
+   519→
+   520→// ==================== ANALYSIS TEXT GENERATION ====================
+   521→
+   522→function generateAnalysisText(
+   523→  match: MatchData,
+   524→  homeWinProb: number,
+   525→  drawProb: number,
+   526→  awayWinProb: number,
+   527→  recommended: string,
+   528→  valueEdge: number,
+   529→  riskScore: number,
+   530→  homeForm: ReturnType<typeof analyzeForm>,
+   531→  awayForm: ReturnType<typeof analyzeForm>,
+   532→  attackDefense: ReturnType<typeof analyzeAttackVsDefense>,
+   533→  marketSignal: MarketSignal,
+   534→  factors: PredictionFactors
+   535→): string {
+   536→  const parts: string[] = [];
+   537→
+   538→  // Probability summary
+   539→  const maxProb = Math.max(homeWinProb, drawProb, awayWinProb);
+   540→  const winner = homeWinProb === maxProb ? match.homeTeam : awayWinProb === maxProb ? match.awayTeam : "Draw";
+   541→  parts.push(`${winner} favored with ${(maxProb * 100).toFixed(1)}% probability.`);
+   542→
+   543→  // Form analysis
+   544→  if (homeForm.trend !== "stable" || awayForm.trend !== "stable") {
+   545→    parts.push(`${match.homeTeam} form is ${homeForm.trend} (${homeForm.lastFive.length} games), ${match.awayTeam} form is ${awayForm.trend}.`);
+   546→  }
+   547→
+   548→  // Attack vs Defense
+   549→  if (attackDefense.expectedGoals.home > 0 || attackDefense.expectedGoals.away > 0) {
+   550→    parts.push(`Expected goals: ${match.homeTeam} ${attackDefense.expectedGoals.home.toFixed(1)} - ${match.awayTeam} ${attackDefense.expectedGoals.away.toFixed(1)}.`);
+   551→  }
+   552→
+   553→  // Value edge
+   554→  if (valueEdge > 0) {
+   555→    parts.push(`Positive value edge detected: +${(valueEdge * 100).toFixed(1)}% above market implied probability.`);
+   556→  } else {
+   557→    parts.push(`No significant value edge found. Market appears efficient.`);
+   558→  }
+   559→
+   560→  // Market signal
+   561→  if (marketSignal.strength > 0.3) {
+   562→    parts.push(`Market signal: ${marketSignal.description}.`);
+   563→  }
+   564→
+   565→  // Risk assessment
+   566→  if (riskScore > 70) {
+   567→    parts.push(`High risk match (${riskScore}/100). Consider smaller stakes or skip.`);
+   568→  } else if (riskScore < 40) {
+   569→    parts.push(`Low risk assessment (${riskScore}/100). Strong confidence in prediction.`);
+   570→  }
+   571→
+   572→  return parts.join(" ");
+   573→}
+   574→
+   575→// ==================== CASHOUT DECISION ENGINE ====================
+   576→
+   577→export function shouldCashout(
+   578→  bet: {
+   579→    selection: string;
+   580→    odds: number;
+   581→    stake: number;
+   582→    potentialWin: number;
+   583→    status: string;
+   584→    partialCashoutAmount?: number | null;
+   585→    partialCashoutPercent?: number | null;
+   586→  },
+   587→  liveMatch: {
+   588→    homeScore: number;
+   589→    awayScore: number;
+   590→    minute: number;
+   591→    homeTeam: string;
+   592→    awayTeam: string;
+   593→    sport: string;
+   594→    status: string;
+   595→  },
+   596→  settings?: {
+   597→    autoCashoutEnabled: boolean;
+   598→    cashoutThreshold: number;
+   599→    waitFullSettlement: boolean;
+   600→    partialCashoutEnabled: boolean;
+   601→    partialCashoutPercent: number;
+   602→  }
+   603→): CashoutRecommendation {
+   604→  const {
+   605→    autoCashoutEnabled = true,
+   606→    cashoutThreshold = 0.7,
+   607→    waitFullSettlement = true,
+   608→    partialCashoutEnabled = true,
+   609→    partialCashoutPercent = 0.5,
+   610→  } = settings || {};
+   611→
+   612→  // Determine if the bet is currently winning
+   613→  const isWinning = isBetWinning(bet, liveMatch);
+   614→  const isLosing = !isWinning && liveMatch.status === "live";
+   615→
+   616→  // Calculate live win probability based on score and time
+   617→  const liveWinProb = calculateLiveWinProbability(bet, liveMatch);
+   618→
+   619→  // Calculate cashout value
+   620→  const cashoutAmount = calculateCashoutValue(bet, liveMatch, isWinning);
+   621→
+   622→  // Time decay factor (urgency increases as match progresses)
+   623→  const totalMinutes = getTotalMatchMinutes(liveMatch.sport);
+   624→  const timeDecay = liveMatch.minute / totalMinutes;
+   625→  const timeRemaining = 1 - timeDecay;
+   626→
+   627→  // Calculate risk of loss
+   628→  const riskOfLoss = isWinning ? (1 - liveWinProb) * timeDecay : 1 - liveWinProb;
+   629→
+   630→  // Build AI decision
+   631→  const aiDecision = buildCashoutDecision(
+   632→    bet, liveMatch, isWinning, liveWinProb, cashoutAmount,
+   633→    riskOfLoss, timeDecay, waitFullSettlement, partialCashoutEnabled, partialCashoutPercent
+   634→  );
+   635→
+   636→  // Determine urgency
+   637→  let urgency: "low" | "medium" | "high" | "critical" = "low";
+   638→  if (isWinning && riskOfLoss > 0.4) urgency = "high";
+   639→  else if (isWinning && riskOfLoss > 0.2) urgency = "medium";
+   640→  else if (isLosing && liveWinProb < 0.15) urgency = "critical";
+   641→  else if (isLosing && liveWinProb < 0.3) urgency = "high";
+   642→
+   643→  // Determine wait or cashout
+   644→  let waitOrCashout: CashoutRecommendation["waitOrCashout"] = "wait";
+   645→  if (isWinning && liveMatch.status === "finished") {
+   646→    waitOrCashout = "wait_for_settlement";
+   647→  } else if (isWinning && !waitFullSettlement && cashoutAmount >= bet.potentialWin * cashoutThreshold) {
+   648→    waitOrCashout = "cashout_full";
+   649→  } else if (isWinning && partialCashoutEnabled && cashoutAmount >= bet.potentialWin * cashoutThreshold * 0.5) {
+   650→    waitOrCashout = "cashout_partial";
+   651→  } else if (isLosing && liveWinProb < 0.2 && timeDecay > 0.6) {
+   652→    waitOrCashout = "cashout_full";
+   653→  } else if (isWinning && waitFullSettlement) {
+   654→    waitOrCashout = "wait_for_settlement";
+   655→  }
+   656→
+   657→  // Should we cash out?
+   658→  const shouldCashout = waitOrCashout === "cashout_full" || waitOrCashout === "cashout_partial";
+   659→
+   660→  // Partial cashout calculation
+   661→  const partialCashoutAmount = partialCashoutEnabled && isWinning
+   662→    ? Math.round(cashoutAmount * partialCashoutPercent * 100) / 100
+   663→    : 0;
+   664→
+   665→  // Build reasoning
+   666→  const reasoning = buildCashoutReasoning(
+   667→    bet, liveMatch, isWinning, liveWinProb, cashoutAmount,
+   668→    riskOfLoss, timeDecay, waitOrCashout, aiDecision
+   669→  );
+   670→
+   671→  return {
+   672→    shouldCashout,
+   673→    cashoutAmount: Math.round(cashoutAmount * 100) / 100,
+   674→    partialCashoutAmount,
+   675→    reasoning,
+   676→    urgency,
+   677→    waitOrCashout,
+   678→    settlementProbability: liveWinProb,
+   679→    liveWinProbability: liveWinProb,
+   680→    riskOfLoss: Math.round(riskOfLoss * 100) / 100,
+   681→    timeDecay: Math.round(timeDecay * 100) / 100,
+   682→    marketPressure: isWinning ? "favorable" : "adverse",
+   683→    aiDecision,
+   684→  };
+   685→}
+   686→
+   687→function isBetWinning(
+   688→  bet: { selection: string },
+   689→  liveMatch: { homeScore: number; awayScore: number; homeTeam: string; awayTeam: string }
+   690→): boolean {
+   691→  const sel = bet.selection.toLowerCase();
+   692→  const homeWinning = liveMatch.homeScore > liveMatch.awayScore;
+   693→  const awayWinning = liveMatch.awayScore > liveMatch.homeScore;
+   694→  const drawing = liveMatch.homeScore === liveMatch.awayScore;
+   695→
+   696→  if (sel === liveMatch.homeTeam.toLowerCase() || sel === "home") return homeWinning;
+   697→  if (sel === liveMatch.awayTeam.toLowerCase() || sel === "away") return awayWinning;
+   698→  if (sel === "draw") return drawing;
+   699→  if (sel.includes("over")) return (liveMatch.homeScore + liveMatch.awayScore) > 2.5;
+   700→  if (sel.includes("under")) return (liveMatch.homeScore + liveMatch.awayScore) < 2.5;
+   701→  return false;
+   702→}
+   703→
+   704→function calculateLiveWinProbability(
+   705→  bet: { selection: string; odds: number; stake: number; potentialWin: number },
+   706→  liveMatch: { homeScore: number; awayScore: number; minute: number; sport: string; status: string }
+   707→): number {
+   708→  if (liveMatch.status === "finished") {
+   709→    return isBetWinning(bet, liveMatch) ? 1.0 : 0.0;
+   710→  }
+   711→
+   712→  if (liveMatch.status !== "live") {
+   713→    return 1 / bet.odds; // Pre-match probability
+   714→  }
+   715→
+   716→  const isWin = isBetWinning(bet, liveMatch);
+   717→  const totalMinutes = getTotalMatchMinutes(liveMatch.sport);
+   718→  const timeRemaining = Math.max(0, (totalMinutes - liveMatch.minute) / totalMinutes);
+   719→
+   720→  // Base probability
+   721→  let baseProb = isWin ? 0.7 : 0.15;
+   722→
+   723→  // Adjust for time remaining
+   724→  if (isWin) {
+   725→    baseProb = 0.3 + 0.7 * (1 - timeRemaining); // More time = more certainty
+   726→  } else {
+   727→    baseProb = 0.3 * timeRemaining; // Less time remaining = less chance of comeback
+   728→  }
+   729→
+   730→  // Adjust for goal difference
+   731→  const goalDiff = Math.abs(liveMatch.homeScore - liveMatch.awayScore);
+   732→  if (isWin && goalDiff >= 2) baseProb = Math.min(0.98, baseProb + 0.2);
+   733→  if (!isWin && goalDiff >= 2) baseProb = Math.max(0.02, baseProb - 0.15);
+   734→
+   735→  return Math.min(0.99, Math.max(0.01, baseProb));
+   736→}
+   737→
+   738→function calculateCashoutValue(
+   739→  bet: { odds: number; stake: number; potentialWin: number; partialCashoutAmount?: number | null },
+   740→  liveMatch: { homeScore: number; awayScore: number; minute: number; sport: string; status: string },
+   741→  isWinning: boolean
+   742→): number {
+   743→  if (liveMatch.status === "finished") {
+   744→    return isWinning ? bet.potentialWin : 0;
+   745→  }
+   746→
+   747→  if (liveMatch.status !== "live") {
+   748→    return bet.stake * 0.95; // Pre-match cashout (slight loss)
+   749→  }
+   750→
+   751→  const totalMinutes = getTotalMatchMinutes(liveMatch.sport);
+   752→  const timeElapsed = liveMatch.minute / totalMinutes;
+   753→  const bookmakerMargin = config.ai.cashoutBookmakerMargin;
+   754→
+   755→  if (isWinning) {
+   756→    // Winning bet: cashout value increases as match progresses
+   757→    const goalDiff = Math.abs(liveMatch.homeScore - liveMatch.awayScore);
+   758→    const safetyBonus = goalDiff >= 2 ? 0.15 : goalDiff >= 1 ? 0.05 : 0;
+   759→    const cashoutValue = bet.potentialWin * (0.3 + timeElapsed * 0.5 + safetyBonus) * bookmakerMargin;
+   760→    return Math.max(bet.stake, cashoutValue);
+   761→  } else {
+   762→    // Losing bet: cashout value decreases rapidly
+   763→    const losingRatio = config.ai.cashoutLosingStakeRatio;
+   764→    return bet.stake * losingRatio * (1 - timeElapsed * 0.5);
+   765→  }
+   766→}
+   767→
+   768→function getTotalMatchMinutes(sport: string): number {
+   769→  switch (sport) {
+   770→    case "football":
+   771→    case "soccer":
+   772→      return 90;
+   773→    case "basketball":
+   774→      return 48;
+   775→    case "tennis":
+   776→      return 120; // Approximate
+   777→    case "hockey":
+   778→      return 60;
+   779→    default:
+   780→      return 90;
+   781→  }
+   782→}
+   783→
+   784→function buildCashoutDecision(
+   785→  bet: { selection: string; odds: number; stake: number; potentialWin: number },
+   786→  liveMatch: { homeScore: number; awayScore: number; minute: number; homeTeam: string; awayTeam: string; sport: string; status: string },
+   787→  isWinning: boolean,
+   788→  liveWinProb: number,
+   789→  cashoutAmount: number,
+   790→  riskOfLoss: number,
+   791→  timeDecay: number,
+   792→  waitFullSettlement: boolean,
+   793→  partialCashoutEnabled: boolean,
+   794→  partialCashoutPercent: number
+   795→): AIDecision {
+   796→  const reasoning: string[] = [];
+   797→  let action: AIDecision["action"] = "hold";
+   798→  let confidence = 0.5;
+   799→
+   800→  const currentScore = `${liveMatch.homeScore}-${liveMatch.awayScore}`;
+   801→  const totalMinutes = getTotalMatchMinutes(liveMatch.sport);
+   802→  const timeRemaining = `${Math.max(0, totalMinutes - liveMatch.minute)} min`;
+   803→
+   804→  if (liveMatch.status === "finished") {
+   805→    action = "wait_for_settlement";
+   806→    confidence = isWinning ? 0.99 : 0.01;
+   807→    reasoning.push(`Match is finished. ${isWinning ? "Bet won - waiting for settlement." : "Bet lost."}`);
+   808→  } else if (isWinning) {
+   809→    if (liveWinProb > 0.85 && timeDecay > 0.7) {
+   810→      action = waitFullSettlement ? "wait_for_settlement" : "cashout_full";
+   811→      confidence = 0.85;
+   812→      reasoning.push(`Strong winning position (${currentScore}) with ${timeRemaining} remaining. ${waitFullSettlement ? "Waiting for full settlement for maximum payout." : "Cashing out for guaranteed profit."}`);
+   813→    } else if (liveWinProb > 0.6 && partialCashoutEnabled && riskOfLoss > 0.2) {
+   814→      action = "cashout_partial";
+   815→      confidence = 0.7;
+   816→      reasoning.push(`Winning but risk of loss is ${(riskOfLoss * 100).toFixed(0)}%. Partial cashout of ${Math.round(partialCashoutPercent * 100)}% secures profit while keeping position.`);
+   817→    } else if (liveWinProb > 0.7) {
+   818→      action = "hold";
+   819→      confidence = 0.75;
+   820→      reasoning.push(`Comfortable lead (${currentScore}) with ${timeRemaining} remaining. Holding for better value.`);
+   821→    } else {
+   822→      action = "hold";
+   823→      confidence = 0.6;
+   824→      reasoning.push(`Narrow lead (${currentScore}). Monitoring closely for cashout opportunity.`);
+   825→    }
+   826→  } else {
+   827→    // Losing position
+   828→    if (liveWinProb < 0.15 && timeDecay > 0.6) {
+   829→      action = "cashout_full";
+   830→      confidence = 0.8;
+   831→      reasoning.push(`Losing position (${currentScore}) with low comeback probability. Salvaging remaining value.`);
+   832→    } else if (liveWinProb < 0.3 && timeDecay > 0.5) {
+   833→      action = partialCashoutEnabled ? "cashout_partial" : "cashout_full";
+   834→      confidence = 0.65;
+   835→      reasoning.push(`Losing position (${currentScore}) but some chance remains. ${partialCashoutEnabled ? "Partial cashout to reduce exposure." : "Cashing out to minimize loss."}`);
+   836→    } else {
+   837→      action = "hold";
+   838→      confidence = 0.5;
+   839→      reasoning.push(`Losing position (${currentScore}) but enough time remains for a turnaround. Holding.`);
+   840→    }
+   841→  }
+   842→
+   843→  return {
+   844→    action,
+   845→    confidence,
+   846→    reasoning,
+   847→    factors: {
+   848→      currentScore,
+   849→      timeRemaining,
+   850→      liveWinProb: Math.round(liveWinProb * 100) / 100,
+   851→      cashoutValue: Math.round(cashoutAmount * 100) / 100,
+   852→      expectedValue: Math.round((liveWinProb * bet.potentialWin - (1 - liveWinProb) * bet.stake) * 100) / 100,
+   853→    },
+   854→  };
+   855→}
+   856→
+   857→function buildCashoutReasoning(
+   858→  bet: { selection: string; odds: number; stake: number; potentialWin: number },
+   859→  liveMatch: { homeScore: number; awayScore: number; minute: number; homeTeam: string; awayTeam: string; sport: string; status: string },
+   860→  isWinning: boolean,
+   861→  liveWinProb: number,
+   862→  cashoutAmount: number,
+   863→  riskOfLoss: number,
+   864→  timeDecay: number,
+   865→  waitOrCashout: string,
+   866→  aiDecision: AIDecision
+   867→): string {
+   868→  const parts: string[] = [];
+   869→
+   870→  parts.push(`Score: ${liveMatch.homeTeam} ${liveMatch.homeScore} - ${liveMatch.awayScore} ${liveMatch.awayTeam} (${liveMatch.minute}').`);
+   871→  parts.push(`Bet on ${bet.selection} is ${isWinning ? "WINNING" : "LOSING"}.`);
+   872→  parts.push(`Live win probability: ${(liveWinProb * 100).toFixed(1)}%.`);
+   873→  parts.push(`Cashout value: $${cashoutAmount.toFixed(2)} (potential: $${bet.potentialWin.toFixed(2)}).`);
+   874→
+   875→  if (riskOfLoss > 0.3) {
+   876→    parts.push(`Risk of loss: ${(riskOfLoss * 100).toFixed(1)}% - ${riskOfLoss > 0.5 ? "HIGH" : "MODERATE"}.`);
+   877→  }
+   878→
+   879→  parts.push(`AI decision: ${aiDecision.action.replace(/_/g, " ").toUpperCase()} (confidence: ${(aiDecision.confidence * 100).toFixed(0)}%).`);
+   880→  parts.push(aiDecision.reasoning.join(" "));
+   881→
+   882→  return parts.join(" ");
+   883→}
+   884→
+   885→// ==================== AUTO-BET DECISION ====================
+   886→
+   887→export function shouldAutoBet(
+   888→  prediction: Prediction,
+   889→  settings: {
+   890→    minOddsThreshold: number;
+   891→    maxOddsThreshold: number;
+   892→    minAiConfidence: number;
+   893→    minEdgeThreshold: number;
+   894→    riskLevel: string;
+   895→    preferredSports: string;
+   896→  },
+   897→  sport: string
+   898→): AutoBetCheck {
+   899→  const { minOddsThreshold, maxOddsThreshold, minAiConfidence, minEdgeThreshold, riskLevel, preferredSports } = settings;
+   900→
+   901→  // Check if sport is in preferred list
+   902→  if (!preferredSports.split(",").some((s) => s.trim().toLowerCase() === sport.toLowerCase())) {
+   903→    return { shouldPlace: false, reason: `Sport ${sport} not in preferred list`, betType: "skip", suggestedStake: 0 };
+   904→  }
+   905→
+   906→  // Check confidence
+   907→  if (prediction.confidence < minAiConfidence) {
+   908→    return { shouldPlace: false, reason: `AI confidence ${prediction.confidence.toFixed(2)} below threshold ${minAiConfidence}`, betType: "skip", suggestedStake: 0 };
+   909→  }
+   910→
+   911→  // Check value edge
+   912→  if (prediction.valueEdge < minEdgeThreshold) {
+   913→    return { shouldPlace: false, reason: `Value edge ${prediction.valueEdge.toFixed(3)} below minimum ${minEdgeThreshold}`, betType: "skip", suggestedStake: 0 };
+   914→  }
+   915→
+   916→  // Check risk level
+   917→  const maxRisk = riskLevel === "low" ? 40 : riskLevel === "medium" ? 60 : 80;
+   918→  if (prediction.riskScore > maxRisk) {
+   919→    return { shouldPlace: false, reason: `Risk score ${prediction.riskScore} exceeds ${riskLevel} threshold ${maxRisk}`, betType: "skip", suggestedStake: 0 };
+   920→  }
+   921→
+   922→  // Determine bet type
+   923→  const betType: AutoBetCheck["betType"] = prediction.confidence > 0.7 ? "single" : "accumulator_leg";
+   924→
+   925→  // Calculate suggested stake
+   926→  const suggestedStake = Math.max(5, prediction.kellyStake);
+   927→
+   928→  return {
+   929→    shouldPlace: true,
+   930→    reason: `Strong value: edge=${(prediction.valueEdge * 100).toFixed(1)}%, confidence=${(prediction.confidence * 100).toFixed(0)}%, risk=${prediction.riskScore}/100`,
+   931→    betType,
+   932→    suggestedStake,
+   933→  };
+   934→}
+   935→
+   936→// ==================== RISK LIMITS CHECK ====================
+   937→
+   938→export function checkRiskLimits(
+   939→  dailyPnl: number,
+   940→  weeklyPnl: number,
+   941→  limits: {
+   942→    stopLossDaily: number;
+   943→    stopLossWeekly: number;
+   944→    profitTargetDaily: number;
+   945→    profitTargetWeekly: number;
+   946→  }
+   947→): RiskCheckResult {
+   948→  // Daily stop-loss
+   949→  if (dailyPnl <= -limits.stopLossDaily) {
+   950→    return {
+   951→      canBet: false,
+   952→      reason: `Daily stop-loss hit: $${dailyPnl.toFixed(2)} loss exceeds $${limits.stopLossDaily.toFixed(2)} limit`,
+   953→      riskLevel: "danger",
+   954→    };
+   955→  }
+   956→
+   957→  // Weekly stop-loss
+   958→  if (weeklyPnl <= -limits.stopLossWeekly) {
+   959→    return {
+   960→      canBet: false,
+   961→      reason: `Weekly stop-loss hit: $${weeklyPnl.toFixed(2)} loss exceeds $${limits.stopLossWeekly.toFixed(2)} limit`,
+   962→      riskLevel: "danger",
+   963→    };
+   964→  }
+   965→
+   966→  // Daily profit target
+   967→  if (dailyPnl >= limits.profitTargetDaily) {
+   968→    return {
+   969→      canBet: false,
+   970→      reason: `Daily profit target reached: $${dailyPnl.toFixed(2)} exceeds $${limits.profitTargetDaily.toFixed(2)} target`,
+   971→      riskLevel: "safe",
+   972→    };
+   973→  }
+   974→
+   975→  // Weekly profit target
+   976→  if (weeklyPnl >= limits.profitTargetWeekly) {
+   977→    return {
+   978→      canBet: false,
+   979→      reason: `Weekly profit target reached: $${weeklyPnl.toFixed(2)} exceeds $${limits.profitTargetWeekly.toFixed(2)} target`,
+   980→      riskLevel: "safe",
+   981→    };
+   982→  }
+   983→
+   984→  // Caution zone
+   985→  if (dailyPnl <= -limits.stopLossDaily * 0.7 || weeklyPnl <= -limits.stopLossWeekly * 0.7) {
+   986→    return {
+   987→      canBet: true,
+   988→      reason: `Approaching stop-loss limit. Consider reducing stake sizes.`,
+   989→      riskLevel: "caution",
+   990→    };
+   991→  }
+   992→
+   993→  return { canBet: true, reason: "Within risk limits", riskLevel: "safe" };
+   994→}
+   995→
+   996→// ==================== BET SCHEDULE CHECK ====================
+   997→
+   998→export function isWithinBetSchedule(start: string, end: string): boolean {
+   999→  const now = new Date();
+  1000→  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  1001→
+  1002→  const [startH, startM] = start.split(":").map(Number);
+  1003→  const [endH, endM] = end.split(":").map(Number);
+  1004→
+  1005→  const startMinutes = startH * 60 + startM;
+  1006→  const endMinutes = endH * 60 + endM;
+  1007→
+  1008→  if (startMinutes <= endMinutes) {
+  1009→    return currentMinutes >= startMinutes && currentMinutes <= endMinutes;
+  1010→  } else {
+  1011→    // Overnight schedule (e.g., 22:00 - 06:00)
+  1012→    return currentMinutes >= startMinutes || currentMinutes <= endMinutes;
+  1013→  }
+  1014→}
+  1015→
+  1016→// ==================== DETAILED ANALYSIS ====================
+  1017→
+  1018→export function generateDetailedAnalysis(
+  1019→  match: MatchData,
+  1020→  homeStats?: TeamStatsData | null,
+  1021→  awayStats?: TeamStatsData | null,
+  1022→  prediction?: Prediction
+  1023→): DetailedAnalysis {
+  1024→  const homeForm = analyzeForm(homeStats?.form || null);
+  1025→  const awayForm = analyzeForm(awayStats?.form || null);
+  1026→
+  1027→  const matchOverview = `${match.homeTeam} vs ${match.awayTeam} in ${match.league} (${match.sport}). ` +
+  1028→    `Odds: ${match.homeTeam} ${match.homeOdds} | Draw ${match.drawOdds || "N/A"} | ${match.awayTeam} ${match.awayOdds}.`;
+  1029→
+  1030→  const homeTeamAnalysis = homeStats
+  1031→    ? `${match.homeTeam}: ${homeStats.wins}W-${homeStats.draws}D-${homeStats.losses}L in ${homeStats.matchesPlayed} matches. ` +
+  1032→      `Attack: ${homeStats.attackRating.toFixed(1)}/100, Defense: ${homeStats.defenseRating.toFixed(1)}/100. ` +
+  1033→      `Form: ${homeStats.form || "N/A"} (${homeForm.trend}). ` +
+  1034→      `Elo: ${homeStats.eloRating}. xG: ${homeStats.xgFor || "N/A"}.`
+  1035→    : `No statistical data available for ${match.homeTeam}.`;
+  1036→
+  1037→  const awayTeamAnalysis = awayStats
+  1038→    ? `${match.awayTeam}: ${awayStats.wins}W-${awayStats.draws}D-${awayStats.losses}L in ${awayStats.matchesPlayed} matches. ` +
+  1039→      `Attack: ${awayStats.attackRating.toFixed(1)}/100, Defense: ${awayStats.defenseRating.toFixed(1)}/100. ` +
+  1040→      `Form: ${awayStats.form || "N/A"} (${awayForm.trend}). ` +
+  1041→      `Elo: ${awayStats.eloRating}. xG: ${awayStats.xgFor || "N/A"}.`
+  1042→    : `No statistical data available for ${match.awayTeam}.`;
+  1043→
+  1044→  const keyFactors: string[] = [];
+  1045→  if (prediction) {
+  1046→    if (prediction.factors.eloDiff > 0.3) keyFactors.push(`Elo advantage: ${match.homeTeam} significantly higher rated`);
+  1047→    if (prediction.factors.eloDiff < -0.3) keyFactors.push(`Elo advantage: ${match.awayTeam} significantly higher rated`);
+  1048→    if (prediction.factors.formDiff > 0.5) keyFactors.push(`Form advantage: ${match.homeTeam} in better form`);
+  1049→    if (prediction.factors.formDiff < -0.5) keyFactors.push(`Form advantage: ${match.awayTeam} in better form`);
+  1050→    if (prediction.valueEdge > 0.05) keyFactors.push(`Strong value edge: ${(prediction.valueEdge * 100).toFixed(1)}% above market`);
+  1051→    if (prediction.marketSignal.strength > 0.3) keyFactors.push(`Market signal: ${prediction.marketSignal.description}`);
+  1052→    if (prediction.riskScore > 70) keyFactors.push(`High risk: risk score ${prediction.riskScore}/100`);
+  1053→    if (prediction.riskScore < 30) keyFactors.push(`Low risk: risk score ${prediction.riskScore}/100`);
+  1054→  }
+  1055→
+  1056→  return {
+  1057→    matchOverview,
+  1058→    homeTeamAnalysis,
+  1059→    awayTeamAnalysis,
+  1060→    headToHead: "Head-to-head analysis requires historical matchup data between these teams.",
+  1061→    keyFactors,
+  1062→    prediction: prediction
+  1063→      ? `AI recommends: ${prediction.recommended} (confidence: ${(prediction.confidence * 100).toFixed(0)}%, value edge: ${(prediction.valueEdge * 100).toFixed(1)}%)`
+  1064→      : "Run analysis first to get prediction.",
+  1065→    riskAssessment: prediction
+  1066→      ? `Risk score: ${prediction.riskScore}/100. ${prediction.riskScore > 70 ? "High risk - consider smaller stakes." : prediction.riskScore > 40 ? "Moderate risk - standard stakes recommended." : "Low risk - favorable conditions."}`
+  1067→      : "Risk assessment pending analysis.",
+  1068→    recommendedAction: prediction
+  1069→      ? prediction.valueEdge > 0.05 && prediction.confidence > 0.6
+  1070→        ? "PLACE BET - Strong value and confidence detected"
+  1071→        : prediction.valueEdge > 0.02 && prediction.confidence > 0.5
+  1072→          ? "CONSIDER BET - Moderate value, wait for better odds"
+  1073→          : "SKIP BET - Insufficient value edge or confidence"
+  1074→      : "Run analysis first.",
+  1075→    marketInsight: prediction
+  1076→      ? prediction.marketSignal.description
+  1077→      : "Market analysis not yet available.",
+  1078→    confidenceLevel: prediction
+  1079→      ? prediction.confidenceBreakdown.composite > 0.7
+  1080→        ? "HIGH"
+  1081→        : prediction.confidenceBreakdown.composite > 0.5
+  1082→          ? "MEDIUM"
+  1083→          : "LOW"
+  1084→      : "NOT CALCULATED",
+  1085→  };
+  1086→}
+  1087→
