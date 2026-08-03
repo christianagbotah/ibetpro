@@ -113,11 +113,72 @@ class BotEngine {
   private timers: Map<string, NodeJS.Timeout> = new Map();
   private runningUsers: Map<string, BotEngineStats> = new Map();
   private isShuttingDown = false;
+  private heartbeatTimer: NodeJS.Timeout | null = null;
 
   private constructor() {
     // Register graceful shutdown handlers
     process.on("SIGTERM", () => this.shutdown());
     process.on("SIGINT", () => this.shutdown());
+
+    // Start a heartbeat that runs every 5 minutes to detect and recover
+    // zombie sessions (DB says "running" but engine timers are dead).
+    // This is critical for Telegram alert reliability — if the process
+    // survives but timers die (e.g. event loop stall, unref'd timer),
+    // alerts stop silently without this check.
+    this.startHeartbeat();
+  }
+
+  /**
+   * Periodic heartbeat that checks DB for sessions marked "running" that
+   * don't have a live engine timer, and recovers them.
+   */
+  private startHeartbeat(): void {
+    const HEARTBEAT_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+
+    this.heartbeatTimer = setInterval(async () => {
+      if (this.isShuttingDown) return;
+
+      try {
+        const runningSessions = await prisma.botSession.findMany({
+          where: { status: "running" },
+          select: { userId: true, scanIntervalSec: true },
+        });
+
+        for (const session of runningSessions) {
+          // If the DB says running but the engine has no timer, it's a zombie
+          if (!this.timers.has(session.userId)) {
+            console.log(`[BotEngine Heartbeat] Zombie session detected for user ${session.userId}, recovering...`);
+            try {
+              const result = await this.start(session.userId, session.scanIntervalSec || 30);
+              if (result.success) {
+                console.log(`[BotEngine Heartbeat] ✅ Recovered zombie for user ${session.userId}`);
+              } else {
+                console.warn(`[BotEngine Heartbeat] ⚠️ Could not recover zombie for ${session.userId}: ${result.message}`);
+                // Mark as stopped so we don't keep retrying every 5 min
+                await prisma.botSession.update({
+                  where: { userId: session.userId },
+                  data: {
+                    status: "stopped",
+                    stoppedAt: new Date(),
+                    stopReason: `heartbeat_recovery_failed: ${result.message}`,
+                  },
+                }).catch(() => {});
+              }
+            } catch (err) {
+              console.error(`[BotEngine Heartbeat] ❌ Error recovering zombie for ${session.userId}:`, err);
+            }
+          }
+        }
+      } catch (err) {
+        // Don't let heartbeat errors crash anything
+        console.warn("[BotEngine Heartbeat] Check failed:", err);
+      }
+    }, HEARTBEAT_INTERVAL_MS);
+
+    // Don't let the heartbeat keep the process alive by itself
+    if (this.heartbeatTimer.unref) {
+      this.heartbeatTimer.unref();
+    }
   }
 
   static getInstance(): BotEngine {
@@ -380,6 +441,12 @@ class BotEngine {
   async shutdown(): Promise<void> {
     if (this.isShuttingDown) return;
     this.isShuttingDown = true;
+
+    // Stop heartbeat
+    if (this.heartbeatTimer) {
+      clearInterval(this.heartbeatTimer);
+      this.heartbeatTimer = null;
+    }
 
     console.log(`[BotEngine] Shutting down ${this.timers.size} running bots...`);
 
