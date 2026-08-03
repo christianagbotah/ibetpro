@@ -161,11 +161,13 @@ export default function AnalysisPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">AI Analysis</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          AI-powered match predictions and analysis
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">AI Analysis</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            AI-powered match predictions and analysis
+          </p>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-2 sm:gap-3">

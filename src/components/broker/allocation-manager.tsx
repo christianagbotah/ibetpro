@@ -268,8 +268,8 @@ export function AllocationManager() {
                   key={alloc.id}
                   className="rounded-lg border border-border p-4 space-y-3"
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <Badge
                         className={
                           alloc.status === "active"
@@ -284,11 +284,11 @@ export function AllocationManager() {
                         {alloc.status === "released" && <CheckCircle2 className="h-3 w-3 mr-1" />}
                         {alloc.status.charAt(0).toUpperCase() + alloc.status.slice(1)}
                       </Badge>
-                      <span className="text-sm font-medium text-foreground">
+                      <span className="text-sm font-medium text-foreground truncate">
                         {alloc.bettingAccount.accountName}
                       </span>
                     </div>
-                    <span className="text-xs text-muted-foreground">
+                    <span className="text-xs text-muted-foreground shrink-0">
                       {new Date(alloc.activatedAt).toLocaleDateString()}
                     </span>
                   </div>

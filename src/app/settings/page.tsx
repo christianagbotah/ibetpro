@@ -373,7 +373,7 @@ export default function SettingsPage() {
   return (
     <div className="space-y-6 max-w-3xl">
       {/* Page Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Settings</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -384,7 +384,7 @@ export default function SettingsPage() {
           variant="ghost"
           size="sm"
           onClick={fetchSettings}
-          className="text-muted-foreground"
+          className="text-muted-foreground self-start sm:self-auto"
         >
           <RefreshCw className="h-4 w-4 mr-1" />
           Refresh
@@ -1081,7 +1081,7 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           {telegramConnected ? (
             <div className="space-y-3">
-              <div className="flex items-center justify-between rounded-lg bg-emerald-400/10 p-4">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg bg-emerald-400/10 p-4">
                 <div className="flex items-center gap-3">
                   <div className="h-2 w-2 rounded-full bg-emerald-400" />
                   <div>
@@ -1094,7 +1094,7 @@ export default function SettingsPage() {
                   size="sm"
                   onClick={handleTelegramDisconnect}
                   disabled={telegramLoading}
-                  className="text-red-400 hover:text-red-300 hover:bg-red-400/10 h-8 text-xs"
+                  className="text-red-400 hover:text-red-300 hover:bg-red-400/10 h-8 text-xs self-start sm:self-auto"
                 >
                   <Unlink className="h-3 w-3 mr-1" />
                   Disconnect
@@ -1147,14 +1147,14 @@ export default function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg bg-secondary/50 p-4">
             <div>
               <p className="text-sm font-medium text-foreground">Your Commission Rate</p>
               <p className="text-xs text-muted-foreground mt-0.5">
                 This rate is applied to all winning bets and automatically transferred to admin
               </p>
             </div>
-            <Badge variant="secondary" className="bg-amber-400/10 text-amber-400 text-lg px-3 py-1">
+            <Badge variant="secondary" className="bg-amber-400/10 text-amber-400 text-lg px-3 py-1 self-start sm:self-auto">
               {(settings.commissionRate * 100).toFixed(0)}%
             </Badge>
           </div>

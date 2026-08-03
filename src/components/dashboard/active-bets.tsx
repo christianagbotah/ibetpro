@@ -53,15 +53,15 @@ export function ActiveBets({ bets }: ActiveBetsProps) {
               key={bet.id}
               className="rounded-lg bg-secondary/50 p-3 space-y-2"
             >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                <div className="flex items-center gap-2 min-w-0">
                   {bet.isAutoPlaced && (
-                    <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary">
+                    <Badge variant="secondary" className="text-[10px] bg-primary/10 text-primary shrink-0">
                       <Brain className="h-3 w-3 mr-0.5" />
                       AI
                     </Badge>
                   )}
-                  <span className="text-sm font-medium text-foreground">
+                  <span className="text-sm font-medium text-foreground truncate">
                     {bet.match?.homeTeam} vs {bet.match?.awayTeam}
                   </span>
                 </div>

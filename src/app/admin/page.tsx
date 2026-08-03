@@ -112,11 +112,13 @@ export default function AdminPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Platform overview and management
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Admin Panel</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Platform overview and management
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -252,7 +254,7 @@ export default function AdminPage() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-4">
             <div className="flex-1">
               <Label className="text-sm font-medium">Default Commission Rate</Label>
               <div className="flex items-center gap-2 mt-2">
@@ -270,7 +272,7 @@ export default function AdminPage() {
                 Range: {stats.adminSettings?.minCommissionRate ? Math.round(stats.adminSettings.minCommissionRate * 100) : 5}% - {stats.adminSettings?.maxCommissionRate ? Math.round(stats.adminSettings.maxCommissionRate * 100) : 25}%
               </p>
             </div>
-            <div className="flex flex-col items-center gap-2 rounded-lg bg-secondary/50 p-4">
+            <div className="flex flex-col items-center gap-2 rounded-lg bg-secondary/50 p-4 self-start sm:self-auto">
               <span className="text-3xl font-bold text-amber-400">{commissionRate}%</span>
               <span className="text-xs text-muted-foreground">Commission Rate</span>
             </div>

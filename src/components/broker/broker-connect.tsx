@@ -235,10 +235,12 @@ export function BrokerConnect() {
     <div className="space-y-6">
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Link2 className="h-4 w-4 text-primary" />
-              Connected Brokers
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2 text-base">
+                <Link2 className="h-4 w-4 text-primary" />
+                Connected Brokers
+              </CardTitle>
               <button
                 onClick={() => handleBrokerModeSwitch(brokerMode === "demo" ? "real" : "demo")}
                 disabled={switchingMode}
@@ -258,11 +260,11 @@ export function BrokerConnect() {
                 )}
                 {brokerMode === "demo" ? "Sandbox" : "Live"}
               </button>
-            </CardTitle>
+            </div>
             <Dialog open={connectDialogOpen} onOpenChange={handleDialogClose}>
               <Button
                 size="sm"
-                className="bg-primary text-primary-foreground"
+                className="bg-primary text-primary-foreground w-full sm:w-auto"
                 onClick={() => setConnectDialogOpen(true)}
               >
                 <Link2 className="h-3.5 w-3.5 mr-1.5" />
@@ -674,18 +676,18 @@ export function BrokerConnect() {
                     key={account.id}
                     className="rounded-lg border border-border p-4 space-y-3"
                   >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
                         <BrokerLogo platform={{ id: account.platform, name: account.platformName, color: "#10b981" }} size={40} className="shrink-0" />
-                        <div>
-                          <p className="text-sm font-medium text-foreground">{account.accountName}</p>
-                          <p className="text-xs text-muted-foreground">
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{account.accountName}</p>
+                          <p className="text-xs text-muted-foreground truncate">
                             {account.platformName}
                             {regionInfo && ` · ${regionInfo.flag} ${regionInfo.name}`}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         {account.isConnected ? (
                           <Badge className="bg-emerald-400/10 text-emerald-400 border-emerald-400/30">
                             <CheckCircle2 className="h-3 w-3 mr-1" /> Connected

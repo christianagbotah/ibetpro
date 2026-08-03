@@ -173,12 +173,14 @@ export default function CommissionPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Commission Tracking</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Track all commission deductions and transfers to admin. Commission is automatically
-          deducted from winning bets and transferred to the admin account.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Commission Tracking</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Track all commission deductions and transfers to admin. Commission is automatically
+            deducted from winning bets and transferred to the admin account.
+          </p>
+        </div>
       </div>
 
       <Card className="bg-card border-border">
@@ -195,10 +197,10 @@ export default function CommissionPage() {
       </Card>
 
       <Tabs defaultValue="daily">
-        <TabsList>
-          <TabsTrigger value="daily">Today</TabsTrigger>
-          <TabsTrigger value="weekly">This Week</TabsTrigger>
-          <TabsTrigger value="all">All Time</TabsTrigger>
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="daily" className="flex-1 sm:flex-initial">Today</TabsTrigger>
+          <TabsTrigger value="weekly" className="flex-1 sm:flex-initial">This Week</TabsTrigger>
+          <TabsTrigger value="all" className="flex-1 sm:flex-initial">All Time</TabsTrigger>
         </TabsList>
 
         <TabsContent value="daily" className="space-y-4">

@@ -189,11 +189,13 @@ export default function HistoryPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Bet History</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          View and analyze your past betting performance
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Bet History</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            View and analyze your past betting performance
+          </p>
+        </div>
       </div>
 
       {/* Summary Stats */}
@@ -245,7 +247,7 @@ export default function HistoryPage() {
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={statusFilter} onValueChange={(v) => { if (v) setStatusFilter(v); }}>
-                <SelectTrigger className="w-28 sm:w-32 bg-secondary border-border">
+                <SelectTrigger className="w-full sm:w-32 bg-secondary border-border">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>

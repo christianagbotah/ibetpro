@@ -17,12 +17,14 @@ export default function AccountsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Broker Accounts</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Connect your betting platform, set allocations, and let the AI bot place bets using your
-          allocated funds. No deposits needed - the bot uses your broker account directly.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Broker Accounts</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Connect your betting platform, set allocations, and let the AI bot place bets using your
+            allocated funds. No deposits needed - the bot uses your broker account directly.
+          </p>
+        </div>
       </div>
 
       <div className="rounded-lg bg-primary/5 border border-primary/10 p-4">
@@ -39,14 +41,14 @@ export default function AccountsPage() {
       </div>
 
       <Tabs defaultValue="brokers">
-        <TabsList>
-          <TabsTrigger value="brokers" className="flex items-center gap-1.5">
-            <Link2 className="h-3.5 w-3.5" /> Brokers
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="brokers" className="flex items-center gap-1.5 flex-1 sm:flex-initial text-xs sm:text-sm">
+            <Link2 className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Brokers</span><span className="sm:hidden">Brokers</span>
           </TabsTrigger>
-          <TabsTrigger value="allocation" className="flex items-center gap-1.5">
-            <Wallet className="h-3.5 w-3.5" /> Allocation
+          <TabsTrigger value="allocation" className="flex items-center gap-1.5 flex-1 sm:flex-initial text-xs sm:text-sm">
+            <Wallet className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Allocation</span><span className="sm:hidden">Allocate</span>
           </TabsTrigger>
-          <TabsTrigger value="mode" className="flex items-center gap-1.5">
+          <TabsTrigger value="mode" className="flex items-center gap-1.5 flex-1 sm:flex-initial text-xs sm:text-sm">
             <Settings className="h-3.5 w-3.5" /> Mode
           </TabsTrigger>
         </TabsList>

@@ -180,11 +180,13 @@ export default function ProfitsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-foreground">Profits & Commission</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Track your earnings, commissions, and transaction history
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-foreground">Profits & Commission</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            Track your earnings, commissions, and transaction history
+          </p>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -303,10 +305,10 @@ export default function ProfitsPage() {
 
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <CardTitle className="text-base">Transaction History</CardTitle>
             <Select value={txFilter} onValueChange={setTxFilter}>
-              <SelectTrigger className="w-28 sm:w-36 bg-secondary border-border">
+              <SelectTrigger className="w-full sm:w-36 bg-secondary border-border">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

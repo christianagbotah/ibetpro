@@ -508,7 +508,7 @@ export default function BettingPage() {
             {botRunning ? "AI Bot is scanning for the best opportunities" : "Configure auto-betting and manage your bets"}
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           {/* Bot Status Indicator */}
           <Badge className={`px-3 py-1.5 ${
             botRunning
@@ -548,7 +548,7 @@ export default function BettingPage() {
               ) : (
                 <Square className="h-4 w-4" />
               )}
-              {botLoading ? "Stopping..." : "Stop Bot"}
+              <span className="hidden sm:inline">{botLoading ? "Stopping..." : "Stop Bot"}</span>
             </Button>
           ) : (
             <Button
@@ -562,7 +562,7 @@ export default function BettingPage() {
               ) : (
                 <Play className="h-4 w-4" />
               )}
-              {botLoading ? "Starting..." : "Start Bot"}
+              <span className="hidden sm:inline">{botLoading ? "Starting..." : "Start Bot"}</span>
             </Button>
           )}
 
@@ -579,7 +579,7 @@ export default function BettingPage() {
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            Settle
+            <span className="hidden sm:inline">Settle</span>
           </Button>
         </div>
       </div>
