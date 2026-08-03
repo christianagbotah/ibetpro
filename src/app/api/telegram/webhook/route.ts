@@ -150,10 +150,25 @@ export async function POST(request: NextRequest) {
 
   // ---- /start (no payload) — Welcome message ----
   if (text === "/start") {
-    await replyToChat(
-      chatId,
-      `👋 <b>Welcome to iBetPro AI Advisor!</b>\n\nTo receive AI tip alerts, you need to connect your iBetPro account.\n\n1. Go to iBetPro Settings\n2. Click "Connect Telegram"\n3. Send the link that opens\n\nThis links your account so tips are sent here.\n\nUse /help for available commands.`
-    );
+    // Check if this chat is already linked to a user
+    const existingSettings = await prisma.userSettings.findFirst({
+      where: { telegramChatId: chatId },
+      include: { user: true },
+    });
+
+    if (existingSettings && existingSettings.user) {
+      // Already connected — greet them by name
+      await replyToChat(
+        chatId,
+        `👋 <b>Welcome back, ${existingSettings.user.name}!</b>\n\nYour Telegram is already connected to iBetPro.\n\n🔔 Notifications: ${existingSettings.notificationsEnabled ? "ON" : "OFF"}\n\nUse /status for your stats or /help for all commands.`
+      );
+    } else {
+      // Not connected — show instructions
+      await replyToChat(
+        chatId,
+        `👋 <b>Welcome to iBetPro AI Advisor!</b>\n\nTo receive AI tip alerts, you need to connect your iBetPro account.\n\n1. Go to iBetPro Settings\n2. Click "Connect Telegram"\n3. Send the link that opens\n\nThis links your account so tips are sent here.\n\nUse /help for available commands.`
+      );
+    }
     return NextResponse.json({ ok: true });
   }
 

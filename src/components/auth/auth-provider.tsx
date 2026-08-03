@@ -38,6 +38,7 @@ export function useAuth() {
 function AuthContextInner({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
   const [user, setUser] = useState<AuthContextType["user"]>(null);
+  const [botInitialized, setBotInitialized] = useState(false);
 
   useEffect(() => {
     if (session?.user) {
@@ -52,6 +53,16 @@ function AuthContextInner({ children }: { children: ReactNode }) {
       setUser(null);
     }
   }, [session]);
+
+  // Initialize bot engine once when user is authenticated
+  useEffect(() => {
+    if (user && !botInitialized) {
+      setBotInitialized(true);
+      fetch("/api/bot/init").catch(() => {
+        // Silently fail — bot init is best-effort
+      });
+    }
+  }, [user, botInitialized]);
 
   const login = async (email: string, password: string) => {
     try {

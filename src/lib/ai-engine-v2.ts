@@ -899,7 +899,19 @@ export function shouldAutoBet(
   const { minOddsThreshold, maxOddsThreshold, minAiConfidence, minEdgeThreshold, riskLevel, preferredSports } = settings;
 
   // Check if sport is in preferred list
-  if (!preferredSports.split(",").some((s) => s.trim().toLowerCase() === sport.toLowerCase())) {
+  // Support both category names (e.g. "football") and specific keys (e.g. "soccer_epl")
+  // "football" matches "soccer_epl", "soccer_*", etc. "basketball" matches "basketball_nba", etc.
+  const sportList = preferredSports.split(",").map((s) => s.trim().toLowerCase());
+  const sportLower = sport.toLowerCase();
+  const sportCategory = sportLower.split("_")[0]; // e.g. "soccer" from "soccer_epl"
+  const sportMatches = sportList.some((s) => {
+    if (s === sportLower) return true; // exact match
+    if (s === "football" && (sportCategory === "soccer" || sportLower === "football")) return true;
+    if (s === "soccer" && (sportCategory === "soccer" || sportLower === "football")) return true;
+    if (s === sportCategory) return true; // category match (e.g. "basketball" matches "basketball_nba")
+    return false;
+  });
+  if (!sportMatches) {
     return { shouldPlace: false, reason: `Sport ${sport} not in preferred list`, betType: "skip", suggestedStake: 0 };
   }
 

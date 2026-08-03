@@ -10,6 +10,64 @@ import { analyzeMatch, shouldAutoBet, checkRiskLimits, isWithinBetSchedule } fro
 import { placeBetOnBroker } from "./broker-integration";
 import { sendTipAlert, type TipAlert } from "./notifications/telegram";
 
+// ==================== SPORT KEY MAPPING ====================
+
+/**
+ * Expand category-level sport names (e.g. "football") to all matching DB sport keys
+ * (e.g. "soccer_epl", "soccer_spain_la_liga", etc.) so the bot can find matches
+ * regardless of whether the user settings use category names or specific keys.
+ */
+const SPORT_CATEGORY_MAP: Record<string, string[]> = {
+  football: [
+    "football", "soccer_epl", "soccer_spain_la_liga", "soccer_germany_bundesliga",
+    "soccer_italy_serie_a", "soccer_france_ligue_one", "soccer_portugal_primeira_liga",
+    "soccer_netherlands_eredivisie", "soccer_turkey_super_league", "soccer_belgium_first_div",
+    "soccer_scotland_prem", "soccer_championship", "soccer_league_one", "soccer_league_two",
+    "soccer_efa_champions_league", "soccer_efa_europa_league", "soccer_efa_conference_league",
+    "soccer_mls", "soccer_br_serie_a", "soccer_argentina_primera", "soccer_a_league",
+    "soccer_j_league", "soccer_k_league", "soccer_china_super", "soccer_sa_aa",
+    "soccer_kenya_prem", "soccer_ghana_prem", "soccer_nigeria_npfl",
+  ],
+  basketball: [
+    "basketball", "basketball_nba", "basketball_ncaab", "basketball_euroleague", "basketball_nbl",
+  ],
+  tennis: [
+    "tennis", "tennis_atp_australian_open", "tennis_atp_french_open", "tennis_atp_wimbledon",
+    "tennis_atp_us_open", "tennis_atp_masters", "tennis_wta_masters",
+  ],
+  americanfootball: ["americanfootball", "americanfootball_nfl", "americanfootball_ncaaf"],
+  cricket: ["cricket", "cricket_ipl", "cricket_big_bash", "cricket_caribbean_prem"],
+  rugby: ["rugby", "rugby_union_six_nations", "rugby_union_prem"],
+  icehockey: ["icehockey", "icehockey_nhl", "icehockey_sweden_hockey_league"],
+  mma: ["mma", "mma_mixed_martial_arts"],
+  boxing: ["boxing", "boxing_boxing"],
+  motorsport: ["motorsport", "motorsport_f1"],
+  soccer: ["football", "soccer_epl", "soccer_spain_la_liga", "soccer_germany_bundesliga",
+    "soccer_italy_serie_a", "soccer_france_ligue_one", "soccer_portugal_primeira_liga",
+    "soccer_netherlands_eredivisie", "soccer_turkey_super_league", "soccer_belgium_first_div",
+    "soccer_scotland_prem", "soccer_championship", "soccer_league_one", "soccer_league_two",
+    "soccer_efa_champions_league", "soccer_efa_europa_league", "soccer_efa_conference_league",
+    "soccer_mls", "soccer_br_serie_a", "soccer_argentina_primera", "soccer_a_league",
+    "soccer_j_league", "soccer_k_league", "soccer_china_super", "soccer_sa_aa",
+    "soccer_kenya_prem", "soccer_ghana_prem", "soccer_nigeria_npfl"],
+};
+
+function expandSportKeys(sports: string[]): string[] {
+  const expanded = new Set<string>();
+  for (const sport of sports) {
+    const lower = sport.toLowerCase().trim();
+    if (SPORT_CATEGORY_MAP[lower]) {
+      for (const key of SPORT_CATEGORY_MAP[lower]) {
+        expanded.add(key);
+      }
+    } else {
+      // Keep the original key as-is (might be a specific key like "soccer_epl")
+      expanded.add(lower);
+    }
+  }
+  return Array.from(expanded);
+}
+
 // ==================== TYPES ====================
 
 interface ScanResult {
@@ -515,14 +573,18 @@ class BotEngine {
       }
 
       // Get upcoming matches
-      const preferredSports = isAdvisorMode
+      // tipSports may contain category names (e.g. "football") or sport keys (e.g. "soccer_epl")
+      // We need to match both — expand category names to include all sub-keys
+      const rawSports = isAdvisorMode
         ? (settings.tipSports?.split(",") || ["football"])
         : (settings.preferredSports?.split(",") || ["football"]);
+
+      const sportFilter = expandSportKeys(rawSports);
 
       const upcomingMatches = await prisma.match.findMany({
         where: {
           status: "upcoming",
-          sport: { in: preferredSports },
+          sport: { in: sportFilter },
           commenceTime: { gte: new Date() },
           id: { notIn: existingBetMatchIds },
         },
