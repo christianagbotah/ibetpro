@@ -77,9 +77,9 @@ model UserSettings {
   telegramChatId       String?  // Telegram chat ID for tip alerts
   minTipConfidence     Float   @default(0.65) // minimum AI confidence to send tip alert
   tipSports            String  @default("football,basketball,tennis") // sports to receive tips for
-  // Timezone: IANA timezone name (e.g. "America/New_York", "Europe/London", "Africa/Lagos")
-  // Used for bet schedule & display times. Defaults to server timezone if not set.
-  timezone             String  @default("America/New_York")
+  // Timezone: IANA timezone name (e.g. "Africa/Accra", "Europe/London", "Africa/Lagos")
+  // Used for bet schedule & display times. Africa/Accra = UTC+0, no DST.
+  timezone             String  @default("Africa/Accra")
   createdAt            DateTime @default(now())
   updatedAt            DateTime @updatedAt
 

@@ -14,12 +14,14 @@ module.exports = {
         NODE_ENV: "production",
         PORT: 3007,
         HOSTNAME: "0.0.0.0",
+        TZ: "Africa/Accra", // UTC+0, no DST — all times in UTC
       },
       // Production environment overrides
       env_production: {
         NODE_ENV: "production",
         PORT: 3007,
         HOSTNAME: "0.0.0.0",
+        TZ: "Africa/Accra",
       },
       // Process management
       instances: 1,               // Single instance — avoids connection pool confusion with MySQL

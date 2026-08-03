@@ -1014,7 +1014,7 @@ export function checkRiskLimits(
  *
  * @param start - Schedule start time in HH:mm format (in user's local timezone)
  * @param end - Schedule end time in HH:mm format (in user's local timezone)
- * @param timezone - IANA timezone name (e.g. "America/New_York", "Africa/Lagos")
+ * @param timezone - IANA timezone name (e.g. "Africa/Accra", "Europe/London", "Africa/Lagos")
  */
 export function isWithinBetSchedule(start: string, end: string, timezone?: string): boolean {
   // Get current time in user's timezone

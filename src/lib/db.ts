@@ -8,9 +8,8 @@ const globalForPrisma = globalThis as unknown as {
 function createPrismaClient() {
   // PrismaMariaDb constructor accepts: mariadb.PoolConfig | string
   // Use PoolConfig to set timezone explicitly.
-  // The MariaDB server may be in a different timezone than the Node.js process.
-  // Setting timezone: 'local' ensures the driver converts JS Date (UTC) to
-  // the server's local timezone before sending, so date comparisons are correct.
+  // Africa/Accra is UTC+0 with no DST — all times are stored/compared in UTC.
+  // This eliminates timezone ambiguity regardless of server physical location.
   const url = new URL(process.env.DATABASE_URL!);
   const adapter = new PrismaMariaDb({
     host: url.hostname,
@@ -18,7 +17,7 @@ function createPrismaClient() {
     user: url.username,
     password: decodeURIComponent(url.password),
     database: url.pathname.slice(1),
-    timezone: 'local', // Match JS Date conversion to server's local timezone
+    timezone: '+00:00', // Africa/Accra = UTC+0, no DST
   });
   return new PrismaClient({ adapter });
 }
