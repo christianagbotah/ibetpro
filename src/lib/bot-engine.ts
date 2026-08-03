@@ -9,6 +9,7 @@ import { prisma } from "./db";
 import { analyzeMatch, shouldAutoBet, checkRiskLimits, isWithinBetSchedule } from "./ai-engine-v2";
 import { placeBetOnBroker } from "./broker-integration";
 import { sendTipAlert, type TipAlert } from "./notifications/telegram";
+import { syncMatchData } from "./sync-service";
 
 // ==================== SPORT KEY MAPPING ====================
 
@@ -465,6 +466,13 @@ class BotEngine {
     const result: ScanResult = { betsPlaced: 0, tipsGenerated: 0, totalStake: 0, matches: 0, skipped: 0 };
 
     try {
+      // Refresh match data from external APIs (throttled to avoid rate limits)
+      try {
+        await syncMatchData(false);
+      } catch (syncErr) {
+        console.warn("[BotEngine] Match sync failed, continuing with existing data:", syncErr);
+      }
+
       // Get user settings
       const settings = await prisma.userSettings.findUnique({ where: { userId } });
       if (!settings) {

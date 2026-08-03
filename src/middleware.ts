@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-const publicRoutes = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/telegram/webhook"];
+const publicRoutes = ["/login", "/forgot-password", "/reset-password", "/api/auth", "/api/telegram/webhook", "/api/sync/cron"];
 
 const adminRoutes = ["/admin"];
 
