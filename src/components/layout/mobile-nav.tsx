@@ -16,6 +16,7 @@ import {
   Shield,
   TrendingUp,
   Download,
+  Target,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -34,11 +35,12 @@ const primaryNavItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/analysis", label: "AI", icon: Brain },
   { href: "/betting", label: "Bet", icon: Zap },
+  { href: "/tips", label: "Tips", icon: Target },
   { href: "/monitor", label: "Live", icon: Radio },
-  { href: "/accounts", label: "Brokers", icon: Wallet },
 ];
 
 const moreNavItems = [
+  { href: "/accounts", label: "Brokers", icon: Wallet, badge: null },
   { href: "/profits", label: "Profits", icon: TrendingUp, badge: null },
   { href: "/commission", label: "Commission", icon: Percent, badge: null },
   { href: "/history", label: "History", icon: History, badge: null },
