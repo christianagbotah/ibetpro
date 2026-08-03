@@ -27,9 +27,11 @@ import {
   KeyRound,
   Eye,
   EyeOff,
+  MapPin,
 } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
 import { useToast } from "@/components/ui/toast";
+import { REGIONS, getContinents } from "@/lib/regions";
 
 interface UserSettings {
   autoBettingEnabled: boolean;
@@ -128,7 +130,53 @@ export default function SettingsPage() {
   const [changingPassword, setChangingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [selectedContinent, setSelectedContinent] = useState("Africa");
   const { addToast } = useToast();
+
+  // Update user region/currency
+  const handleUpdateRegion = useCallback(async (regionCode: string) => {
+    try {
+      const res = await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ region: regionCode }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProfile((prev) => ({
+          ...prev,
+          region: data.region,
+          currency: data.currency,
+        }));
+        addToast("success", `Region updated to ${data.regionName || data.region}`);
+      }
+    } catch {
+      addToast("error", "Failed to update region");
+    }
+  }, [addToast]);
+
+  // Auto-detect region from browser timezone
+  const handleAutoDetect = useCallback(async () => {
+    const browserTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    try {
+      const res = await fetch("/api/user/profile", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ timezone: browserTz }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setProfile((prev) => ({
+          ...prev,
+          region: data.region,
+          currency: data.currency,
+        }));
+        addToast("success", `Detected: ${data.regionName || data.region} (${browserTz})`);
+      }
+    } catch {
+      addToast("error", "Auto-detect failed");
+    }
+  }, [addToast]);
 
   // Switch broker mode
   const handleBrokerModeSwitch = useCallback(async (mode: "demo" | "real") => {
@@ -157,10 +205,11 @@ export default function SettingsPage() {
   const fetchSettings = useCallback(async () => {
     try {
       setLoading(true);
-      const [settingsRes, statsRes, brokerModeRes] = await Promise.all([
+      const [settingsRes, statsRes, brokerModeRes, profileRes] = await Promise.all([
         fetch("/api/settings"),
         fetch("/api/stats/user"),
         fetch("/api/user/broker-mode"),
+        fetch("/api/user/profile"),
       ]);
 
       if (brokerModeRes.ok) {
@@ -218,6 +267,16 @@ export default function SettingsPage() {
           name: user.name || "",
           email: user.email || "",
           role: user.role || "user",
+        }));
+      }
+
+      // Fetch profile from API (region, currency)
+      if (profileRes.ok) {
+        const profileData = await profileRes.json();
+        setProfile((prev) => ({
+          ...prev,
+          region: profileData.region || prev.region,
+          currency: profileData.currency || prev.currency,
         }));
       }
 
@@ -431,28 +490,80 @@ export default function SettingsPage() {
             </Badge>
           </div>
           <Separator />
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <Label className="text-sm text-muted-foreground">Region</Label>
-              <span className="text-sm text-foreground">{profile.region || "Not set"}</span>
+              <Label className="text-sm text-muted-foreground flex items-center gap-1">
+                <MapPin className="h-3.5 w-3.5" /> Region &amp; Currency
+              </Label>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleAutoDetect}
+                className="h-7 text-xs text-primary"
+              >
+                <RefreshCw className="h-3 w-3 mr-1" /> Auto-detect
+              </Button>
             </div>
-            <div className="flex items-center justify-between">
-              <Label className="text-sm text-muted-foreground">Currency</Label>
-              <span className="text-sm text-foreground">{profile.currency || "USD"}</span>
+            {/* Continent tabs */}
+            <div className="flex flex-wrap gap-1">
+              {getContinents().map((c) => (
+                <Button
+                  key={c}
+                  variant={selectedContinent === c ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setSelectedContinent(c)}
+                  className="h-7 text-xs"
+                >
+                  {c}
+                </Button>
+              ))}
+            </div>
+            {/* Region grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-1.5 max-h-48 overflow-y-auto">
+              {REGIONS.filter((r) => r.continent === selectedContinent).map((r) => (
+                <Button
+                  key={r.code}
+                  variant={profile.region === r.code ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handleUpdateRegion(r.code)}
+                  className={`h-8 text-xs justify-start gap-1.5 ${profile.region === r.code ? "ring-1 ring-primary" : ""}`}
+                >
+                  <span>{r.flag}</span>
+                  <span className="truncate">{r.name}</span>
+                  <span className="text-[9px] opacity-60 ml-auto">{r.currencyCode}</span>
+                </Button>
+              ))}
+            </div>
+            {/* Current selection */}
+            <div className="flex items-center gap-3 text-sm">
+              {(() => {
+                const currentRegion = REGIONS.find((r) => r.code === profile.region);
+                return currentRegion ? (
+                  <>
+                    <span className="text-lg">{currentRegion.flag}</span>
+                    <span className="text-foreground font-medium">{currentRegion.name}</span>
+                    <span className="text-muted-foreground">•</span>
+                    <span className="text-foreground">{currentRegion.currencySymbol} {currentRegion.currencyCode}</span>
+                    <span className="text-muted-foreground text-xs">({currentRegion.currencyName})</span>
+                  </>
+                ) : (
+                  <span className="text-muted-foreground">Select your region above</span>
+                );
+              })()}
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex items-center justify-between">
               <Label className="text-sm text-muted-foreground">Bankroll</Label>
               <span className="text-sm font-medium text-foreground">
-                {profile.currency === "NGN" ? "₦" : profile.currency === "GBP" ? "£" : profile.currency === "EUR" ? "€" : "$"}
+                {(() => { const r = REGIONS.find(r => r.currencyCode === profile.currency); return r?.currencySymbol || "$"; })()}
                 {profile.bankroll.toFixed(2)}
               </span>
             </div>
             <div className="flex items-center justify-between">
               <Label className="text-sm text-muted-foreground">Balance</Label>
               <span className="text-sm font-medium text-foreground">
-                {profile.currency === "NGN" ? "₦" : profile.currency === "GBP" ? "£" : profile.currency === "EUR" ? "€" : "$"}
+                {(() => { const r = REGIONS.find(r => r.currencyCode === profile.currency); return r?.currencySymbol || "$"; })()}
                 {profile.balance.toFixed(2)}
               </span>
             </div>
