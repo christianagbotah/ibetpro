@@ -1,0 +1,645 @@
+     1→     1→"use client";
+     2→     2→
+     3→     3→import { useState, useEffect, useCallback } from "react";
+     4→     4→import { usePolling, useFetch } from "@/lib/hooks";
+     5→     5→import { useToast } from "@/components/ui/toast";
+     6→     6→import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+     7→     7→import { Badge } from "@/components/ui/badge";
+     8→     8→import { Button } from "@/components/ui/button";
+     9→     9→import { Radio, Eye, DollarSign, Clock, Zap, Volume2, VolumeX, Play, TrendingUp, RefreshCw, Layers, Brain } from "lucide-react";
+    10→    10→import { useAuth } from "@/components/auth/auth-provider";
+    11→    11→import { getSportShortName, getSportName } from "@/lib/sports";
+    12→    12→import Link from "next/link";
+    13→    13→
+    14→    14→interface LiveMatch {
+    15→    15→  id: string;
+    16→    16→  homeTeam: string;
+    17→    17→  awayTeam: string;
+    18→    18→  sport: string;
+    19→    19→  league: string;
+    20→    20→  homeOdds: number;
+    21→    21→  awayOdds: number;
+    22→    22→  drawOdds: number | null;
+    23→    23→  homeScore: number | null;
+    24→    24→  awayScore: number | null;
+    25→    25→  minute: number | null;
+    26→    26→  status: string;
+    27→    27→  commenceTime: string;
+    28→    28→  aiHomeWinProb: number | null;
+    29→    29→  aiAwayWinProb: number | null;
+    30→    30→  aiConfidence: number | null;
+    31→    31→  aiRecommended: string | null;
+    32→    32→  aiAnalysis: string | null;
+    33→    33→}
+    34→    34→
+    35→    35→interface ActiveBet {
+    36→    36→  id: string;
+    37→    37→  betType: string;
+    38→    38→  selection: string;
+    39→    39→  odds: number;
+    40→    40→  stake: number;
+    41→    41→  potentialWin: number;
+    42→    42→  status: string;
+    43→    43→  isAutoPlaced: boolean;
+    44→    44→  aiConfidence: number | null;
+    45→    45→  aiReasoning: string | null;
+    46→    46→  accumulatorId: string | null;
+    47→    47→  partialCashoutAmount: number | null;
+    48→    48→  match?: {
+    49→    49→    id: string;
+    50→    50→    homeTeam: string;
+    51→    51→    awayTeam: string;
+    52→    52→    sport: string;
+    53→    53→    league: string;
+    54→    54→    status: string;
+    55→    55→    homeScore: number | null;
+    56→    56→    awayScore: number | null;
+    57→    57→    minute: number | null;
+    58→    58→  };
+    59→    59→}
+    60→    60→
+    61→    61→interface CashoutRec {
+    62→    62→  shouldCashout: boolean;
+    63→    63→  cashoutAmount: number;
+    64→    64→  partialCashoutAmount: number;
+    65→    65→  reasoning: string;
+    66→    66→  urgency: "low" | "medium" | "high";
+    67→    67→  waitOrCashout: "wait" | "cashout_partial" | "cashout_full" | "wait_for_settlement";
+    68→    68→  settlementProbability: number;
+    69→    69→}
+    70→    70→
+    71→    71→interface MatchEvent {
+    72→    72→  matchId: string;
+    73→    73→  text: string;
+    74→    74→  timestamp: number;
+    75→    75→}
+    76→    76→
+    77→    77→export default function MonitorPage() {
+    78→    78→  const { addToast } = useToast();
+    79→    79→  const { user } = useAuth();
+    80→    80→  const { data: allMatches, loading: matchesLoading, refetch: refetchMatches } = usePolling<LiveMatch[]>("/api/matches", 15000, []);
+    81→    81→  const { data: bets, loading: betsLoading, refetch: refetchBets } = usePolling<ActiveBet[]>("/api/bets?status=pending", 15000, []);
+    82→    82→  const [cashoutRecs, setCashoutRecs] = useState<Record<string, CashoutRec>>({});
+    83→    83→  const [cashedOutBets, setCashedOutBets] = useState<Set<string>>(new Set());
+    84→    84→  const [soundEnabled, setSoundEnabled] = useState(false);
+    85→    85→  const [simulating, setSimulating] = useState<string | null>(null);
+    86→    86→  const [matchEvents, setMatchEvents] = useState<MatchEvent[]>([]);
+    87→    87→  const [autoSettleRunning, setAutoSettleRunning] = useState(false);
+    88→    88→
+    89→    89→  const loading = matchesLoading || betsLoading;
+    90→    90→
+    91→    91→  // Fetch cashout recommendations for live bets
+    92→    92→  useEffect(() => {
+    93→    93→    const liveBets = bets.filter((b) => b.match?.status === "live" && !cashedOutBets.has(b.id));
+    94→    94→    let cancelled = false;
+    95→    95→
+    96→    96→    async function fetchCashouts() {
+    97→    97→      for (const bet of liveBets) {
+    98→    98→        if (cancelled) break;
+    99→    99→        try {
+   100→   100→          const res = await fetch(`/api/cashout?betId=${bet.id}`);
+   101→   101→          if (res.ok && !cancelled) {
+   102→   102→            const result = await res.json();
+   103→   103→            setCashoutRecs((prev) => ({
+   104→   104→              ...prev,
+   105→   105→              [bet.id]: result.cashoutRecommendation,
+   106→   106→            }));
+   107→   107→          }
+   108→   108→        } catch {
+   109→   109→          // Ignore cashout errors
+   110→   110→        }
+   111→   111→      }
+   112→   112→    }
+   113→   113→
+   114→   114→    if (liveBets.length > 0) {
+   115→   115→      fetchCashouts();
+   116→   116→    }
+   117→   117→
+   118→   118→    return () => {
+   119→   119→      cancelled = true;
+   120→   120→    };
+   121→   121→  }, [bets, cashedOutBets]);
+   122→   122→
+   123→   123→  const handleCashout = useCallback(async (betId: string, type: "full" | "partial" = "full") => {
+   124→   124→    setCashedOutBets((prev) => new Set(prev).add(betId));
+   125→   125→    try {
+   126→   126→      const res = await fetch("/api/cashout", {
+   127→   127→        method: "POST",
+   128→   128→        headers: { "Content-Type": "application/json" },
+   129→   129→        body: JSON.stringify({ betId, cashoutType: type }),
+   130→   130→      });
+   131→   131→      if (res.ok) {
+   132→   132→        const result = await res.json();
+   133→   133→        addToast("success", `${type === "partial" ? "Partial" : "Full"} cashout: $${result.amount?.toFixed(2)}`);
+   134→   134→      } else {
+   135→   135→        const data = await res.json();
+   136→   136→        addToast("error", data.error || "Cashout failed");
+   137→   137→      }
+   138→   138→    } catch {
+   139→   139→      addToast("error", "Cashout failed");
+   140→   140→    }
+   141→   141→    refetchBets();
+   142→   142→  }, [addToast, refetchBets]);
+   143→   143→
+   144→   144→  const handleSimulate = useCallback(async (matchId: string) => {
+   145→   145→    setSimulating(matchId);
+   146→   146→    try {
+   147→   147→      const res = await fetch("/api/matches/simulate", {
+   148→   148→        method: "POST",
+   149→   149→        headers: { "Content-Type": "application/json" },
+   150→   150→        body: JSON.stringify({ matchId }),
+   151→   151→      });
+   152→   152→      if (res.ok) {
+   153→   153→        const result = await res.json();
+   154→   154→        if (result.events && result.events.length > 0) {
+   155→   155→          result.events.forEach((event: string) => {
+   156→   156→            setMatchEvents((prev) => [
+   157→   157→              { matchId, text: event, timestamp: Date.now() },
+   158→   158→              ...prev,
+   159→   159→            ].slice(0, 20));
+   160→   160→          });
+   161→   161→          addToast("info", `Match progressed: ${result.events.join(", ")}`);
+   162→   162→        } else {
+   163→   163→          addToast("info", "Match progressed, no goals scored");
+   164→   164→        }
+   165→   165→        refetchMatches();
+   166→   166→        refetchBets();
+   167→   167→      } else {
+   168→   168→        addToast("error", "Failed to simulate match progress");
+   169→   169→      }
+   170→   170→    } catch {
+   171→   171→      addToast("error", "Failed to simulate match progress");
+   172→   172→    } finally {
+   173→   173→      setSimulating(null);
+   174→   174→    }
+   175→   175→  }, [addToast, refetchMatches, refetchBets]);
+   176→   176→
+   177→   177→  const handleAutoSettle = useCallback(async () => {
+   178→   178→    if (!user?.id) return;
+   179→   179→    setAutoSettleRunning(true);
+   180→   180→    try {
+   181→   181→      const res = await fetch("/api/settle", {
+   182→   182→        method: "POST",
+   183→   183→        headers: { "Content-Type": "application/json" },
+   184→   184→        body: JSON.stringify({ userId: user.id }),
+   185→   185→      });
+   186→   186→      if (res.ok) {
+   187→   187→        const result = await res.json();
+   188→   188→        if (result.settled > 0) {
+   189→   189→          addToast("success", `Settled ${result.settled} bet(s). Profit: $${result.totalProfit?.toFixed(2)}`);
+   190→   190→        } else {
+   191→   191→          addToast("info", "No bets to settle");
+   192→   192→        }
+   193→   193→        refetchBets();
+   194→   194→      }
+   195→   195→    } catch {
+   196→   196→      addToast("error", "Settlement failed");
+   197→   197→    } finally {
+   198→   198→      setAutoSettleRunning(false);
+   199→   199→    }
+   200→   200→  }, [user?.id, addToast, refetchBets]);
+   201→   201→
+   202→   202→  const liveMatches = allMatches.filter((m) => m.status === "live" || m.status === "upcoming");
+   203→   203→  const liveMatchesList = liveMatches.filter((m) => m.status === "live");
+   204→   204→  const upcomingMatchesList = liveMatches.filter((m) => m.status === "upcoming");
+   205→   205→  const activeBets = bets.filter((b) => !cashedOutBets.has(b.id));
+   206→   206→  const accumulatorBets = activeBets.filter((b) => b.accumulatorId);
+   207→   207→  const singleBets = activeBets.filter((b) => !b.accumulatorId);
+   208→   208→
+   209→   209→  if (loading) {
+   210→   210→    return (
+   211→   211→      <div className="flex items-center justify-center h-64">
+   212→   212→        <div className="flex items-center gap-2 text-muted-foreground">
+   213→   213→          <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+   214→   214→          Loading monitor...
+   215→   215→        </div>
+   216→   216→      </div>
+   217→   217→    );
+   218→   218→  }
+   219→   219→
+   220→   220→  return (
+   221→   221→    <div className="space-y-6">
+   222→   222→      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+   223→   223→        <div>
+   224→   224→          <h1 className="text-2xl font-bold text-foreground">Live Monitor</h1>
+   225→   225→          <p className="text-sm text-muted-foreground mt-1">
+   226→   226→            Track live matches and manage active bets in real-time
+   227→   227→          </p>
+   228→   228→        </div>
+   229→   229→        <div className="flex items-center gap-2">
+   230→   230→          <Button
+   231→   231→            variant="outline"
+   232→   232→            size="sm"
+   233→   233→            onClick={() => setSoundEnabled(!soundEnabled)}
+   234→   234→            className={`${soundEnabled ? "border-primary/30 text-primary" : "border-border text-muted-foreground"}`}
+   235→   235→          >
+   236→   236→            {soundEnabled ? <Volume2 className="h-4 w-4 mr-1.5" /> : <VolumeX className="h-4 w-4 mr-1.5" />}
+   237→   237→            <span className="hidden sm:inline">{soundEnabled ? "Sound On" : "Sound Off"}</span>
+   238→   238→          </Button>
+   239→   239→          <Button
+   240→   240→            size="sm"
+   241→   241→            variant="outline"
+   242→   242→            onClick={handleAutoSettle}
+   243→   243→            disabled={autoSettleRunning}
+   244→   244→            className="border-emerald-400/30 text-emerald-400 hover:bg-emerald-400/10"
+   245→   245→          >
+   246→   246→            {autoSettleRunning ? (
+   247→   247→              <div className="h-4 w-4 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+   248→   248→            ) : (
+   249→   249→              <RefreshCw className="h-4 w-4 mr-1.5" />
+   250→   250→            )}
+   251→   251→            Settle
+   252→   252→          </Button>
+   253→   253→        </div>
+   254→   254→      </div>
+   255→   255→
+   256→   256→      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+   257→   257→        <Card className="bg-card border-border">
+   258→   258→          <CardContent className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3">
+   259→   259→            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-500/10">
+   260→   260→              <Radio className="h-4 w-4 text-red-500" />
+   261→   261→            </div>
+   262→   262→            <div>
+   263→   263→              <p className="text-xs text-muted-foreground">Live Matches</p>
+   264→   264→              <p className="text-lg font-bold text-foreground">{liveMatchesList.length}</p>
+   265→   265→            </div>
+   266→   266→          </CardContent>
+   267→   267→        </Card>
+   268→   268→        <Card className="bg-card border-border">
+   269→   269→          <CardContent className="p-3 flex items-center gap-3">
+   270→   270→            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+   271→   271→              <Zap className="h-4 w-4 text-primary" />
+   272→   272→            </div>
+   273→   273→            <div>
+   274→   274→              <p className="text-xs text-muted-foreground">Active Bets</p>
+   275→   275→              <p className="text-lg font-bold text-foreground">{activeBets.length}</p>
+   276→   276→            </div>
+   277→   277→          </CardContent>
+   278→   278→        </Card>
+   279→   279→        <Card className="bg-card border-border">
+   280→   280→          <CardContent className="p-3 flex items-center gap-3">
+   281→   281→            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-400/10">
+   282→   282→              <Layers className="h-4 w-4 text-purple-400" />
+   283→   283→            </div>
+   284→   284→            <div>
+   285→   285→              <p className="text-xs text-muted-foreground">Accumulators</p>
+   286→   286→              <p className="text-lg font-bold text-foreground">{accumulatorBets.length}</p>
+   287→   287→            </div>
+   288→   288→          </CardContent>
+   289→   289→        </Card>
+   290→   290→        <Card className="bg-card border-border">
+   291→   291→          <CardContent className="p-3 flex items-center gap-3">
+   292→   292→            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-amber-400/10">
+   293→   293→              <DollarSign className="h-4 w-4 text-amber-400" />
+   294→   294→            </div>
+   295→   295→            <div>
+   296→   296→              <p className="text-xs text-muted-foreground">Cashout Offers</p>
+   297→   297→              <p className="text-lg font-bold text-foreground">
+   298→   298→                {Object.keys(cashoutRecs).length}
+   299→   299→              </p>
+   300→   300→            </div>
+   301→   301→          </CardContent>
+   302→   302→        </Card>
+   303→   303→        <Card className="bg-card border-border">
+   304→   304→          <CardContent className="p-3 flex items-center gap-3">
+   305→   305→            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-400/10">
+   306→   306→              <Eye className="h-4 w-4 text-emerald-400" />
+   307→   307→            </div>
+   308→   308→            <div>
+   309→   309→              <p className="text-xs text-muted-foreground">Upcoming</p>
+   310→   310→              <p className="text-lg font-bold text-foreground">{upcomingMatchesList.length}</p>
+   311→   311→            </div>
+   312→   312→          </CardContent>
+   313→   313→        </Card>
+   314→   314→      </div>
+   315→   315→
+   316→   316→      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+   317→   317→        {/* Live Matches with Simulate */}
+   318→   318→        <Card className="bg-card border-border">
+   319→   319→          <CardHeader className="pb-3">
+   320→   320→            <CardTitle className="flex items-center gap-2 text-base">
+   321→   321→              <Radio className="h-4 w-4 text-red-500" />
+   322→   322→              Live Matches
+   323→   323→            </CardTitle>
+   324→   324→          </CardHeader>
+   325→   325→          <CardContent className="space-y-3 max-h-[600px] lg:max-h-[calc(100vh-360px)] overflow-y-auto">
+   326→   326→            {liveMatchesList.length === 0 ? (
+   327→   327→              <p className="text-sm text-muted-foreground text-center py-4">
+   328→   328→                No live matches at the moment
+   329→   329→              </p>
+   330→   330→            ) : (
+   331→   331→              liveMatchesList.map((match) => (
+   332→   332→                <div
+   333→   333→                  key={match.id}
+   334→   334→                  className="rounded-lg border border-red-500/20 bg-red-500/5 p-4"
+   335→   335→                >
+   336→   336→                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+   337→   337→                    <div className="flex items-center gap-2">
+   338→   338→                      <span className="relative flex h-2.5 w-2.5">
+   339→   339→                        <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
+   340→   340→                        <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+   341→   341→                      </span>
+   342→   342→                      <Badge className="text-[10px] bg-red-500/20 text-red-400 border-red-500/30">
+   343→   343→                        LIVE
+   344→   344→                      </Badge>
+   345→   345→                      <span className="text-xs text-muted-foreground">{match.minute}&apos;</span>
+   346→   346→                      <span className="text-[10px] sm:text-xs text-muted-foreground">{match.league || getSportShortName(match.sport)}</span>
+   347→   347→                    </div>
+   348→   348→                    <Button
+   349→   349→                      size="xs"
+   350→   350→                      variant="outline"
+   351→   351→                      className="border-primary/30 text-primary hover:bg-primary/10"
+   352→   352→                      onClick={() => handleSimulate(match.id)}
+   353→   353→                      disabled={simulating === match.id}
+   354→   354→                    >
+   355→   355→                      {simulating === match.id ? (
+   356→   356→                        <div className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+   357→   357→                      ) : (
+   358→   358→                        <Play className="h-3 w-3" />
+   359→   359→                      )}
+   360→   360→                      Simulate
+   361→   361→                    </Button>
+   362→   362→                  </div>
+   363→   363→
+   364→   364→                  <Link href={`/matches/${match.id}`} className="block">
+   365→   365→                    <div className="flex items-center justify-center gap-3 sm:gap-6 my-3">
+   366→   366→                      <div className="text-center">
+   367→   367→                        <p className="text-xs sm:text-sm font-medium text-foreground">{match.homeTeam}</p>
+   368→   368→                        <p className="text-2xl sm:text-3xl font-bold text-foreground">{match.homeScore}</p>
+   369→   369→                      </div>
+   370→   370→                      <div className="text-lg text-muted-foreground">-</div>
+   371→   371→                      <div className="text-center">
+   372→   372→                        <p className="text-xs sm:text-sm font-medium text-foreground">{match.awayTeam}</p>
+   373→   373→                        <p className="text-2xl sm:text-3xl font-bold text-foreground">{match.awayScore}</p>
+   374→   374→                      </div>
+   375→   375→                    </div>
+   376→   376→                  </Link>
+   377→   377→
+   378→   378→                  <div className="mt-2">
+   379→   379→                    <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+   380→   380→                      <div
+   381→   381→                        className="h-full rounded-full bg-red-500 transition-all"
+   382→   382→                        style={{ width: `${((match.minute || 0) / 90) * 100}%` }}
+   383→   383→                      />
+   384→   384→                    </div>
+   385→   385→                    <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+   386→   386→                      <span>KO</span>
+   387→   387→                      <span>HT</span>
+   388→   388→                      <span>FT</span>
+   389→   389→                    </div>
+   390→   390→                  </div>
+   391→   391→
+   392→   392→                  {match.aiRecommended && (
+   393→   393→                    <div className="mt-3 rounded bg-primary/5 border border-primary/10 p-2">
+   394→   394→                      <div className="flex items-center gap-1">
+   395→   395→                        <Brain className="h-3 w-3 text-primary" />
+   396→   396→                        <span className="text-[10px] text-muted-foreground">AI recommends:</span>
+   397→   397→                        <span className="text-xs font-medium text-primary">
+   398→   398→                          {match.aiRecommended === "home" ? match.homeTeam : match.aiRecommended === "away" ? match.awayTeam : match.aiRecommended}
+   399→   399→                        </span>
+   400→   400→                      </div>
+   401→   401→                    </div>
+   402→   402→                  )}
+   403→   403→                </div>
+   404→   404→              ))
+   405→   405→            )}
+   406→   406→
+   407→   407→            {upcomingMatchesList.length > 0 && (
+   408→   408→              <>
+   409→   409→                <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mt-4">
+   410→   410→                  Upcoming
+   411→   411→                </div>
+   412→   412→                {upcomingMatchesList.slice(0, 3).map((match) => (
+   413→   413→                  <Link key={match.id} href={`/matches/${match.id}`} className="block">
+   414→   414→                    <div className="rounded-lg bg-secondary/50 p-3 hover:bg-secondary transition-colors">
+   415→   415→                      <div className="flex items-center justify-between">
+   416→   416→                        <div>
+   417→   417→                          <p className="text-sm font-medium text-foreground">
+   418→   418→                            {match.homeTeam} vs {match.awayTeam}
+   419→   419→                          </p>
+   420→   420→                          <p className="text-xs text-muted-foreground">
+   421→   421→                            {match.league || getSportName(match.sport)} &middot; {new Date(match.commenceTime).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+   422→   422→                          </p>
+   423→   423→                        </div>
+   424→   424→                        <div className="flex items-center gap-1">
+   425→   425→                          <Clock className="h-3 w-3 text-muted-foreground" />
+   426→   426→                          <span className="text-xs text-muted-foreground">Upcoming</span>
+   427→   427→                        </div>
+   428→   428→                      </div>
+   429→   429→                    </div>
+   430→   430→                  </Link>
+   431→   431→                ))}
+   432→   432→              </>
+   433→   433→            )}
+   434→   434→          </CardContent>
+   435→   435→        </Card>
+   436→   436→
+   437→   437→        {/* Active Bets & Cashout */}
+   438→   438→        <Card className="bg-card border-border">
+   439→   439→          <CardHeader className="pb-3">
+   440→   440→            <CardTitle className="flex items-center gap-2 text-base">
+   441→   441→              <Zap className="h-4 w-4 text-amber-400" />
+   442→   442→              Active Bets & Cashout
+   443→   443→            </CardTitle>
+   444→   444→          </CardHeader>
+   445→   445→          <CardContent className="space-y-3 max-h-[600px] lg:max-h-[calc(100vh-360px)] overflow-y-auto">
+   446→   446→            {activeBets.length === 0 ? (
+   447→   447→              <p className="text-sm text-muted-foreground text-center py-4">
+   448→   448→                No active bets
+   449→   449→              </p>
+   450→   450→            ) : (
+   451→   451→              activeBets.map((bet) => {
+   452→   452→                const cashoutRec = cashoutRecs[bet.id];
+   453→   453→                const isSelectedOnLiveMatch = bet.match?.status === "live";
+   454→   454→                const isWinning =
+   455→   455→                  isSelectedOnLiveMatch &&
+   456→   456→                  ((bet.selection === bet.match?.homeTeam && (bet.match?.homeScore ?? 0) > (bet.match?.awayScore ?? 0)) ||
+   457→   457→                    (bet.selection === bet.match?.awayTeam && (bet.match?.awayScore ?? 0) > (bet.match?.homeScore ?? 0)));
+   458→   458→                const isAcca = !!bet.accumulatorId;
+   459→   459→
+   460→   460→                return (
+   461→   461→                  <div
+   462→   462→                    key={bet.id}
+   463→   463→                    className={`rounded-lg border p-4 ${
+   464→   464→                      isSelectedOnLiveMatch
+   465→   465→                        ? isWinning
+   466→   466→                          ? "border-emerald-400/20 bg-emerald-400/5"
+   467→   467→                          : "border-red-400/20 bg-red-400/5"
+   468→   468→                        : isAcca
+   469→   469→                        ? "border-purple-400/20 bg-purple-400/5"
+   470→   470→                        : "border-border bg-secondary/50"
+   471→   471→                    }`}
+   472→   472→                  >
+   473→   473→                    <div className="flex items-center justify-between mb-2">
+   474→   474→                      <div className="flex items-center gap-2">
+   475→   475→                        {bet.isAutoPlaced && (
+   476→   476→                          <Badge className="text-[10px] bg-primary/10 text-primary border-primary/20">
+   477→   477→                            AI
+   478→   478→                          </Badge>
+   479→   479→                        )}
+   480→   480→                        {isAcca && (
+   481→   481→                          <Badge className="text-[10px] bg-purple-400/10 text-purple-400 border-purple-400/20">
+   482→   482→                            <Layers className="h-3 w-3 mr-0.5" />
+   483→   483→                            Acca
+   484→   484→                          </Badge>
+   485→   485→                        )}
+   486→   486→                        <span className="text-sm font-medium text-foreground">
+   487→   487→                          {bet.match?.homeTeam} vs {bet.match?.awayTeam}
+   488→   488→                        </span>
+   489→   489→                      </div>
+   490→   490→                      {isSelectedOnLiveMatch && (
+   491→   491→                        <Badge
+   492→   492→                          className={`text-[10px] ${
+   493→   493→                            isWinning
+   494→   494→                              ? "bg-emerald-400/10 text-emerald-400"
+   495→   495→                              : "bg-red-400/10 text-red-400"
+   496→   496→                          }`}
+   497→   497→                        >
+   498→   498→                          {isWinning ? "WINNING" : "LOSING"}
+   499→   499→                        </Badge>
+   500→   500→                      )}
+   501→   501→                    </div>
+   502→   502→
+   503→   503→                    <div className="flex items-center justify-between text-xs mb-2">
+   504→   504→                      <span className="text-muted-foreground">
+   505→   505→                        {bet.selection} @ {bet.odds}
+   506→   506→                      </span>
+   507→   507→                      <span className="text-foreground font-medium">
+   508→   508→                        ${bet.stake.toFixed(2)} stake
+   509→   509→                      </span>
+   510→   510→                    </div>
+   511→   511→
+   512→   512→                    {isSelectedOnLiveMatch && bet.match?.homeScore != null && (
+   513→   513→                      <div className="flex items-center justify-center gap-4 my-2">
+   514→   514→                        <span className="text-lg font-bold text-foreground">
+   515→   515→                          {bet.match.homeScore} - {bet.match.awayScore}
+   516→   516→                        </span>
+   517→   517→                        <span className="text-xs text-muted-foreground">
+   518→   518→                          {bet.match.minute}&apos;
+   519→   519→                        </span>
+   520→   520→                      </div>
+   521→   521→                    )}
+   522→   522→
+   523→   523→                    {/* Cashout visualization with progress bar */}
+   524→   524→                    {cashoutRec && (
+   525→   525→                      <div className="mt-2 rounded-lg bg-secondary/50 p-3">
+   526→   526→                        <div className="flex items-center justify-between mb-1">
+   527→   527→                          <span className="text-xs text-muted-foreground">
+   528→   528→                            {cashoutRec.waitOrCashout === "wait_for_settlement" ? "Settlement" : "Cashout Offer"}
+   529→   529→                          </span>
+   530→   530→                          <div className="flex items-center gap-2">
+   531→   531→                            <span className="text-sm font-bold text-amber-400">
+   532→   532→                              ${cashoutRec.cashoutAmount.toFixed(2)}
+   533→   533→                            </span>
+   534→   534→                            {cashoutRec.settlementProbability > 0 && (
+   535→   535→                              <Badge variant="secondary" className="text-[10px]">
+   536→   536→                                {Math.round(cashoutRec.settlementProbability * 100)}% win
+   537→   537→                              </Badge>
+   538→   538→                            )}
+   539→   539→                          </div>
+   540→   540→                        </div>
+   541→   541→                        {/* Cashout progress bar */}
+   542→   542→                        <div className="h-1.5 rounded-full bg-secondary overflow-hidden mb-2">
+   543→   543→                          <div
+   544→   544→                            className={`h-full rounded-full transition-all ${
+   545→   545→                              cashoutRec.urgency === "high"
+   546→   546→                                ? "bg-red-500"
+   547→   547→                                : cashoutRec.urgency === "medium"
+   548→   548→                                ? "bg-amber-400"
+   549→   549→                                : cashoutRec.waitOrCashout === "wait_for_settlement"
+   550→   550→                                ? "bg-emerald-400"
+   551→   551→                                : "bg-primary"
+   552→   552→                            }`}
+   553→   553→                            style={{ width: `${Math.min((cashoutRec.cashoutAmount / bet.potentialWin) * 100, 100)}%` }}
+   554→   554→                          />
+   555→   555→                        </div>
+   556→   556→                        <p className="text-[10px] text-muted-foreground mb-2">
+   557→   557→                          {cashoutRec.reasoning}
+   558→   558→                        </p>
+   559→   559→                        {/* Action buttons */}
+   560→   560→                        <div className="flex flex-wrap gap-2">
+   561→   561→                          {cashoutRec.shouldCashout && cashoutRec.waitOrCashout === "cashout_partial" && cashoutRec.partialCashoutAmount > 0 && (
+   562→   562→                            <Button
+   563→   563→                              size="xs"
+   564→   564→                              className="flex-1 bg-primary text-primary-foreground hover:bg-primary/80"
+   565→   565→                              onClick={() => handleCashout(bet.id, "partial")}
+   566→   566→                            >
+   567→   567→                              <DollarSign className="h-3 w-3" />
+   568→   568→                              Partial ${cashoutRec.partialCashoutAmount.toFixed(2)}
+   569→   569→                            </Button>
+   570→   570→                          )}
+   571→   571→                          {cashoutRec.shouldCashout && cashoutRec.waitOrCashout !== "wait_for_settlement" && (
+   572→   572→                            <Button
+   573→   573→                              size="xs"
+   574→   574→                              className="flex-1 bg-amber-400 text-black hover:bg-amber-400/80"
+   575→   575→                              onClick={() => handleCashout(bet.id, "full")}
+   576→   576→                            >
+   577→   577→                              <DollarSign className="h-3 w-3" />
+   578→   578→                              Cashout ${cashoutRec.cashoutAmount.toFixed(2)}
+   579→   579→                            </Button>
+   580→   580→                          )}
+   581→   581→                          {cashoutRec.waitOrCashout === "wait_for_settlement" && (
+   582→   582→                            <div className="flex items-center gap-2 text-xs text-emerald-400 w-full">
+   583→   583→                              <TrendingUp className="h-3 w-3" />
+   584→   584→                              <span>Waiting for full settlement for maximum payout</span>
+   585→   585→                            </div>
+   586→   586→                          )}
+   587→   587→                        </div>
+   588→   588→                      </div>
+   589→   589→                    )}
+   590→   590→
+   591→   591→                    <div className="flex items-center justify-between text-xs mt-2">
+   592→   592→                      <span className="text-muted-foreground">Potential Win</span>
+   593→   593→                      <span className="text-emerald-400 font-medium">
+   594→   594→                        ${bet.potentialWin.toFixed(2)}
+   595→   595→                      </span>
+   596→   596→                    </div>
+   597→   597→                  </div>
+   598→   598→                );
+   599→   599→              })
+   600→   600→            )}
+   601→   601→          </CardContent>
+   602→   602→        </Card>
+   603→   603→      </div>
+   604→   604→
+   605→   605→      {/* Match Events Timeline */}
+   606→   606→      {matchEvents.length > 0 && (
+   607→   607→        <Card className="bg-card border-border">
+   608→   608→          <CardHeader className="pb-3">
+   609→   609→            <div className="flex items-center justify-between">
+   610→   610→              <CardTitle className="flex items-center gap-2 text-base">
+   611→   611→                <TrendingUp className="h-4 w-4 text-primary" />
+   612→   612→                Match Events Timeline
+   613→   613→              </CardTitle>
+   614→   614→              <Button
+   615→   615→                size="xs"
+   616→   616→                variant="ghost"
+   617→   617→                onClick={() => setMatchEvents([])}
+   618→   618→              >
+   619→   619→                Clear
+   620→   620→              </Button>
+   621→   621→            </div>
+   622→   622→          </CardHeader>
+   623→   623→          <CardContent>
+   624→   624→            <div className="space-y-2 max-h-48 overflow-y-auto">
+   625→   625→              {matchEvents.map((event, i) => (
+   626→   626→                <div key={i} className="flex items-start gap-3 text-sm">
+   627→   627→                  <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 shrink-0 mt-0.5">
+   628→   628→                    <Radio className="h-3 w-3 text-primary" />
+   629→   629→                  </div>
+   630→   630→                  <div className="flex-1">
+   631→   631→                    <p className="text-foreground">{event.text}</p>
+   632→   632→                    <p className="text-[10px] text-muted-foreground">
+   633→   633→                      {new Date(event.timestamp).toLocaleTimeString()}
+   634→   634→                    </p>
+   635→   635→                  </div>
+   636→   636→                </div>
+   637→   637→              ))}
+   638→   638→            </div>
+   639→   639→          </CardContent>
+   640→   640→        </Card>
+   641→   641→      )}
+   642→   642→    </div>
+   643→   643→  );
+   644→   644→}
+   645→   645→
