@@ -709,7 +709,11 @@ class BotEngine {
                 valueEdge: prediction.valueEdge,
                 kellyStake: prediction.kellyStake,
                 riskLevel: prediction.riskLevel || settings.riskLevel,
-                matchTime: new Date(match.commenceTime).toLocaleString(),
+                matchTime: new Date(match.commenceTime).toLocaleString("en-GB", {
+                  timeZone: settings.timezone || "Africa/Accra",
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                }),
                 matchId: match.id,
               };
               const notifyResult = await sendTipAlert(userId, tipAlert);
@@ -915,7 +919,11 @@ class BotEngine {
                 valueEdge: prediction.valueEdge,
                 kellyStake: prediction.kellyStake,
                 riskLevel: settings.riskLevel,
-                matchTime: new Date(match.commenceTime).toLocaleString(),
+                matchTime: new Date(match.commenceTime).toLocaleString("en-GB", {
+                  timeZone: settings.timezone || "Africa/Accra",
+                  dateStyle: "medium",
+                  timeStyle: "short",
+                }),
                 matchId: match.id,
               };
               await sendTipAlert(userId, tipAlert);

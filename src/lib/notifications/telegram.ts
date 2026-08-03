@@ -84,11 +84,15 @@ function formatTelegramTip(tip: TipAlert, platformUrl: string): string {
   const risk = riskEmoji[tip.riskLevel.toLowerCase()] || "🟡";
   const confidenceBar = "█".repeat(Math.round(tip.confidence * 5)) + "░".repeat(5 - Math.round(tip.confidence * 5));
 
+  // Extract date and time from matchTime for cleaner display
+  // matchTime is already formatted in user's timezone by the bot engine
+  const timeDisplay = tip.matchTime || "TBD";
+
   return `
 ${emoji} <b>AI Value Bet Alert</b>
 
 <b>${tip.homeTeam} vs ${tip.awayTeam}</b>
-${tip.league} • ${tip.matchTime}
+${tip.league} • ${timeDisplay} (GMT)
 
 💰 <b>Selection:</b> ${tip.selection}
 📊 <b>Odds:</b> ${tip.odds.toFixed(2)}

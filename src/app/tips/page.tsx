@@ -250,6 +250,12 @@ export default function TipsPage() {
                               You: {tip.userResult === "won" ? "WON" : tip.userResult === "lost" ? "LOST" : "VOID"}
                             </Badge>
                           )}
+                          {/* Match status badge — shows when match hasn't ended yet */}
+                          {!tip.outcome && tip.match?.status && tip.match.status !== "finished" && (
+                            <Badge variant="outline" className={`text-[10px] h-4 px-1.5 ${tip.match.status === "live" ? "text-emerald-400 border-emerald-400/30" : "text-muted-foreground"}`}>
+                              {tip.match.status === "live" ? "LIVE" : tip.match.status === "upcoming" ? "UPCOMING" : tip.match.status.toUpperCase()}
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-sm font-semibold text-foreground">
                           {tip.homeTeam} vs {tip.awayTeam}
@@ -289,7 +295,8 @@ export default function TipsPage() {
 
                       {/* Right: Actions */}
                       <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-                        {!tip.userResult && tip.tracked && (
+                        {/* Won/Lost buttons: only show after match has ended (finished status or AI outcome settled) */}
+                        {!tip.userResult && tip.tracked && (tip.outcome || tip.match?.status === "finished") && (
                           <div className="flex gap-1">
                             <Button
                               variant="outline"
