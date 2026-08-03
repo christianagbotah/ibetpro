@@ -651,7 +651,7 @@ class BotEngine {
             minEdgeThreshold: settings.minEdgeThreshold,
             riskLevel: settings.riskLevel,
             preferredSports: isAdvisorMode ? settings.tipSports : settings.preferredSports,
-          }, match.sport);
+          }, match.sport, user?.bankroll || 1000);
 
           const recOdds = prediction.recommended === "home" ? match.homeOdds
             : prediction.recommended === "away" ? match.awayOdds

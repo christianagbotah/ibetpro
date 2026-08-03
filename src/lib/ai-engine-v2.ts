@@ -458,7 +458,12 @@ export function analyzeMatch(
     : recommended === "draw" ? drawProb
     : overProb;
 
-  const kellyStake = Math.max(0, (recProb * recOdds - 1) / (recOdds - 1)) * bankroll * kellyFraction;
+  // Kelly criterion: fraction of bankroll to stake
+  // f* = (b*p - q) / b where b = odds-1, p = prob, q = 1-p
+  // Simplified: f* = (p * odds - 1) / (odds - 1)
+  // Then apply fractional Kelly (typically 0.25 = quarter Kelly) and cap at 100%
+  const rawKelly = Math.max(0, (recProb * recOdds - 1) / (recOdds - 1));
+  const kellyStake = Math.min(1.0, rawKelly * kellyFraction); // fraction of bankroll (0–1)
 
   // Step 11: Risk score
   const riskScore = Math.min(100, Math.max(0,
@@ -894,7 +899,8 @@ export function shouldAutoBet(
     riskLevel: string;
     preferredSports: string;
   },
-  sport: string
+  sport: string,
+  bankroll: number = 1000
 ): AutoBetCheck {
   const { minOddsThreshold, maxOddsThreshold, minAiConfidence, minEdgeThreshold, riskLevel, preferredSports } = settings;
 
@@ -934,8 +940,8 @@ export function shouldAutoBet(
   // Determine bet type
   const betType: AutoBetCheck["betType"] = prediction.confidence > 0.7 ? "single" : "accumulator_leg";
 
-  // Calculate suggested stake
-  const suggestedStake = Math.max(5, prediction.kellyStake);
+  // Calculate suggested stake (kellyStake is a fraction 0–1, multiply by bankroll)
+  const suggestedStake = Math.max(5, prediction.kellyStake * bankroll);
 
   return {
     shouldPlace: true,
