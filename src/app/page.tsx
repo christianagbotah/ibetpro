@@ -11,6 +11,7 @@ import { Brain, Sparkles, Zap, Radio, TrendingUp, DollarSign, Activity, ArrowRig
 import Link from "next/link";
 import { useAuth } from "@/components/auth/auth-provider";
 import { getSportShortName } from "@/lib/sports";
+import { useCurrency } from "@/components/currency-provider";
 
 interface Match {
   id: string;
@@ -72,6 +73,7 @@ interface UserStats {
 
 export default function DashboardPage() {
   const { user, isAuthenticated } = useAuth();
+  const { symbol } = useCurrency();
   const { data: matches, loading: matchesLoading } = usePolling<Match[]>("/api/matches", 30000, []);
   const { data: bets, loading: betsLoading } = useFetch<Bet[]>("/api/bets", []);
   const { data: stats } = useFetch<UserStats>("/api/stats/user", {
@@ -248,7 +250,7 @@ export default function DashboardPage() {
                   </div>
                   <div className="text-right">
                     <p className={`text-sm font-bold ${bet.status === "won" ? "text-emerald-400" : "text-red-400"}`}>
-                      {bet.status === "won" ? "+" : "-"}${Math.abs(bet.profit || bet.stake).toFixed(2)}
+                      {bet.status === "won" ? "+" : "-"}{symbol}{Math.abs(bet.profit || bet.stake).toFixed(2)}
                     </p>
                     <p className="text-[10px] text-muted-foreground">
                       {new Date(bet.placedAt).toLocaleDateString()}
@@ -272,7 +274,7 @@ export default function DashboardPage() {
               <div className="rounded-lg bg-secondary/50 p-4">
                 <p className="text-xs text-muted-foreground">Total Commission Paid</p>
                 <p className="text-xl font-bold text-amber-400 mt-1">
-                  ${stats.commissionPaid.toFixed(2)}
+                  {symbol}{stats.commissionPaid.toFixed(2)}
                 </p>
               </div>
               <div className="rounded-lg bg-secondary/50 p-4">
@@ -282,13 +284,13 @@ export default function DashboardPage() {
               <div className="rounded-lg bg-secondary/50 p-4">
                 <p className="text-xs text-muted-foreground">Session Commission</p>
                 <p className="text-xl font-bold text-amber-400 mt-1">
-                  ${totalCommission.toFixed(2)}
+                  {symbol}{totalCommission.toFixed(2)}
                 </p>
               </div>
               <div className="rounded-lg bg-secondary/50 p-4">
                 <p className="text-xs text-muted-foreground">Net After Commission</p>
                 <p className="text-xl font-bold text-emerald-400 mt-1">
-                  ${(stats.totalProfit - stats.totalLoss - stats.commissionPaid).toFixed(2)}
+                  {symbol}{(stats.totalProfit - stats.totalLoss - stats.commissionPaid).toFixed(2)}
                 </p>
               </div>
             </div>

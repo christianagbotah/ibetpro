@@ -9,6 +9,7 @@ import {
   Zap, Brain, DollarSign, Shield, Target, Clock, TrendingUp, TrendingDown,
   Layers, Ban, CheckCircle, XCircle, AlertTriangle
 } from "lucide-react";
+import { useCurrency } from "@/components/currency-provider";
 
 interface BotLog {
   id: string;
@@ -41,6 +42,7 @@ const actionConfig: Record<string, { icon: typeof Zap; color: string; label: str
 };
 
 export function BotActivityFeed({ userId, compact = false }: BotActivityFeedProps) {
+  const { symbol } = useCurrency();
   const [logs, setLogs] = useState<BotLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [summary, setSummary] = useState<Record<string, number>>({});
@@ -188,7 +190,7 @@ export function BotActivityFeed({ userId, compact = false }: BotActivityFeedProp
                               <TrendingDown className="h-3 w-3 text-red-400" />
                             )}
                             <span className={`text-xs font-medium ${log.profitImpact > 0 ? "text-emerald-400" : "text-red-400"}`}>
-                              {log.profitImpact > 0 ? "+" : ""}${log.profitImpact.toFixed(2)}
+                              {log.profitImpact > 0 ? "+" : ""}{symbol}{log.profitImpact.toFixed(2)}
                             </span>
                           </div>
                         )}
@@ -198,7 +200,7 @@ export function BotActivityFeed({ userId, compact = false }: BotActivityFeedProp
                           <div className="mt-1.5 flex flex-wrap gap-1.5">
                             {details.stake && (
                               <span className="text-[10px] bg-secondary/50 rounded px-1.5 py-0.5">
-                                Stake: ${details.stake}
+                                Stake: {symbol}{details.stake}
                               </span>
                             )}
                             {details.odds && (

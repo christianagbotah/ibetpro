@@ -14,6 +14,7 @@ import {
   Wallet, ArrowUpRight, ArrowDownLeft, DollarSign, TrendingUp,
   Shield, Lock, Unlock, AlertCircle, CheckCircle2,
 } from "lucide-react";
+import { useCurrency } from "@/components/currency-provider";
 
 interface AllocationData {
   id: string;
@@ -46,6 +47,7 @@ interface AllocationSummary {
 
 export function AllocationManager() {
   const { addToast } = useToast();
+  const { symbol } = useCurrency();
   const [allocationAmount, setAllocationAmount] = useState("");
   const [selectedAccountId, setSelectedAccountId] = useState("");
   const [setting, setSetting] = useState(false);
@@ -92,7 +94,7 @@ export function AllocationManager() {
       const result = await res.json();
 
       if (result.success) {
-        addToast("success", `$${parseFloat(allocationAmount).toFixed(2)} allocated from your broker account`);
+        addToast("success", `${symbol}${parseFloat(allocationAmount).toFixed(2)} allocated from your broker account`);
         setAllocationAmount("");
         setSelectedAccountId("");
         refetch();
@@ -118,7 +120,7 @@ export function AllocationManager() {
       const result = await res.json();
 
       if (result.success) {
-        addToast("success", `Released $${result.releasedAmount?.toFixed(2)} back to your broker account`);
+        addToast("success", `Released ${symbol}${result.releasedAmount?.toFixed(2)} back to your broker account`);
         refetch();
       } else {
         addToast("error", result.error || "Failed to release allocation");
@@ -140,7 +142,7 @@ export function AllocationManager() {
               <Wallet className="h-4 w-4 text-primary" />
               <span className="text-xs text-muted-foreground">Total Allocated</span>
             </div>
-            <p className="text-xl font-bold text-foreground">${summary.totalAllocated.toFixed(2)}</p>
+            <p className="text-xl font-bold text-foreground">{symbol}{summary.totalAllocated.toFixed(2)}</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
@@ -149,7 +151,7 @@ export function AllocationManager() {
               <ArrowUpRight className="h-4 w-4 text-amber-400" />
               <span className="text-xs text-muted-foreground">In Active Bets</span>
             </div>
-            <p className="text-xl font-bold text-amber-400">${summary.totalUsed.toFixed(2)}</p>
+            <p className="text-xl font-bold text-amber-400">{symbol}{summary.totalUsed.toFixed(2)}</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
@@ -158,7 +160,7 @@ export function AllocationManager() {
               <TrendingUp className="h-4 w-4 text-emerald-400" />
               <span className="text-xs text-muted-foreground">Profit</span>
             </div>
-            <p className="text-xl font-bold text-emerald-400">${summary.totalProfit.toFixed(2)}</p>
+            <p className="text-xl font-bold text-emerald-400">{symbol}{summary.totalProfit.toFixed(2)}</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
@@ -167,7 +169,7 @@ export function AllocationManager() {
               <DollarSign className="h-4 w-4 text-amber-400" />
               <span className="text-xs text-muted-foreground">Commission</span>
             </div>
-            <p className="text-xl font-bold text-amber-400">${summary.totalCommission.toFixed(2)}</p>
+            <p className="text-xl font-bold text-amber-400">{symbol}{summary.totalCommission.toFixed(2)}</p>
           </CardContent>
         </Card>
       </div>
@@ -210,7 +212,7 @@ export function AllocationManager() {
                       }`}
                     >
                       <BrokerLogo platform={{ id: account.platform, name: account.platformName, color: "#10b981" }} size={20} className="shrink-0" />
-                      {account.accountName} (${account.balance.toFixed(2)})
+                      {account.accountName} ({symbol}{account.balance.toFixed(2)})
                     </button>
                   ))}
                 </div>
@@ -218,7 +220,7 @@ export function AllocationManager() {
             </div>
 
             <div>
-              <Label className="text-xs text-muted-foreground">Allocation Amount ($)</Label>
+              <Label className="text-xs text-muted-foreground">Allocation Amount ({symbol})</Label>
               <Input
                 type="number"
                 value={allocationAmount}
@@ -296,20 +298,20 @@ export function AllocationManager() {
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                     <div className="rounded-lg bg-secondary/50 p-2.5">
                       <p className="text-[10px] text-muted-foreground">Amount</p>
-                      <p className="text-sm font-bold text-foreground">${alloc.amount.toFixed(2)}</p>
+                      <p className="text-sm font-bold text-foreground">{symbol}{alloc.amount.toFixed(2)}</p>
                     </div>
                     <div className="rounded-lg bg-secondary/50 p-2.5">
                       <p className="text-[10px] text-muted-foreground">Used</p>
-                      <p className="text-sm font-bold text-amber-400">${alloc.usedAmount.toFixed(2)}</p>
+                      <p className="text-sm font-bold text-amber-400">{symbol}{alloc.usedAmount.toFixed(2)}</p>
                     </div>
                     <div className="rounded-lg bg-secondary/50 p-2.5">
                       <p className="text-[10px] text-muted-foreground">Remaining</p>
-                      <p className="text-sm font-bold text-primary">${alloc.remainingAmount.toFixed(2)}</p>
+                      <p className="text-sm font-bold text-primary">{symbol}{alloc.remainingAmount.toFixed(2)}</p>
                     </div>
                     <div className="rounded-lg bg-secondary/50 p-2.5">
                       <p className="text-[10px] text-muted-foreground">Profit</p>
                       <p className={`text-sm font-bold ${alloc.profitFromAlloc >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                        ${alloc.profitFromAlloc.toFixed(2)}
+                        {symbol}{alloc.profitFromAlloc.toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -318,7 +320,7 @@ export function AllocationManager() {
                     <div className="rounded-lg bg-amber-400/5 border border-amber-400/10 p-2">
                       <p className="text-xs text-amber-400">
                         <DollarSign className="h-3 w-3 inline mr-1" />
-                        Commission: ${alloc.commissionFromAlloc.toFixed(2)} | Net: ${(alloc.profitFromAlloc - alloc.commissionFromAlloc).toFixed(2)}
+                        Commission: {symbol}{alloc.commissionFromAlloc.toFixed(2)} | Net: {symbol}{(alloc.profitFromAlloc - alloc.commissionFromAlloc).toFixed(2)}
                       </p>
                     </div>
                   )}

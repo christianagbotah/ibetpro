@@ -4,6 +4,7 @@ import "./globals.css";
 import { AppShell } from "@/components/layout/app-shell";
 import { ToastProvider } from "@/components/ui/toast";
 import { AuthProvider } from "@/components/auth/auth-provider";
+import { CurrencyProvider } from "@/components/currency-provider";
 
 const inter = Inter({
   variable: "--font-sans",
@@ -60,9 +61,11 @@ export default function RootLayout({
       </head>
       <body className={`${inter.variable} font-sans min-h-full flex flex-col bg-background text-foreground overscroll-none`}>
         <AuthProvider>
-          <ToastProvider>
-            <AppShell>{children}</AppShell>
-          </ToastProvider>
+          <CurrencyProvider>
+            <ToastProvider>
+              <AppShell>{children}</AppShell>
+            </ToastProvider>
+          </CurrencyProvider>
         </AuthProvider>
         {/* Service Worker Registration */}
         <script

@@ -2,6 +2,7 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DollarSign, TrendingUp, Zap, Trophy } from "lucide-react";
+import { useCurrency } from "@/components/currency-provider";
 
 interface StatsCardsProps {
   balance: number;
@@ -14,23 +15,24 @@ interface StatsCardsProps {
 }
 
 export function StatsCards({ balance, profit, activeBets, winRate, dailyPnl, weeklyPnl, pendingBets }: StatsCardsProps) {
+  const { symbol, formatMoney } = useCurrency();
   const cards = [
     {
       title: "Total Balance",
-      value: `$${balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+      value: formatMoney(balance),
       icon: DollarSign,
       subtext: dailyPnl !== undefined
-        ? `${dailyPnl >= 0 ? "+" : ""}$${dailyPnl.toFixed(2)} today`
+        ? `${formatMoney(dailyPnl, { showSign: true })} today`
         : undefined,
       subtextType: (dailyPnl ?? 0) >= 0 ? "positive" as const : "negative" as const,
       color: "text-primary",
     },
     {
       title: "Total Profit",
-      value: `$${profit.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+      value: formatMoney(profit),
       icon: TrendingUp,
       subtext: weeklyPnl !== undefined
-        ? `${weeklyPnl >= 0 ? "+" : ""}$${weeklyPnl.toFixed(2)} this week`
+        ? `${formatMoney(weeklyPnl, { showSign: true })} this week`
         : undefined,
       subtextType: (weeklyPnl ?? 0) >= 0 ? "positive" as const : "negative" as const,
       color: "text-emerald-400",

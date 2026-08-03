@@ -27,6 +27,7 @@ import {
   TrendingDown,
   Brain,
 } from "lucide-react";
+import { useCurrency } from "@/components/currency-provider";
 
 interface Bet {
   id: string;
@@ -60,6 +61,7 @@ interface Bet {
 
 export default function HistoryPage() {
   const { addToast } = useToast();
+  const { symbol } = useCurrency();
   const { data: bets, loading } = useFetch<Bet[]>("/api/bets", []);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sportFilter, setSportFilter] = useState<string>("all");
@@ -228,7 +230,7 @@ export default function HistoryPage() {
           <CardContent className="p-3">
             <p className="text-xs text-muted-foreground">Net Profit</p>
             <p className={`text-lg font-bold ${summaryStats.netProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-              {summaryStats.netProfit >= 0 ? "+" : ""}${summaryStats.netProfit.toFixed(2)}
+              {summaryStats.netProfit >= 0 ? "+" : ""}{symbol}{summaryStats.netProfit.toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -365,7 +367,7 @@ export default function HistoryPage() {
                         </div>
                         <div>
                           <span className="text-muted-foreground">Stake: </span>
-                          <span className="text-foreground">${bet.stake.toFixed(2)}</span>
+                          <span className="text-foreground">{symbol}{bet.stake.toFixed(2)}</span>
                         </div>
                       </div>
 
@@ -397,7 +399,7 @@ export default function HistoryPage() {
                         <div className="flex items-center gap-1">
                           <TrendingUp className="h-4 w-4 text-emerald-400" />
                           <span className="text-lg font-bold text-emerald-400">
-                            +${bet.profit.toFixed(2)}
+                            +{symbol}{bet.profit.toFixed(2)}
                           </span>
                         </div>
                       )}
@@ -405,7 +407,7 @@ export default function HistoryPage() {
                         <div className="flex items-center gap-1">
                           <TrendingDown className="h-4 w-4 text-red-400" />
                           <span className="text-lg font-bold text-red-400">
-                            -${bet.stake.toFixed(2)}
+                            -{symbol}{bet.stake.toFixed(2)}
                           </span>
                         </div>
                       )}

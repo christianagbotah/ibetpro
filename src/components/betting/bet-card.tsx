@@ -3,6 +3,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Brain, Clock, CheckCircle, XCircle, DollarSign } from "lucide-react";
+import { useCurrency } from "@/components/currency-provider";
 
 interface BetCardProps {
   bet: {
@@ -37,6 +38,7 @@ interface BetCardProps {
 }
 
 export function BetCard({ bet, onCashout }: BetCardProps) {
+  const { symbol } = useCurrency();
   const statusConfig: Record<string, { icon: typeof CheckCircle; color: string; label: string }> = {
     pending: { icon: Clock, color: "text-amber-400", label: "Pending" },
     won: { icon: CheckCircle, color: "text-emerald-400", label: "Won" },
@@ -95,7 +97,7 @@ export function BetCard({ bet, onCashout }: BetCardProps) {
               </div>
               <div>
                 <span className="text-muted-foreground">Stake: </span>
-                <span className="text-foreground">${bet.stake.toFixed(2)}</span>
+                <span className="text-foreground">{symbol}{bet.stake.toFixed(2)}</span>
               </div>
             </div>
 
@@ -118,17 +120,17 @@ export function BetCard({ bet, onCashout }: BetCardProps) {
 
             {bet.status === "won" && bet.profit !== null && (
               <span className="text-lg font-bold text-emerald-400">
-                +${bet.profit.toFixed(2)}
+                +{symbol}{bet.profit.toFixed(2)}
               </span>
             )}
             {bet.status === "lost" && (
               <span className="text-lg font-bold text-red-400">
-                -${bet.stake.toFixed(2)}
+                -{symbol}{bet.stake.toFixed(2)}
               </span>
             )}
             {bet.status === "pending" && (
               <span className="text-sm text-muted-foreground">
-                Potential: ${bet.potentialWin.toFixed(2)}
+                Potential: {symbol}{bet.potentialWin.toFixed(2)}
               </span>
             )}
 
@@ -138,7 +140,7 @@ export function BetCard({ bet, onCashout }: BetCardProps) {
                 onClick={() => onCashout(bet.id)}
                 className="text-xs bg-amber-400/10 text-amber-400 border border-amber-400/20 rounded px-2 py-1 hover:bg-amber-400/20 transition-colors"
               >
-                Cashout ${bet.cashoutAmount.toFixed(2)}
+                Cashout {symbol}{bet.cashoutAmount.toFixed(2)}
               </button>
             )}
           </div>

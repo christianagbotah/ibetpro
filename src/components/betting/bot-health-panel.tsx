@@ -9,6 +9,7 @@ import {
   Activity, Brain, Clock, Zap, Shield, AlertTriangle,
   CheckCircle, Server, RefreshCw, Radio, TrendingUp, TrendingDown,
 } from "lucide-react";
+import { useCurrency } from "@/components/currency-provider";
 
 interface EngineStats {
   userId: string;
@@ -31,6 +32,7 @@ interface BotHealthPanelProps {
 }
 
 export function BotHealthPanel({ userId, compact = false }: BotHealthPanelProps) {
+  const { symbol } = useCurrency();
   const [engineStats, setEngineStats] = useState<EngineStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [sessionInfo, setSessionInfo] = useState<{
@@ -194,7 +196,7 @@ export function BotHealthPanel({ userId, compact = false }: BotHealthPanelProps)
               <span className="text-[10px] text-muted-foreground">Bets Placed</span>
             </div>
             <p className="text-lg font-bold text-foreground">{engineStats?.totalBetsPlaced || 0}</p>
-            <p className="text-[10px] text-muted-foreground">${(engineStats?.totalStakeUsed || 0).toFixed(0)} staked</p>
+            <p className="text-[10px] text-muted-foreground">{symbol}{(engineStats?.totalStakeUsed || 0).toFixed(0)} staked</p>
           </div>
 
           <div className="rounded-lg bg-secondary/30 p-3">
@@ -207,7 +209,7 @@ export function BotHealthPanel({ userId, compact = false }: BotHealthPanelProps)
               <span className="text-[10px] text-muted-foreground">Profit</span>
             </div>
             <p className={`text-lg font-bold ${(engineStats?.totalProfit || 0) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-              ${(engineStats?.totalProfit || 0).toFixed(2)}
+              {symbol}{(engineStats?.totalProfit || 0).toFixed(2)}
             </p>
             <p className="text-[10px] text-muted-foreground">{profitRate}% ROI</p>
           </div>
@@ -278,12 +280,12 @@ export function BotHealthPanel({ userId, compact = false }: BotHealthPanelProps)
                 <p className="text-[10px] text-muted-foreground">Bets</p>
               </div>
               <div className="text-center">
-                <p className="text-sm font-bold text-foreground">${sessionInfo.todayStats.totalStake.toFixed(0)}</p>
+                <p className="text-sm font-bold text-foreground">{symbol}{sessionInfo.todayStats.totalStake.toFixed(0)}</p>
                 <p className="text-[10px] text-muted-foreground">Stake</p>
               </div>
               <div className="text-center">
                 <p className={`text-sm font-bold ${sessionInfo.todayStats.profit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                  ${sessionInfo.todayStats.profit.toFixed(2)}
+                  {symbol}{sessionInfo.todayStats.profit.toFixed(2)}
                 </p>
                 <p className="text-[10px] text-muted-foreground">Profit</p>
               </div>

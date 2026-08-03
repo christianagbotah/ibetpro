@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RefreshCw, ExternalLink, Unplug } from "lucide-react";
+import { useCurrency } from "@/components/currency-provider";
 
 interface AccountCardProps {
   account: {
@@ -37,6 +38,7 @@ const platformLabels: Record<string, string> = {
 };
 
 export function AccountCard({ account, onSync }: AccountCardProps) {
+  const { symbol } = useCurrency();
   return (
     <Card className="bg-card border-border overflow-hidden">
       <CardContent className="p-4">
@@ -72,7 +74,7 @@ export function AccountCard({ account, onSync }: AccountCardProps) {
         <div className="mt-4 rounded-lg bg-secondary/50 p-3">
           <div className="text-xs text-muted-foreground">Balance</div>
           <div className="text-xl font-bold text-foreground">
-            {account.currency === "USD" ? "$" : ""}
+            {symbol}
             {account.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
           </div>
         </div>

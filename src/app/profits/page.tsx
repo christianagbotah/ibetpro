@@ -37,6 +37,7 @@ import {
   ArrowDownRight,
 } from "lucide-react";
 import { useState } from "react";
+import { useCurrency } from "@/components/currency-provider";
 
 interface Transaction {
   id: string;
@@ -80,15 +81,14 @@ interface UserStats {
   memberSince: string;
 }
 
-const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; dataKey: string; color: string }>; label?: string }) => {
+const CustomTooltip = ({ active, payload, label, symbol }: { active?: boolean; payload?: Array<{ value: number; dataKey: string; color: string }>; label?: string; symbol: string }) => {
   if (active && payload && payload.length) {
     return (
       <div className="rounded-lg bg-card border border-border p-3 shadow-lg">
         <p className="text-sm font-medium text-foreground mb-1">{label}</p>
         {payload.map((entry, index) => (
           <p key={index} className="text-xs" style={{ color: entry.color }}>
-            {entry.dataKey === "profit" ? "Profit" : entry.dataKey === "loss" ? "Loss" : "Commission"}: $
-            {entry.value.toFixed(2)}
+            {entry.dataKey === "profit" ? "Profit" : entry.dataKey === "loss" ? "Loss" : "Commission"}: {symbol}{entry.value.toFixed(2)}
           </p>
         ))}
       </div>
@@ -98,6 +98,7 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 };
 
 export default function ProfitsPage() {
+  const { symbol } = useCurrency();
   const { data: transactions, loading: txLoading } = useFetch<Transaction[]>("/api/transactions", []);
   const { data: stats, loading: statsLoading } = useFetch<UserStats>("/api/stats/user", {
     balance: 0,
@@ -201,7 +202,7 @@ export default function ProfitsPage() {
               )}
             </div>
             <p className={`text-lg sm:text-2xl font-bold ${netProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-              {netProfit >= 0 ? "+" : ""}${netProfit.toFixed(2)}
+              {netProfit >= 0 ? "+" : ""}{symbol}{netProfit.toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -212,7 +213,7 @@ export default function ProfitsPage() {
               <TrendingUp className="h-4 w-4 text-emerald-400" />
             </div>
             <p className="text-lg sm:text-2xl font-bold text-emerald-400">
-              ${totalProfit.toFixed(2)}
+              {symbol}{totalProfit.toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -223,7 +224,7 @@ export default function ProfitsPage() {
               <Percent className="h-4 w-4 text-amber-400" />
             </div>
             <p className="text-lg sm:text-2xl font-bold text-amber-400">
-              ${totalCommission.toFixed(2)}
+              {symbol}{totalCommission.toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -259,8 +260,8 @@ export default function ProfitsPage() {
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                     <XAxis dataKey="month" tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} />
-                    <YAxis tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} tickFormatter={(v) => `$${v}`} />
-                    <Tooltip content={<CustomTooltip />} />
+                    <YAxis tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} tickFormatter={(v) => `${symbol}${v}`} />
+                    <Tooltip content={<CustomTooltip symbol={symbol} />} />
                     <Area type="monotone" dataKey="profit" stroke="#10b981" fill="url(#profitGrad)" strokeWidth={2} />
                     <Area type="monotone" dataKey="loss" stroke="#ef4444" fill="transparent" strokeWidth={2} strokeDasharray="4 4" />
                   </AreaChart>
@@ -288,8 +289,8 @@ export default function ProfitsPage() {
                   <BarChart data={monthlyData}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                     <XAxis dataKey="month" tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} />
-                    <YAxis tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} tickFormatter={(v) => `$${v}`} />
-                    <Tooltip content={<CustomTooltip />} />
+                    <YAxis tick={{ fill: "#94a3b8", fontSize: 12 }} axisLine={{ stroke: "rgba(255,255,255,0.1)" }} tickLine={false} tickFormatter={(v) => `${symbol}${v}`} />
+                    <Tooltip content={<CustomTooltip symbol={symbol} />} />
                     <Bar dataKey="commission" fill="#f59e0b" radius={[4, 4, 0, 0]} />
                   </BarChart>
                 </ResponsiveContainer>
@@ -349,7 +350,7 @@ export default function ProfitsPage() {
                         {tx.description || "N/A"}
                       </TableCell>
                       <TableCell className={`text-sm font-medium ${getTypeColor(tx.type)}`}>
-                        {tx.amount >= 0 ? "+" : ""}${Math.abs(tx.amount).toFixed(2)}
+                        {tx.amount >= 0 ? "+" : ""}{symbol}{Math.abs(tx.amount).toFixed(2)}
                       </TableCell>
                       <TableCell className="text-sm text-muted-foreground">
                         {new Date(tx.createdAt).toLocaleDateString()}

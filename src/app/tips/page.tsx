@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Brain, CheckCircle2, Circle, Loader2, Copy } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useCurrency } from "@/components/currency-provider";
 
 interface TipMatch {
   status: string;
@@ -63,6 +64,7 @@ const riskColors: Record<string, string> = {
 
 export default function TipsPage() {
   const { user } = useAuth();
+  const { symbol } = useCurrency();
   const [tips, setTips] = useState<Tip[]>([]);
   const [performance, setPerformance] = useState<Performance>({
     totalSettled: 0, won: 0, lost: 0, winRate: 0, totalProfit: 0, roi: 0,
@@ -186,7 +188,7 @@ export default function TipsPage() {
           <CardContent className="p-3 text-center">
             <p className="text-xs text-muted-foreground">AI Profit</p>
             <p className={`text-lg font-bold ${performance.totalProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-              {performance.totalProfit >= 0 ? "+" : ""}{performance.totalProfit.toFixed(2)}
+              {performance.totalProfit >= 0 ? "+" : ""}{symbol}{performance.totalProfit.toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -200,7 +202,7 @@ export default function TipsPage() {
           <CardContent className="p-3 text-center">
             <p className="text-xs text-muted-foreground">Your Profit</p>
             <p className={`text-lg font-bold ${performance.trackedProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-              {performance.trackedProfit >= 0 ? "+" : ""}{performance.trackedProfit.toFixed(2)}
+              {performance.trackedProfit >= 0 ? "+" : ""}{symbol}{performance.trackedProfit.toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -287,7 +289,7 @@ export default function TipsPage() {
                           <div className="text-center">
                             <p className="text-[10px] text-muted-foreground">Your P/L</p>
                             <p className={`text-sm font-bold ${tip.userProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-                              {tip.userProfit >= 0 ? "+" : ""}{tip.userProfit.toFixed(2)}
+                              {tip.userProfit >= 0 ? "+" : ""}{symbol}{tip.userProfit.toFixed(2)}
                             </p>
                           </div>
                         )}

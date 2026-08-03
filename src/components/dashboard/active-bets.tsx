@@ -3,6 +3,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Brain, Zap } from "lucide-react";
+import { useCurrency } from "@/components/currency-provider";
 
 interface Bet {
   id: string;
@@ -32,6 +33,7 @@ interface ActiveBetsProps {
 }
 
 export function ActiveBets({ bets }: ActiveBetsProps) {
+  const { symbol } = useCurrency();
   const pendingBets = bets.filter((b) => b.status === "pending");
 
   return (
@@ -91,12 +93,12 @@ export function ActiveBets({ bets }: ActiveBetsProps) {
               <div className="flex items-center justify-between text-xs">
                 <div>
                   <span className="text-muted-foreground">Stake: </span>
-                  <span className="text-foreground">${bet.stake.toFixed(2)}</span>
+                  <span className="text-foreground">{symbol}{bet.stake.toFixed(2)}</span>
                 </div>
                 <div>
                   <span className="text-muted-foreground">Potential: </span>
                   <span className="text-emerald-400 font-medium">
-                    ${bet.potentialWin.toFixed(2)}
+                    {symbol}{bet.potentialWin.toFixed(2)}
                   </span>
                 </div>
               </div>

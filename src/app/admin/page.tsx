@@ -27,6 +27,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import { useState } from "react";
+import { useCurrency } from "@/components/currency-provider";
 
 interface AdminSettings {
   id: string;
@@ -68,6 +69,7 @@ interface Stats {
 }
 
 export default function AdminPage() {
+  const { symbol } = useCurrency();
   const { data: stats, loading } = useFetch<Stats>("/api/stats", {
     totalUsers: 0,
     totalBets: 0,
@@ -152,7 +154,7 @@ export default function AdminPage() {
             <div>
               <p className="text-xs text-muted-foreground">Commission Earned</p>
               <p className="text-lg font-bold text-emerald-400">
-                ${stats.totalCommission.toFixed(2)}
+                {symbol}{stats.totalCommission.toFixed(2)}
               </p>
             </div>
           </CardContent>
@@ -165,7 +167,7 @@ export default function AdminPage() {
             <div>
               <p className="text-xs text-muted-foreground">Bet Volume</p>
               <p className="text-lg font-bold text-foreground">
-                ${stats.totalBetVolume.toFixed(2)}
+                {symbol}{stats.totalBetVolume.toFixed(2)}
               </p>
             </div>
           </CardContent>
@@ -344,14 +346,14 @@ export default function AdminPage() {
                             : "text-red-400"
                         }`}
                       >
-                        ${(user.totalProfit - user.totalLoss).toFixed(2)}
+                        {symbol}{(user.totalProfit - user.totalLoss).toFixed(2)}
                       </span>
                     </TableCell>
                     <TableCell className="text-sm text-amber-400">
-                      ${user.commissionPaid.toFixed(2)}
+                      {symbol}{user.commissionPaid.toFixed(2)}
                     </TableCell>
                     <TableCell className="text-sm text-foreground">
-                      ${user.balance.toFixed(2)}
+                      {symbol}{user.balance.toFixed(2)}
                     </TableCell>
                   </TableRow>
                 ))}

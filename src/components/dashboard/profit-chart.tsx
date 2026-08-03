@@ -3,6 +3,7 @@
 import { useFetch } from "@/lib/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { TrendingUp } from "lucide-react";
+import { useCurrency } from "@/components/currency-provider";
 import {
   AreaChart,
   Area,
@@ -31,15 +32,14 @@ interface UserStats {
   monthlyData: Array<{ month: string; profit: number; loss: number; commission: number }>;
 }
 
-const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?: Array<{ value: number; dataKey: string; color: string }>; label?: string }) => {
+const CustomTooltip = ({ active, payload, label, symbol }: { active?: boolean; payload?: Array<{ value: number; dataKey: string; color: string }>; label?: string; symbol: string }) => {
   if (active && payload && payload.length) {
     return (
       <div className="rounded-lg bg-card border border-border p-3 shadow-lg">
         <p className="text-sm font-medium text-foreground mb-1">{label}</p>
         {payload.map((entry, index) => (
           <p key={index} className="text-xs" style={{ color: entry.color }}>
-            {entry.dataKey === "profit" ? "Profit" : "Loss"}: $
-            {Math.abs(entry.value).toFixed(2)}
+            {entry.dataKey === "profit" ? "Profit" : "Loss"}: {symbol}{Math.abs(entry.value).toFixed(2)}
           </p>
         ))}
       </div>
@@ -49,6 +49,7 @@ const CustomTooltip = ({ active, payload, label }: { active?: boolean; payload?:
 };
 
 export function ProfitChart() {
+  const { symbol } = useCurrency();
   const { data: stats } = useFetch<UserStats>("/api/stats/user", {
     balance: 0,
     bankroll: 0,
@@ -105,9 +106,9 @@ export function ProfitChart() {
                   tick={{ fill: "#94a3b8", fontSize: 12 }}
                   axisLine={{ stroke: "rgba(255,255,255,0.1)" }}
                   tickLine={false}
-                  tickFormatter={(value) => `$${value}`}
+                  tickFormatter={(value) => `${symbol}${value}`}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip symbol={symbol} />} />
                 <Area
                   type="monotone"
                   dataKey="profit"

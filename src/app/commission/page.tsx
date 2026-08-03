@@ -8,6 +8,7 @@ import {
   DollarSign, TrendingUp, ArrowRight, CheckCircle2,
   Clock, AlertCircle, RefreshCw,
 } from "lucide-react";
+import { useCurrency } from "@/components/currency-provider";
 
 interface CommissionEntry {
   id: string;
@@ -39,6 +40,7 @@ interface CommissionSummary {
 }
 
 export default function CommissionPage() {
+  const { symbol } = useCurrency();
   const { data: dailyData, loading: dailyLoading } = useFetch<{
     ledger: CommissionEntry[];
     summary: CommissionSummary;
@@ -71,7 +73,7 @@ export default function CommissionPage() {
             <TrendingUp className="h-4 w-4 text-emerald-400" />
             <span className="text-xs text-muted-foreground">Gross Profit</span>
           </div>
-          <p className="text-lg font-bold text-emerald-400">${summary.totalGrossProfit.toFixed(2)}</p>
+          <p className="text-lg font-bold text-emerald-400">{symbol}{summary.totalGrossProfit.toFixed(2)}</p>
         </CardContent>
       </Card>
       <Card className="bg-card border-border">
@@ -80,7 +82,7 @@ export default function CommissionPage() {
             <DollarSign className="h-4 w-4 text-amber-400" />
             <span className="text-xs text-muted-foreground">Commission</span>
           </div>
-          <p className="text-lg font-bold text-amber-400">${summary.totalCommission.toFixed(2)}</p>
+          <p className="text-lg font-bold text-amber-400">{symbol}{summary.totalCommission.toFixed(2)}</p>
         </CardContent>
       </Card>
       <Card className="bg-card border-border">
@@ -89,7 +91,7 @@ export default function CommissionPage() {
             <TrendingUp className="h-4 w-4 text-primary" />
             <span className="text-xs text-muted-foreground">Net Profit</span>
           </div>
-          <p className="text-lg font-bold text-primary">${summary.totalNetProfit.toFixed(2)}</p>
+          <p className="text-lg font-bold text-primary">{symbol}{summary.totalNetProfit.toFixed(2)}</p>
         </CardContent>
       </Card>
     </div>
@@ -143,7 +145,7 @@ export default function CommissionPage() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div className="rounded bg-secondary/50 p-2">
                 <p className="text-[10px] text-muted-foreground">Gross Profit</p>
-                <p className="text-xs font-bold text-emerald-400">${entry.grossProfit.toFixed(2)}</p>
+                <p className="text-xs font-bold text-emerald-400">{symbol}{entry.grossProfit.toFixed(2)}</p>
               </div>
               <div className="rounded bg-secondary/50 p-2">
                 <p className="text-[10px] text-muted-foreground">Rate</p>
@@ -151,11 +153,11 @@ export default function CommissionPage() {
               </div>
               <div className="rounded bg-secondary/50 p-2">
                 <p className="text-[10px] text-muted-foreground">Commission</p>
-                <p className="text-xs font-bold text-amber-400">${entry.commissionAmount.toFixed(2)}</p>
+                <p className="text-xs font-bold text-amber-400">{symbol}{entry.commissionAmount.toFixed(2)}</p>
               </div>
               <div className="rounded bg-secondary/50 p-2">
                 <p className="text-[10px] text-muted-foreground">Net</p>
-                <p className="text-xs font-bold text-primary">${entry.netProfit.toFixed(2)}</p>
+                <p className="text-xs font-bold text-primary">{symbol}{entry.netProfit.toFixed(2)}</p>
               </div>
             </div>
 

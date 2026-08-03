@@ -10,6 +10,7 @@ import { Radio, Eye, DollarSign, Clock, Zap, Volume2, VolumeX, Play, TrendingUp,
 import { useAuth } from "@/components/auth/auth-provider";
 import { getSportShortName, getSportName } from "@/lib/sports";
 import Link from "next/link";
+import { useCurrency } from "@/components/currency-provider";
 
 interface LiveMatch {
   id: string;
@@ -77,6 +78,7 @@ interface MatchEvent {
 export default function MonitorPage() {
   const { addToast } = useToast();
   const { user } = useAuth();
+  const { symbol } = useCurrency();
   const { data: allMatches, loading: matchesLoading, refetch: refetchMatches } = usePolling<LiveMatch[]>("/api/matches", 15000, []);
   const { data: bets, loading: betsLoading, refetch: refetchBets } = usePolling<ActiveBet[]>("/api/bets?status=pending", 15000, []);
   const [cashoutRecs, setCashoutRecs] = useState<Record<string, CashoutRec>>({});
@@ -130,7 +132,7 @@ export default function MonitorPage() {
       });
       if (res.ok) {
         const result = await res.json();
-        addToast("success", `${type === "partial" ? "Partial" : "Full"} cashout: $${result.amount?.toFixed(2)}`);
+        addToast("success", `${type === "partial" ? "Partial" : "Full"} cashout: ${symbol}${result.amount?.toFixed(2)}`);
       } else {
         const data = await res.json();
         addToast("error", data.error || "Cashout failed");
@@ -186,7 +188,7 @@ export default function MonitorPage() {
       if (res.ok) {
         const result = await res.json();
         if (result.settled > 0) {
-          addToast("success", `Settled ${result.settled} bet(s). Profit: $${result.totalProfit?.toFixed(2)}`);
+          addToast("success", `Settled ${result.settled} bet(s). Profit: ${symbol}${result.totalProfit?.toFixed(2)}`);
         } else {
           addToast("info", "No bets to settle");
         }
@@ -505,7 +507,7 @@ export default function MonitorPage() {
                         {bet.selection} @ {bet.odds}
                       </span>
                       <span className="text-foreground font-medium">
-                        ${bet.stake.toFixed(2)} stake
+                        {symbol}{bet.stake.toFixed(2)} stake
                       </span>
                     </div>
 
@@ -529,7 +531,7 @@ export default function MonitorPage() {
                           </span>
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-amber-400">
-                              ${cashoutRec.cashoutAmount.toFixed(2)}
+                              {symbol}{cashoutRec.cashoutAmount.toFixed(2)}
                             </span>
                             {cashoutRec.settlementProbability > 0 && (
                               <Badge variant="secondary" className="text-[10px]">
@@ -565,7 +567,7 @@ export default function MonitorPage() {
                               onClick={() => handleCashout(bet.id, "partial")}
                             >
                               <DollarSign className="h-3 w-3" />
-                              Partial ${cashoutRec.partialCashoutAmount.toFixed(2)}
+                              Partial {symbol}{cashoutRec.partialCashoutAmount.toFixed(2)}
                             </Button>
                           )}
                           {cashoutRec.shouldCashout && cashoutRec.waitOrCashout !== "wait_for_settlement" && (
@@ -575,7 +577,7 @@ export default function MonitorPage() {
                               onClick={() => handleCashout(bet.id, "full")}
                             >
                               <DollarSign className="h-3 w-3" />
-                              Cashout ${cashoutRec.cashoutAmount.toFixed(2)}
+                              Cashout {symbol}{cashoutRec.cashoutAmount.toFixed(2)}
                             </Button>
                           )}
                           {cashoutRec.waitOrCashout === "wait_for_settlement" && (
@@ -591,7 +593,7 @@ export default function MonitorPage() {
                     <div className="flex items-center justify-between text-xs mt-2">
                       <span className="text-muted-foreground">Potential Win</span>
                       <span className="text-emerald-400 font-medium">
-                        ${bet.potentialWin.toFixed(2)}
+                        {symbol}{bet.potentialWin.toFixed(2)}
                       </span>
                     </div>
                   </div>

@@ -15,6 +15,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Zap, Brain, Shield, DollarSign, Clock, TrendingUp, Play, Square, RefreshCw, Layers, Target, Activity, Eye, Radio } from "lucide-react";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useCurrency } from "@/components/currency-provider";
 
 interface Bet {
   id: string;
@@ -114,6 +115,7 @@ const defaultSettings: UserSettings = {
 export default function BettingPage() {
   const { addToast } = useToast();
   const { user } = useAuth();
+  const { symbol } = useCurrency();
   const { data: bets, loading, refetch: refetchBets } = useFetch<Bet[]>("/api/bets", []);
   const { data: accounts } = useFetch<Array<{ id: string; platform: string }>>("/api/accounts", []);
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
@@ -321,7 +323,7 @@ export default function BettingPage() {
       if (res.ok) {
         const result = await res.json();
         refetchBets();
-        addToast("success", `${type === "partial" ? "Partial" : "Full"} cashout processed: $${result.amount?.toFixed(2)}`);
+        addToast("success", `${type === "partial" ? "Partial" : "Full"} cashout processed: ${symbol}${result.amount?.toFixed(2)}`);
       } else {
         const data = await res.json();
         addToast("error", data.error || "Cashout failed");
@@ -344,7 +346,7 @@ export default function BettingPage() {
       if (res.ok) {
         const result = await res.json();
         if (result.settled > 0) {
-          addToast("success", `Settled ${result.settled} bet(s). Profit: $${result.totalProfit?.toFixed(2)}`);
+          addToast("success", `Settled ${result.settled} bet(s). Profit: ${symbol}${result.totalProfit?.toFixed(2)}`);
         } else {
           addToast("info", "No bets to settle");
         }
@@ -606,14 +608,14 @@ export default function BettingPage() {
         <Card className="bg-card border-border">
           <CardContent className="p-3">
             <p className="text-xs text-muted-foreground">Total Stake</p>
-            <p className="text-lg font-bold text-foreground">${totalStake.toFixed(2)}</p>
+            <p className="text-lg font-bold text-foreground">{symbol}{totalStake.toFixed(2)}</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
           <CardContent className="p-3">
             <p className="text-xs text-muted-foreground">Net Profit</p>
             <p className={`text-lg font-bold ${totalProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
-              {totalProfit >= 0 ? "+" : ""}${totalProfit.toFixed(2)}
+              {totalProfit >= 0 ? "+" : ""}{symbol}{totalProfit.toFixed(2)}
             </p>
           </CardContent>
         </Card>
@@ -628,7 +630,7 @@ export default function BettingPage() {
               <span className="text-sm font-medium text-foreground">Daily Bet Limit</span>
             </div>
             <span className="text-sm text-muted-foreground">
-              ${dailyStake.toFixed(0)} / ${settings.dailyBetLimit.toFixed(0)}
+              {symbol}{dailyStake.toFixed(0)} / {symbol}{settings.dailyBetLimit.toFixed(0)}
             </span>
           </div>
           <div className="h-2.5 rounded-full bg-secondary overflow-hidden">
@@ -644,7 +646,7 @@ export default function BettingPage() {
               {dailyLimitProgress >= 90 ? "Limit almost reached!" : `${Math.round(dailyLimitProgress)}% of daily limit used`}
             </span>
             <span className="text-[10px] text-muted-foreground">
-              ${Math.max(0, settings.dailyBetLimit - dailyStake).toFixed(0)} remaining
+              {symbol}{Math.max(0, settings.dailyBetLimit - dailyStake).toFixed(0)} remaining
             </span>
           </div>
         </CardContent>
@@ -657,7 +659,7 @@ export default function BettingPage() {
             <Shield className="h-3 w-3 text-red-400" />
             <span className="text-xs text-muted-foreground">Daily Stop-Loss</span>
           </div>
-          <p className="text-sm font-bold text-red-400">-${settings.stopLossDaily}</p>
+          <p className="text-sm font-bold text-red-400">-{symbol}{settings.stopLossDaily}</p>
           <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-500"
@@ -676,7 +678,7 @@ export default function BettingPage() {
             <Shield className="h-3 w-3 text-red-400" />
             <span className="text-xs text-muted-foreground">Weekly Stop-Loss</span>
           </div>
-          <p className="text-sm font-bold text-red-400">-${settings.stopLossWeekly}</p>
+          <p className="text-sm font-bold text-red-400">-{symbol}{settings.stopLossWeekly}</p>
           <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-500"
@@ -695,7 +697,7 @@ export default function BettingPage() {
             <Target className="h-3 w-3 text-emerald-400" />
             <span className="text-xs text-muted-foreground">Daily Target</span>
           </div>
-          <p className="text-sm font-bold text-emerald-400">+${settings.profitTargetDaily}</p>
+          <p className="text-sm font-bold text-emerald-400">+{symbol}{settings.profitTargetDaily}</p>
           <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
             <div
               className="h-full rounded-full bg-emerald-400 transition-all duration-500"
@@ -713,7 +715,7 @@ export default function BettingPage() {
             <Target className="h-3 w-3 text-emerald-400" />
             <span className="text-xs text-muted-foreground">Weekly Target</span>
           </div>
-          <p className="text-sm font-bold text-emerald-400">+${settings.profitTargetWeekly}</p>
+          <p className="text-sm font-bold text-emerald-400">+{symbol}{settings.profitTargetWeekly}</p>
           <div className="mt-2 h-1.5 rounded-full bg-secondary overflow-hidden">
             <div
               className="h-full rounded-full bg-emerald-400 transition-all duration-500"
@@ -769,11 +771,11 @@ export default function BettingPage() {
                     <span className="text-muted-foreground">
                       {bet.selection} @ {bet.odds}
                     </span>
-                    <span className="text-foreground">${bet.stake.toFixed(0)} stake</span>
+                    <span className="text-foreground">{symbol}{bet.stake.toFixed(0)} stake</span>
                   </div>
                   <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-2">
                     <span>Commission: {(settings.commissionRate * 100).toFixed(0)}%</span>
-                    <span>Projected: ${(bet.potentialWin * (1 - settings.commissionRate)).toFixed(2)}</span>
+                    <span>Projected: {symbol}{(bet.potentialWin * (1 - settings.commissionRate)).toFixed(2)}</span>
                   </div>
                   {/* Cashout buttons */}
                   <div className="flex gap-2">
@@ -783,7 +785,7 @@ export default function BettingPage() {
                         className="flex-1 text-[10px] bg-primary/10 text-primary border border-primary/20 rounded px-2 py-1 hover:bg-primary/20 transition-colors"
                       >
                         <DollarSign className="h-3 w-3 inline" />
-                        Partial ${((bet.cashoutAmount || 0) * settings.partialCashoutPercent).toFixed(2)}
+                        Partial {symbol}{((bet.cashoutAmount || 0) * settings.partialCashoutPercent).toFixed(2)}
                       </button>
                     )}
                     {bet.cashoutAmount && (
@@ -792,7 +794,7 @@ export default function BettingPage() {
                         className="flex-1 text-[10px] bg-amber-400/10 text-amber-400 border border-amber-400/20 rounded px-2 py-1 hover:bg-amber-400/20 transition-colors"
                       >
                         <DollarSign className="h-3 w-3 inline" />
-                        Full ${bet.cashoutAmount.toFixed(2)}
+                        Full {symbol}{bet.cashoutAmount.toFixed(2)}
                       </button>
                     )}
                   </div>
@@ -936,7 +938,7 @@ function EnhancedBetCard({
               </div>
               <div>
                 <span className="text-muted-foreground">Stake: </span>
-                <span className="text-foreground">${bet.stake.toFixed(2)}</span>
+                <span className="text-foreground">{symbol}{bet.stake.toFixed(2)}</span>
               </div>
             </div>
 
@@ -959,27 +961,27 @@ function EnhancedBetCard({
 
             {bet.status === "won" && bet.profit !== null && (
               <span className="text-lg font-bold text-emerald-400">
-                +${bet.profit.toFixed(2)}
+                +{symbol}{bet.profit.toFixed(2)}
               </span>
             )}
             {bet.status === "lost" && (
               <span className="text-lg font-bold text-red-400">
-                -${bet.stake.toFixed(2)}
+                -{symbol}{bet.stake.toFixed(2)}
               </span>
             )}
             {bet.status === "pending" && (
               <span className="text-sm text-muted-foreground">
-                Potential: ${bet.potentialWin.toFixed(2)}
+                Potential: {symbol}{bet.potentialWin.toFixed(2)}
               </span>
             )}
             {bet.status === "cashed_out" && bet.cashoutAmount && (
               <span className="text-sm font-bold text-blue-400">
-                Cashed: ${bet.cashoutAmount.toFixed(2)}
+                Cashed: {symbol}{bet.cashoutAmount.toFixed(2)}
               </span>
             )}
             {bet.status === "partial_cashout" && bet.partialCashoutAmount && (
               <span className="text-xs text-amber-400">
-                Partial: ${bet.partialCashoutAmount.toFixed(2)}
+                Partial: {symbol}{bet.partialCashoutAmount.toFixed(2)}
               </span>
             )}
 
@@ -991,14 +993,14 @@ function EnhancedBetCard({
                     onClick={() => onCashout(bet.id, "partial")}
                     className="text-[10px] bg-primary/10 text-primary border border-primary/20 rounded px-2 py-1 hover:bg-primary/20 transition-colors"
                   >
-                    Partial ${((bet.cashoutAmount || 0) * settings.partialCashoutPercent).toFixed(2)}
+                    Partial {symbol}{((bet.cashoutAmount || 0) * settings.partialCashoutPercent).toFixed(2)}
                   </button>
                 )}
                 <button
                   onClick={() => onCashout(bet.id, "full")}
                   className="text-[10px] bg-amber-400/10 text-amber-400 border border-amber-400/20 rounded px-2 py-1 hover:bg-amber-400/20 transition-colors"
                 >
-                  Cashout ${bet.cashoutAmount.toFixed(2)}
+                  Cashout {symbol}{bet.cashoutAmount.toFixed(2)}
                 </button>
               </div>
             )}

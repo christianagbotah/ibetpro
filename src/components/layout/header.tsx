@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/components/auth/auth-provider";
+import { useCurrency } from "@/components/currency-provider";
 import { useFetch } from "@/lib/hooks";
 import Link from "next/link";
 
@@ -64,6 +65,7 @@ function formatTimeAgo(timestamp: string): string {
 
 export function Header({ onMobileMenuToggle }: HeaderProps) {
   const { user, isAuthenticated, logout } = useAuth();
+  const { symbol } = useCurrency();
   const { data: stats } = useFetch<UserStats>("/api/stats/user", { balance: 0 });
   const { data: notifData, refetch: refetchNotifs } = useFetch<NotificationsData>("/api/notifications", {
     notifications: [],
@@ -116,7 +118,7 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
             <div className="flex items-center gap-2 rounded-lg bg-secondary px-3 py-1.5">
               <span className="text-xs text-muted-foreground">Balance</span>
               <span className="text-sm font-bold text-primary">
-                ${stats.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
+                {symbol}{stats.balance.toLocaleString("en-US", { minimumFractionDigits: 2 })}
               </span>
             </div>
 
