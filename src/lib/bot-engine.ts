@@ -589,11 +589,12 @@ class BotEngine {
 
       const sportFilter = expandSportKeys(rawSports);
 
+      const nowForQuery = new Date();
       const upcomingMatches = await prisma.match.findMany({
         where: {
           status: "upcoming",
           sport: { in: sportFilter },
-          commenceTime: { gte: new Date() },
+          commenceTime: { gte: nowForQuery },
           id: { notIn: existingBetMatchIds },
         },
         orderBy: { commenceTime: "asc" },
@@ -603,6 +604,9 @@ class BotEngine {
       result.matches = upcomingMatches.length;
 
       if (upcomingMatches.length === 0) {
+        // Debug: log why no matches were found to help diagnose issues
+        const totalUpcoming = await prisma.match.count({ where: { status: "upcoming" } });
+        console.warn(`[BotEngine] Scan found 0 matches. Debug: now=${nowForQuery.toISOString()} local=${nowForQuery.toLocaleString()} sports=${sportFilter.slice(0, 5).join(",")}... totalUpcoming=${totalUpcoming} excluded=${existingBetMatchIds.length}`);
         return result;
       }
 
