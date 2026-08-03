@@ -97,6 +97,7 @@ export type UserSettingsMinAggregateOutputType = {
   telegramChatId: string | null
   minTipConfidence: number | null
   tipSports: string | null
+  timezone: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -134,6 +135,7 @@ export type UserSettingsMaxAggregateOutputType = {
   telegramChatId: string | null
   minTipConfidence: number | null
   tipSports: string | null
+  timezone: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -171,6 +173,7 @@ export type UserSettingsCountAggregateOutputType = {
   telegramChatId: number
   minTipConfidence: number
   tipSports: number
+  timezone: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -248,6 +251,7 @@ export type UserSettingsMinAggregateInputType = {
   telegramChatId?: true
   minTipConfidence?: true
   tipSports?: true
+  timezone?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -285,6 +289,7 @@ export type UserSettingsMaxAggregateInputType = {
   telegramChatId?: true
   minTipConfidence?: true
   tipSports?: true
+  timezone?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -322,6 +327,7 @@ export type UserSettingsCountAggregateInputType = {
   telegramChatId?: true
   minTipConfidence?: true
   tipSports?: true
+  timezone?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -446,6 +452,7 @@ export type UserSettingsGroupByOutputType = {
   telegramChatId: string | null
   minTipConfidence: number
   tipSports: string
+  timezone: string
   createdAt: Date
   updatedAt: Date
   _count: UserSettingsCountAggregateOutputType | null
@@ -506,6 +513,7 @@ export type UserSettingsWhereInput = {
   telegramChatId?: Prisma.StringNullableFilter<"UserSettings"> | string | null
   minTipConfidence?: Prisma.FloatFilter<"UserSettings"> | number
   tipSports?: Prisma.StringFilter<"UserSettings"> | string
+  timezone?: Prisma.StringFilter<"UserSettings"> | string
   createdAt?: Prisma.DateTimeFilter<"UserSettings"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"UserSettings"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -544,6 +552,7 @@ export type UserSettingsOrderByWithRelationInput = {
   telegramChatId?: Prisma.SortOrderInput | Prisma.SortOrder
   minTipConfidence?: Prisma.SortOrder
   tipSports?: Prisma.SortOrder
+  timezone?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   user?: Prisma.UserOrderByWithRelationInput
@@ -586,6 +595,7 @@ export type UserSettingsWhereUniqueInput = Prisma.AtLeast<{
   telegramChatId?: Prisma.StringNullableFilter<"UserSettings"> | string | null
   minTipConfidence?: Prisma.FloatFilter<"UserSettings"> | number
   tipSports?: Prisma.StringFilter<"UserSettings"> | string
+  timezone?: Prisma.StringFilter<"UserSettings"> | string
   createdAt?: Prisma.DateTimeFilter<"UserSettings"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"UserSettings"> | Date | string
   user?: Prisma.XOR<Prisma.UserScalarRelationFilter, Prisma.UserWhereInput>
@@ -624,6 +634,7 @@ export type UserSettingsOrderByWithAggregationInput = {
   telegramChatId?: Prisma.SortOrderInput | Prisma.SortOrder
   minTipConfidence?: Prisma.SortOrder
   tipSports?: Prisma.SortOrder
+  timezone?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.UserSettingsCountOrderByAggregateInput
@@ -669,6 +680,7 @@ export type UserSettingsScalarWhereWithAggregatesInput = {
   telegramChatId?: Prisma.StringNullableWithAggregatesFilter<"UserSettings"> | string | null
   minTipConfidence?: Prisma.FloatWithAggregatesFilter<"UserSettings"> | number
   tipSports?: Prisma.StringWithAggregatesFilter<"UserSettings"> | string
+  timezone?: Prisma.StringWithAggregatesFilter<"UserSettings"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"UserSettings"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"UserSettings"> | Date | string
 }
@@ -705,6 +717,7 @@ export type UserSettingsCreateInput = {
   telegramChatId?: string | null
   minTipConfidence?: number
   tipSports?: string
+  timezone?: string
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutSettingsInput
@@ -743,6 +756,7 @@ export type UserSettingsUncheckedCreateInput = {
   telegramChatId?: string | null
   minTipConfidence?: number
   tipSports?: string
+  timezone?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -779,6 +793,7 @@ export type UserSettingsUpdateInput = {
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   minTipConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
   tipSports?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutSettingsNestedInput
@@ -817,6 +832,7 @@ export type UserSettingsUncheckedUpdateInput = {
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   minTipConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
   tipSports?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -854,6 +870,7 @@ export type UserSettingsCreateManyInput = {
   telegramChatId?: string | null
   minTipConfidence?: number
   tipSports?: string
+  timezone?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -890,6 +907,7 @@ export type UserSettingsUpdateManyMutationInput = {
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   minTipConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
   tipSports?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -927,6 +945,7 @@ export type UserSettingsUncheckedUpdateManyInput = {
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   minTipConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
   tipSports?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -975,6 +994,7 @@ export type UserSettingsCountOrderByAggregateInput = {
   telegramChatId?: Prisma.SortOrder
   minTipConfidence?: Prisma.SortOrder
   tipSports?: Prisma.SortOrder
+  timezone?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -1031,6 +1051,7 @@ export type UserSettingsMaxOrderByAggregateInput = {
   telegramChatId?: Prisma.SortOrder
   minTipConfidence?: Prisma.SortOrder
   tipSports?: Prisma.SortOrder
+  timezone?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -1068,6 +1089,7 @@ export type UserSettingsMinOrderByAggregateInput = {
   telegramChatId?: Prisma.SortOrder
   minTipConfidence?: Prisma.SortOrder
   tipSports?: Prisma.SortOrder
+  timezone?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -1167,6 +1189,7 @@ export type UserSettingsCreateWithoutUserInput = {
   telegramChatId?: string | null
   minTipConfidence?: number
   tipSports?: string
+  timezone?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1203,6 +1226,7 @@ export type UserSettingsUncheckedCreateWithoutUserInput = {
   telegramChatId?: string | null
   minTipConfidence?: number
   tipSports?: string
+  timezone?: string
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -1255,6 +1279,7 @@ export type UserSettingsUpdateWithoutUserInput = {
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   minTipConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
   tipSports?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1291,6 +1316,7 @@ export type UserSettingsUncheckedUpdateWithoutUserInput = {
   telegramChatId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   minTipConfidence?: Prisma.FloatFieldUpdateOperationsInput | number
   tipSports?: Prisma.StringFieldUpdateOperationsInput | string
+  timezone?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -1330,6 +1356,7 @@ export type UserSettingsSelect<ExtArgs extends runtime.Types.Extensions.Internal
   telegramChatId?: boolean
   minTipConfidence?: boolean
   tipSports?: boolean
+  timezone?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -1370,11 +1397,12 @@ export type UserSettingsSelectScalar = {
   telegramChatId?: boolean
   minTipConfidence?: boolean
   tipSports?: boolean
+  timezone?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type UserSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "autoBettingEnabled" | "maxBetAmount" | "minOddsThreshold" | "maxOddsThreshold" | "riskLevel" | "autoCashoutEnabled" | "cashoutThreshold" | "commissionRate" | "preferredSports" | "notificationsEnabled" | "dailyBetLimit" | "kellyFraction" | "minEdgeThreshold" | "betTypes" | "maxAccumulatorLegs" | "minAiConfidence" | "stopLossDaily" | "stopLossWeekly" | "profitTargetDaily" | "profitTargetWeekly" | "betScheduleStart" | "betScheduleEnd" | "partialCashoutEnabled" | "partialCashoutPercent" | "waitFullSettlement" | "brokerMode" | "botMode" | "telegramChatId" | "minTipConfidence" | "tipSports" | "createdAt" | "updatedAt", ExtArgs["result"]["userSettings"]>
+export type UserSettingsOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "userId" | "autoBettingEnabled" | "maxBetAmount" | "minOddsThreshold" | "maxOddsThreshold" | "riskLevel" | "autoCashoutEnabled" | "cashoutThreshold" | "commissionRate" | "preferredSports" | "notificationsEnabled" | "dailyBetLimit" | "kellyFraction" | "minEdgeThreshold" | "betTypes" | "maxAccumulatorLegs" | "minAiConfidence" | "stopLossDaily" | "stopLossWeekly" | "profitTargetDaily" | "profitTargetWeekly" | "betScheduleStart" | "betScheduleEnd" | "partialCashoutEnabled" | "partialCashoutPercent" | "waitFullSettlement" | "brokerMode" | "botMode" | "telegramChatId" | "minTipConfidence" | "tipSports" | "timezone" | "createdAt" | "updatedAt", ExtArgs["result"]["userSettings"]>
 export type UserSettingsInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
 }
@@ -1417,6 +1445,7 @@ export type $UserSettingsPayload<ExtArgs extends runtime.Types.Extensions.Intern
     telegramChatId: string | null
     minTipConfidence: number
     tipSports: string
+    timezone: string
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["userSettings"]>
@@ -1821,6 +1850,7 @@ export interface UserSettingsFieldRefs {
   readonly telegramChatId: Prisma.FieldRef<"UserSettings", 'String'>
   readonly minTipConfidence: Prisma.FieldRef<"UserSettings", 'Float'>
   readonly tipSports: Prisma.FieldRef<"UserSettings", 'String'>
+  readonly timezone: Prisma.FieldRef<"UserSettings", 'String'>
   readonly createdAt: Prisma.FieldRef<"UserSettings", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"UserSettings", 'DateTime'>
 }

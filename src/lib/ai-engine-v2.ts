@@ -1007,9 +1007,35 @@ export function checkRiskLimits(
 
 // ==================== BET SCHEDULE CHECK ====================
 
-export function isWithinBetSchedule(start: string, end: string): boolean {
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+/**
+ * Check if the current time is within the bet schedule.
+ * Uses the user's IANA timezone to determine the current local hour.
+ * Falls back to the Node.js process local time if timezone is invalid.
+ *
+ * @param start - Schedule start time in HH:mm format (in user's local timezone)
+ * @param end - Schedule end time in HH:mm format (in user's local timezone)
+ * @param timezone - IANA timezone name (e.g. "America/New_York", "Africa/Lagos")
+ */
+export function isWithinBetSchedule(start: string, end: string, timezone?: string): boolean {
+  // Get current time in user's timezone
+  let currentMinutes: number;
+  try {
+    const now = new Date();
+    const tz = timezone || Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+    // Format current time in user's timezone: "HH:mm"
+    const localTime = now.toLocaleString("en-US", {
+      timeZone: tz,
+      hour: "2-digit",
+      minute: "2-digit",
+      hour12: false,
+    });
+    const [h, m] = localTime.split(":").map(Number);
+    currentMinutes = h * 60 + m;
+  } catch {
+    // Fallback to Node.js process local time
+    const now = new Date();
+    currentMinutes = now.getHours() * 60 + now.getMinutes();
+  }
 
   const [startH, startM] = start.split(":").map(Number);
   const [endH, endM] = end.split(":").map(Number);

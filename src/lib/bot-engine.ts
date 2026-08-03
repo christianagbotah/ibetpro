@@ -488,8 +488,8 @@ class BotEngine {
         return result;
       }
 
-      // Check schedule
-      if (!isWithinBetSchedule(settings.betScheduleStart, settings.betScheduleEnd)) {
+      // Check schedule (using user's timezone setting)
+      if (!isWithinBetSchedule(settings.betScheduleStart, settings.betScheduleEnd, settings.timezone)) {
         return result;
       }
 

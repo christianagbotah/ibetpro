@@ -142,6 +142,7 @@ export const UserSettingsScalarFieldEnum = {
   telegramChatId: 'telegramChatId',
   minTipConfidence: 'minTipConfidence',
   tipSports: 'tipSports',
+  timezone: 'timezone',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -555,7 +556,8 @@ export const UserSettingsOrderByRelevanceFieldEnum = {
   brokerMode: 'brokerMode',
   botMode: 'botMode',
   telegramChatId: 'telegramChatId',
-  tipSports: 'tipSports'
+  tipSports: 'tipSports',
+  timezone: 'timezone'
 } as const
 
 export type UserSettingsOrderByRelevanceFieldEnum = (typeof UserSettingsOrderByRelevanceFieldEnum)[keyof typeof UserSettingsOrderByRelevanceFieldEnum]

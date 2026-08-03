@@ -69,17 +69,19 @@ export async function GET() {
         issues.push("Notifications are disabled in settings. Enable them to receive alerts.");
       }
 
-      // Check schedule
-      const inSchedule = isWithinBetSchedule(settings.betScheduleStart, settings.betScheduleEnd);
+      // Check schedule (using user's timezone)
+      const inSchedule = isWithinBetSchedule(settings.betScheduleStart, settings.betScheduleEnd, settings.timezone);
       diagnostics.scheduleCheck = {
         inSchedule,
         scheduleStart: settings.betScheduleStart,
         scheduleEnd: settings.betScheduleEnd,
+        userTimezone: settings.timezone,
         serverTime: new Date().toISOString(),
         serverTimeLocal: new Date().toLocaleString(),
+        serverTimeInUserTz: new Date().toLocaleString("en-US", { timeZone: settings.timezone || "UTC" }),
       };
       if (!inSchedule) {
-        issues.push(`Bot is outside its schedule (${settings.betScheduleStart} - ${settings.betScheduleEnd}). Server time: ${new Date().toISOString()}. The bot will not scan until within schedule hours.`);
+        issues.push(`Bot is outside its schedule (${settings.betScheduleStart} - ${settings.betScheduleEnd} ${settings.timezone}). Current time in user timezone: ${new Date().toLocaleString("en-US", { timeZone: settings.timezone || "UTC" })}. The bot will not scan until within schedule hours.`);
       }
 
       // Check confidence/edge thresholds
