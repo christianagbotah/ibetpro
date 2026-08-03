@@ -1,0 +1,1163 @@
+   100→    botMode: "advisor",
+   101→    minTipConfidence: 0.65,
+   102→    tipSports: "football,basketball,tennis",
+   103→    minAiConfidence: 0.6,
+   104→  });
+   105→  const [profile, setProfile] = useState<UserProfile>({
+   106→    name: "",
+   107→    email: "",
+   108→    role: "user",
+   109→    region: null,
+   110→    currency: null,
+   111→    balance: 0,
+   112→    bankroll: 0,
+   113→    dailyPnl: 0,
+   114→    weeklyPnl: 0,
+   115→  });
+   116→  const [saving, setSaving] = useState(false);
+   117→  const [saved, setSaved] = useState(false);
+   118→  const [error, setError] = useState<string | null>(null);
+   119→  const [loading, setLoading] = useState(true);
+   120→  const [brokerMode, setBrokerMode] = useState<"demo" | "real">("demo");
+   121→  const [switchingMode, setSwitchingMode] = useState(false);
+   122→  const [telegramConnected, setTelegramConnected] = useState(false);
+   123→  const [telegramDeepLink, setTelegramDeepLink] = useState<string | null>(null);
+   124→  const [telegramLoading, setTelegramLoading] = useState(false);
+   125→  const [currentPassword, setCurrentPassword] = useState("");
+   126→  const [newPassword, setNewPassword] = useState("");
+   127→  const [confirmPassword, setConfirmPassword] = useState("");
+   128→  const [changingPassword, setChangingPassword] = useState(false);
+   129→  const [passwordError, setPasswordError] = useState<string | null>(null);
+   130→  const [passwordSuccess, setPasswordSuccess] = useState(false);
+   131→  const { addToast } = useToast();
+   132→
+   133→  // Switch broker mode
+   134→  const handleBrokerModeSwitch = useCallback(async (mode: "demo" | "real") => {
+   135→    setSwitchingMode(true);
+   136→    try {
+   137→      const res = await fetch("/api/user/broker-mode", {
+   138→        method: "PATCH",
+   139→        headers: { "Content-Type": "application/json" },
+   140→        body: JSON.stringify({ brokerMode: mode }),
+   141→      });
+   142→      if (res.ok) {
+   143→        const data = await res.json();
+   144→        setBrokerMode(data.brokerMode || mode);
+   145→        addToast("success", `Switched to ${mode === "demo" ? "Demo (Sandbox)" : "Live (Real)"} mode`);
+   146→      } else {
+   147→        addToast("error", "Failed to switch broker mode");
+   148→      }
+   149→    } catch {
+   150→      addToast("error", "Failed to switch broker mode");
+   151→    } finally {
+   152→      setSwitchingMode(false);
+   153→    }
+   154→  }, [addToast]);
+   155→
+   156→  // Fetch real user settings from API
+   157→  const fetchSettings = useCallback(async () => {
+   158→    try {
+   159→      setLoading(true);
+   160→      const [settingsRes, statsRes, brokerModeRes] = await Promise.all([
+   161→        fetch("/api/settings"),
+   162→        fetch("/api/stats/user"),
+   163→        fetch("/api/user/broker-mode"),
+   164→      ]);
+   165→
+   166→      if (brokerModeRes.ok) {
+   167→        const bmData = await brokerModeRes.json();
+   168→        setBrokerMode(bmData.brokerMode || "demo");
+   169→      }
+   170→
+   171→      if (settingsRes.ok) {
+   172→        const data = await settingsRes.json();
+   173→        setSettings({
+   174→          autoBettingEnabled: data.autoBettingEnabled ?? false,
+   175→          maxBetAmount: data.maxBetAmount ?? 200,
+   176→          minOddsThreshold: data.minOddsThreshold ?? 1.5,
+   177→          maxOddsThreshold: data.maxOddsThreshold ?? 5.0,
+   178→          riskLevel: data.riskLevel ?? "medium",
+   179→          autoCashoutEnabled: data.autoCashoutEnabled ?? true,
+   180→          cashoutThreshold: data.cashoutThreshold ?? 0.7,
+   181→          commissionRate: data.commissionRate ?? 0.10,
+   182→          dailyBetLimit: data.dailyBetLimit ?? 500,
+   183→          preferredSports: data.preferredSports ?? "football,basketball,tennis",
+   184→          notificationsEnabled: data.notificationsEnabled ?? true,
+   185→          kellyFraction: data.kellyFraction ?? 0.25,
+   186→          minEdgeThreshold: data.minEdgeThreshold ?? 0.03,
+   187→          stopLossDaily: data.stopLossDaily ?? 100,
+   188→          stopLossWeekly: data.stopLossWeekly ?? 300,
+   189→          profitTargetDaily: data.profitTargetDaily ?? 200,
+   190→          profitTargetWeekly: data.profitTargetWeekly ?? 500,
+   191→          partialCashoutEnabled: data.partialCashoutEnabled ?? true,
+   192→          waitFullSettlement: data.waitFullSettlement ?? false,
+   193→          maxAccumulatorLegs: data.maxAccumulatorLegs ?? 5,
+   194→          betScheduleStart: data.betScheduleStart ?? "08:00",
+   195→          betScheduleEnd: data.betScheduleEnd ?? "22:00",
+   196→          botMode: data.botMode ?? "advisor",
+   197→          minTipConfidence: data.minTipConfidence ?? 0.65,
+   198→          tipSports: data.tipSports ?? "football,basketball,tennis",
+   199→          minAiConfidence: data.minAiConfidence ?? 0.6,
+   200→        });
+   201→      }
+   202→
+   203→      if (statsRes.ok) {
+   204→        const stats = await statsRes.json();
+   205→        setProfile((prev) => ({
+   206→          ...prev,
+   207→          balance: stats.balance ?? 0,
+   208→          bankroll: stats.bankroll ?? 0,
+   209→          dailyPnl: stats.dailyPnl ?? 0,
+   210→          weeklyPnl: stats.weeklyPnl ?? 0,
+   211→        }));
+   212→      }
+   213→
+   214→      // Use auth context for profile info
+   215→      if (user) {
+   216→        setProfile((prev) => ({
+   217→          ...prev,
+   218→          name: user.name || "",
+   219→          email: user.email || "",
+   220→          role: user.role || "user",
+   221→        }));
+   222→      }
+   223→
+   224→      // Fetch Telegram connection status
+   225→      try {
+   226→        const tgRes = await fetch("/api/telegram/connect");
+   227→        if (tgRes.ok) {
+   228→          const tgData = await tgRes.json();
+   229→          setTelegramConnected(tgData.connected);
+   230→          setTelegramDeepLink(tgData.deepLink);
+   231→        }
+   232→      } catch {}
+   233→    } catch (err) {
+   234→      console.error("Failed to fetch settings:", err);
+   235→      setError("Failed to load settings. Using defaults.");
+   236→    } finally {
+   237→      setLoading(false);
+   238→    }
+   239→  }, [user]);
+   240→
+   241→  useEffect(() => {
+   242→    fetchSettings();
+   243→  }, [fetchSettings]);
+   244→
+   245→  // Save settings to API
+   246→  const handleSave = async () => {
+   247→    setSaving(true);
+   248→    setError(null);
+   249→    try {
+   250→      const res = await fetch("/api/settings", {
+   251→        method: "PUT",
+   252→        headers: { "Content-Type": "application/json" },
+   253→        body: JSON.stringify(settings),
+   254→      });
+   255→
+   256→      if (!res.ok) {
+   257→        const data = await res.json();
+   258→        throw new Error(data.error || "Failed to save settings");
+   259→      }
+   260→
+   261→      setSaved(true);
+   262→      setTimeout(() => setSaved(false), 2000);
+   263→    } catch (err) {
+   264→      setError(err instanceof Error ? err.message : "Failed to save settings");
+   265→    } finally {
+   266→      setSaving(false);
+   267→    }
+   268→  };
+   269→
+   270→  const handleTelegramDisconnect = async () => {
+   271→    setTelegramLoading(true);
+   272→    try {
+   273→      const res = await fetch("/api/telegram/connect", { method: "DELETE" });
+   274→      if (res.ok) {
+   275→        setTelegramConnected(false);
+   276→        addToast("success", "Telegram disconnected");
+   277→      } else {
+   278→        addToast("error", "Failed to disconnect Telegram");
+   279→      }
+   280→    } catch {
+   281→      addToast("error", "Failed to disconnect Telegram");
+   282→    } finally {
+   283→      setTelegramLoading(false);
+   284→    }
+   285→  };
+   286→
+   287→  const handleChangePassword = async () => {
+   288→    setPasswordError(null);
+   289→    setPasswordSuccess(false);
+   290→
+   291→    if (!currentPassword || !newPassword || !confirmPassword) {
+   292→      setPasswordError("All fields are required");
+   293→      return;
+   294→    }
+   295→
+   296→    if (newPassword.length < 8) {
+   297→      setPasswordError("New password must be at least 8 characters");
+   298→      return;
+   299→    }
+   300→
+   301→    if (newPassword !== confirmPassword) {
+   302→      setPasswordError("New passwords do not match");
+   303→      return;
+   304→    }
+   305→
+   306→    if (currentPassword === newPassword) {
+   307→      setPasswordError("New password must be different from current password");
+   308→      return;
+   309→    }
+   310→
+   311→    setChangingPassword(true);
+   312→    try {
+   313→      const res = await fetch("/api/auth/change-password", {
+   314→        method: "POST",
+   315→        headers: { "Content-Type": "application/json" },
+   316→        body: JSON.stringify({ currentPassword, newPassword }),
+   317→      });
+   318→
+   319→      const data = await res.json();
+   320→
+   321→      if (res.ok && data.success) {
+   322→        setPasswordSuccess(true);
+   323→        setCurrentPassword("");
+   324→        setNewPassword("");
+   325→        setConfirmPassword("");
+   326→        addToast("success", "Password changed successfully");
+   327→        // Reset success message after 5 seconds so they can change again if needed
+   328→        setTimeout(() => setPasswordSuccess(false), 5000);
+   329→      } else {
+   330→        setPasswordError(data.error || "Failed to change password");
+   331→      }
+   332→    } catch {
+   333→      setPasswordError("Network error. Please try again.");
+   334→    } finally {
+   335→      setChangingPassword(false);
+   336→    }
+   337→  };
+   338→
+   339→  const riskLevels = [
+   340→    { value: "low", label: "Low", color: "text-emerald-400", desc: "Conservative bets only" },
+   341→    { value: "medium", label: "Medium", color: "text-amber-400", desc: "Balanced approach" },
+   342→    { value: "high", label: "High", color: "text-red-400", desc: "Aggressive strategy" },
+   343→  ];
+   344→
+   345→  const sportsOptions = [
+   346→    { id: "football", label: "Football" },
+   347→    { id: "basketball", label: "Basketball" },
+   348→    { id: "tennis", label: "Tennis" },
+   349→    { id: "cricket", label: "Cricket" },
+   350→    { id: "rugby", label: "Rugby" },
+   351→    { id: "hockey", label: "Hockey" },
+   352→  ];
+   353→
+   354→  const toggleSport = (sport: string) => {
+   355→    const current = settings.preferredSports.split(",").filter(Boolean);
+   356→    const updated = current.includes(sport)
+   357→      ? current.filter((s) => s !== sport)
+   358→      : [...current, sport];
+   359→    setSettings({ ...settings, preferredSports: updated.join(",") });
+   360→  };
+   361→
+   362→  if (loading) {
+   363→    return (
+   364→      <div className="flex items-center justify-center min-h-[60vh]">
+   365→        <div className="flex items-center gap-3 text-muted-foreground">
+   366→          <Loader2 className="h-5 w-5 animate-spin" />
+   367→          <span>Loading your settings...</span>
+   368→        </div>
+   369→      </div>
+   370→    );
+   371→  }
+   372→
+   373→  return (
+   374→    <div className="space-y-6 max-w-3xl">
+   375→      {/* Page Header */}
+   376→      <div className="flex items-center justify-between">
+   377→        <div>
+   378→          <h1 className="text-2xl font-bold text-foreground">Settings</h1>
+   379→          <p className="text-sm text-muted-foreground mt-1">
+   380→            Configure your betting preferences and account settings
+   381→          </p>
+   382→        </div>
+   383→        <Button
+   384→          variant="ghost"
+   385→          size="sm"
+   386→          onClick={fetchSettings}
+   387→          className="text-muted-foreground"
+   388→        >
+   389→          <RefreshCw className="h-4 w-4 mr-1" />
+   390→          Refresh
+   391→        </Button>
+   392→      </div>
+   393→
+   394→      {/* Error Banner */}
+   395→      {error && (
+   396→        <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm text-destructive">
+   397→          <AlertCircle className="h-4 w-4 shrink-0" />
+   398→          {error}
+   399→        </div>
+   400→      )}
+   401→
+   402→      {/* Success Banner */}
+   403→      {saved && (
+   404→        <div className="flex items-center gap-2 rounded-lg border border-emerald-500/50 bg-emerald-500/10 p-3 text-sm text-emerald-400">
+   405→          <CheckCircle2 className="h-4 w-4 shrink-0" />
+   406→          Settings saved successfully!
+   407→        </div>
+   408→      )}
+   409→
+   410→      {/* Account Info - Real Data */}
+   411→      <Card className="bg-card border-border">
+   412→        <CardHeader className="pb-3">
+   413→          <CardTitle className="flex items-center gap-2 text-base">
+   414→            <User className="h-4 w-4 text-primary" />
+   415→            Account
+   416→          </CardTitle>
+   417→        </CardHeader>
+   418→        <CardContent className="space-y-3">
+   419→          <div className="flex items-center justify-between">
+   420→            <Label className="text-sm text-muted-foreground">Name</Label>
+   421→            <span className="text-sm text-foreground">{profile.name || "Not set"}</span>
+   422→          </div>
+   423→          <div className="flex items-center justify-between">
+   424→            <Label className="text-sm text-muted-foreground">Email</Label>
+   425→            <span className="text-sm text-foreground">{profile.email || "Not set"}</span>
+   426→          </div>
+   427→          <div className="flex items-center justify-between">
+   428→            <Label className="text-sm text-muted-foreground">Role</Label>
+   429→            <Badge variant="secondary" className={profile.role === "admin" ? "bg-primary/10 text-primary" : ""}>
+   430→              {profile.role === "admin" ? "Admin" : "User"}
+   431→            </Badge>
+   432→          </div>
+   433→          <Separator />
+   434→          <div className="grid grid-cols-2 gap-3">
+   435→            <div className="flex items-center justify-between">
+   436→              <Label className="text-sm text-muted-foreground">Region</Label>
+   437→              <span className="text-sm text-foreground">{profile.region || "Not set"}</span>
+   438→            </div>
+   439→            <div className="flex items-center justify-between">
+   440→              <Label className="text-sm text-muted-foreground">Currency</Label>
+   441→              <span className="text-sm text-foreground">{profile.currency || "USD"}</span>
+   442→            </div>
+   443→          </div>
+   444→          <div className="grid grid-cols-2 gap-3">
+   445→            <div className="flex items-center justify-between">
+   446→              <Label className="text-sm text-muted-foreground">Bankroll</Label>
+   447→              <span className="text-sm font-medium text-foreground">
+   448→                {profile.currency === "NGN" ? "₦" : profile.currency === "GBP" ? "£" : profile.currency === "EUR" ? "€" : "$"}
+   449→                {profile.bankroll.toFixed(2)}
+   450→              </span>
+   451→            </div>
+   452→            <div className="flex items-center justify-between">
+   453→              <Label className="text-sm text-muted-foreground">Balance</Label>
+   454→              <span className="text-sm font-medium text-foreground">
+   455→                {profile.currency === "NGN" ? "₦" : profile.currency === "GBP" ? "£" : profile.currency === "EUR" ? "€" : "$"}
+   456→                {profile.balance.toFixed(2)}
+   457→              </span>
+   458→            </div>
+   459→          </div>
+   460→          <div className="grid grid-cols-2 gap-3">
+   461→            <div className="flex items-center justify-between">
+   462→              <Label className="text-sm text-muted-foreground">Daily P&L</Label>
+   463→              <span className={`text-sm font-medium ${profile.dailyPnl >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+   464→                {profile.dailyPnl >= 0 ? "+" : ""}
+   465→                {profile.dailyPnl.toFixed(2)}
+   466→              </span>
+   467→            </div>
+   468→            <div className="flex items-center justify-between">
+   469→              <Label className="text-sm text-muted-foreground">Weekly P&L</Label>
+   470→              <span className={`text-sm font-medium ${profile.weeklyPnl >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+   471→                {profile.weeklyPnl >= 0 ? "+" : ""}
+   472→                {profile.weeklyPnl.toFixed(2)}
+   473→              </span>
+   474→            </div>
+   475→          </div>
+   476→        </CardContent>
+   477→      </Card>
+   478→
+   479→      {/* Broker Mode Toggle */}
+   480→      <Card className={`bg-card border-2 ${brokerMode === "demo" ? "border-blue-400/30" : "border-emerald-400/30"}`}>
+   481→        <CardHeader className="pb-3">
+   482→          <CardTitle className="flex items-center gap-2 text-base">
+   483→            <FlaskConical className="h-4 w-4 text-primary" />
+   484→            Broker Account Mode
+   485→            <Badge className={`text-[10px] ${brokerMode === "demo" ? "bg-blue-400/10 text-blue-400 border-blue-400/30" : "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"}`}>
+   486→              {brokerMode === "demo" ? "Sandbox" : "Live"}
+   487→            </Badge>
+   488→          </CardTitle>
+   489→        </CardHeader>
+   490→        <CardContent className="space-y-4">
+   491→          <p className="text-sm text-muted-foreground">
+   492→            Choose how your broker accounts operate. In Demo mode, all broker connections are simulated (no real money at risk).
+   493→            In Live mode, connections use real broker APIs with real funds.
+   494→          </p>
+   495→
+   496→          <div className="grid grid-cols-2 gap-3">
+   497→            <button
+   498→              onClick={() => handleBrokerModeSwitch("demo")}
+   499→              disabled={switchingMode || brokerMode === "demo"}
+   500→              className={`relative flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all cursor-pointer ${
+   501→                brokerMode === "demo"
+   502→                  ? "border-blue-400 bg-blue-400/5 shadow-lg shadow-blue-400/10"
+   503→                  : "border-border hover:border-blue-400/50 hover:bg-blue-400/5"
+   504→              } ${switchingMode ? "opacity-50" : ""}`}
+   505→            >
+   506→              {brokerMode === "demo" && (
+   507→                <div className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-blue-400 flex items-center justify-center">
+   508→                  <CheckCircle2 className="h-3 w-3 text-white" />
+   509→                </div>
+   510→              )}
+   511→              <div className={`h-10 w-10 rounded-full flex items-center justify-center ${brokerMode === "demo" ? "bg-blue-400/10" : "bg-secondary"}`}>
+   512→                <FlaskConical className={`h-5 w-5 ${brokerMode === "demo" ? "text-blue-400" : "text-muted-foreground"}`} />
+   513→              </div>
+   514→              <div className="text-center">
+   515→                <p className={`text-sm font-medium ${brokerMode === "demo" ? "text-blue-400" : "text-foreground"}`}>Demo (Sandbox)</p>
+   516→                <p className="text-[10px] text-muted-foreground mt-0.5">Simulated trades, no real money</p>
+   517→              </div>
+   518→            </button>
+   519→
+   520→            <button
+   521→              onClick={() => handleBrokerModeSwitch("real")}
+   522→              disabled={switchingMode || brokerMode === "real"}
+   523→              className={`relative flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all cursor-pointer ${
+   524→                brokerMode === "real"
+   525→                  ? "border-emerald-400 bg-emerald-400/5 shadow-lg shadow-emerald-400/10"
+   526→                  : "border-border hover:border-emerald-400/50 hover:bg-emerald-400/5"
+   527→              } ${switchingMode ? "opacity-50" : ""}`}
+   528→            >
+   529→              {brokerMode === "real" && (
+   530→                <div className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-emerald-400 flex items-center justify-center">
+   531→                  <CheckCircle2 className="h-3 w-3 text-white" />
+   532→                </div>
+   533→              )}
+   534→              <div className={`h-10 w-10 rounded-full flex items-center justify-center ${brokerMode === "real" ? "bg-emerald-400/10" : "bg-secondary"}`}>
+   535→                <Globe className={`h-5 w-5 ${brokerMode === "real" ? "text-emerald-400" : "text-muted-foreground"}`} />
+   536→              </div>
+   537→              <div className="text-center">
+   538→                <p className={`text-sm font-medium ${brokerMode === "real" ? "text-emerald-400" : "text-foreground"}`}>Live (Real)</p>
+   539→                <p className="text-[10px] text-muted-foreground mt-0.5">Real broker API, real funds</p>
+   540→              </div>
+   541→            </button>
+   542→          </div>
+   543→
+   544→          {brokerMode === "real" && (
+   545→            <div className="flex items-start gap-2 rounded-lg border border-amber-400/30 bg-amber-400/5 p-3 text-xs text-amber-400">
+   546→              <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+   547→              <div>
+   548→                <p className="font-medium">Live Mode Warning</p>
+   549→                <p className="text-amber-400/80 mt-0.5">
+   550→                  You are using real broker credentials. All bets, cashouts, and transfers will use real funds.
+   551→                  Ensure your broker API credentials are correctly configured.
+   552→                </p>
+   553→              </div>
+   554→            </div>
+   555→          )}
+   556→
+   557→          {switchingMode && (
+   558→            <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+   559→              <Loader2 className="h-4 w-4 animate-spin" />
+   560→              Switching mode...
+   561→            </div>
+   562→          )}
+   563→        </CardContent>
+   564→      </Card>
+   565→
+   566→      {/* Bot Mode: Advisor vs Auto */}
+   567→      <Card className="bg-card border-border">
+   568→        <CardHeader className="pb-3">
+   569→          <CardTitle className="flex items-center gap-2 text-base">
+   570→            <Zap className="h-4 w-4 text-primary" />
+   571→            Bot Mode
+   572→            <Badge className={`text-[10px] ${
+   573→              settings.botMode === "advisor"
+   574→                ? "bg-blue-400/10 text-blue-400 border-blue-400/30"
+   575→                : "bg-emerald-400/10 text-emerald-400 border-emerald-400/30"
+   576→            }`}>
+   577→              {settings.botMode === "advisor" ? "Advisor" : "Auto-Bet"}
+   578→            </Badge>
+   579→          </CardTitle>
+   580→        </CardHeader>
+   581→        <CardContent className="space-y-4">
+   582→          <p className="text-sm text-muted-foreground">
+   583→            Choose how the AI bot operates. In <strong>Advisor</strong> mode, the AI sends you tips via Telegram and you place bets yourself.
+   584→            In <strong>Auto-Bet</strong> mode, the AI places bets automatically via your connected broker.
+   585→          </p>
+   586→
+   587→          <div className="grid grid-cols-2 gap-3">
+   588→            <button
+   589→              onClick={() => setSettings({ ...settings, botMode: "advisor" })}
+   590→              className={`relative flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all cursor-pointer ${
+   591→                settings.botMode === "advisor"
+   592→                  ? "border-blue-400 bg-blue-400/5 shadow-lg shadow-blue-400/10"
+   593→                  : "border-border hover:border-blue-400/50 hover:bg-blue-400/5"
+   594→              }`}
+   595→            >
+   596→              {settings.botMode === "advisor" && (
+   597→                <div className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-blue-400 flex items-center justify-center">
+   598→                  <CheckCircle2 className="h-3 w-3 text-white" />
+   599→                </div>
+   600→              )}
+   601→              <div className={`h-10 w-10 rounded-full flex items-center justify-center ${settings.botMode === "advisor" ? "bg-blue-400/10" : "bg-secondary"}`}>
+   602→                <Send className={`h-5 w-5 ${settings.botMode === "advisor" ? "text-blue-400" : "text-muted-foreground"}`} />
+   603→              </div>
+   604→              <div className="text-center">
+   605→                <p className={`text-sm font-medium ${settings.botMode === "advisor" ? "text-blue-400" : "text-foreground"}`}>Advisor</p>
+   606→                <p className="text-[10px] text-muted-foreground mt-0.5">AI tips, you place bets</p>
+   607→              </div>
+   608→            </button>
+   609→
+   610→            <button
+   611→              onClick={() => setSettings({ ...settings, botMode: "auto" })}
+   612→              className={`relative flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all cursor-pointer ${
+   613→                settings.botMode === "auto"
+   614→                  ? "border-emerald-400 bg-emerald-400/5 shadow-lg shadow-emerald-400/10"
+   615→                  : "border-border hover:border-emerald-400/50 hover:bg-emerald-400/5"
+   616→              }`}
+   617→            >
+   618→              {settings.botMode === "auto" && (
+   619→                <div className="absolute -top-2 -right-2 h-5 w-5 rounded-full bg-emerald-400 flex items-center justify-center">
+   620→                  <CheckCircle2 className="h-3 w-3 text-white" />
+   621→                </div>
+   622→              )}
+   623→              <div className={`h-10 w-10 rounded-full flex items-center justify-center ${settings.botMode === "auto" ? "bg-emerald-400/10" : "bg-secondary"}`}>
+   624→                <Zap className={`h-5 w-5 ${settings.botMode === "auto" ? "text-emerald-400" : "text-muted-foreground"}`} />
+   625→              </div>
+   626→              <div className="text-center">
+   627→                <p className={`text-sm font-medium ${settings.botMode === "auto" ? "text-emerald-400" : "text-foreground"}`}>Auto-Bet</p>
+   628→                <p className="text-[10px] text-muted-foreground mt-0.5">AI places bets for you</p>
+   629→              </div>
+   630→            </button>
+   631→          </div>
+   632→
+   633→          {/* Advisor-specific settings */}
+   634→          {settings.botMode === "advisor" && (
+   635→            <div className="space-y-4 pt-2">
+   636→              <Separator />
+   637→              <div>
+   638→                <Label className="text-sm font-medium">Min Tip Confidence</Label>
+   639→                <div className="flex items-center gap-3 mt-1">
+   640→                  <input
+   641→                    type="range"
+   642→                    min="30"
+   643→                    max="95"
+   644→                    step="5"
+   645→                    value={settings.minTipConfidence * 100}
+   646→                    onChange={(e) =>
+   647→                      setSettings({ ...settings, minTipConfidence: parseInt(e.target.value) / 100 })
+   648→                    }
+   649→                    className="flex-1 h-1.5 rounded-full bg-secondary appearance-none cursor-pointer accent-primary"
+   650→                  />
+   651→                  <span className="text-sm font-medium text-primary w-12 text-right">
+   652→                    {(settings.minTipConfidence * 100).toFixed(0)}%
+   653→                  </span>
+   654→                </div>
+   655→                <p className="text-[10px] text-muted-foreground mt-0.5">
+   656→                  Only send tips with AI confidence above this threshold
+   657→                </p>
+   658→              </div>
+   659→
+   660→              <div>
+   661→                <Label className="text-sm font-medium">Tip Sports</Label>
+   662→                <div className="flex flex-wrap gap-2 mt-2">
+   663→                  {sportsOptions.map((sport) => {
+   664→                    const isSelected = settings.tipSports.split(",").includes(sport.id);
+   665→                    return (
+   666→                      <button
+   667→                        key={sport.id}
+   668→                        onClick={() => {
+   669→                          const current = settings.tipSports.split(",").filter(Boolean);
+   670→                          const updated = current.includes(sport.id)
+   671→                            ? current.filter((s) => s !== sport.id)
+   672→                            : [...current, sport.id];
+   673→                          setSettings({ ...settings, tipSports: updated.join(",") });
+   674→                        }}
+   675→                        className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+   676→                          isSelected
+   677→                            ? "bg-primary/10 text-primary border border-primary/30"
+   678→                            : "bg-secondary/50 text-muted-foreground border border-border"
+   679→                        }`}
+   680→                      >
+   681→                        {sport.label}
+   682→                      </button>
+   683→                    );
+   684→                  })}
+   685→                </div>
+   686→              </div>
+   687→            </div>
+   688→          )}
+   689→        </CardContent>
+   690→      </Card>
+   691→
+   692→      {/* Auto-Betting Settings */}
+   693→      <Card className="bg-card border-border">
+   694→        <CardHeader className="pb-3">
+   695→          <CardTitle className="flex items-center gap-2 text-base">
+   696→            <Zap className="h-4 w-4 text-primary" />
+   697→            Auto-Betting
+   698→          </CardTitle>
+   699→        </CardHeader>
+   700→        <CardContent className="space-y-4">
+   701→          <div className="flex items-center justify-between">
+   702→            <div>
+   703→              <Label className="text-sm font-medium">Enable Auto-Betting</Label>
+   704→              <p className="text-xs text-muted-foreground">
+   705→                Allow AI to automatically place bets based on your criteria
+   706→              </p>
+   707→            </div>
+   708→            <Switch
+   709→              checked={settings.autoBettingEnabled}
+   710→              onCheckedChange={(checked) =>
+   711→                setSettings({ ...settings, autoBettingEnabled: checked as boolean })
+   712→              }
+   713→            />
+   714→          </div>
+   715→
+   716→          <Separator />
+   717→
+   718→          <div className="grid grid-cols-2 gap-4">
+   719→            <div>
+   720→              <Label className="text-sm font-medium">Max Bet Amount</Label>
+   721→              <Input
+   722→                type="number"
+   723→                value={settings.maxBetAmount}
+   724→                onChange={(e) =>
+   725→                  setSettings({ ...settings, maxBetAmount: parseFloat(e.target.value) || 0 })
+   726→                }
+   727→                className="bg-secondary border-border mt-1"
+   728→              />
+   729→            </div>
+   730→            <div>
+   731→              <Label className="text-sm font-medium">Daily Bet Limit</Label>
+   732→              <Input
+   733→                type="number"
+   734→                value={settings.dailyBetLimit}
+   735→                onChange={(e) =>
+   736→                  setSettings({ ...settings, dailyBetLimit: parseFloat(e.target.value) || 0 })
+   737→                }
+   738→                className="bg-secondary border-border mt-1"
+   739→              />
+   740→            </div>
+   741→          </div>
+   742→
+   743→          <div className="grid grid-cols-2 gap-4">
+   744→            <div>
+   745→              <Label className="text-sm font-medium">Min Odds Threshold</Label>
+   746→              <Input
+   747→                type="number"
+   748→                step="0.1"
+   749→                value={settings.minOddsThreshold}
+   750→                onChange={(e) =>
+   751→                  setSettings({ ...settings, minOddsThreshold: parseFloat(e.target.value) || 0 })
+   752→                }
+   753→                className="bg-secondary border-border mt-1"
+   754→              />
+   755→            </div>
+   756→            <div>
+   757→              <Label className="text-sm font-medium">Max Odds Threshold</Label>
+   758→              <Input
+   759→                type="number"
+   760→                step="0.1"
+   761→                value={settings.maxOddsThreshold}
+   762→                onChange={(e) =>
+   763→                  setSettings({ ...settings, maxOddsThreshold: parseFloat(e.target.value) || 0 })
+   764→                }
+   765→                className="bg-secondary border-border mt-1"
+   766→              />
+   767→            </div>
+   768→          </div>
+   769→
+   770→          {/* Kelly & Edge Settings */}
+   771→          <div className="grid grid-cols-2 gap-4">
+   772→            <div>
+   773→              <Label className="text-sm font-medium">Kelly Fraction</Label>
+   774→              <Input
+   775→                type="number"
+   776→                step="0.05"
+   777→                min="0.05"
+   778→                max="1.0"
+   779→                value={settings.kellyFraction}
+   780→                onChange={(e) =>
+   781→                  setSettings({ ...settings, kellyFraction: parseFloat(e.target.value) || 0.25 })
+   782→                }
+   783→                className="bg-secondary border-border mt-1"
+   784→              />
+   785→              <p className="text-[10px] text-muted-foreground mt-0.5">
+   786→                Fraction of Kelly stake to use (0.05 - 1.0)
+   787→              </p>
+   788→            </div>
+   789→            <div>
+   790→              <Label className="text-sm font-medium">Min Edge Threshold</Label>
+   791→              <Input
+   792→                type="number"
+   793→                step="0.01"
+   794→                min="0"
+   795→                max="0.5"
+   796→                value={settings.minEdgeThreshold}
+   797→                onChange={(e) =>
+   798→                  setSettings({ ...settings, minEdgeThreshold: parseFloat(e.target.value) || 0.03 })
+   799→                }
+   800→                className="bg-secondary border-border mt-1"
+   801→              />
+   802→              <p className="text-[10px] text-muted-foreground mt-0.5">
+   803→                Minimum value edge to place a bet (0.03 = 3%)
+   804→              </p>
+   805→            </div>
+   806→          </div>
+   807→
+   808→          {/* Max Accumulator Legs */}
+   809→          <div>
+   810→            <Label className="text-sm font-medium">Max Accumulator Legs</Label>
+   811→            <Input
+   812→              type="number"
+   813→              min="2"
+   814→              max="20"
+   815→              value={settings.maxAccumulatorLegs}
+   816→              onChange={(e) =>
+   817→                setSettings({ ...settings, maxAccumulatorLegs: parseInt(e.target.value) || 5 })
+   818→              }
+   819→              className="bg-secondary border-border mt-1 max-w-[200px]"
+   820→            />
+   821→            <p className="text-[10px] text-muted-foreground mt-0.5">
+   822→              Maximum number of legs in an accumulator/parlay bet
+   823→            </p>
+   824→          </div>
+   825→
+   826→          {/* Bet Schedule */}
+   827→          <div className="grid grid-cols-2 gap-4">
+   828→            <div>
+   829→              <Label className="text-sm font-medium">Bet Schedule Start</Label>
+   830→              <Input
+   831→                type="time"
+   832→                value={settings.betScheduleStart}
+   833→                onChange={(e) =>
+   834→                  setSettings({ ...settings, betScheduleStart: e.target.value })
+   835→                }
+   836→                className="bg-secondary border-border mt-1"
+   837→              />
+   838→            </div>
+   839→            <div>
+   840→              <Label className="text-sm font-medium">Bet Schedule End</Label>
+   841→              <Input
+   842→                type="time"
+   843→                value={settings.betScheduleEnd}
+   844→                onChange={(e) =>
+   845→                  setSettings({ ...settings, betScheduleEnd: e.target.value })
+   846→                }
+   847→                className="bg-secondary border-border mt-1"
+   848→              />
+   849→            </div>
+   850→          </div>
+   851→          <p className="text-[10px] text-muted-foreground">
+   852→            AI bot will only place bets during this time window
+   853→          </p>
+   854→
+   855→          {/* Preferred Sports */}
+   856→          <div>
+   857→            <Label className="text-sm font-medium">Preferred Sports</Label>
+   858→            <div className="flex flex-wrap gap-2 mt-2">
+   859→              {sportsOptions.map((sport) => {
+   860→                const isSelected = settings.preferredSports.split(",").includes(sport.id);
+   861→                return (
+   862→                  <button
+   863→                    key={sport.id}
+   864→                    onClick={() => toggleSport(sport.id)}
+   865→                    className={`rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+   866→                      isSelected
+   867→                        ? "bg-primary/10 text-primary border border-primary/30"
+   868→                        : "bg-secondary/50 text-muted-foreground border border-border"
+   869→                    }`}
+   870→                  >
+   871→                    {sport.label}
+   872→                  </button>
+   873→                );
+   874→              })}
+   875→            </div>
+   876→          </div>
+   877→        </CardContent>
+   878→      </Card>
+   879→
+   880→      {/* Risk Management */}
+   881→      <Card className="bg-card border-border">
+   882→        <CardHeader className="pb-3">
+   883→          <CardTitle className="flex items-center gap-2 text-base">
+   884→            <Shield className="h-4 w-4 text-amber-400" />
+   885→            Risk Management
+   886→          </CardTitle>
+   887→        </CardHeader>
+   888→        <CardContent className="space-y-4">
+   889→          <div>
+   890→            <Label className="text-sm font-medium mb-2 block">Risk Level</Label>
+   891→            <div className="grid grid-cols-3 gap-2">
+   892→              {riskLevels.map((level) => (
+   893→                <button
+   894→                  key={level.value}
+   895→                  onClick={() => setSettings({ ...settings, riskLevel: level.value })}
+   896→                  className={`rounded-lg border p-3 text-center transition-all ${
+   897→                    settings.riskLevel === level.value
+   898→                      ? "border-primary bg-primary/10"
+   899→                      : "border-border bg-secondary/50 hover:border-border"
+   900→                  }`}
+   901→                >
+   902→                  <div className={`text-sm font-medium ${level.color}`}>{level.label}</div>
+   903→                  <div className="text-[10px] text-muted-foreground mt-0.5">{level.desc}</div>
+   904→                </button>
+   905→              ))}
+   906→            </div>
+   907→          </div>
+   908→
+   909→          <Separator />
+   910→
+   911→          {/* Stop Loss & Profit Targets */}
+   912→          <div className="grid grid-cols-2 gap-4">
+   913→            <div>
+   914→              <Label className="text-sm font-medium">Daily Stop Loss</Label>
+   915→              <Input
+   916→                type="number"
+   917→                value={settings.stopLossDaily}
+   918→                onChange={(e) =>
+   919→                  setSettings({ ...settings, stopLossDaily: parseFloat(e.target.value) || 0 })
+   920→                }
+   921→                className="bg-secondary border-border mt-1"
+   922→              />
+   923→              <p className="text-[10px] text-muted-foreground mt-0.5">
+   924→                Stop betting if daily losses reach this
+   925→              </p>
+   926→            </div>
+   927→            <div>
+   928→              <Label className="text-sm font-medium">Weekly Stop Loss</Label>
+   929→              <Input
+   930→                type="number"
+   931→                value={settings.stopLossWeekly}
+   932→                onChange={(e) =>
+   933→                  setSettings({ ...settings, stopLossWeekly: parseFloat(e.target.value) || 0 })
+   934→                }
+   935→                className="bg-secondary border-border mt-1"
+   936→              />
+   937→              <p className="text-[10px] text-muted-foreground mt-0.5">
+   938→                Stop betting if weekly losses reach this
+   939→              </p>
+   940→            </div>
+   941→          </div>
+   942→          <div className="grid grid-cols-2 gap-4">
+   943→            <div>
+   944→              <Label className="text-sm font-medium">Daily Profit Target</Label>
+   945→              <Input
+   946→                type="number"
+   947→                value={settings.profitTargetDaily}
+   948→                onChange={(e) =>
+   949→                  setSettings({ ...settings, profitTargetDaily: parseFloat(e.target.value) || 0 })
+   950→                }
+   951→                className="bg-secondary border-border mt-1"
+   952→              />
+   953→              <p className="text-[10px] text-muted-foreground mt-0.5">
+   954→                Pause betting when daily profit target is hit
+   955→              </p>
+   956→            </div>
+   957→            <div>
+   958→              <Label className="text-sm font-medium">Weekly Profit Target</Label>
+   959→              <Input
+   960→                type="number"
+   961→                value={settings.profitTargetWeekly}
+   962→                onChange={(e) =>
+   963→                  setSettings({ ...settings, profitTargetWeekly: parseFloat(e.target.value) || 0 })
+   964→                }
+   965→                className="bg-secondary border-border mt-1"
+   966→              />
+   967→              <p className="text-[10px] text-muted-foreground mt-0.5">
+   968→                Pause betting when weekly profit target is hit
+   969→              </p>
+   970→            </div>
+   971→          </div>
+   972→
+   973→          <Separator />
+   974→
+   975→          {/* Cashout Settings */}
+   976→          <div className="flex items-center justify-between">
+   977→            <div>
+   978→              <Label className="text-sm font-medium">Auto Cashout</Label>
+   979→              <p className="text-xs text-muted-foreground">
+   980→                Automatically cashout when threshold is reached
+   981→              </p>
+   982→            </div>
+   983→            <Switch
+   984→              checked={settings.autoCashoutEnabled}
+   985→              onCheckedChange={(checked) =>
+   986→                setSettings({ ...settings, autoCashoutEnabled: checked as boolean })
+   987→              }
+   988→            />
+   989→          </div>
+   990→
+   991→          {settings.autoCashoutEnabled && (
+   992→            <div>
+   993→              <Label className="text-sm font-medium">
+   994→                Cashout Threshold: {Math.round(settings.cashoutThreshold * 100)}%
+   995→              </Label>
+   996→              <input
+   997→                type="range"
+   998→                min="20"
+   999→                max="90"
+  1000→                step="5"
+  1001→                value={settings.cashoutThreshold * 100}
+  1002→                onChange={(e) =>
+  1003→                  setSettings({ ...settings, cashoutThreshold: parseInt(e.target.value) / 100 })
+  1004→                }
+  1005→                className="w-full h-1.5 rounded-full bg-secondary appearance-none cursor-pointer mt-2 accent-primary"
+  1006→              />
+  1007→              <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
+  1008→                <span>20%</span>
+  1009→                <span>50%</span>
+  1010→                <span>90%</span>
+  1011→              </div>
+  1012→            </div>
+  1013→          )}
+  1014→
+  1015→          <div className="flex items-center justify-between">
+  1016→            <div>
+  1017→              <Label className="text-sm font-medium">Partial Cashout</Label>
+  1018→              <p className="text-xs text-muted-foreground">
+  1019→                Allow cashing out a portion of the bet while keeping the rest active
+  1020→              </p>
+  1021→            </div>
+  1022→            <Switch
+  1023→              checked={settings.partialCashoutEnabled}
+  1024→              onCheckedChange={(checked) =>
+  1025→                setSettings({ ...settings, partialCashoutEnabled: checked as boolean })
+  1026→              }
+  1027→            />
+  1028→          </div>
+  1029→
+  1030→          <div className="flex items-center justify-between">
+  1031→            <div>
+  1032→              <Label className="text-sm font-medium">Wait Full Settlement</Label>
+  1033→              <p className="text-xs text-muted-foreground">
+  1034→                Wait for all matches to complete before full cashout (for accumulators)
+  1035→              </p>
+  1036→            </div>
+  1037→            <Switch
+  1038→              checked={settings.waitFullSettlement}
+  1039→              onCheckedChange={(checked) =>
+  1040→                setSettings({ ...settings, waitFullSettlement: checked as boolean })
+  1041→              }
+  1042→            />
+  1043→          </div>
+  1044→        </CardContent>
+  1045→      </Card>
+  1046→
+  1047→      {/* Notifications */}
+  1048→      <Card className="bg-card border-border">
+  1049→        <CardHeader className="pb-3">
+  1050→          <CardTitle className="flex items-center gap-2 text-base">
+  1051→            <Bell className="h-4 w-4 text-primary" />
+  1052→            Notifications
+  1053→          </CardTitle>
+  1054→        </CardHeader>
+  1055→        <CardContent className="space-y-4">
+  1056→          <div className="flex items-center justify-between">
+  1057→            <div>
+  1058→              <Label className="text-sm font-medium">Enable Notifications</Label>
+  1059→              <p className="text-xs text-muted-foreground">
+  1060→                Get notified about bet results, cashout opportunities, and AI recommendations
+  1061→              </p>
+  1062→            </div>
+  1063→            <Switch
+  1064→              checked={settings.notificationsEnabled}
+  1065→              onCheckedChange={(checked) =>
+  1066→                setSettings({ ...settings, notificationsEnabled: checked as boolean })
+  1067→              }
+  1068→            />
+  1069→          </div>
+  1070→        </CardContent>
+  1071→      </Card>
+  1072→
+  1073→      {/* Telegram Notifications */}
+  1074→      <Card className="bg-card border-border">
+  1075→        <CardHeader className="pb-3">
+  1076→          <CardTitle className="flex items-center gap-2 text-base">
+  1077→            <Send className="h-4 w-4 text-blue-400" />
+  1078→            Telegram Notifications
+  1079→          </CardTitle>
+  1080→        </CardHeader>
+  1081→        <CardContent className="space-y-4">
+  1082→          {telegramConnected ? (
+  1083→            <div className="space-y-3">
+  1084→              <div className="flex items-center justify-between rounded-lg bg-emerald-400/10 p-4">
+  1085→                <div className="flex items-center gap-3">
+  1086→                  <div className="h-2 w-2 rounded-full bg-emerald-400" />
+  1087→                  <div>
+  1088→                    <p className="text-sm font-medium text-foreground">Telegram Connected</p>
+  1089→                    <p className="text-xs text-muted-foreground">You&apos;ll receive AI tip alerts via Telegram</p>
+  1090→                  </div>
+  1091→                </div>
+  1092→                <Button
+  1093→                  variant="ghost"
+  1094→                  size="sm"
+  1095→                  onClick={handleTelegramDisconnect}
+  1096→                  disabled={telegramLoading}
+  1097→                  className="text-red-400 hover:text-red-300 hover:bg-red-400/10 h-8 text-xs"
+  1098→                >
+  1099→                  <Unlink className="h-3 w-3 mr-1" />
+  1100→                  Disconnect
+  1101→                </Button>
+  1102→              </div>
+  1103→              <p className="text-[10px] text-muted-foreground">
+  1104→                Use <span className="text-foreground font-mono">/stop</span> to pause tips or <span className="text-foreground font-mono">/resume</span> to restart directly in Telegram.
+  1105→              </p>
+  1106→            </div>
+  1107→          ) : (
+  1108→            <div className="space-y-3">
+  1109→              <div className="rounded-lg bg-secondary/50 p-4">
+  1110→                <p className="text-sm text-foreground mb-1">Connect your Telegram to receive AI tips</p>
+  1111→                <p className="text-xs text-muted-foreground">
+  1112→                  When the AI finds a value bet, you&apos;ll get an instant alert on Telegram with the selection, odds, confidence, and reasoning.
+  1113→                </p>
+  1114→              </div>
+  1115→              {telegramDeepLink ? (
+  1116→                <a
+  1117→                  href={telegramDeepLink}
+  1118→                  target="_blank"
+  1119→                  rel="noopener noreferrer"
+  1120→                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-blue-500 hover:bg-blue-600 text-white py-2.5 px-4 text-sm font-medium transition-colors"
+  1121→                >
+  1122→                  <Send className="h-4 w-4" />
+  1123→                  Connect Telegram
+  1124→                  <ExternalLink className="h-3 w-3" />
+  1125→                </a>
+  1126→              ) : (
+  1127→                <div className="rounded-lg bg-amber-400/10 p-3">
+  1128→                  <p className="text-xs text-amber-400">
+  1129→                    Telegram bot not configured yet. Contact admin to set up the bot.
+  1130→                  </p>
+  1131→                </div>
+  1132→              )}
+  1133→              <p className="text-[10px] text-muted-foreground">
+  1134→                Clicking the button opens Telegram. Send <span className="text-foreground font-mono">/start</span> to link your account.
+  1135→              </p>
+  1136→            </div>
+  1137→          )}
+  1138→        </CardContent>
+  1139→      </Card>
+  1140→
+  1141→      {/* Commission Info */}
+  1142→      <Card className="bg-card border-border">
+  1143→        <CardHeader className="pb-3">
+  1144→          <CardTitle className="flex items-center gap-2 text-base">
+  1145→            <Percent className="h-4 w-4 text-amber-400" />
+  1146→            Commission Rate
+  1147→          </CardTitle>
+  1148→        </CardHeader>
+  1149→        <CardContent>
+  1150→          <div className="flex items-center justify-between rounded-lg bg-secondary/50 p-4">
+  1151→            <div>
+  1152→              <p className="text-sm font-medium text-foreground">Your Commission Rate</p>
+  1153→              <p className="text-xs text-muted-foreground mt-0.5">
+  1154→                This rate is applied to all winning bets and automatically transferred to admin
+  1155→              </p>
+  1156→            </div>
+  1157→            <Badge variant="secondary" className="bg-amber-400/10 text-amber-400 text-lg px-3 py-1">
+  1158→              {(settings.commissionRate * 100).toFixed(0)}%
+  1159→            </Badge>
+  1160→          </div>
+  1161→          <p className="text-[10px] text-muted-foreground mt-2">
+  1162→            Commission is deducted automatically from profits and transferred to the admin account.
+  1163→            Your displayed profit is always net of commission.
+  1164→          </p>
+  1165→        </CardContent>
+  1166→      </Card>
+  1167→
+  1168→      {/* Change Password */}
+  1169→      <Card className="bg-card border-border">
+  1170→        <CardHeader className="pb-3">
+  1171→          <CardTitle className="flex items-center gap-2 text-base">
+  1172→            <KeyRound className="h-4 w-4 text-primary" />
+  1173→            Change Password
+  1174→          </CardTitle>
+  1175→        </CardHeader>
+  1176→        <CardContent className="space-y-4">
+  1177→          {passwordSuccess ? (
+  1178→            <div className="flex items-center gap-3 rounded-lg bg-emerald-400/10 p-4">
+  1179→              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+  1180→              <div>
+  1181→                <p className="text-sm font-medium text-foreground">Password changed successfully!</p>
+  1182→                <p className="text-xs text-muted-foreground">Use your new password next time you log in.</p>
+  1183→              </div>
+  1184→            </div>
+  1185→          ) : (
+  1186→            <>
+  1187→              <div className="space-y-2">
+  1188→                <Label htmlFor="currentPassword" className="text-sm font-medium">Current Password</Label>
+  1189→                <Input
+  1190→                  id="currentPassword"
+  1191→                  type="password"
+  1192→                  placeholder="Enter your current password"
+  1193→                  value={currentPassword}
+  1194→                  onChange={(e) => { setCurrentPassword(e.target.value); setPasswordError(null); }}
+  1195→                  className="bg-background"
+  1196→                />
+  1197→              </div>
+  1198→              <div className="space-y-2">
+  1199→                <Label htmlFor="newPassword" className="text-sm font-medium">New Password</Label>
+  1200→                <Input
+  1201→                  id="newPassword"
+  1202→                  type="password"
+  1203→                  placeholder="At least 8 characters"
+  1204→                  value={newPassword}
+  1205→                  onChange={(e) => { setNewPassword(e.target.value); setPasswordError(null); }}
+  1206→                  className="bg-background"
+  1207→                />
+  1208→              </div>
+  1209→              <div className="space-y-2">
+  1210→                <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm New Password</Label>
+  1211→                <Input
+  1212→                  id="confirmPassword"
+  1213→                  type="password"
+  1214→                  placeholder="Re-enter your new password"
+  1215→                  value={confirmPassword}
+  1216→                  onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(null); }}
+  1217→                  className="bg-background"
+  1218→                  onKeyDown={(e) => { if (e.key === "Enter") handleChangePassword(); }}
+  1219→                />
+  1220→              </div>
+  1221→              {passwordError && (
+  1222→                <div className="flex items-center gap-2 rounded-lg bg-red-400/10 p-3">
+  1223→                  <AlertCircle className="h-4 w-4 text-red-400" />
+  1224→                  <p className="text-xs text-red-400">{passwordError}</p>
+  1225→                </div>
+  1226→              )}
+  1227→              <Button
+  1228→                onClick={handleChangePassword}
+  1229→                disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
+  1230→                className="w-full bg-primary text-primary-foreground hover:bg-primary/80 h-9"
+  1231→              >
+  1232→                {changingPassword ? (
+  1233→                  <Loader2 className="h-4 w-4 animate-spin" />
+  1234→                ) : (
+  1235→                  <KeyRound className="h-4 w-4" />
+  1236→                )}
+  1237→                {changingPassword ? "Changing..." : "Change Password"}
+  1238→              </Button>
+  1239→            </>
+  1240→          )}
+  1241→        </CardContent>
+  1242→      </Card>
+  1243→
+  1244→      {/* Save Button */}
+  1245→      <Button
+  1246→        className="w-full bg-primary text-primary-foreground hover:bg-primary/80 h-10"
+  1247→        onClick={handleSave}
+  1248→        disabled={saving}
+  1249→      >
+  1250→        {saving ? (
+  1251→          <Loader2 className="h-4 w-4 animate-spin" />
+  1252→        ) : saved ? (
+  1253→          <CheckCircle2 className="h-4 w-4" />
+  1254→        ) : (
+  1255→          <Save className="h-4 w-4" />
+  1256→        )}
+  1257→        {saving ? "Saving..." : saved ? "Saved!" : "Save Settings"}
+  1258→      </Button>
+  1259→    </div>
+  1260→  );
+  1261→}
+  1262→

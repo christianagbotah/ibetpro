@@ -168,11 +168,11 @@ export default function AnalysisPage() {
         </p>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 sm:gap-3">
         <div className="flex items-center gap-2">
           <Filter className="h-4 w-4 text-muted-foreground" />
           <Select value={sportFilter} onValueChange={setSportFilter}>
-            <SelectTrigger className="w-36 bg-secondary border-border">
+            <SelectTrigger className="w-28 sm:w-36 bg-secondary border-border">
               <SelectValue placeholder="Sport" />
             </SelectTrigger>
             <SelectContent>
@@ -189,7 +189,7 @@ export default function AnalysisPage() {
         <div className="flex items-center gap-2">
           <SortAsc className="h-4 w-4 text-muted-foreground" />
           <Select value={sortBy} onValueChange={setSortBy}>
-            <SelectTrigger className="w-40 bg-secondary border-border">
+            <SelectTrigger className="w-32 sm:w-40 bg-secondary border-border">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -222,7 +222,7 @@ export default function AnalysisPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-3 max-h-[calc(100vh-240px)] overflow-y-auto pr-1">
+        <div className="lg:col-span-2 space-y-3 max-h-[calc(100vh-240px)] lg:max-h-[calc(100vh-240px)] overflow-y-auto pr-1">
           {filteredMatches.length === 0 ? (
             <Card className="bg-card border-border">
               <CardContent className="p-8 text-center">

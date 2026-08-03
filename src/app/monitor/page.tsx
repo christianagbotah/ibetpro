@@ -219,7 +219,7 @@ export default function MonitorPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Live Monitor</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -234,7 +234,7 @@ export default function MonitorPage() {
             className={`${soundEnabled ? "border-primary/30 text-primary" : "border-border text-muted-foreground"}`}
           >
             {soundEnabled ? <Volume2 className="h-4 w-4 mr-1.5" /> : <VolumeX className="h-4 w-4 mr-1.5" />}
-            {soundEnabled ? "Sound On" : "Sound Off"}
+            <span className="hidden sm:inline">{soundEnabled ? "Sound On" : "Sound Off"}</span>
           </Button>
           <Button
             size="sm"
@@ -248,14 +248,14 @@ export default function MonitorPage() {
             ) : (
               <RefreshCw className="h-4 w-4 mr-1.5" />
             )}
-            Settle Bets
+            Settle
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <Card className="bg-card border-border">
-          <CardContent className="p-3 flex items-center gap-3">
+          <CardContent className="p-2 sm:p-3 flex items-center gap-2 sm:gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-red-500/10">
               <Radio className="h-4 w-4 text-red-500" />
             </div>
@@ -322,7 +322,7 @@ export default function MonitorPage() {
               Live Matches
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 max-h-[calc(100vh-360px)] overflow-y-auto">
+          <CardContent className="space-y-3 max-h-[600px] lg:max-h-[calc(100vh-360px)] overflow-y-auto">
             {liveMatchesList.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
                 No live matches at the moment
@@ -333,7 +333,7 @@ export default function MonitorPage() {
                   key={match.id}
                   className="rounded-lg border border-red-500/20 bg-red-500/5 p-4"
                 >
-                  <div className="flex items-center justify-between mb-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
                     <div className="flex items-center gap-2">
                       <span className="relative flex h-2.5 w-2.5">
                         <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
@@ -343,36 +343,34 @@ export default function MonitorPage() {
                         LIVE
                       </Badge>
                       <span className="text-xs text-muted-foreground">{match.minute}&apos;</span>
+                      <span className="text-[10px] sm:text-xs text-muted-foreground">{match.league || getSportShortName(match.sport)}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">{match.league || getSportShortName(match.sport)}</span>
-                      <Button
-                        size="xs"
-                        variant="outline"
-                        className="border-primary/30 text-primary hover:bg-primary/10"
-                        onClick={() => handleSimulate(match.id)}
-                        disabled={simulating === match.id}
-                      >
-                        {simulating === match.id ? (
-                          <div className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                        ) : (
-                          <Play className="h-3 w-3" />
-                        )}
-                        Simulate
-                      </Button>
-                    </div>
+                    <Button
+                      size="xs"
+                      variant="outline"
+                      className="border-primary/30 text-primary hover:bg-primary/10"
+                      onClick={() => handleSimulate(match.id)}
+                      disabled={simulating === match.id}
+                    >
+                      {simulating === match.id ? (
+                        <div className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Play className="h-3 w-3" />
+                      )}
+                      Simulate
+                    </Button>
                   </div>
 
                   <Link href={`/matches/${match.id}`} className="block">
-                    <div className="flex items-center justify-center gap-6 my-3">
+                    <div className="flex items-center justify-center gap-3 sm:gap-6 my-3">
                       <div className="text-center">
-                        <p className="text-sm font-medium text-foreground">{match.homeTeam}</p>
-                        <p className="text-3xl font-bold text-foreground">{match.homeScore}</p>
+                        <p className="text-xs sm:text-sm font-medium text-foreground">{match.homeTeam}</p>
+                        <p className="text-2xl sm:text-3xl font-bold text-foreground">{match.homeScore}</p>
                       </div>
                       <div className="text-lg text-muted-foreground">-</div>
                       <div className="text-center">
-                        <p className="text-sm font-medium text-foreground">{match.awayTeam}</p>
-                        <p className="text-3xl font-bold text-foreground">{match.awayScore}</p>
+                        <p className="text-xs sm:text-sm font-medium text-foreground">{match.awayTeam}</p>
+                        <p className="text-2xl sm:text-3xl font-bold text-foreground">{match.awayScore}</p>
                       </div>
                     </div>
                   </Link>
@@ -444,7 +442,7 @@ export default function MonitorPage() {
               Active Bets & Cashout
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3 max-h-[calc(100vh-360px)] overflow-y-auto">
+          <CardContent className="space-y-3 max-h-[600px] lg:max-h-[calc(100vh-360px)] overflow-y-auto">
             {activeBets.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-4">
                 No active bets
@@ -559,7 +557,7 @@ export default function MonitorPage() {
                           {cashoutRec.reasoning}
                         </p>
                         {/* Action buttons */}
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2">
                           {cashoutRec.shouldCashout && cashoutRec.waitOrCashout === "cashout_partial" && cashoutRec.partialCashoutAmount > 0 && (
                             <Button
                               size="xs"

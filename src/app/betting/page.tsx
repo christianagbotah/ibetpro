@@ -466,7 +466,7 @@ export default function BettingPage() {
       {/* Bot Running Banner */}
       {botRunning && (
         <div className="rounded-xl border-2 border-red-500/30 bg-red-500/5 p-4">
-          <div className="flex items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div className="flex items-center gap-3">
               <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-red-500/10">
                 <Radio className="h-4 w-4 text-red-500 animate-pulse" />
@@ -501,7 +501,7 @@ export default function BettingPage() {
         </div>
       )}
 
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Automated Betting</h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -584,7 +584,7 @@ export default function BettingPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <Card className="bg-card border-border">
           <CardContent className="p-3">
             <p className="text-xs text-muted-foreground">Total Bets</p>
@@ -805,9 +805,9 @@ export default function BettingPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-4">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <h2 className="text-lg font-semibold text-foreground">Your Bets</h2>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1">
               {["all", "pending", "won", "lost", "auto", "accumulator"].map((filter) => (
                 <Button
                   key={filter}
@@ -822,7 +822,7 @@ export default function BettingPage() {
             </div>
           </div>
 
-          <div className="space-y-3 max-h-[calc(100vh-400px)] overflow-y-auto">
+          <div className="space-y-3 max-h-[600px] lg:max-h-[calc(100vh-400px)] overflow-y-auto">
             {filteredBets.length === 0 ? (
               <Card className="bg-card border-border">
                 <CardContent className="p-8 text-center">

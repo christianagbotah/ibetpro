@@ -137,7 +137,7 @@ export function Header({ onMobileMenuToggle }: HeaderProps) {
               </Button>
 
               {showNotifs && (
-                <div className="absolute right-0 top-full mt-2 w-80 rounded-xl border border-border bg-card shadow-2xl z-50 overflow-hidden">
+                <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-80 rounded-xl border border-border bg-card shadow-2xl z-50 overflow-hidden">
                   <div className="flex items-center justify-between p-3 border-b border-border">
                     <h3 className="text-sm font-semibold text-foreground">Notifications</h3>
                     {unreadCount > 0 && (

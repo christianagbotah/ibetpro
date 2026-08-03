@@ -431,7 +431,7 @@ export default function SettingsPage() {
             </Badge>
           </div>
           <Separator />
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex items-center justify-between">
               <Label className="text-sm text-muted-foreground">Region</Label>
               <span className="text-sm text-foreground">{profile.region || "Not set"}</span>
@@ -441,7 +441,7 @@ export default function SettingsPage() {
               <span className="text-sm text-foreground">{profile.currency || "USD"}</span>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex items-center justify-between">
               <Label className="text-sm text-muted-foreground">Bankroll</Label>
               <span className="text-sm font-medium text-foreground">
@@ -457,7 +457,7 @@ export default function SettingsPage() {
               </span>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div className="flex items-center justify-between">
               <Label className="text-sm text-muted-foreground">Daily P&L</Label>
               <span className={`text-sm font-medium ${profile.dailyPnl >= 0 ? "text-emerald-400" : "text-red-400"}`}>
@@ -493,7 +493,7 @@ export default function SettingsPage() {
             In Live mode, connections use real broker APIs with real funds.
           </p>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               onClick={() => handleBrokerModeSwitch("demo")}
               disabled={switchingMode || brokerMode === "demo"}
@@ -584,7 +584,7 @@ export default function SettingsPage() {
             In <strong>Auto-Bet</strong> mode, the AI places bets automatically via your connected broker.
           </p>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <button
               onClick={() => setSettings({ ...settings, botMode: "advisor" })}
               className={`relative flex flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all cursor-pointer ${
@@ -715,7 +715,7 @@ export default function SettingsPage() {
 
           <Separator />
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-medium">Max Bet Amount</Label>
               <Input
@@ -740,7 +740,7 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-medium">Min Odds Threshold</Label>
               <Input
@@ -768,7 +768,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Kelly & Edge Settings */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-medium">Kelly Fraction</Label>
               <Input
@@ -824,7 +824,7 @@ export default function SettingsPage() {
           </div>
 
           {/* Bet Schedule */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-medium">Bet Schedule Start</Label>
               <Input
@@ -909,7 +909,7 @@ export default function SettingsPage() {
           <Separator />
 
           {/* Stop Loss & Profit Targets */}
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-medium">Daily Stop Loss</Label>
               <Input
@@ -939,7 +939,7 @@ export default function SettingsPage() {
               </p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <Label className="text-sm font-medium">Daily Profit Target</Label>
               <Input

@@ -169,7 +169,7 @@ export default function TipsPage() {
       </div>
 
       {/* Performance Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         <Card className="bg-card border-border">
           <CardContent className="p-3 text-center">
             <p className="text-xs text-muted-foreground">AI Settled</p>
@@ -260,7 +260,7 @@ export default function TipsPage() {
                       </div>
 
                       {/* Middle: Tip details */}
-                      <div className="flex items-center gap-4 flex-wrap">
+                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                         <div className="text-center">
                           <p className="text-[10px] text-muted-foreground">Selection</p>
                           <p className="text-sm font-bold text-primary">{tip.selection}</p>
@@ -288,7 +288,7 @@ export default function TipsPage() {
                       </div>
 
                       {/* Right: Actions */}
-                      <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex flex-wrap items-center gap-1.5 shrink-0">
                         {!tip.userResult && tip.tracked && (
                           <div className="flex gap-1">
                             <Button

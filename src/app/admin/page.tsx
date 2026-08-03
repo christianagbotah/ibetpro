@@ -301,7 +301,7 @@ export default function AdminPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-96 overflow-y-auto overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow className="border-border">

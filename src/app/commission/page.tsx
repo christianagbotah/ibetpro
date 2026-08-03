@@ -115,7 +115,7 @@ export default function CommissionPage() {
             key={entry.id}
             className="rounded-lg border border-border p-3"
           >
-            <div className="flex items-center justify-between mb-2">
+            <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
               <div className="flex items-center gap-2">
                 <Badge
                   className={
@@ -131,16 +131,16 @@ export default function CommissionPage() {
                   {entry.status === "failed" && <AlertCircle className="h-3 w-3 mr-1" />}
                   {entry.status.charAt(0).toUpperCase() + entry.status.slice(1)}
                 </Badge>
-                <span className="text-xs text-muted-foreground">
+                <span className="text-[10px] sm:text-xs text-muted-foreground truncate">
                   {entry.bettingAccount.platform} | {entry.bettingAccount.accountName}
                 </span>
               </div>
-              <span className="text-xs text-muted-foreground">
+              <span className="text-[10px] sm:text-xs text-muted-foreground">
                 {new Date(entry.createdAt).toLocaleDateString()}
               </span>
             </div>
 
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               <div className="rounded bg-secondary/50 p-2">
                 <p className="text-[10px] text-muted-foreground">Gross Profit</p>
                 <p className="text-xs font-bold text-emerald-400">${entry.grossProfit.toFixed(2)}</p>

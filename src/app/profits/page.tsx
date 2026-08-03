@@ -198,7 +198,7 @@ export default function ProfitsPage() {
                 <ArrowDownRight className="h-4 w-4 text-red-400" />
               )}
             </div>
-            <p className={`text-2xl font-bold ${netProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+            <p className={`text-lg sm:text-2xl font-bold ${netProfit >= 0 ? "text-emerald-400" : "text-red-400"}`}>
               {netProfit >= 0 ? "+" : ""}${netProfit.toFixed(2)}
             </p>
           </CardContent>
@@ -209,7 +209,7 @@ export default function ProfitsPage() {
               <span className="text-xs text-muted-foreground">Total Profit</span>
               <TrendingUp className="h-4 w-4 text-emerald-400" />
             </div>
-            <p className="text-2xl font-bold text-emerald-400">
+            <p className="text-lg sm:text-2xl font-bold text-emerald-400">
               ${totalProfit.toFixed(2)}
             </p>
           </CardContent>
@@ -220,7 +220,7 @@ export default function ProfitsPage() {
               <span className="text-xs text-muted-foreground">Commission Paid</span>
               <Percent className="h-4 w-4 text-amber-400" />
             </div>
-            <p className="text-2xl font-bold text-amber-400">
+            <p className="text-lg sm:text-2xl font-bold text-amber-400">
               ${totalCommission.toFixed(2)}
             </p>
           </CardContent>
@@ -231,7 +231,7 @@ export default function ProfitsPage() {
               <span className="text-xs text-muted-foreground">ROI</span>
               <DollarSign className="h-4 w-4 text-primary" />
             </div>
-            <p className="text-2xl font-bold text-primary">{roi.toFixed(1)}%</p>
+            <p className="text-lg sm:text-2xl font-bold text-primary">{roi.toFixed(1)}%</p>
           </CardContent>
         </Card>
       </div>
@@ -306,7 +306,7 @@ export default function ProfitsPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">Transaction History</CardTitle>
             <Select value={txFilter} onValueChange={setTxFilter}>
-              <SelectTrigger className="w-36 bg-secondary border-border">
+              <SelectTrigger className="w-28 sm:w-36 bg-secondary border-border">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
@@ -320,7 +320,7 @@ export default function ProfitsPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="max-h-96 overflow-y-auto">
+          <div className="max-h-96 overflow-y-auto overflow-x-auto">
             {filteredTransactions.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground text-sm">
                 No transactions yet. Place bets to see your history.

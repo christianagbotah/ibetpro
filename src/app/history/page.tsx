@@ -197,7 +197,7 @@ export default function HistoryPage() {
       </div>
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <Card className="bg-card border-border">
           <CardContent className="p-3">
             <p className="text-xs text-muted-foreground">Total Bets</p>
@@ -241,11 +241,11 @@ export default function HistoryPage() {
       {/* Filters */}
       <Card className="bg-card border-border">
         <CardContent className="p-4">
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2">
             <div className="flex items-center gap-2">
               <Filter className="h-4 w-4 text-muted-foreground" />
               <Select value={statusFilter} onValueChange={(v) => { if (v) setStatusFilter(v); }}>
-                <SelectTrigger className="w-32 bg-secondary border-border">
+                <SelectTrigger className="w-28 sm:w-32 bg-secondary border-border">
                   <SelectValue placeholder="Status" />
                 </SelectTrigger>
                 <SelectContent>
@@ -258,7 +258,7 @@ export default function HistoryPage() {
             </div>
 
             <Select value={sportFilter} onValueChange={(v) => { if (v) setSportFilter(v); }}>
-              <SelectTrigger className="w-32 bg-secondary border-border">
+              <SelectTrigger className="w-28 sm:w-32 bg-secondary border-border">
                 <SelectValue placeholder="Sport" />
               </SelectTrigger>
               <SelectContent>
@@ -286,7 +286,7 @@ export default function HistoryPage() {
             <div className="flex items-center gap-2">
               <SortAsc className="h-4 w-4 text-muted-foreground" />
               <Select value={sortBy} onValueChange={(v) => { if (v) setSortBy(v); }}>
-                <SelectTrigger className="w-36 bg-secondary border-border">
+                <SelectTrigger className="w-28 sm:w-36 bg-secondary border-border">
                   <SelectValue placeholder="Sort by" />
                 </SelectTrigger>
                 <SelectContent>
