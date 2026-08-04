@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 import { logBrokerEvent } from "@/lib/audit-log";
+import { config } from "@/lib/config";
 
 /**
  * GET /api/user/broker-mode - Get the current user's broker mode setting
@@ -55,7 +56,7 @@ export async function PATCH(request: NextRequest) {
         brokerMode,
         autoBettingEnabled: false,
         riskLevel: "medium",
-        commissionRate: 0.10,
+        commissionRate: config.commission.defaultRate,
       },
     });
 

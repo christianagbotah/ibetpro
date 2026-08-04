@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { calculateCommission, transferCommissionToAdmin } from "@/lib/broker-integration";
+import { config } from "@/lib/config";
 
 /**
  * Bet Settlement Engine
@@ -26,7 +27,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    const commissionRate = user.settings?.commissionRate || 0.10;
+    const commissionRate = user.settings?.commissionRate ?? config.commission.defaultRate;
 
     // Find finished matches with unsettled bets
     const whereClause: Record<string, unknown> = {

@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { shouldCashout } from "@/lib/ai-engine-v2";
 import { executeCashoutOnBroker, calculateCommission } from "@/lib/broker-integration";
+import { config } from "@/lib/config";
 
 /**
  * Cashout Execution API v2
@@ -210,7 +211,7 @@ export async function POST(request: NextRequest) {
       const profit = cashoutAmount - effectiveStake;
       const commissionCalc = calculateCommission(
         Math.max(0, profit),
-        userSettings?.commissionRate || 0.10
+        userSettings?.commissionRate ?? config.commission.defaultRate
       );
       const commission = profit > 0 ? commissionCalc.commission : 0;
       const netProfit = profit - commission;
@@ -288,7 +289,7 @@ export async function POST(request: NextRequest) {
             amount: -commission,
             currency: "USD",
             status: "completed",
-            description: `Commission ${Math.round((userSettings?.commissionRate || 0.10) * 100)}% on $${Math.max(0, profit).toFixed(2)} profit via ${bettingAccount.platform}`,
+            description: `Commission ${Math.round((userSettings?.commissionRate ?? config.commission.defaultRate) * 100)}% on $${Math.max(0, profit).toFixed(2)} profit via ${bettingAccount.platform}`,
             betId: bet.id,
           },
         });
@@ -300,7 +301,7 @@ export async function POST(request: NextRequest) {
             bettingAccountId: bettingAccount.id,
             betId: bet.id,
             grossProfit: Math.max(0, profit),
-            commissionRate: userSettings?.commissionRate || 0.10,
+            commissionRate: userSettings?.commissionRate ?? config.commission.defaultRate,
             commissionAmount: commission,
             netProfit: netProfit,
             status: "pending",

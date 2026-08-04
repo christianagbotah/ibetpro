@@ -10,6 +10,7 @@ import { analyzeMatch, shouldAutoBet, checkRiskLimits, isWithinBetSchedule } fro
 import { placeBetOnBroker } from "./broker-integration";
 import { sendTipAlert, type TipAlert } from "./notifications/telegram";
 import { syncMatchData } from "./sync-service";
+import { config } from "./config";
 
 // ==================== SPORT KEY MAPPING ====================
 
@@ -1097,7 +1098,7 @@ class BotEngine {
 
     if (!user) return 0;
 
-    const commissionRate = user.settings?.commissionRate || 0.10;
+    const commissionRate = user.settings?.commissionRate ?? config.commission.defaultRate;
 
     // Find pending bets for finished matches
     const unsettledBets = await prisma.bet.findMany({
@@ -1331,7 +1332,7 @@ class BotEngine {
             // Partial cashout: take 50% profit, keep the rest riding
             const partialAmount = Math.round(cashoutAmount * settings.partialCashoutPercent * 100) / 100;
             const partialGrossProfit = partialAmount - bet.stake * settings.partialCashoutPercent;
-            const commissionRate = settings.commissionRate || 0.10;
+            const commissionRate = settings.commissionRate ?? config.commission.defaultRate;
             const commission = partialGrossProfit > 0 ? partialGrossProfit * commissionRate : 0;
             const netProfit = partialGrossProfit - commission;
 
@@ -1403,7 +1404,7 @@ class BotEngine {
           } else {
             // Full cashout
             const grossProfit = cashoutAmount - bet.stake;
-            const commissionRate = settings.commissionRate || 0.10;
+            const commissionRate = settings.commissionRate ?? config.commission.defaultRate;
             const commission = grossProfit > 0 ? grossProfit * commissionRate : 0;
             const netProfit = grossProfit - commission;
 

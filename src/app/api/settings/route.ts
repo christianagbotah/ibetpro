@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/session";
 import { validateInput, updateSettingsSchema } from "@/lib/validation";
+import { config } from "@/lib/config";
 
 export async function GET() {
   try {
@@ -25,7 +26,7 @@ export async function GET() {
           riskLevel: "medium",
           autoCashoutEnabled: true,
           cashoutThreshold: 0.7,
-          commissionRate: 0.10,
+          commissionRate: config.commission.defaultRate,
           preferredSports: "football,basketball,tennis",
           notificationsEnabled: true,
           dailyBetLimit: 500,

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
+import { config } from "@/lib/config";
 
 // Simple Poisson random number generator
 function poissonRandom(lambda: number): number {
@@ -136,8 +137,13 @@ export async function POST(request: NextRequest) {
             },
           });
 
-          // Create commission transaction (10% of profit)
-          const commission = profit * 0.10;
+          // Create commission transaction — use user's configured commission rate
+          const userSettings = await prisma.userSettings.findUnique({
+            where: { userId: bet.userId },
+            select: { commissionRate: true },
+          });
+          const commissionRate = userSettings?.commissionRate ?? config.commission.defaultRate;
+          const commission = profit * commissionRate;
           await prisma.transaction.create({
             data: {
               userId: bet.userId,

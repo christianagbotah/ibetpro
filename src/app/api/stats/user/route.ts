@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/session";
 import { checkRateLimit, rateLimitHeaders, RATE_LIMITS } from "@/lib/rate-limit";
+import { config } from "@/lib/config";
 
 export async function GET() {
   try {
@@ -114,7 +115,7 @@ export async function GET() {
       totalProfit: userData.totalProfit,
       totalLoss: userData.totalLoss,
       commissionPaid: userData.commissionPaid,
-      commissionRate: settings?.commissionRate ?? 0.10,
+      commissionRate: settings?.commissionRate ?? config.commission.defaultRate,
       dailyPnl: userData.dailyPnl,
       weeklyPnl: userData.weeklyPnl,
       totalBets,
