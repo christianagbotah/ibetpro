@@ -15,9 +15,21 @@ export async function GET() {
       return NextResponse.json({ error: "Admin access required" }, { status: 403 });
     }
 
-    const settings = await prisma.adminSettings.findFirst();
+    // Auto-create AdminSettings row if it doesn't exist (first admin visit)
+    let settings = await prisma.adminSettings.findFirst();
     if (!settings) {
-      return NextResponse.json({ error: "Admin settings not found" }, { status: 404 });
+      settings = await prisma.adminSettings.create({
+        data: {
+          defaultCommissionRate: 0.10,
+          minCommissionRate: 0.05,
+          maxCommissionRate: 0.25,
+          platformName: "iBetPro",
+          maintenanceMode: false,
+          maxUsers: 10000,
+          autoApproveAccounts: true,
+        },
+      });
+      console.log("[Admin] Created default AdminSettings row");
     }
 
     return NextResponse.json(settings);
@@ -45,9 +57,21 @@ export async function PUT(request: NextRequest) {
 
     const data = validation.data;
 
-    const settings = await prisma.adminSettings.findFirst();
+    // Auto-create AdminSettings row if it doesn't exist
+    let settings = await prisma.adminSettings.findFirst();
     if (!settings) {
-      return NextResponse.json({ error: "Admin settings not found" }, { status: 404 });
+      settings = await prisma.adminSettings.create({
+        data: {
+          defaultCommissionRate: 0.10,
+          minCommissionRate: 0.05,
+          maxCommissionRate: 0.25,
+          platformName: "iBetPro",
+          maintenanceMode: false,
+          maxUsers: 10000,
+          autoApproveAccounts: true,
+        },
+      });
+      console.log("[Admin] Created default AdminSettings row");
     }
 
     if (data.defaultCommissionRate !== undefined) {
