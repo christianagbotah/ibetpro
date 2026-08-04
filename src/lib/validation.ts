@@ -90,7 +90,7 @@ export const updateSettingsSchema = z.object({
   riskLevel: z.enum(["low", "medium", "high"]).optional(),
   autoCashoutEnabled: z.boolean().optional(),
   cashoutThreshold: z.number().min(0.1).max(1).optional(),
-  commissionRate: z.number().min(0.01).max(0.5).optional(),
+  // commissionRate removed — admin-only, set via /api/admin/commission
   preferredSports: z.string().optional(),
   notificationsEnabled: z.boolean().optional(),
   dailyBetLimit: z.number().min(10).max(1000000).optional(),

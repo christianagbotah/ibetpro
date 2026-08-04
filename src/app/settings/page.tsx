@@ -301,15 +301,17 @@ export default function SettingsPage() {
     fetchSettings();
   }, [fetchSettings]);
 
-  // Save settings to API
+  // Save settings to API (exclude commissionRate — admin-only)
   const handleSave = async () => {
     setSaving(true);
     setError(null);
     try {
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { commissionRate: _cr, ...saveableSettings } = settings;
       const res = await fetch("/api/settings", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(settings),
+        body: JSON.stringify(saveableSettings),
       });
 
       if (!res.ok) {
@@ -1249,7 +1251,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      {/* Commission Info */}
+      {/* Commission Info — READ ONLY (set by admin) */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
@@ -1261,29 +1263,18 @@ export default function SettingsPage() {
           <div className="space-y-4">
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg bg-secondary/50 p-4">
               <div>
-                <p className="text-sm font-medium text-foreground">Your Commission Rate</p>
+                <p className="text-sm font-medium text-foreground">Platform Commission Rate</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Applied to all winning bets and automatically transferred to admin
+                  Set by admin. Applied to all winning bets and automatically transferred to admin.
                 </p>
               </div>
-              <div className="flex items-center gap-3 self-start sm:self-auto">
-                <Input
-                  type="range"
-                  min="1"
-                  max="25"
-                  step="1"
-                  value={Math.round(settings.commissionRate * 100)}
-                  onChange={(e) => setSettings({ ...settings, commissionRate: parseInt(e.target.value) / 100 })}
-                  className="w-32 h-2 accent-amber-400 cursor-pointer"
-                />
-                <Badge variant="secondary" className="bg-amber-400/10 text-amber-400 text-lg px-3 py-1 min-w-[4rem] text-center">
-                  {(settings.commissionRate * 100).toFixed(0)}%
-                </Badge>
-              </div>
+              <Badge variant="secondary" className="bg-amber-400/10 text-amber-400 text-lg px-4 py-1.5 min-w-[5rem] text-center">
+                {(settings.commissionRate * 100).toFixed(0)}%
+              </Badge>
             </div>
             <p className="text-[10px] text-muted-foreground">
               Commission is deducted automatically from profits and transferred to the admin account.
-              Your displayed profit is always net of commission. Range: 1%–25%.
+              Your displayed profit is always net of commission. Contact admin to change this rate.
             </p>
           </div>
         </CardContent>

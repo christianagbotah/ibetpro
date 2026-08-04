@@ -26,8 +26,9 @@ import {
   CheckCircle,
   AlertTriangle,
 } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useCurrency } from "@/components/currency-provider";
+import { useToast } from "@/components/ui/toast";
 
 interface AdminSettings {
   id: string;
@@ -89,16 +90,56 @@ export default function AdminPage() {
   });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
-  const [commissionRate, setCommissionRate] = useState(
-    stats.adminSettings ? Math.round(stats.adminSettings.defaultCommissionRate * 100) : 10
-  );
+  const [error, setError] = useState<string | null>(null);
+  const [commissionRate, setCommissionRate] = useState(10);
+
+  // Sync local commissionRate state when adminSettings loads
+  useEffect(() => {
+    if (stats.adminSettings) {
+      setCommissionRate(Math.round(stats.adminSettings.defaultCommissionRate * 100));
+    }
+  }, [stats.adminSettings]);
+
+  const { addToast } = useToast();
 
   const handleSaveCommission = async () => {
     setSaving(true);
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    setSaving(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+    setError(null);
+    try {
+      const rateDecimal = commissionRate / 100;
+      const res = await fetch("/api/admin", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ defaultCommissionRate: rateDecimal }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || "Failed to save commission rate");
+      }
+
+      // Also propagate to all users' settings
+      const propagateRes = await fetch("/api/admin/commission", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ commissionRate: rateDecimal }),
+      });
+
+      if (!propagateRes.ok) {
+        // Non-fatal — admin settings saved, but propagation had issues
+        console.warn("Commission propagation had issues");
+      }
+
+      setSaved(true);
+      addToast("success", `Commission rate updated to ${commissionRate}% for all users`);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to save";
+      setError(msg);
+      addToast("error", msg);
+    } finally {
+      setSaving(false);
+    }
   };
 
   if (loading) {
@@ -280,6 +321,9 @@ export default function AdminPage() {
             </div>
           </div>
 
+          {error && (
+            <p className="text-sm text-red-400">{error}</p>
+          )}
           <Button
             className="bg-primary text-primary-foreground hover:bg-primary/80"
             onClick={handleSaveCommission}
