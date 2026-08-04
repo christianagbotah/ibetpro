@@ -190,28 +190,16 @@ else
 fi
 
 # ============================================================================
-# STEP 10: SSL Setup (if not already done)
+# STEP 10: SSL check (skip — already configured on VPS)
 # ============================================================================
 step 10 "Checking SSL"
-
-# Check if SSL is already configured for this domain
 SSL_CONFIGURED=false
 if [ -f "/etc/letsencrypt/live/${DOMAIN}/fullchain.pem" ]; then
     SSL_CONFIGURED=true
     ok "SSL certificate already exists"
-elif command -v certbot &>/dev/null; then
-    log "Installing SSL certificate with certbot..."
-    if sudo certbot --nginx -d "${DOMAIN}" --non-interactive --agree-tos --email admin@lightworldtech.com 2>&1; then
-        SSL_CONFIGURED=true
-        ok "SSL certificate installed!"
-    else
-        warn "certbot failed. You may need to install SSL manually."
-        echo "  Try: sudo certbot --nginx -d ${DOMAIN}"
-    fi
 else
-    warn "certbot not installed. Install SSL manually."
-    echo "  sudo apt install certbot python3-certbot-nginx"
-    echo "  sudo certbot --nginx -d ${DOMAIN}"
+    warn "SSL cert not found at /etc/letsencrypt/live/${DOMAIN}/fullchain.pem"
+    echo "  SSL is assumed to be pre-configured on this VPS. No action taken."
 fi
 
 # ============================================================================
@@ -262,58 +250,8 @@ echo ""
 ok "Telegram Bot: @${BOT_USERNAME}"
 echo "  Webhook URL: ${WEBHOOK_URL}"
 
-# ============================================================================
-# STEP 12: Update Nginx for SSL (if SSL was just installed)
-# ============================================================================
-if [ "${SSL_CONFIGURED}" = true ]; then
-    step 12 "Updating Nginx for SSL"
-    
-    # Try Webuzo's custom domain config path
-    NGINX_CONF="/var/webuzo-data/nginx/custom/domains/${DOMAIN}.conf"
-    
-    if [ -d "/var/webuzo-data/nginx/custom/domains" ]; then
-        cat > "${NGINX_CONF}" << 'NGINXEOF'
-# iBetPro — SSL Nginx Config (Webuzo)
-server {
-    listen 80;
-    server_name ibetpro.lightworldtech.com;
-    return 301 https://$host$request_uri;
-}
-
-server {
-    listen 443 ssl http2;
-    server_name ibetpro.lightworldtech.com;
-
-    ssl_certificate /etc/letsencrypt/live/ibetpro.lightworldtech.com/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/ibetpro.lightworldtech.com/privkey.pem;
-    ssl_protocols TLSv1.2 TLSv1.3;
-    ssl_ciphers HIGH:!aNULL:!MD5;
-
-    location / {
-        proxy_pass http://127.0.0.1:3007;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-        proxy_cache_bypass $http_upgrade;
-    }
-}
-NGINXEOF
-        ok "Nginx SSL config written to ${NGINX_CONF}"
-        
-        if sudo nginx -t 2>&1; then
-            sudo systemctl reload nginx 2>/dev/null || sudo nginx -s reload 2>/dev/null || true
-            ok "Nginx reloaded with SSL"
-        else
-            warn "Nginx config test failed. Run: sudo nginx -t"
-        fi
-    else
-        warn "Webuzo nginx custom domains dir not found. Configure SSL manually."
-    fi
-fi
+# SSL/Nginx config is pre-configured on the VPS — skip rewriting it every deploy
+# If you need to update Nginx config, do it manually on the VPS.
 
 # ============================================================================
 # FINAL SUMMARY
