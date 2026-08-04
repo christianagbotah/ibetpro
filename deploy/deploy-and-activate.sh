@@ -129,7 +129,19 @@ ok "Environment configured for ${DOMAIN}:${PORT}"
 # ============================================================================
 step 7 "Running database migration"
 export DATABASE_URL="${DB_URL}"
-npx prisma db push --accept-data-loss 2>&1 && ok "Database schema synced" || warn "DB migration had issues — check MySQL connection"
+
+# First, try prisma migrate deploy (applies pending migrations in order)
+if npx prisma migrate deploy 2>&1; then
+    ok "Database migrations applied successfully"
+else
+    warn "prisma migrate deploy failed — falling back to prisma db push"
+    # Fallback: push schema directly (less safe, but covers drift)
+    if npx prisma db push --accept-data-loss 2>&1; then
+        ok "Database schema synced via db push"
+    else
+        err "Database migration FAILED — check MySQL connection and schema"
+    fi
+fi
 
 # ============================================================================
 # STEP 8: Start with PM2
