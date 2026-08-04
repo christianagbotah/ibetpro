@@ -153,6 +153,28 @@ export default function DashboardPage() {
         pendingBets={stats.pendingBets}
       />
 
+      {/* No data banner — explain when matches/activity are empty */}
+      {matches.length === 0 && recentSettled.length === 0 && (
+        <Card className="bg-amber-400/5 border border-amber-400/20">
+          <CardContent className="py-4">
+            <div className="flex items-start gap-3">
+              <Radio className="h-5 w-5 text-amber-400 mt-0.5 shrink-0" />
+              <div>
+                <p className="text-sm font-medium text-foreground">Waiting for match data</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  The Odds API sync is scheduled every 30 minutes. Match data will appear here once upcoming fixtures are available.
+                  The bot engine is running and will automatically generate AI tips and place bets when matches are found.
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  If no matches appear after 30 minutes, check the Odds API quota on the{" "}
+                  <Link href="/monitor" className="text-primary hover:underline">Monitor page</Link>.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Quick Actions */}
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
