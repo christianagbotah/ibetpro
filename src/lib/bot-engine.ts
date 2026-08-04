@@ -175,10 +175,7 @@ class BotEngine {
       }
     }, HEARTBEAT_INTERVAL_MS);
 
-    // Don't let the heartbeat keep the process alive by itself
-    if (this.heartbeatTimer.unref) {
-      this.heartbeatTimer.unref();
-    }
+    // Keep the heartbeat alive — it's our zombie recovery mechanism
   }
 
   static getInstance(): BotEngine {
@@ -342,10 +339,11 @@ class BotEngine {
       }
     }, scanIntervalSec * 1000);
 
-    // Prevent Node.js from keeping the process alive just for this timer
-    if (timer.unref) {
-      timer.unref();
-    }
+    // NOTE: We intentionally do NOT call timer.unref() here.
+    // The scan timer IS the core business logic — it should keep the
+    // Node.js process alive. With .unref(), if the HTTP server goes idle,
+    // the process can exit and all Telegram alerts die silently.
+    // The heartbeat timer is also kept alive for the same reason.
 
     this.timers.set(userId, timer);
 
@@ -557,6 +555,11 @@ class BotEngine {
 
       // Check schedule (using user's timezone setting)
       if (!isWithinBetSchedule(settings.betScheduleStart, settings.betScheduleEnd, settings.timezone)) {
+        // Log once every ~10 scans to avoid spam
+        const stats = this.runningUsers.get(userId);
+        if (stats && stats.totalScans % 10 === 0) {
+          console.log(`[BotEngine] Outside bet schedule (${settings.betScheduleStart}-${settings.betScheduleEnd} ${settings.timezone}), skipping scan for user ${userId}`);
+        }
         return result;
       }
 
@@ -993,7 +996,16 @@ class BotEngine {
                 }),
                 matchId: match.id,
               };
-              await sendTipAlert(userId, tipAlert);
+              const notifyResult = await sendTipAlert(userId, tipAlert);
+
+              // Update tip with delivery status
+              await prisma.tip.update({
+                where: { id: tip.id },
+                data: {
+                  telegramSent: notifyResult.telegram,
+                  telegramSentAt: notifyResult.telegram ? new Date() : undefined,
+                },
+              }).catch(() => {});
             } catch (tipError) {
               console.error("[BotEngine] Failed to create tip/notification for auto-bet:", tipError);
             }
@@ -1318,6 +1330,10 @@ class BotEngine {
           if (settings.partialCashoutEnabled) {
             // Partial cashout: take 50% profit, keep the rest riding
             const partialAmount = Math.round(cashoutAmount * settings.partialCashoutPercent * 100) / 100;
+            const partialGrossProfit = partialAmount - bet.stake * settings.partialCashoutPercent;
+            const commissionRate = settings.commissionRate || 0.10;
+            const commission = partialGrossProfit > 0 ? partialGrossProfit * commissionRate : 0;
+            const netProfit = partialGrossProfit - commission;
 
             await prisma.bet.update({
               where: { id: bet.id },
@@ -1334,8 +1350,8 @@ class BotEngine {
               where: { id: userId },
               data: {
                 balance: { increment: partialAmount },
-                dailyPnl: { increment: partialAmount - bet.stake * settings.partialCashoutPercent },
-                weeklyPnl: { increment: partialAmount - bet.stake * settings.partialCashoutPercent },
+                dailyPnl: { increment: netProfit },
+                weeklyPnl: { increment: netProfit },
               },
             });
 
@@ -1346,10 +1362,26 @@ class BotEngine {
                 amount: partialAmount,
                 currency: "USD",
                 status: "completed",
-                description: `Auto partial cashout: ${match.homeTeam} vs ${match.awayTeam} - ${bet.selection} ($${partialAmount.toFixed(2)})`,
+                description: `Auto partial cashout: ${match.homeTeam} vs ${match.awayTeam} - ${bet.selection} ($${partialAmount.toFixed(2)}, commission $${commission.toFixed(2)})`,
                 betId: bet.id,
               },
             });
+
+            // Create commission ledger entry if commission was deducted
+            if (commission > 0) {
+              await prisma.commissionLedger.create({
+                data: {
+                  userId,
+                  bettingAccountId: bet.bettingAccountId,
+                  betId: bet.id,
+                  grossProfit: partialGrossProfit,
+                  commissionRate,
+                  commissionAmount: commission,
+                  netProfit,
+                  status: "pending",
+                },
+              }).catch(() => {});
+            }
 
             await prisma.botLog.create({
               data: {
@@ -1364,19 +1396,25 @@ class BotEngine {
                   minute,
                   autoCashout: true,
                 }),
-                reasoning: `Auto partial cashout at ${minute}' - bet winning. ${Math.round(settings.partialCashoutPercent * 100)}% cashed out for $${partialAmount.toFixed(2)}`,
-                profitImpact: partialAmount - bet.stake * settings.partialCashoutPercent,
+                reasoning: `Auto partial cashout at ${minute}' - bet winning. ${Math.round(settings.partialCashoutPercent * 100)}% cashed out for $${partialAmount.toFixed(2)} (commission $${commission.toFixed(2)})`,
+                profitImpact: netProfit,
               },
             });
           } else {
             // Full cashout
+            const grossProfit = cashoutAmount - bet.stake;
+            const commissionRate = settings.commissionRate || 0.10;
+            const commission = grossProfit > 0 ? grossProfit * commissionRate : 0;
+            const netProfit = grossProfit - commission;
+
             await prisma.bet.update({
               where: { id: bet.id },
               data: {
                 status: "cashed_out",
                 cashoutAmount,
                 cashoutOdds,
-                profit: cashoutAmount - bet.stake,
+                profit: netProfit,
+                commission,
                 cashedOutAt: new Date(),
                 settlementReason: "cashout",
               },
@@ -1386,9 +1424,9 @@ class BotEngine {
               where: { id: userId },
               data: {
                 balance: { increment: cashoutAmount },
-                totalProfit: { increment: cashoutAmount - bet.stake },
-                dailyPnl: { increment: cashoutAmount - bet.stake },
-                weeklyPnl: { increment: cashoutAmount - bet.stake },
+                totalProfit: { increment: netProfit },
+                dailyPnl: { increment: netProfit },
+                weeklyPnl: { increment: netProfit },
               },
             });
 
@@ -1399,10 +1437,26 @@ class BotEngine {
                 amount: cashoutAmount,
                 currency: "USD",
                 status: "completed",
-                description: `Auto cashout: ${match.homeTeam} vs ${match.awayTeam} - ${bet.selection} ($${cashoutAmount.toFixed(2)})`,
+                description: `Auto cashout: ${match.homeTeam} vs ${match.awayTeam} - ${bet.selection} ($${cashoutAmount.toFixed(2)}, commission $${commission.toFixed(2)})`,
                 betId: bet.id,
               },
             });
+
+            // Create commission ledger entry
+            if (commission > 0) {
+              await prisma.commissionLedger.create({
+                data: {
+                  userId,
+                  bettingAccountId: bet.bettingAccountId,
+                  betId: bet.id,
+                  grossProfit,
+                  commissionRate,
+                  commissionAmount: commission,
+                  netProfit,
+                  status: "pending",
+                },
+              }).catch(() => {});
+            }
 
             await prisma.botLog.create({
               data: {
@@ -1416,8 +1470,8 @@ class BotEngine {
                   minute,
                   autoCashout: true,
                 }),
-                reasoning: `Auto cashout at ${minute}' - bet winning. Full cashout for $${cashoutAmount.toFixed(2)}`,
-                profitImpact: cashoutAmount - bet.stake,
+                reasoning: `Auto cashout at ${minute}' - bet winning. Full cashout for $${cashoutAmount.toFixed(2)} (commission $${commission.toFixed(2)})`,
+                profitImpact: netProfit,
               },
             });
           }

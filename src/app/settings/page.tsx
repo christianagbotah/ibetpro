@@ -1258,21 +1258,34 @@ export default function SettingsPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg bg-secondary/50 p-4">
-            <div>
-              <p className="text-sm font-medium text-foreground">Your Commission Rate</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                This rate is applied to all winning bets and automatically transferred to admin
-              </p>
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg bg-secondary/50 p-4">
+              <div>
+                <p className="text-sm font-medium text-foreground">Your Commission Rate</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Applied to all winning bets and automatically transferred to admin
+                </p>
+              </div>
+              <div className="flex items-center gap-3 self-start sm:self-auto">
+                <Input
+                  type="range"
+                  min="1"
+                  max="25"
+                  step="1"
+                  value={Math.round(settings.commissionRate * 100)}
+                  onChange={(e) => setSettings({ ...settings, commissionRate: parseInt(e.target.value) / 100 })}
+                  className="w-32 h-2 accent-amber-400 cursor-pointer"
+                />
+                <Badge variant="secondary" className="bg-amber-400/10 text-amber-400 text-lg px-3 py-1 min-w-[4rem] text-center">
+                  {(settings.commissionRate * 100).toFixed(0)}%
+                </Badge>
+              </div>
             </div>
-            <Badge variant="secondary" className="bg-amber-400/10 text-amber-400 text-lg px-3 py-1 self-start sm:self-auto">
-              {(settings.commissionRate * 100).toFixed(0)}%
-            </Badge>
+            <p className="text-[10px] text-muted-foreground">
+              Commission is deducted automatically from profits and transferred to the admin account.
+              Your displayed profit is always net of commission. Range: 1%–25%.
+            </p>
           </div>
-          <p className="text-[10px] text-muted-foreground mt-2">
-            Commission is deducted automatically from profits and transferred to the admin account.
-            Your displayed profit is always net of commission.
-          </p>
         </CardContent>
       </Card>
 

@@ -297,41 +297,56 @@ export default function TipsPage() {
 
                       {/* Right: Actions */}
                       <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-                        {/* Won/Lost buttons: only show after match has ended (finished status or AI outcome settled) */}
-                        {!tip.userResult && tip.tracked && (tip.outcome || tip.match?.status === "finished") && (
-                          <div className="flex gap-1">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleReportResult(tip.id, "won")}
-                              className="h-8 text-xs text-emerald-400 border-emerald-400/30 hover:bg-emerald-400/10"
-                            >
-                              Won
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleReportResult(tip.id, "lost")}
-                              className="h-8 text-xs text-red-400 border-red-400/30 hover:bg-red-400/10"
-                            >
-                              Lost
-                            </Button>
-                          </div>
-                        )}
-                        {!tip.userResult && (
-                          <Button
-                            variant={tip.tracked ? "default" : "outline"}
-                            size="sm"
-                            onClick={() => handleTrack(tip.id, !tip.tracked)}
-                            className={tip.tracked ? "bg-primary text-primary-foreground h-8 text-xs" : "h-8 text-xs"}
-                          >
-                            {tip.tracked ? (
-                              <><CheckCircle2 className="h-3 w-3 mr-1" /> Tracking</>
-                            ) : (
-                              <><Circle className="h-3 w-3 mr-1" /> I&apos;ll Bet This</>
-                            )}
-                          </Button>
-                        )}
+                        {/* Match is settled/finished — show outcome badges only, no betting actions */}
+                        {(() => {
+                          const matchFinished = tip.outcome || tip.match?.status === "finished";
+                          return (
+                            <>
+                              {/* Won/Lost reporting: only for tracked tips on finished matches where user hasn't reported yet */}
+                              {matchFinished && !tip.userResult && tip.tracked && (
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleReportResult(tip.id, "won")}
+                                    className="h-8 text-xs text-emerald-400 border-emerald-400/30 hover:bg-emerald-400/10"
+                                  >
+                                    Won
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleReportResult(tip.id, "lost")}
+                                    className="h-8 text-xs text-red-400 border-red-400/30 hover:bg-red-400/10"
+                                  >
+                                    Lost
+                                  </Button>
+                                </div>
+                              )}
+                              {/* "I'll Bet This" / "Tracking" — only for upcoming/live matches */}
+                              {!matchFinished && !tip.userResult && (
+                                <Button
+                                  variant={tip.tracked ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => handleTrack(tip.id, !tip.tracked)}
+                                  className={tip.tracked ? "bg-primary text-primary-foreground h-8 text-xs" : "h-8 text-xs"}
+                                >
+                                  {tip.tracked ? (
+                                    <><CheckCircle2 className="h-3 w-3 mr-1" /> Tracking</>
+                                  ) : (
+                                    <><Circle className="h-3 w-3 mr-1" /> I&apos;ll Bet This</>
+                                  )}
+                                </Button>
+                              )}
+                              {/* Settled match with user result already reported */}
+                              {matchFinished && tip.userResult && (
+                                <Badge variant="outline" className="text-xs h-8 px-3 border-border">
+                                  {tip.userResult === "won" ? "✓ Reported Won" : tip.userResult === "lost" ? "✓ Reported Lost" : "✓ Reported Void"}
+                                </Badge>
+                              )}
+                            </>
+                          );
+                        })()}
                         <Button
                           variant="ghost"
                           size="sm"

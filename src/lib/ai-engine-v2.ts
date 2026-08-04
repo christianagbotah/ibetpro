@@ -1036,7 +1036,10 @@ export function isWithinBetSchedule(start: string, end: string, timezone?: strin
       hour12: false,
     });
     const [h, m] = localTime.split(":").map(Number);
-    currentMinutes = h * 60 + m;
+    // Clamp hour: some ICU implementations return "24:xx" for midnight
+    // instead of "00:xx" with hour12:false — this would cause the schedule
+    // check to always fail around midnight.
+    currentMinutes = Math.min(h, 23) * 60 + m;
   } catch {
     // Fallback to Node.js process local time
     const now = new Date();
