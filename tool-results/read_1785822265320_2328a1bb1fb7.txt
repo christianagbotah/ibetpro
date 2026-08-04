@@ -1258,116 +1258,129 @@
   1258→          </CardTitle>
   1259→        </CardHeader>
   1260→        <CardContent>
-  1261→          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg bg-secondary/50 p-4">
-  1262→            <div>
-  1263→              <p className="text-sm font-medium text-foreground">Your Commission Rate</p>
-  1264→              <p className="text-xs text-muted-foreground mt-0.5">
-  1265→                This rate is applied to all winning bets and automatically transferred to admin
-  1266→              </p>
-  1267→            </div>
-  1268→            <Badge variant="secondary" className="bg-amber-400/10 text-amber-400 text-lg px-3 py-1 self-start sm:self-auto">
-  1269→              {(settings.commissionRate * 100).toFixed(0)}%
-  1270→            </Badge>
-  1271→          </div>
-  1272→          <p className="text-[10px] text-muted-foreground mt-2">
-  1273→            Commission is deducted automatically from profits and transferred to the admin account.
-  1274→            Your displayed profit is always net of commission.
-  1275→          </p>
-  1276→        </CardContent>
-  1277→      </Card>
-  1278→
-  1279→      {/* Change Password */}
-  1280→      <Card className="bg-card border-border">
-  1281→        <CardHeader className="pb-3">
-  1282→          <CardTitle className="flex items-center gap-2 text-base">
-  1283→            <KeyRound className="h-4 w-4 text-primary" />
-  1284→            Change Password
-  1285→          </CardTitle>
-  1286→        </CardHeader>
-  1287→        <CardContent className="space-y-4">
-  1288→          {passwordSuccess ? (
-  1289→            <div className="flex items-center gap-3 rounded-lg bg-emerald-400/10 p-4">
-  1290→              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
-  1291→              <div>
-  1292→                <p className="text-sm font-medium text-foreground">Password changed successfully!</p>
-  1293→                <p className="text-xs text-muted-foreground">Use your new password next time you log in.</p>
-  1294→              </div>
-  1295→            </div>
-  1296→          ) : (
-  1297→            <>
-  1298→              <div className="space-y-2">
-  1299→                <Label htmlFor="currentPassword" className="text-sm font-medium">Current Password</Label>
-  1300→                <Input
-  1301→                  id="currentPassword"
-  1302→                  type="password"
-  1303→                  placeholder="Enter your current password"
-  1304→                  value={currentPassword}
-  1305→                  onChange={(e) => { setCurrentPassword(e.target.value); setPasswordError(null); }}
-  1306→                  className="bg-background"
-  1307→                />
-  1308→              </div>
-  1309→              <div className="space-y-2">
-  1310→                <Label htmlFor="newPassword" className="text-sm font-medium">New Password</Label>
-  1311→                <Input
-  1312→                  id="newPassword"
-  1313→                  type="password"
-  1314→                  placeholder="At least 8 characters"
-  1315→                  value={newPassword}
-  1316→                  onChange={(e) => { setNewPassword(e.target.value); setPasswordError(null); }}
-  1317→                  className="bg-background"
-  1318→                />
-  1319→              </div>
-  1320→              <div className="space-y-2">
-  1321→                <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm New Password</Label>
-  1322→                <Input
-  1323→                  id="confirmPassword"
-  1324→                  type="password"
-  1325→                  placeholder="Re-enter your new password"
-  1326→                  value={confirmPassword}
-  1327→                  onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(null); }}
-  1328→                  className="bg-background"
-  1329→                  onKeyDown={(e) => { if (e.key === "Enter") handleChangePassword(); }}
-  1330→                />
-  1331→              </div>
-  1332→              {passwordError && (
-  1333→                <div className="flex items-center gap-2 rounded-lg bg-red-400/10 p-3">
-  1334→                  <AlertCircle className="h-4 w-4 text-red-400" />
-  1335→                  <p className="text-xs text-red-400">{passwordError}</p>
-  1336→                </div>
-  1337→              )}
-  1338→              <Button
-  1339→                onClick={handleChangePassword}
-  1340→                disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
-  1341→                className="w-full bg-primary text-primary-foreground hover:bg-primary/80 h-9"
-  1342→              >
-  1343→                {changingPassword ? (
-  1344→                  <Loader2 className="h-4 w-4 animate-spin" />
-  1345→                ) : (
-  1346→                  <KeyRound className="h-4 w-4" />
-  1347→                )}
-  1348→                {changingPassword ? "Changing..." : "Change Password"}
-  1349→              </Button>
-  1350→            </>
-  1351→          )}
-  1352→        </CardContent>
-  1353→      </Card>
-  1354→
-  1355→      {/* Save Button */}
-  1356→      <Button
-  1357→        className="w-full bg-primary text-primary-foreground hover:bg-primary/80 h-10"
-  1358→        onClick={handleSave}
-  1359→        disabled={saving}
-  1360→      >
-  1361→        {saving ? (
-  1362→          <Loader2 className="h-4 w-4 animate-spin" />
-  1363→        ) : saved ? (
-  1364→          <CheckCircle2 className="h-4 w-4" />
-  1365→        ) : (
-  1366→          <Save className="h-4 w-4" />
-  1367→        )}
-  1368→        {saving ? "Saving..." : saved ? "Saved!" : "Save Settings"}
-  1369→      </Button>
-  1370→    </div>
-  1371→  );
-  1372→}
-  1373→
+  1261→          <div className="space-y-4">
+  1262→            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-lg bg-secondary/50 p-4">
+  1263→              <div>
+  1264→                <p className="text-sm font-medium text-foreground">Your Commission Rate</p>
+  1265→                <p className="text-xs text-muted-foreground mt-0.5">
+  1266→                  Applied to all winning bets and automatically transferred to admin
+  1267→                </p>
+  1268→              </div>
+  1269→              <div className="flex items-center gap-3 self-start sm:self-auto">
+  1270→                <Input
+  1271→                  type="range"
+  1272→                  min="1"
+  1273→                  max="25"
+  1274→                  step="1"
+  1275→                  value={Math.round(settings.commissionRate * 100)}
+  1276→                  onChange={(e) => setSettings({ ...settings, commissionRate: parseInt(e.target.value) / 100 })}
+  1277→                  className="w-32 h-2 accent-amber-400 cursor-pointer"
+  1278→                />
+  1279→                <Badge variant="secondary" className="bg-amber-400/10 text-amber-400 text-lg px-3 py-1 min-w-[4rem] text-center">
+  1280→                  {(settings.commissionRate * 100).toFixed(0)}%
+  1281→                </Badge>
+  1282→              </div>
+  1283→            </div>
+  1284→            <p className="text-[10px] text-muted-foreground">
+  1285→              Commission is deducted automatically from profits and transferred to the admin account.
+  1286→              Your displayed profit is always net of commission. Range: 1%–25%.
+  1287→            </p>
+  1288→          </div>
+  1289→        </CardContent>
+  1290→      </Card>
+  1291→
+  1292→      {/* Change Password */}
+  1293→      <Card className="bg-card border-border">
+  1294→        <CardHeader className="pb-3">
+  1295→          <CardTitle className="flex items-center gap-2 text-base">
+  1296→            <KeyRound className="h-4 w-4 text-primary" />
+  1297→            Change Password
+  1298→          </CardTitle>
+  1299→        </CardHeader>
+  1300→        <CardContent className="space-y-4">
+  1301→          {passwordSuccess ? (
+  1302→            <div className="flex items-center gap-3 rounded-lg bg-emerald-400/10 p-4">
+  1303→              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+  1304→              <div>
+  1305→                <p className="text-sm font-medium text-foreground">Password changed successfully!</p>
+  1306→                <p className="text-xs text-muted-foreground">Use your new password next time you log in.</p>
+  1307→              </div>
+  1308→            </div>
+  1309→          ) : (
+  1310→            <>
+  1311→              <div className="space-y-2">
+  1312→                <Label htmlFor="currentPassword" className="text-sm font-medium">Current Password</Label>
+  1313→                <Input
+  1314→                  id="currentPassword"
+  1315→                  type="password"
+  1316→                  placeholder="Enter your current password"
+  1317→                  value={currentPassword}
+  1318→                  onChange={(e) => { setCurrentPassword(e.target.value); setPasswordError(null); }}
+  1319→                  className="bg-background"
+  1320→                />
+  1321→              </div>
+  1322→              <div className="space-y-2">
+  1323→                <Label htmlFor="newPassword" className="text-sm font-medium">New Password</Label>
+  1324→                <Input
+  1325→                  id="newPassword"
+  1326→                  type="password"
+  1327→                  placeholder="At least 8 characters"
+  1328→                  value={newPassword}
+  1329→                  onChange={(e) => { setNewPassword(e.target.value); setPasswordError(null); }}
+  1330→                  className="bg-background"
+  1331→                />
+  1332→              </div>
+  1333→              <div className="space-y-2">
+  1334→                <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm New Password</Label>
+  1335→                <Input
+  1336→                  id="confirmPassword"
+  1337→                  type="password"
+  1338→                  placeholder="Re-enter your new password"
+  1339→                  value={confirmPassword}
+  1340→                  onChange={(e) => { setConfirmPassword(e.target.value); setPasswordError(null); }}
+  1341→                  className="bg-background"
+  1342→                  onKeyDown={(e) => { if (e.key === "Enter") handleChangePassword(); }}
+  1343→                />
+  1344→              </div>
+  1345→              {passwordError && (
+  1346→                <div className="flex items-center gap-2 rounded-lg bg-red-400/10 p-3">
+  1347→                  <AlertCircle className="h-4 w-4 text-red-400" />
+  1348→                  <p className="text-xs text-red-400">{passwordError}</p>
+  1349→                </div>
+  1350→              )}
+  1351→              <Button
+  1352→                onClick={handleChangePassword}
+  1353→                disabled={changingPassword || !currentPassword || !newPassword || !confirmPassword}
+  1354→                className="w-full bg-primary text-primary-foreground hover:bg-primary/80 h-9"
+  1355→              >
+  1356→                {changingPassword ? (
+  1357→                  <Loader2 className="h-4 w-4 animate-spin" />
+  1358→                ) : (
+  1359→                  <KeyRound className="h-4 w-4" />
+  1360→                )}
+  1361→                {changingPassword ? "Changing..." : "Change Password"}
+  1362→              </Button>
+  1363→            </>
+  1364→          )}
+  1365→        </CardContent>
+  1366→      </Card>
+  1367→
+  1368→      {/* Save Button */}
+  1369→      <Button
+  1370→        className="w-full bg-primary text-primary-foreground hover:bg-primary/80 h-10"
+  1371→        onClick={handleSave}
+  1372→        disabled={saving}
+  1373→      >
+  1374→        {saving ? (
+  1375→          <Loader2 className="h-4 w-4 animate-spin" />
+  1376→        ) : saved ? (
+  1377→          <CheckCircle2 className="h-4 w-4" />
+  1378→        ) : (
+  1379→          <Save className="h-4 w-4" />
+  1380→        )}
+  1381→        {saving ? "Saving..." : saved ? "Saved!" : "Save Settings"}
+  1382→      </Button>
+  1383→    </div>
+  1384→  );
+  1385→}
+  1386→
