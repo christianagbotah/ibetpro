@@ -130,17 +130,12 @@ ok "Environment configured for ${DOMAIN}:${PORT}"
 step 7 "Running database migration"
 export DATABASE_URL="${DB_URL}"
 
-# First, try prisma migrate deploy (applies pending migrations in order)
-if npx prisma migrate deploy 2>&1; then
-    ok "Database migrations applied successfully"
+# Use prisma db push as primary — it's idempotent and handles schema drift
+# (migrate deploy fails on existing DBs that were set up with db push)
+if npx prisma db push --accept-data-loss 2>&1; then
+    ok "Database schema synced via db push"
 else
-    warn "prisma migrate deploy failed — falling back to prisma db push"
-    # Fallback: push schema directly (less safe, but covers drift)
-    if npx prisma db push --accept-data-loss 2>&1; then
-        ok "Database schema synced via db push"
-    else
-        err "Database migration FAILED — check MySQL connection and schema"
-    fi
+    err "Database migration FAILED — check MySQL connection and schema"
 fi
 
 # ============================================================================
