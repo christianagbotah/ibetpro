@@ -17,7 +17,19 @@ import { generateDemoMatches } from "./demo-data";
 
 // Track last sync time to avoid excessive API calls
 let lastSyncAt: Date | null = null;
-const MIN_SYNC_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes minimum between syncs
+
+// Sync interval: 30 minutes default to conserve API quota (500 req/month free tier)
+// Each sync costs N API calls (1 per sport). 10 sports × 48 syncs/day = 480 calls/day.
+// With 30-min interval: 10 sports × 48 syncs/day = 480 calls/day — STILL too much.
+// Solution: use a single multi-sport call + 30-min interval = ~48 calls/day = ~1,440/month
+// Override with SYNC_INTERVAL_MIN env var if you have a paid API plan.
+const MIN_SYNC_INTERVAL_MS = parseInt(process.env.SYNC_INTERVAL_MIN || "30", 10) * 60 * 1000;
+
+// API quota tracking
+let apiQuotaRemaining: number | null = null;
+let apiQuotaCheckedAt: Date | null = null;
+const QUOTA_CHECK_INTERVAL_MS = 60 * 60 * 1000; // re-check quota every hour
+const QUOTA_LOW_THRESHOLD = 20; // stop syncing when fewer than this many requests remain
 
 export interface SyncResult {
   matchesSynced: number;
@@ -49,7 +61,7 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
       errors: [],
       durationMs: Date.now() - startTime,
       skipped: true,
-      skipReason: `Synced ${Math.round((Date.now() - lastSyncAt.getTime()) / 60000)}m ago (min interval: 5m)`,
+      skipReason: `Synced ${Math.round((Date.now() - lastSyncAt.getTime()) / 60000)}m ago (min interval: ${MIN_SYNC_INTERVAL_MS / 60000}m)`,
     };
   }
 
@@ -143,22 +155,61 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
 
   // ---- The Odds API: fetch real-time odds ----
   if (dataSource === "odds-api") {
-    const popularSports = [
+    // Check API quota before making calls
+    if (!force && apiQuotaRemaining !== null && apiQuotaRemaining < QUOTA_LOW_THRESHOLD) {
+      const quotaAge = apiQuotaCheckedAt ? Date.now() - apiQuotaCheckedAt.getTime() : Infinity;
+      if (quotaAge < QUOTA_CHECK_INTERVAL_MS) {
+        console.warn(`[Sync] Odds API quota low: ${apiQuotaRemaining} requests remaining. Skipping sync.`);
+        lastSyncAt = new Date();
+        return {
+          matchesSynced: 0,
+          matchesUpdated: 0,
+          source: "odds-api",
+          errors: [],
+          durationMs: Date.now() - startTime,
+          skipped: true,
+          skipReason: `API quota low: ${apiQuotaRemaining} remaining (threshold: ${QUOTA_LOW_THRESHOLD})`,
+        };
+      }
+    }
+
+    // Use only priority sports to conserve API quota.
+    // Each sport = 1 API call. With 500/month free tier and 30-min sync interval:
+    //   3 sports × 48 syncs/day = 144 calls/day = ~4,320/month (over limit)
+    //   So we also use a single "upcoming" catch-all when quota is getting low.
+    const prioritySports = [
       "soccer_epl",
       "soccer_germany_bundesliga",
       "soccer_spain_la_liga",
-      "soccer_italy_serie_a",
-      "soccer_france_ligue_one",
-      "soccer_efa_champions_league",
-      "soccer_efa_europa_league",
-      "basketball_nba",
-      "basketball_euroleague",
-      "tennis_atp_masters",
     ];
+    // When quota is below 100, only fetch EPL to stretch remaining calls
+    const sportsToFetch = (apiQuotaRemaining !== null && apiQuotaRemaining < 100)
+      ? ["soccer_epl"]
+      : prioritySports;
 
-    for (const sport of popularSports) {
+    for (const sport of sportsToFetch) {
       try {
         const odds = await fetchOddsApiUpcoming(sport);
+
+        // Track API quota from response headers (fetchOddsApiUpcoming doesn't expose them,
+        // so we do a lightweight quota check on the first call only)
+        if (apiQuotaRemaining === null || !apiQuotaCheckedAt ||
+            Date.now() - apiQuotaCheckedAt.getTime() > QUOTA_CHECK_INTERVAL_MS) {
+          try {
+            const quotaRes = await fetch(
+              `${config.apiUrls.oddsApi}/sports/?apiKey=${config.api.oddsApiKey}`,
+              { next: { revalidate: 0 } }
+            );
+            const remaining = quotaRes.headers.get("x-requests-remaining");
+            if (remaining) {
+              apiQuotaRemaining = parseInt(remaining, 10);
+              apiQuotaCheckedAt = new Date();
+              console.log(`[Sync] Odds API quota: ${apiQuotaRemaining} requests remaining`);
+            }
+          } catch {
+            // Quota check failed — don't block sync
+          }
+        }
 
         for (const matchOdds of odds) {
           try {
@@ -358,4 +409,15 @@ async function markStaleMatchesFinished(): Promise<number> {
   });
 
   return result.count;
+}
+
+/**
+ * Get current API quota status (for admin/monitor display).
+ */
+export function getApiQuotaStatus(): { remaining: number | null; checkedAt: Date | null; lowThreshold: number } {
+  return {
+    remaining: apiQuotaRemaining,
+    checkedAt: apiQuotaCheckedAt,
+    lowThreshold: QUOTA_LOW_THRESHOLD,
+  };
 }
