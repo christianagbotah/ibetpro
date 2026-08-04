@@ -114,12 +114,35 @@ ok "Environment configured for ${DOMAIN}:${PORT}"
 log "Step 7: Running database migration..."
 export $(grep -v '^#' ".next/standalone/.env" | grep DATABASE_URL | xargs)
 
+# Verify MySQL connection first
+log "Checking MySQL connection..."
+if mysql -u lightworld_db_user -pmyjesus4mE2018 -h localhost lightworld_ibetpro_db -e "SELECT 1;" &>/dev/null; then
+    ok "MySQL connection verified"
+else
+    warn "Direct MySQL test failed, continuing with Prisma anyway..."
+fi
+
 # Use prisma db push as primary — it's idempotent and handles schema drift
 # (migrate deploy fails on existing DBs that were set up with db push)
 if npx prisma db push --accept-data-loss 2>&1; then
     ok "Database schema synced via db push"
 else
     err "Database migration FAILED — check MySQL connection and schema"
+fi
+
+# Post-migration: Verify critical columns exist
+log "Verifying critical database columns..."
+if mysql -u lightworld_db_user -pmyjesus4mE2018 -h localhost lightworld_ibetpro_db -e "SELECT timezone FROM UserSettings LIMIT 1;" &>/dev/null; then
+    ok "UserSettings.timezone column exists"
+else
+    warn "UserSettings.timezone column missing — adding it now..."
+    mysql -u lightworld_db_user -pmyjesus4mE2018 -h localhost lightworld_ibetpro_db \
+        -e "ALTER TABLE UserSettings ADD COLUMN timezone VARCHAR(191) NOT NULL DEFAULT 'Africa/Accra';" 2>&1
+    if [ $? -eq 0 ]; then
+        ok "UserSettings.timezone column added successfully"
+    else
+        warn "Could not add timezone column (may already exist). Check manually."
+    fi
 fi
 
 # ============================================================================
