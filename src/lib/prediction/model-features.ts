@@ -247,6 +247,23 @@ async function lastVenueMatches(
   });
 }
 
+async function latestConsensusOdds(matchId: string, asOf: Date) {
+  return prisma.oddsSnapshot.findFirst({
+    where: {
+      matchId,
+      bookmaker: "consensus",
+      capturedAt: { lte: asOf },
+    },
+    orderBy: { capturedAt: "desc" },
+    select: {
+      homeOdds: true,
+      drawOdds: true,
+      awayOdds: true,
+      capturedAt: true,
+    },
+  });
+}
+
 function restDays(lastMatch: HistoricalMatch | undefined, asOf: Date): number {
   if (!lastMatch) return 7;
   const days = (asOf.getTime() - lastMatch.commenceTime.getTime()) / 86_400_000;
@@ -308,14 +325,19 @@ export async function buildOnlineModelFeatures(
   const homeVenueRolling = rollingStats(match.homeTeam, homeVenueHistory);
   const awayVenueRolling = rollingStats(match.awayTeam, awayVenueHistory);
 
-  const [homeElo, awayElo] = await Promise.all([
+  const [homeElo, awayElo, consensusOdds] = await Promise.all([
     getCausalElo(match.homeTeam, match.sport, match.league, featureAsOf),
     getCausalElo(match.awayTeam, match.sport, match.league, featureAsOf),
+    latestConsensusOdds(match.id, featureAsOf),
   ]);
 
-  const homeImplied = implied(match.homeOdds);
-  const drawImplied = implied(match.drawOdds);
-  const awayImplied = implied(match.awayOdds);
+  // Historical training uses consensus/average bookmaker prices. Use the
+  // latest causal consensus snapshot for serving parity, while Match odds stay
+  // as best-available display/value prices. Fall back only when no consensus
+  // snapshot has been captured yet.
+  const homeImplied = implied(consensusOdds?.homeOdds ?? match.homeOdds);
+  const drawImplied = implied(consensusOdds?.drawOdds ?? match.drawOdds);
+  const awayImplied = implied(consensusOdds?.awayOdds ?? match.awayOdds);
   const market = marketStructure(homeImplied, drawImplied, awayImplied);
 
   return {
