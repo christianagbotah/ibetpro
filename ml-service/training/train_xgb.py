@@ -72,6 +72,43 @@ def multiclass_brier(y_true: np.ndarray, probabilities: np.ndarray) -> float:
     return float(np.mean(np.sum((probabilities - labels) ** 2, axis=1)))
 
 
+
+def expected_calibration_error(
+    y_true: np.ndarray,
+    probabilities: np.ndarray,
+    bins: int = 10,
+) -> float:
+    confidence = probabilities.max(axis=1)
+    predicted = probabilities.argmax(axis=1)
+    correct = (predicted == y_true).astype(float)
+
+    edges = np.linspace(0.0, 1.0, bins + 1)
+    ece = 0.0
+    total = len(y_true)
+    for i in range(bins):
+        lower, upper = edges[i], edges[i + 1]
+        if i == bins - 1:
+            mask = (confidence >= lower) & (confidence <= upper)
+        else:
+            mask = (confidence >= lower) & (confidence < upper)
+        count = int(mask.sum())
+        if count == 0:
+            continue
+        bin_accuracy = float(correct[mask].mean())
+        bin_confidence = float(confidence[mask].mean())
+        ece += (count / total) * abs(bin_accuracy - bin_confidence)
+    return float(ece)
+
+
+def ranked_probability_score(
+    y_true: np.ndarray,
+    probabilities: np.ndarray,
+) -> float:
+    observed = np.eye(3)[y_true.astype(int)]
+    predicted_cdf = np.cumsum(probabilities, axis=1)[:, :-1]
+    observed_cdf = np.cumsum(observed, axis=1)[:, :-1]
+    return float(np.mean(np.sum((predicted_cdf - observed_cdf) ** 2, axis=1) / 2.0))
+
 def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> dict:
     frame = load_dataset(dataset_path)
 
@@ -180,6 +217,8 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
             "log_loss": float(log_loss(y_test, probabilities, labels=[0, 1, 2])),
             "multiclass_brier": multiclass_brier(y_test, probabilities),
             "accuracy": float(accuracy_score(y_test, predicted_class)),
+            "expected_calibration_error": expected_calibration_error(y_test, probabilities),
+            "ranked_probability_score": ranked_probability_score(y_test, probabilities),
         },
         "goals": {
             "home_mae": float(mean_absolute_error(test_df["home_goals"], home_goal_pred)),
