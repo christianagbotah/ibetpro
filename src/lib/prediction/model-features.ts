@@ -377,6 +377,12 @@ export async function buildOnlineModelFeatures(
     away_implied_prob: awayImplied,
     ...market,
     market_consensus_available: Boolean(consensusOdds),
+    market_consensus_age_minutes: consensusOdds
+      ? Math.max(
+          0,
+          (featureAsOf.getTime() - consensusOdds.capturedAt.getTime()) / 60_000
+        )
+      : null,
     home_possession_5: homeRolling.possession,
     away_possession_5: awayRolling.possession,
     home_corners_5: homeRolling.corners,
