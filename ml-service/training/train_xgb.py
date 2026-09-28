@@ -8,6 +8,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.calibration import CalibratedClassifierCV
+from sklearn.frozen import FrozenEstimator
 from sklearn.metrics import accuracy_score, brier_score_loss, log_loss, mean_absolute_error
 from xgboost import XGBClassifier, XGBRegressor
 
@@ -118,7 +119,10 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
     )
     result_model.fit(x_train, y_train)
 
-    calibrator = CalibratedClassifierCV(result_model, method="isotonic", cv="prefit")
+    calibrator = CalibratedClassifierCV(
+        FrozenEstimator(result_model),
+        method="isotonic",
+    )
     calibrator.fit(
         features(calibration_df),
         calibration_df["result_class"].astype(int),
