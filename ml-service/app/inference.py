@@ -139,12 +139,34 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
     matrix_away = 1.0 - matrix_home - matrix_draw
     goal_probs = np.array([matrix_home, matrix_draw, matrix_away], dtype=float)
 
+    market_values = [
+        raw.get("home_implied_prob"),
+        raw.get("draw_implied_prob"),
+        raw.get("away_implied_prob"),
+    ]
+    market_available = all(
+        value is not None and np.isfinite(float(value)) and float(value) > 0
+        for value in market_values
+    )
+    if market_available:
+        market_probs = np.asarray(market_values, dtype=float)
+        market_probs = market_probs / market_probs.sum()
+    else:
+        # Training uses ELO as the market-component fallback when a fixture has
+        # no genuine pre-match market snapshot. Keep serving semantics identical.
+        market_probs = elo_probs.copy()
+
     model_weight = bundle.result_model_weight
     goal_weight = bundle.result_goal_weight
-    elo_weight = max(0.0, 1.0 - model_weight - goal_weight)
+    market_weight = getattr(bundle, "result_market_weight", 0.0)
+    elo_weight = max(
+        0.0,
+        1.0 - model_weight - goal_weight - market_weight,
+    )
     result_probs = (
         model_weight * model_probs
         + goal_weight * goal_probs
+        + market_weight * market_probs
         + elo_weight * elo_probs
     )
     result_probs = result_probs / result_probs.sum()
@@ -154,6 +176,11 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
     home_win, draw, away_win = map(float, result_probs)
 
     warnings: list[str] = []
+    if market_weight > 0 and not market_available:
+        warnings.append(
+            "Market ensemble weight is configured but genuine market probabilities are unavailable; the market component fell back to ELO."
+        )
+
     if imputed_features:
         warnings.append(
             f"{len(imputed_features)} of {len(bundle.feature_columns)} model features were imputed."
