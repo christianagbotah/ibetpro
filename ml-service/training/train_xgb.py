@@ -319,6 +319,20 @@ def train(
     # some historical providers and must not cause entire fixtures to vanish.
     train_medians = train_df[columns].median(numeric_only=True).fillna(0.0)
 
+    def coverage(df: pd.DataFrame) -> dict[str, float]:
+        return {
+            column: float(
+                pd.to_numeric(df[column], errors="coerce").notna().mean()
+            )
+            for column in columns
+        }
+
+    feature_coverage = {
+        "train": coverage(train_df),
+        "calibration": coverage(calibration_df),
+        "test": coverage(test_df),
+    }
+
     def features(df: pd.DataFrame) -> pd.DataFrame:
         return df[columns].apply(pd.to_numeric, errors="coerce").fillna(train_medians)
 
@@ -613,6 +627,7 @@ def train(
         "feature_profile": feature_profile,
         "feature_columns": columns,
         "training_imputation": {key: float(value) for key, value in train_medians.items()},
+        "feature_coverage": feature_coverage,
         "result_calibration": {
             "selected_model": selected_model_name,
             "selected_method": selected_method,
