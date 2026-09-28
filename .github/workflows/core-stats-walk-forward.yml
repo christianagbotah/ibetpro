@@ -24,7 +24,7 @@ jobs:
         working-directory: ml-service
     env:
       MODEL_TRAIN_N_JOBS: "2"
-      EXPERIMENT_REVISION: "10"
+      EXPERIMENT_REVISION: "11"
 
     steps:
       - uses: actions/checkout@v4
@@ -95,6 +95,28 @@ jobs:
                   f"[{market.get('bootstrap_ci95_low', float('nan')):.6f}, "
                   f"{market.get('bootstrap_ci95_high', float('nan')):.6f}] |"
               )
+          selective = data.get("selective_stability") or {}
+          print()
+          print("## Selective deviation coverage")
+          print()
+          print(f"- Folds with any selective model rows: **{selective.get('folds_with_candidate_rows', 0)}**")
+          print(f"- Mean selective candidate rate: **{selective.get('mean_candidate_rate', 0.0):.1%}**")
+          print(f"- Candidate rows: **{selective.get('candidate_rows', 0)}**")
+          print(f"- Market-abstained rows: **{selective.get('abstained_rows', 0)}**")
+          print()
+          print("| Fold | Candidate rate | Candidate rows | Abstained rows | Enabled bands |")
+          print("| --- | ---: | ---: | ---: | ---: |")
+          for fold in data["folds"]:
+              selective_fold = fold.get("selective") or {}
+              policy = selective_fold.get("policy") or {}
+              print(
+                  f"| {fold['name']} | "
+                  f"{selective_fold.get('candidate_rate', 0.0):.1%} | "
+                  f"{selective_fold.get('candidate_rows', 0)} | "
+                  f"{selective_fold.get('abstained_rows', 0)} | "
+                  f"{policy.get('enabled_band_count', 0)} |"
+              )
+
           totals = data.get("totals_stability") or {}
           print()
           print("## Over/Under 2.5 goal-market evidence")
