@@ -50,16 +50,26 @@ interface ShadowEvaluationResponse {
     baseline: {
       logLoss: number | null;
       brier: number | null;
+      rps: number | null;
+      ece: number | null;
       accuracy: number | null;
+      homeGoalMae: number | null;
+      awayGoalMae: number | null;
     };
     candidate: {
       logLoss: number | null;
       brier: number | null;
+      rps: number | null;
+      ece: number | null;
       accuracy: number | null;
+      homeGoalMae: number | null;
+      awayGoalMae: number | null;
     };
     deltas: {
       logLoss: number | null;
       brier: number | null;
+      rps: number | null;
+      ece: number | null;
     };
     interpretation: {
       candidateLogLossBetter: boolean | null;
@@ -123,9 +133,15 @@ export default function AdminPage() {
       evaluation: {
         settledMatches: 0,
         candidateModelVersion: null,
-        baseline: { logLoss: null, brier: null, accuracy: null },
-        candidate: { logLoss: null, brier: null, accuracy: null },
-        deltas: { logLoss: null, brier: null },
+        baseline: {
+          logLoss: null, brier: null, rps: null, ece: null, accuracy: null,
+          homeGoalMae: null, awayGoalMae: null,
+        },
+        candidate: {
+          logLoss: null, brier: null, rps: null, ece: null, accuracy: null,
+          homeGoalMae: null, awayGoalMae: null,
+        },
+        deltas: { logLoss: null, brier: null, rps: null, ece: null },
         interpretation: {
           candidateLogLossBetter: null,
           candidateBrierBetter: null,
@@ -414,6 +430,33 @@ export default function AdminPage() {
                 {shadow.evaluation.interpretation.minimumUsefulSampleReached
                   ? "Minimum sample reached"
                   : `${Math.max(0, 200 - shadow.evaluation.settledMatches)} more settled matches to 200`}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Candidate RPS</p>
+              <p className="mt-1 font-semibold text-foreground">
+                {shadow.evaluation.candidate.rps == null ? "—" : shadow.evaluation.candidate.rps.toFixed(4)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Calibration error (ECE)</p>
+              <p className="mt-1 font-semibold text-foreground">
+                {shadow.evaluation.candidate.ece == null ? "—" : shadow.evaluation.candidate.ece.toFixed(4)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Home-goal MAE</p>
+              <p className="mt-1 font-semibold text-foreground">
+                {shadow.evaluation.candidate.homeGoalMae == null ? "—" : shadow.evaluation.candidate.homeGoalMae.toFixed(3)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Away-goal MAE</p>
+              <p className="mt-1 font-semibold text-foreground">
+                {shadow.evaluation.candidate.awayGoalMae == null ? "—" : shadow.evaluation.candidate.awayGoalMae.toFixed(3)}
               </p>
             </div>
           </div>
