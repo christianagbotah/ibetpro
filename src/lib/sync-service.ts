@@ -8,6 +8,7 @@
 import { prisma } from "./db";
 import { config, getPrimaryDataSource } from "./config";
 import {
+  fetchOddsApiEvents,
   fetchOddsApiUpcoming,
   convertOddsApiToMatch,
   fetchApiFootballFixtures,
@@ -31,7 +32,9 @@ const MIN_SYNC_INTERVAL_MS = parseInt(process.env.SYNC_INTERVAL_MIN || "30", 10)
 let apiQuotaRemaining: number | null = null;
 let apiQuotaCheckedAt: Date | null = null;
 const QUOTA_CHECK_INTERVAL_MS = 60 * 60 * 1000; // re-check quota every hour
-const QUOTA_LOW_THRESHOLD = 20; // stop syncing when fewer than this many requests remain
+const QUOTA_LOW_THRESHOLD = 20; // stop paid odds enrichment when fewer than this many requests remain
+const ODDS_REFRESH_INTERVAL_MS =
+  parseInt(process.env.ODDS_REFRESH_MIN || "360", 10) * 60 * 1000;
 
 export interface SyncResult {
   matchesSynced: number;
@@ -191,6 +194,67 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
 
     for (const sport of sportsToFetch) {
       try {
+        let shouldFetchOdds = force;
+
+        // Discover fixture identity first using the provider's events endpoint.
+        // This lets routine sync cycles avoid paid odds calls when every known
+        // fixture already has reasonably fresh prices.
+        try {
+          const events = await fetchOddsApiEvents(sport);
+          const eventIds = events.map((event) => event.id).filter(Boolean);
+          const existing = eventIds.length
+            ? await prisma.match.findMany({
+                where: { externalId: { in: eventIds } },
+                select: { externalId: true, lastSyncedAt: true },
+              })
+            : [];
+          const existingById = new Map(
+            existing.map((match) => [match.externalId, match])
+          );
+
+          for (const event of events) {
+            if (!existingById.has(event.id)) continue;
+            await prisma.match.updateMany({
+              where: { externalId: event.id },
+              data: {
+                sport: event.sportKey,
+                league: event.sportTitle,
+                homeTeam: event.homeTeam,
+                awayTeam: event.awayTeam,
+                commenceTime: new Date(event.commenceTime),
+                status: "upcoming",
+              },
+            });
+          }
+
+          const hasNewFixture = events.some(
+            (event) => !existingById.has(event.id)
+          );
+          const hasStaleOdds = existing.some(
+            (match) =>
+              !match.lastSyncedAt ||
+              Date.now() - match.lastSyncedAt.getTime() >=
+                ODDS_REFRESH_INTERVAL_MS
+          );
+
+          shouldFetchOdds =
+            shouldFetchOdds || hasNewFixture || hasStaleOdds;
+
+          if (!shouldFetchOdds) {
+            console.log(
+              `[Sync] ${sport}: discovered ${events.length} events; odds remain fresh, skipping paid odds refresh.`
+            );
+            continue;
+          }
+        } catch (eventError) {
+          // Discovery failure must not make the feed disappear. Fall back to
+          // the established odds endpoint for this sport.
+          errors.push(
+            `Odds API event discovery ${sport}: ${eventError instanceof Error ? eventError.message : "Unknown error"}`
+          );
+          shouldFetchOdds = true;
+        }
+
         const odds = await fetchOddsApiUpcoming(sport);
 
         // Track API quota from response headers (fetchOddsApiUpcoming doesn't expose them,
