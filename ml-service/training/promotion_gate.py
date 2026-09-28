@@ -15,6 +15,7 @@ DEFAULT_GATES = {
     "must_beat_elo_log_loss_by": 0.005,
     "must_beat_market_log_loss_by": 0.001,
     "min_market_coverage": 0.90,
+    "min_selective_candidate_rate": 0.10,
 }
 
 
@@ -92,6 +93,27 @@ def decide(candidate: dict, baselines: dict, gates: dict | None = None) -> dict:
         elo_target,
         "<=",
     )
+
+    selective = candidate.get("metrics", {}).get("selective")
+    if selective is not None:
+        selective_rate = float(selective.get("candidate_rate", 0.0))
+        enabled_bands = int(
+            selective.get("policy", {}).get("enabled_band_count", 0)
+        )
+        add(
+            "selective_policy_has_enabled_band",
+            enabled_bands >= 1,
+            enabled_bands,
+            1,
+            ">=",
+        )
+        add(
+            "selective_candidate_rate",
+            selective_rate >= rules["min_selective_candidate_rate"],
+            selective_rate,
+            rules["min_selective_candidate_rate"],
+            ">=",
+        )
 
     market = baselines.get("market")
     uses_market_features = all(
