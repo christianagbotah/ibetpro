@@ -158,6 +158,7 @@ model Match {
   oddsSnapshots OddsSnapshot[]
   shadowComparisons ShadowPredictionComparison[]
   statSnapshots MatchTeamStatSnapshot[]
+  eloSnapshots TeamEloSnapshot[]
 
   @@index([status])
   @@index([sport, league])
@@ -647,4 +648,23 @@ model MatchTeamStatSnapshot {
   @@unique([matchId, teamSide])
   @@index([teamName, capturedAt])
   @@index([provider, providerFixtureId])
+}
+
+
+model TeamEloSnapshot {
+  id           String   @id @default(cuid())
+  matchId      String
+  teamName     String
+  sport        String
+  league       String
+  ratingBefore Float
+  ratingAfter  Float
+  asOf         DateTime
+  createdAt    DateTime @default(now())
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, teamName])
+  @@index([teamName, sport, league, asOf])
+  @@index([sport, league, asOf])
 }
