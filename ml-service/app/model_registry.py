@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
+import hashlib
 import json
 import os
 
@@ -46,9 +47,31 @@ def configured_model_dir() -> Path | None:
     return Path(value).expanduser().resolve()
 
 
+def _sha256(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def validate_model_dir(directory: Path) -> tuple[bool, list[str]]:
-    missing = [name for name in REQUIRED_ARTIFACTS if not (directory / name).is_file()]
-    return len(missing) == 0, missing
+    problems = [name for name in REQUIRED_ARTIFACTS if not (directory / name).is_file()]
+    if problems:
+        return False, problems
+
+    metadata = json.loads((directory / "metadata.json").read_text(encoding="utf-8"))
+    expected = metadata.get("artifacts", {})
+    for name, expected_hash in expected.items():
+        path = directory / name
+        if not path.is_file():
+            problems.append(f"{name}:missing")
+            continue
+        actual_hash = _sha256(path)
+        if actual_hash != expected_hash:
+            problems.append(f"{name}:checksum-mismatch")
+
+    return len(problems) == 0, problems
 
 
 @lru_cache(maxsize=1)
@@ -85,7 +108,7 @@ def model_status() -> dict:
             "configured": True,
             "loaded": False,
             "modelVersion": None,
-            "reason": f"Missing artifacts: {', '.join(missing)}",
+            "reason": f"Model artifact validation failed: {', '.join(missing)}",
         }
 
     try:
