@@ -50,7 +50,7 @@ jobs:
 
       - name: Run chronological walk forward
         run: |
-          python training/walk_forward.py             --dataset data/walk-forward/features.csv             --output data/walk-forward/folds             --feature-profile core
+          python -m training.walk_forward             --dataset data/walk-forward/features.csv             --output data/walk-forward/folds             --feature-profile core
 
       - name: Publish stability summary
         if: always()
