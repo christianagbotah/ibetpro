@@ -176,6 +176,7 @@ export function poissonBaselinePredict(input: PredictionInput): MatchPrediction 
 
   return {
     schemaVersion: "1.0",
+    resultMode: "baseline",
     modelVersion: "poisson-baseline-v1",
     source: "poisson-baseline-v1",
     generatedAt: new Date().toISOString(),
