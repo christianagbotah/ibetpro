@@ -246,6 +246,58 @@ def paired_log_loss_bootstrap(
     }
 
 
+def poisson_over25_probabilities(
+    home_lambdas: np.ndarray,
+    away_lambdas: np.ndarray,
+) -> np.ndarray:
+    total = np.asarray(home_lambdas, dtype=float) + np.asarray(
+        away_lambdas, dtype=float
+    )
+    under = np.exp(-total) * (1.0 + total + (total ** 2) / 2.0)
+    return np.clip(1.0 - under, 1e-12, 1.0 - 1e-12)
+
+
+def paired_binary_log_loss_bootstrap(
+    y_true: np.ndarray,
+    candidate_over: np.ndarray,
+    benchmark_over: np.ndarray,
+    iterations: int = 4000,
+    seed: int = 43,
+) -> dict[str, float]:
+    y = np.asarray(y_true, dtype=int)
+    candidate = np.clip(np.asarray(candidate_over, dtype=float), 1e-12, 1 - 1e-12)
+    benchmark = np.clip(np.asarray(benchmark_over, dtype=float), 1e-12, 1 - 1e-12)
+
+    if len(y) == 0:
+        raise ValueError("Cannot bootstrap an empty binary comparison set")
+
+    candidate_losses = -(y * np.log(candidate) + (1 - y) * np.log(1 - candidate))
+    benchmark_losses = -(y * np.log(benchmark) + (1 - y) * np.log(1 - benchmark))
+    delta = candidate_losses - benchmark_losses
+
+    rng = np.random.default_rng(seed)
+    sampled = np.empty(iterations, dtype=float)
+    for iteration in range(iterations):
+        indices = rng.integers(0, len(delta), size=len(delta))
+        sampled[iteration] = float(delta[indices].mean())
+
+    low, high = np.quantile(sampled, [0.025, 0.975])
+    candidate_brier = float(np.mean((candidate - y) ** 2))
+    benchmark_brier = float(np.mean((benchmark - y) ** 2))
+
+    return {
+        "candidate_log_loss": float(candidate_losses.mean()),
+        "benchmark_log_loss": float(benchmark_losses.mean()),
+        "delta": float(delta.mean()),
+        "candidate_brier": candidate_brier,
+        "benchmark_brier": benchmark_brier,
+        "bootstrap_ci95_low": float(low),
+        "bootstrap_ci95_high": float(high),
+        "probability_candidate_better": float(np.mean(sampled < 0.0)),
+        "iterations": int(iterations),
+    }
+
+
 def poisson_result_probabilities(
     home_lambdas: np.ndarray,
     away_lambdas: np.ndarray,
@@ -662,6 +714,40 @@ def train(
     home_goal_pred = np.clip(home_goal_model.predict(x_test), 0.05, 6.0)
     away_goal_pred = np.clip(away_goal_model.predict(x_test), 0.05, 6.0)
     goal_test_probs = poisson_result_probabilities(home_goal_pred, away_goal_pred)
+
+    totals_market_comparison = None
+    if "over25_odds" in test_df.columns and "under25_odds" in test_df.columns:
+        over_odds = pd.to_numeric(test_df["over25_odds"], errors="coerce").to_numpy(dtype=float)
+        under_odds = pd.to_numeric(test_df["under25_odds"], errors="coerce").to_numpy(dtype=float)
+        totals_mask = (
+            np.isfinite(over_odds)
+            & np.isfinite(under_odds)
+            & (over_odds > 1.0)
+            & (under_odds > 1.0)
+        )
+        if totals_mask.any():
+            over_implied = 1.0 / over_odds[totals_mask]
+            under_implied = 1.0 / under_odds[totals_mask]
+            market_over = over_implied / (over_implied + under_implied)
+            model_over = poisson_over25_probabilities(
+                home_goal_pred[totals_mask],
+                away_goal_pred[totals_mask],
+            )
+            observed_over = (
+                test_df.loc[totals_mask, "home_goals"].to_numpy(dtype=int)
+                + test_df.loc[totals_mask, "away_goals"].to_numpy(dtype=int)
+                >= 3
+            ).astype(int)
+            totals_market_comparison = {
+                **paired_binary_log_loss_bootstrap(
+                    observed_over,
+                    model_over,
+                    market_over,
+                ),
+                "rows": int(totals_mask.sum()),
+                "coverage": float(totals_mask.mean()),
+            }
+
     test_elo = elo_probabilities(test_df)
     test_market = market_probabilities(test_df, fallback=test_elo)
     probabilities = blend_probabilities(
@@ -712,6 +798,7 @@ def train(
             "away_mae": float(mean_absolute_error(test_df["away_goals"], away_goal_pred)),
         },
         "market_comparison": market_comparison,
+        "totals_market_comparison": totals_market_comparison,
     }
 
     output_dir.mkdir(parents=True, exist_ok=True)
