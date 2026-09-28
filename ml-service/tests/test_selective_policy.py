@@ -15,8 +15,9 @@ def test_policy_enables_only_supported_divergence_band():
     market = np.tile(np.array([0.45, 0.25, 0.30]), (200, 1))
     candidate = market.copy()
 
-    # First 100 rows differ only a little and improve the observed home result.
-    candidate[:100] = np.array([0.55, 0.20, 0.25])
+    # First 100 rows sit cleanly inside the 0.02-0.05 divergence band and
+    # improve the observed home result.
+    candidate[:100] = np.array([0.49, 0.23, 0.28])
     # Second 100 rows differ materially but worsen the observed away result.
     candidate[100:] = np.array([0.60, 0.20, 0.20])
 
@@ -34,7 +35,8 @@ def test_policy_enables_only_supported_divergence_band():
     )
 
     assert policy["enabled_band_count"] == 1
-    assert policy_allows_divergence(0.10, policy) is False
+    assert policy_allows_divergence(0.04, policy) is True
+    assert policy_allows_divergence(0.15, policy) is False
     assert any(band["use_candidate"] for band in policy["bands"])
 
 
