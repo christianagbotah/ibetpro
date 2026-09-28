@@ -12,6 +12,16 @@
 export async function register() {
   // Only run on the server side, not during build
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    const recoveryEnabled =
+      String(process.env.AUTO_BET_RECOVERY_ENABLED || "false").toLowerCase() === "true";
+
+    if (!recoveryEnabled) {
+      console.log(
+        "[Instrumentation] Automatic betting-bot recovery is disabled. Set AUTO_BET_RECOVERY_ENABLED=true to opt in."
+      );
+      return;
+    }
+
     console.log("[Instrumentation] Server starting — initializing bot engine recovery...");
 
     try {
