@@ -45,6 +45,14 @@ export interface ModelFeatureVector {
   home_implied_prob?: number | null;
   draw_implied_prob?: number | null;
   away_implied_prob?: number | null;
+  home_market_prob?: number | null;
+  draw_market_prob?: number | null;
+  away_market_prob?: number | null;
+  market_overround?: number | null;
+  market_entropy?: number | null;
+  market_home_away_log_ratio?: number | null;
+  market_home_draw_log_ratio?: number | null;
+  market_away_draw_log_ratio?: number | null;
   home_possession_5?: number | null;
   away_possession_5?: number | null;
   home_corners_5?: number | null;
