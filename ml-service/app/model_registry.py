@@ -47,6 +47,14 @@ class ModelBundle:
         )
         return min(1.0, max(0.0, float(value)))
 
+    @property
+    def result_goal_weight(self) -> float:
+        value = (
+            self.metadata.get("result_calibration", {})
+            .get("result_goal_weight", 0.0)
+        )
+        return min(1.0, max(0.0, float(value)))
+
 
 def configured_model_dir() -> Path | None:
     value = os.environ.get("IBETPRO_MODEL_DIR")
