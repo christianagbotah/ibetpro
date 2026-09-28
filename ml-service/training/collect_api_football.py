@@ -96,54 +96,6 @@ def fetch_batched_fixture_details(
         sleep(max(0.0, pause))
     return details
 
-def fetch_fixture_stats(http: httpx.Client, fixture_id: int) -> dict[int, dict]:
-    response = get_json(http, "/fixtures/statistics", {"fixture": fixture_id})
-    result: dict[int, dict] = {}
-    for team_block in response:
-        team_id = int(team_block.get("team", {}).get("id"))
-        result[team_id] = {
-            "shots": stat_value(team_block.get("statistics", []), "Total Shots"),
-            "sot": stat_value(team_block.get("statistics", []), "Shots on Goal"),
-            "possession": stat_value(team_block.get("statistics", []), "Ball Possession"),
-            "corners": stat_value(team_block.get("statistics", []), "Corner Kicks"),
-        }
-    return result
-
-
-def fetch_fixture_odds(http: httpx.Client, fixture_id: int) -> dict:
-    try:
-        response = get_json(http, "/odds", {"fixture": fixture_id})
-    except Exception:
-        return {}
-    if not response:
-        return {}
-
-    bookmakers = response[0].get("bookmakers", [])
-    if not bookmakers:
-        return {}
-
-    bets = bookmakers[0].get("bets", [])
-    result: dict[str, float] = {}
-    for bet in bets:
-        name = str(bet.get("name", "")).lower()
-        values = bet.get("values", [])
-        if "match winner" in name:
-            for value in values:
-                label = str(value.get("value", "")).lower()
-                odd = value.get("odd")
-                try:
-                    odd = float(odd)
-                except (TypeError, ValueError):
-                    continue
-                if label in {"home", "1"}:
-                    result["home_odds"] = odd
-                elif label in {"draw", "x"}:
-                    result["draw_odds"] = odd
-                elif label in {"away", "2"}:
-                    result["away_odds"] = odd
-    return result
-
-
 def collect(league: int, season: int, out: Path, include_detail: bool, pause: float) -> Path:
     out.mkdir(parents=True, exist_ok=True)
     raw_dir = out / "raw"
