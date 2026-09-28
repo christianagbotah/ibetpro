@@ -14,6 +14,8 @@ import {
   fetchApiFootballLiveFixtures,
 } from "./external-apis";
 import { generateDemoMatches } from "./demo-data";
+import { ensureFixtureIdentity } from "./football/identity";
+import { persistOddsSnapshot } from "./football/odds-history";
 
 // Track last sync time to avoid excessive API calls
 let lastSyncAt: Date | null = null;
@@ -218,7 +220,7 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
               where: { externalId: matchData.externalId },
             });
 
-            await prisma.match.upsert({
+            const syncedMatch = await prisma.match.upsert({
               where: { externalId: matchData.externalId },
               update: {
                 homeOdds: matchData.homeOdds,
@@ -247,6 +249,18 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
                 apiSource: "odds-api",
                 lastSyncedAt: new Date(),
               },
+            });
+
+            await persistOddsSnapshot(syncedMatch.id, {
+              provider: "odds-api",
+              providerFixtureId: matchData.externalId,
+              capturedAt: new Date().toISOString(),
+              bookmaker: "best-available",
+              home: matchData.homeOdds,
+              draw: matchData.drawOdds,
+              away: matchData.awayOdds,
+              over25: matchData.overUnderLine === 2.5 ? matchData.overOdds : null,
+              under25: matchData.overUnderLine === 2.5 ? matchData.underOdds : null,
             });
 
             if (existing) matchesUpdated++;
@@ -286,6 +300,35 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
           try {
             const existing = await prisma.match.findUnique({
               where: { externalId: `af-${fixture.fixtureId}` },
+            });
+
+            await ensureFixtureIdentity({
+              provider: "api-football",
+              providerFixtureId: String(fixture.fixtureId),
+              kickoffUtc: fixture.commenceTime,
+              status: fixture.status as "upcoming" | "live" | "finished" | "postponed" | "cancelled",
+              minute: fixture.minute,
+              league: {
+                provider: "api-football",
+                providerLeagueId: String(fixture.leagueId),
+                name: fixture.league,
+                season: String(fixture.season),
+              },
+              home: {
+                provider: "api-football",
+                providerTeamId: String(fixture.homeTeamId),
+                name: fixture.homeTeam,
+              },
+              away: {
+                provider: "api-football",
+                providerTeamId: String(fixture.awayTeamId),
+                name: fixture.awayTeam,
+              },
+              score: {
+                home: fixture.homeScore,
+                away: fixture.awayScore,
+              },
+              lastProviderUpdate: new Date().toISOString(),
             });
 
             await prisma.match.upsert({
@@ -331,6 +374,35 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
       const liveFixtures = await fetchApiFootballLiveFixtures();
       for (const fixture of liveFixtures) {
         try {
+          await ensureFixtureIdentity({
+            provider: "api-football",
+            providerFixtureId: String(fixture.fixtureId),
+            kickoffUtc: fixture.commenceTime,
+            status: "live",
+            minute: fixture.minute,
+            league: {
+              provider: "api-football",
+              providerLeagueId: String(fixture.leagueId),
+              name: fixture.league,
+              season: String(fixture.season),
+            },
+            home: {
+              provider: "api-football",
+              providerTeamId: String(fixture.homeTeamId),
+              name: fixture.homeTeam,
+            },
+            away: {
+              provider: "api-football",
+              providerTeamId: String(fixture.awayTeamId),
+              name: fixture.awayTeam,
+            },
+            score: {
+              home: fixture.homeScore,
+              away: fixture.awayScore,
+            },
+            lastProviderUpdate: new Date().toISOString(),
+          });
+
           await prisma.match.upsert({
             where: { externalId: `af-${fixture.fixtureId}` },
             update: {
