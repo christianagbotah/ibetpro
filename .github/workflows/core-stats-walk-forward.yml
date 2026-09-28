@@ -1,0 +1,97 @@
+name: iBetPro Core Stats Walk Forward
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - revamp/production-foundation
+    paths:
+      - .github/workflows/core-stats-walk-forward.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ibetpro-core-stats-walk-forward
+  cancel-in-progress: false
+
+jobs:
+  walk-forward:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: ml-service
+    env:
+      MODEL_TRAIN_N_JOBS: "2"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ml-service/requirements.txt
+
+      - name: Install ML dependencies
+        run: pip install -r requirements.txt
+
+      - name: Validate ML suite
+        run: pytest -q
+
+      - name: Collect public historical corpus
+        run: |
+          python -m training.collect_football_data             --leagues E0 SP1             --start-years 2019 2020 2021 2022 2023 2024 2025             --output-dir data/core-stats/corpus
+
+      - name: Build causal venue-aware features
+        run: |
+          python -m training.build_features             --input data/core-stats/corpus/football-data-core.csv             --output data/core-stats/features.csv
+
+      - name: Run core-stats walk forward
+        run: |
+          python -m training.walk_forward             --dataset data/core-stats/features.csv             --output data/core-stats/folds             --feature-profile core_stats
+
+      - name: Publish stability summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f data/core-stats/folds/walk-forward.json ]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path("data/core-stats/folds/walk-forward.json").read_text())
+          stability = data["stability"]
+          print("# iBetPro Core Stats Walk-Forward")
+          print()
+          print(f"- Folds: **{stability['fold_count']}**")
+          print(f"- Folds beating market: **{stability['folds_beating_market']}**")
+          print(f"- Folds significantly beating market: **{stability['folds_significantly_beating_market']}**")
+          print(f"- Mean candidate − market Log Loss: **{stability['mean_candidate_minus_market_log_loss']:.6f}**")
+          print()
+          print("| Fold | Candidate LL | Market LL | Delta | 95% CI |")
+          print("| --- | ---: | ---: | ---: | --- |")
+          for fold in data["folds"]:
+              market = fold.get("market_comparison") or {}
+              print(
+                  f"| {fold['name']} | {market.get('candidate_log_loss', float('nan')):.6f} | "
+                  f"{market.get('benchmark_log_loss', float('nan')):.6f} | "
+                  f"{market.get('delta', float('nan')):.6f} | "
+                  f"[{market.get('bootstrap_ci95_low', float('nan')):.6f}, "
+                  f"{market.get('bootstrap_ci95_high', float('nan')):.6f}] |"
+              )
+          PY
+          else
+            echo "# iBetPro Core Stats Walk-Forward" >> "$GITHUB_STEP_SUMMARY"
+            echo "No walk-forward report was produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload core-stats evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ibetpro-core-stats-walk-forward
+          path: ml-service/data/core-stats/
+          if-no-files-found: warn
+          retention-days: 30
