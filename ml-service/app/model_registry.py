@@ -33,6 +33,10 @@ class ModelBundle:
         return list(self.metadata.get("feature_columns", []))
 
     @property
+    def feature_profile(self) -> str:
+        return str(self.metadata.get("feature_profile", "core"))
+
+    @property
     def imputation(self) -> dict[str, float]:
         return {
             str(key): float(value)
@@ -134,6 +138,16 @@ def model_status() -> dict:
             "loaded": bundle is not None,
             "modelVersion": bundle.version if bundle else None,
             "features": len(bundle.feature_columns) if bundle else 0,
+            "featureProfile": bundle.feature_profile if bundle else None,
+            "blendWeights": {
+                "model": bundle.result_model_weight if bundle else None,
+                "goal": bundle.result_goal_weight if bundle else None,
+                "elo": (
+                    max(0.0, 1.0 - bundle.result_model_weight - bundle.result_goal_weight)
+                    if bundle
+                    else None
+                ),
+            },
             "reason": None,
         }
     except Exception as exc:
