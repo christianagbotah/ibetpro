@@ -1,0 +1,83 @@
+name: iBetPro Real Model Experiment
+
+on:
+  workflow_dispatch:
+    inputs:
+      include_detail:
+        description: "Collect per-fixture statistics and odds (uses substantially more API quota)"
+        required: true
+        default: false
+        type: boolean
+      pause_seconds:
+        description: "Pause between detailed fixture requests"
+        required: true
+        default: "0.35"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ibetpro-real-model-experiment
+  cancel-in-progress: false
+
+jobs:
+  experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 240
+    defaults:
+      run:
+        working-directory: ml-service
+    env:
+      API_FOOTBALL_KEY: ${{ secrets.API_FOOTBALL_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ml-service/requirements.txt
+
+      - name: Require API-Football secret
+        run: |
+          if [ -z "$API_FOOTBALL_KEY" ]; then
+            echo "::error::Repository secret API_FOOTBALL_KEY is required."
+            exit 1
+          fi
+
+      - name: Install ML dependencies
+        run: pip install -r requirements.txt
+
+      - name: Validate ML suite before spending provider quota
+        run: pytest -q
+
+      - name: Collect manifest corpus
+        shell: bash
+        run: |
+          ARGS=(--manifest training/corpus-manifest.json --out data/historical --pause "${{ inputs.pause_seconds }}")
+          if [ "${{ inputs.include_detail }}" = "true" ]; then
+            ARGS+=(--include-detail)
+          fi
+          python training/collect_manifest.py "${ARGS[@]}"
+
+      - name: Run first experiment
+        run: |
+          python training/run_first_experiment.py             --raw-dir data/historical             --work-dir data/run             --train-end 2023-06-30             --calibration-end 2024-06-30             --test-end 2025-06-30
+
+      - name: Build experiment report
+        if: always()
+        run: |
+          python training/render_experiment_report.py             --work-dir data/run             --output data/run/EXPERIMENT-REPORT.md || true
+
+      - name: Upload research evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ibetpro-first-real-experiment
+          path: |
+            ml-service/data/run/
+            ml-service/data/historical/corpus-index.json
+          if-no-files-found: warn
+          retention-days: 30
