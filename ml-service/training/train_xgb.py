@@ -388,15 +388,17 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
         if calibrator is None
         else calibrator.predict_proba(x_test)
     )
+    home_goal_pred = np.clip(home_goal_model.predict(x_test), 0.05, 6.0)
+    away_goal_pred = np.clip(away_goal_model.predict(x_test), 0.05, 6.0)
+    goal_test_probs = poisson_result_probabilities(home_goal_pred, away_goal_pred)
     probabilities = blend_probabilities(
         calibrated_test,
         elo_probabilities(test_df),
         result_model_weight,
+        goal_test_probs,
+        result_goal_weight,
     )
     predicted_class = np.argmax(probabilities, axis=1)
-
-    home_goal_pred = np.clip(home_goal_model.predict(x_test), 0, 6)
-    away_goal_pred = np.clip(away_goal_model.predict(x_test), 0, 6)
 
     metrics = {
         "rows": {
@@ -457,6 +459,10 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
                 for name, value in calibration_candidates.items()
             },
             "result_model_weight": float(result_model_weight),
+            "result_goal_weight": float(result_goal_weight),
+            "result_elo_weight": float(
+                1.0 - result_model_weight - result_goal_weight
+            ),
             "blend_selection_log_loss": {
                 str(weight): float(score) for weight, score in blend_scores.items()
             },
