@@ -11,7 +11,8 @@ import numpy as np
 import pandas as pd
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.frozen import FrozenEstimator
-from sklearn.metrics import accuracy_score, brier_score_loss, log_loss, mean_absolute_error
+from sklearn.metrics import accuracy_score, log_loss, mean_absolute_error
+from lightgbm import LGBMClassifier
 from xgboost import XGBClassifier, XGBRegressor
 
 FEATURE_COLUMNS = [
@@ -162,22 +163,41 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
     x_train = features(train_df)
     y_train = train_df["result_class"].astype(int)
 
-    result_model = XGBClassifier(
-        objective="multi:softprob",
-        num_class=3,
-        n_estimators=700,
-        max_depth=5,
-        learning_rate=0.035,
-        subsample=0.85,
-        colsample_bytree=0.85,
-        min_child_weight=4,
-        reg_alpha=0.2,
-        reg_lambda=2.0,
-        eval_metric="mlogloss",
-        random_state=42,
-        n_jobs=train_jobs,
-    )
-    result_model.fit(x_train, y_train)
+    result_models = {
+        "xgboost": XGBClassifier(
+            objective="multi:softprob",
+            num_class=3,
+            n_estimators=700,
+            max_depth=5,
+            learning_rate=0.035,
+            subsample=0.85,
+            colsample_bytree=0.85,
+            min_child_weight=4,
+            reg_alpha=0.2,
+            reg_lambda=2.0,
+            eval_metric="mlogloss",
+            random_state=42,
+            n_jobs=train_jobs,
+        ),
+        "lightgbm": LGBMClassifier(
+            objective="multiclass",
+            num_class=3,
+            n_estimators=600,
+            learning_rate=0.03,
+            num_leaves=24,
+            max_depth=6,
+            subsample=0.85,
+            colsample_bytree=0.85,
+            min_child_samples=30,
+            reg_alpha=0.2,
+            reg_lambda=2.0,
+            random_state=42,
+            n_jobs=train_jobs,
+            verbosity=-1,
+        ),
+    }
+    for model in result_models.values():
+        model.fit(x_train, y_train)
 
     calibration_df = calibration_df.sort_values("kickoff_utc").reset_index(drop=True)
     split_at = max(1, len(calibration_df) // 2)
@@ -189,34 +209,44 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
     calibration_candidates = {}
     selection_y = calibration_select_df["result_class"].astype(int).to_numpy()
     selection_x = features(calibration_select_df)
+    calibration_fit_x = features(calibration_fit_df)
+    calibration_fit_y = calibration_fit_df["result_class"].astype(int)
 
-    raw_selection = result_model.predict_proba(selection_x)
-    calibration_candidates["raw"] = {
-        "log_loss": float(log_loss(selection_y, raw_selection, labels=[0, 1, 2])),
-        "probabilities": raw_selection,
-    }
-
-    for method in ("sigmoid", "isotonic"):
-        candidate = CalibratedClassifierCV(
-            FrozenEstimator(result_model),
-            method=method,
-        )
-        candidate.fit(
-            features(calibration_fit_df),
-            calibration_fit_df["result_class"].astype(int),
-        )
-        probabilities = candidate.predict_proba(selection_x)
-        calibration_candidates[method] = {
+    for model_name, model in result_models.items():
+        raw_selection = model.predict_proba(selection_x)
+        calibration_candidates[f"{model_name}:raw"] = {
+            "model_name": model_name,
+            "method": "raw",
             "log_loss": float(
-                log_loss(selection_y, probabilities, labels=[0, 1, 2])
+                log_loss(selection_y, raw_selection, labels=[0, 1, 2])
             ),
-            "probabilities": probabilities,
+            "probabilities": raw_selection,
         }
 
-    selected_method = min(
+        for method in ("sigmoid", "isotonic"):
+            candidate = CalibratedClassifierCV(
+                FrozenEstimator(model),
+                method=method,
+            )
+            candidate.fit(calibration_fit_x, calibration_fit_y)
+            probabilities = candidate.predict_proba(selection_x)
+            calibration_candidates[f"{model_name}:{method}"] = {
+                "model_name": model_name,
+                "method": method,
+                "log_loss": float(
+                    log_loss(selection_y, probabilities, labels=[0, 1, 2])
+                ),
+                "probabilities": probabilities,
+            }
+
+    selected_key = min(
         calibration_candidates,
         key=lambda name: calibration_candidates[name]["log_loss"],
     )
+    selected_candidate = calibration_candidates[selected_key]
+    selected_model_name = selected_candidate["model_name"]
+    selected_method = selected_candidate["method"]
+    result_model = result_models[selected_model_name]
 
     if selected_method == "raw":
         calibrator = None
@@ -230,7 +260,7 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
             calibration_df["result_class"].astype(int),
         )
 
-    selected_model_probs = calibration_candidates[selected_method]["probabilities"]
+    selected_model_probs = selected_candidate["probabilities"]
     selection_elo = elo_probabilities(calibration_select_df)
     blend_grid = [round(value, 2) for value in np.linspace(0.0, 1.0, 11)]
     blend_scores = {
@@ -316,8 +346,11 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
     }
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    joblib.dump(result_model, output_dir / "result_xgb.joblib")
-    joblib.dump(calibrator if calibrator is not None else result_model, output_dir / "result_calibrator.joblib")
+    joblib.dump(result_model, output_dir / "result_model.joblib")
+    joblib.dump(
+        calibrator if calibrator is not None else result_model,
+        output_dir / "result_calibrator.joblib",
+    )
     joblib.dump(home_goal_model, output_dir / "home_goals_xgb.joblib")
     joblib.dump(away_goal_model, output_dir / "away_goals_xgb.joblib")
 
@@ -329,17 +362,18 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
         return digest.hexdigest()
 
     artifacts = {
-        "result_xgb.joblib": sha256(output_dir / "result_xgb.joblib"),
+        "result_model.joblib": sha256(output_dir / "result_model.joblib"),
         "result_calibrator.joblib": sha256(output_dir / "result_calibrator.joblib"),
         "home_goals_xgb.joblib": sha256(output_dir / "home_goals_xgb.joblib"),
         "away_goals_xgb.joblib": sha256(output_dir / "away_goals_xgb.joblib"),
     }
 
     metadata = {
-        "model_version": "xgb-football-v0",
+        "model_version": "football-ensemble-v0",
         "feature_columns": FEATURE_COLUMNS,
         "training_imputation": {key: float(value) for key, value in train_medians.items()},
         "result_calibration": {
+            "selected_model": selected_model_name,
             "selected_method": selected_method,
             "selection_log_loss": {
                 name: float(value["log_loss"])
