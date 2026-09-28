@@ -80,7 +80,8 @@ jobs:
             --work-dir data/run \
             --train-end 2023-06-30 \
             --calibration-end 2024-06-30 \
-            --test-end 2025-06-30
+            --test-end 2025-06-30 \
+            --feature-profile enriched
 
       - name: Build experiment report
         if: always()
