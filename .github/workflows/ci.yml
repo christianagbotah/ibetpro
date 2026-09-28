@@ -1,0 +1,112 @@
+name: iBetPro CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - revamp/production-foundation
+
+permissions:
+  contents: read
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DATABASE_URL: mysql://root:root@127.0.0.1:3306/ibetpro_ci
+      NEXTAUTH_SECRET: ci-only-secret
+      NEXTAUTH_URL: http://localhost:3007
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: ibetpro_ci
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -proot"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npx prisma db push
+      - run: npm run lint
+      - run: npm run build
+
+  ml:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: ml-service
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ml-service/requirements.txt
+
+      - run: pip install -r requirements.txt
+      - run: python -m compileall app training
+      - run: python - <<'PY'
+          from app.schemas import PredictionInput, TeamFeatureSnapshot
+          from app.baselines import poisson_baseline
+
+          payload = PredictionInput(
+              matchId="ci-match",
+              asOf="2026-09-28T00:00:00Z",
+              league="CI League",
+              homeTeam="Home",
+              awayTeam="Away",
+              status="upcoming",
+              homeOdds=1.9,
+              drawOdds=3.4,
+              awayOdds=4.1,
+              home=TeamFeatureSnapshot(
+                  teamName="Home",
+                  matchesPlayed=10,
+                  wins=6,
+                  draws=2,
+                  losses=2,
+                  goalsFor=18,
+                  goalsAgainst=9,
+                  eloRating=1580,
+                  xgFor=1.8,
+                  xgAgainst=0.95,
+              ),
+              away=TeamFeatureSnapshot(
+                  teamName="Away",
+                  matchesPlayed=10,
+                  wins=3,
+                  draws=3,
+                  losses=4,
+                  goalsFor=12,
+                  goalsAgainst=15,
+                  eloRating=1490,
+                  xgFor=1.2,
+                  xgAgainst=1.45,
+              ),
+          )
+          result = poisson_baseline(payload)
+          assert abs(result.result.homeWin + result.result.draw + result.result.awayWin - 1.0) < 0.001
+          assert len(result.scorelines) == 10
+          assert result.expectedGoals.home > 0
+          assert result.expectedGoals.away > 0
+          print(result.model_dump_json(indent=2))
+          PY
