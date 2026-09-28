@@ -35,6 +35,8 @@ def test_normalize_prefers_non_closing_odds_and_maps_stats():
                 "AvgCH": 1.72,
                 "AvgCD": 3.80,
                 "AvgCA": 5.00,
+                "Avg>2.5": 1.92,
+                "Avg<2.5": 1.98,
             }
         ]
     )
@@ -52,6 +54,8 @@ def test_normalize_prefers_non_closing_odds_and_maps_stats():
     assert row["away_red_cards"] == 1
     assert row["home_odds"] == 1.80
     assert row["closing_home_odds"] == 1.72
+    assert row["over25_odds"] == 1.92
+    assert row["under25_odds"] == 1.98
     assert str(row["kickoff_utc"]).startswith("2024-08-17")
 
 
