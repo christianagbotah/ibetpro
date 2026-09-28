@@ -42,6 +42,14 @@ CORE_FEATURE_COLUMNS = [
     "home_implied_prob",
     "draw_implied_prob",
     "away_implied_prob",
+    "home_market_prob",
+    "draw_market_prob",
+    "away_market_prob",
+    "market_overround",
+    "market_entropy",
+    "market_home_away_log_ratio",
+    "market_home_draw_log_ratio",
+    "market_away_draw_log_ratio",
 ]
 
 CORE_STATS_FEATURE_COLUMNS = [
