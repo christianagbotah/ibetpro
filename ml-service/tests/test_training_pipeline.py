@@ -6,7 +6,7 @@ import numpy as np
 import pandas as pd
 
 from training.build_features import build_features
-from training.train_xgb import ChronologicalSplit, train
+from training.train_xgb import ChronologicalSplit, select_conservative_result_candidate, train
 
 
 def synthetic_raw(n: int = 180) -> pd.DataFrame:
@@ -80,3 +80,57 @@ def test_training_pipeline_runs_end_to_end(tmp_path: Path):
     assert metadata["metrics"]["rows"]["calibration"] > 0
     assert metadata["metrics"]["rows"]["test"] > 0
     assert 0 <= metadata["metrics"]["result"]["accuracy"] <= 1
+
+
+def test_conservative_result_selection_prefers_simpler_near_best_model():
+    candidates = {
+        "logistic_c_1_0:raw": {
+            "model_name": "logistic_c_1_0",
+            "method": "raw",
+            "log_loss": 0.9172597,
+        },
+        "logistic_c_0_1:raw": {
+            "model_name": "logistic_c_0_1",
+            "method": "raw",
+            "log_loss": 0.9174511,
+        },
+        "logistic_c_0_05:raw": {
+            "model_name": "logistic_c_0_05",
+            "method": "raw",
+            "log_loss": 0.9177371,
+        },
+        "market_correction_c_0_01:sigmoid": {
+            "model_name": "market_correction_c_0_01",
+            "method": "sigmoid",
+            "log_loss": 0.9219950,
+        },
+    }
+
+    selected = select_conservative_result_candidate(
+        candidates,
+        tolerance=0.0005,
+    )
+
+    assert selected == "logistic_c_0_05:raw"
+
+
+def test_result_selection_does_not_prefer_simple_model_outside_tolerance():
+    candidates = {
+        "logistic_c_1_0:raw": {
+            "model_name": "logistic_c_1_0",
+            "method": "raw",
+            "log_loss": 0.9172,
+        },
+        "market_correction_c_0_01:raw": {
+            "model_name": "market_correction_c_0_01",
+            "method": "raw",
+            "log_loss": 0.9200,
+        },
+    }
+
+    selected = select_conservative_result_candidate(
+        candidates,
+        tolerance=0.0005,
+    )
+
+    assert selected == "logistic_c_1_0:raw"
