@@ -54,6 +54,20 @@ class ModelFeatureVector(BaseModel):
     away_yellow_cards_5: float | None = None
     home_red_cards_5: float | None = None
     away_red_cards_5: float | None = None
+    home_home_form_points_5: float | None = None
+    away_away_form_points_5: float | None = None
+    home_home_goals_for_5: float | None = None
+    home_home_goals_against_5: float | None = None
+    away_away_goals_for_5: float | None = None
+    away_away_goals_against_5: float | None = None
+    home_home_shots_5: float | None = None
+    away_away_shots_5: float | None = None
+    home_home_sot_5: float | None = None
+    away_away_sot_5: float | None = None
+    home_home_corners_5: float | None = None
+    away_away_corners_5: float | None = None
+    home_home_yellow_cards_5: float | None = None
+    away_away_yellow_cards_5: float | None = None
 
 
 class PredictionInput(BaseModel):
