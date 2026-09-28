@@ -196,3 +196,50 @@ def test_market_equality_is_not_a_material_edge():
         if item["name"] == "paired_market_log_loss_delta"
     )
     assert delta_check["passed"] is False
+
+
+def test_selective_policy_requires_meaningful_coverage():
+    value = market_aware_candidate(
+        log_loss=0.90,
+        delta=-0.02,
+        ci_low=-0.04,
+        ci_high=-0.005,
+    )
+    value["metrics"]["selective"] = {
+        "candidate_rate": 0.03,
+        "candidate_rows": 15,
+        "abstained_rows": 485,
+        "policy": {"enabled_band_count": 1},
+    }
+
+    result = decide(value, baselines())
+
+    assert result["all_gates_passed"] is False
+    coverage = next(
+        item for item in result["checks"]
+        if item["name"] == "selective_candidate_rate"
+    )
+    assert coverage["passed"] is False
+
+
+def test_selective_policy_with_material_coverage_can_reach_market_checks():
+    value = market_aware_candidate(
+        log_loss=0.90,
+        delta=-0.02,
+        ci_low=-0.04,
+        ci_high=-0.005,
+    )
+    value["metrics"]["selective"] = {
+        "candidate_rate": 0.20,
+        "candidate_rows": 100,
+        "abstained_rows": 400,
+        "policy": {"enabled_band_count": 1},
+    }
+
+    result = decide(value, baselines())
+
+    coverage = next(
+        item for item in result["checks"]
+        if item["name"] == "selective_candidate_rate"
+    )
+    assert coverage["passed"] is True
