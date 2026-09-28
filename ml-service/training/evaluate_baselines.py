@@ -17,6 +17,18 @@ class BaselineMetrics:
 
 
 def normalize_market_probs(row: pd.Series) -> np.ndarray | None:
+    direct = [
+        row.get("home_implied_prob"),
+        row.get("draw_implied_prob"),
+        row.get("away_implied_prob"),
+    ]
+    try:
+        implied = np.array([float(value) for value in direct], dtype=float)
+        if np.isfinite(implied).all() and implied.sum() > 0:
+            return implied / implied.sum()
+    except (TypeError, ValueError):
+        pass
+
     odds = [row.get("home_odds"), row.get("draw_odds"), row.get("away_odds")]
     try:
         implied = np.array([1.0 / float(value) for value in odds], dtype=float)
