@@ -12,6 +12,7 @@ on:
       - ml-service/training/evaluate_baselines.py
       - ml-service/training/promotion_gate.py
       - ml-service/training/train_xgb.py
+      - ml-service/tests/test_training_pipeline.py
 
 permissions:
   contents: read
