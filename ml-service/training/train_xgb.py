@@ -322,7 +322,7 @@ def select_conservative_blend(
     eligible = [
         weights
         for weights in candidates
-        if scores[key(weights)] <= best_score + near_best_tolerance
+        if scores[key(weights)] <= best_score + near_best_tolerance + 1e-12
     ]
     return max(
         eligible,
