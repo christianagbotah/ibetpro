@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { predictMatch } from "@/lib/prediction/service";
+import { predictMatch, predictShadowCandidate } from "@/lib/prediction/service";
 import { persistPredictionSnapshot } from "@/lib/prediction/store";
+import { persistShadowComparison } from "@/lib/prediction/shadow-store";
 import { buildOnlineModelFeatures } from "@/lib/prediction/model-features";
 import type { PredictionInput, TeamFeatureSnapshot } from "@/lib/prediction/contracts";
 
@@ -121,6 +122,10 @@ export async function POST(
 
   const prediction = await predictMatch(input);
   const snapshotId = await persistPredictionSnapshot(input, prediction);
+  const shadowCandidate = await predictShadowCandidate(input);
+  const shadowComparisonId = shadowCandidate
+    ? (await persistShadowComparison(input, prediction, shadowCandidate)).id
+    : null;
 
   await prisma.match.update({
     where: { id: matchId },
@@ -143,5 +148,6 @@ export async function POST(
     prediction,
     inputAsOf: input.asOf,
     snapshotId,
+    shadowComparisonId,
   });
 }
