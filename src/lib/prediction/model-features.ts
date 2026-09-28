@@ -8,6 +8,8 @@ type MatchLike = {
   awayTeam: string;
   homeScore: number | null;
   awayScore: number | null;
+  sport: string;
+  league: string;
   homeOdds: number | null;
   drawOdds: number | null;
   awayOdds: number | null;
@@ -47,10 +49,12 @@ function average(values: number[], fallback = 0): number {
     : fallback;
 }
 
-async function lastFinishedMatches(team: string, asOf: Date) {
+async function lastFinishedMatches(team: string, asOf: Date, sport: string, league: string) {
   return prisma.match.findMany({
     where: {
       status: "finished",
+      sport,
+      league,
       commenceTime: { lt: asOf },
       homeScore: { not: null },
       awayScore: { not: null },
@@ -85,8 +89,8 @@ export async function buildOnlineModelFeatures(
   asOf = new Date()
 ): Promise<ModelFeatureVector> {
   const [homeHistory, awayHistory] = await Promise.all([
-    lastFinishedMatches(match.homeTeam, asOf),
-    lastFinishedMatches(match.awayTeam, asOf),
+    lastFinishedMatches(match.homeTeam, asOf, match.sport, match.league),
+    lastFinishedMatches(match.awayTeam, asOf, match.sport, match.league),
   ]);
 
   const homeElo = Number(homeStats?.eloRating ?? 1500);
