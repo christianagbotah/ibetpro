@@ -112,9 +112,20 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
 
     frame = pd.DataFrame([row], columns=bundle.feature_columns)
 
-    result_probs = np.asarray(bundle.result_calibrator.predict_proba(frame)[0], dtype=float)
-    if len(result_probs) != 3:
-        raise RuntimeError(f"Expected 3 result probabilities, got {len(result_probs)}")
+    model_probs = np.asarray(bundle.result_calibrator.predict_proba(frame)[0], dtype=float)
+    if len(model_probs) != 3:
+        raise RuntimeError(f"Expected 3 result probabilities, got {len(model_probs)}")
+    model_probs = model_probs / model_probs.sum()
+
+    home_elo = float(row.get("home_elo", 1500.0)) + 65.0
+    away_elo = float(row.get("away_elo", 1500.0))
+    home_no_draw = 1.0 / (1.0 + 10 ** ((away_elo - home_elo) / 400.0))
+    elo_probs = np.array(
+        [home_no_draw * 0.75, 0.25, (1.0 - home_no_draw) * 0.75],
+        dtype=float,
+    )
+    model_weight = bundle.result_model_weight
+    result_probs = model_weight * model_probs + (1.0 - model_weight) * elo_probs
     result_probs = result_probs / result_probs.sum()
 
     home_lambda = float(np.clip(bundle.home_goal_model.predict(frame)[0], 0.05, 6.0))
