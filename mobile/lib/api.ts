@@ -15,6 +15,7 @@ export interface MobileMatch {
 }
 
 export interface RichPrediction {
+  resultMode: "baseline" | "market-consensus" | "selective-model";
   modelVersion: string;
   source: string;
   expectedGoals: { home: number; away: number; total: number };
