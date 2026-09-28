@@ -44,6 +44,27 @@ CORE_FEATURE_COLUMNS = [
     "away_implied_prob",
 ]
 
+CORE_STATS_FEATURE_COLUMNS = [
+    "home_corners_5",
+    "away_corners_5",
+    "home_yellow_cards_5",
+    "away_yellow_cards_5",
+    "home_home_form_points_5",
+    "away_away_form_points_5",
+    "home_home_goals_for_5",
+    "home_home_goals_against_5",
+    "away_away_goals_for_5",
+    "away_away_goals_against_5",
+    "home_home_shots_5",
+    "away_away_shots_5",
+    "home_home_sot_5",
+    "away_away_sot_5",
+    "home_home_corners_5",
+    "away_away_corners_5",
+    "home_home_yellow_cards_5",
+    "away_away_yellow_cards_5",
+]
+
 ENRICHED_FEATURE_COLUMNS = [
     "home_possession_5",
     "away_possession_5",
@@ -59,8 +80,14 @@ ENRICHED_FEATURE_COLUMNS = [
 def feature_columns(profile: str) -> list[str]:
     if profile == "core":
         return list(CORE_FEATURE_COLUMNS)
+    if profile == "core_stats":
+        return [*CORE_FEATURE_COLUMNS, *CORE_STATS_FEATURE_COLUMNS]
     if profile == "enriched":
-        return [*CORE_FEATURE_COLUMNS, *ENRICHED_FEATURE_COLUMNS]
+        return [
+            *CORE_FEATURE_COLUMNS,
+            *CORE_STATS_FEATURE_COLUMNS,
+            *ENRICHED_FEATURE_COLUMNS,
+        ]
     raise ValueError(f"Unsupported feature profile: {profile}")
 
 
@@ -630,7 +657,7 @@ if __name__ == "__main__":
     parser.add_argument("--test-end", required=True)
     parser.add_argument(
         "--feature-profile",
-        choices=["core", "enriched"],
+        choices=["core", "core_stats", "enriched"],
         default="core",
     )
     args = parser.parse_args()
