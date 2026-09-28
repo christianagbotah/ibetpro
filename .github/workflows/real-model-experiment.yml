@@ -71,6 +71,17 @@ jobs:
         run: |
           python training/render_experiment_report.py             --work-dir data/run             --output data/run/EXPERIMENT-REPORT.md || true
 
+      - name: Publish experiment summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f data/run/EXPERIMENT-REPORT.md ]; then
+            cat data/run/EXPERIMENT-REPORT.md >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## iBetPro Model Experiment" >> "$GITHUB_STEP_SUMMARY"
+            echo "No experiment report was produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
       - name: Upload research evidence
         if: always()
         uses: actions/upload-artifact@v4
