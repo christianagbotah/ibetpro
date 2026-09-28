@@ -62,6 +62,7 @@ def run_walk_forward(
 
         result = metadata["metrics"]["result"]
         market = metadata["metrics"].get("market_comparison")
+        totals_market = metadata["metrics"].get("totals_market_comparison")
         segment_start = (
             timestamp(fold["calibration_end"]) + pd.Timedelta(seconds=1)
         ).isoformat()
@@ -81,6 +82,7 @@ def run_walk_forward(
                 "result": result,
                 "goals": metadata["metrics"]["goals"],
                 "market_comparison": market,
+                "totals_market_comparison": totals_market,
                 "blend": metadata.get("result_calibration", {}),
                 "segments": segments["segments"],
             }
@@ -137,6 +139,29 @@ def run_walk_forward(
             ),
         }
 
+    totals_comparable = [
+        fold
+        for fold in fold_results
+        if fold.get("totals_market_comparison") is not None
+    ]
+    totals_deltas = [
+        float(fold["totals_market_comparison"]["delta"])
+        for fold in totals_comparable
+    ]
+    totals_market_wins = sum(
+        1
+        for fold in totals_comparable
+        if fold["totals_market_comparison"]["delta"] <= -MATERIAL_MARKET_EDGE
+    )
+    significant_totals_market_wins = sum(
+        1
+        for fold in totals_comparable
+        if (
+            fold["totals_market_comparison"]["delta"] <= -MATERIAL_MARKET_EDGE
+            and fold["totals_market_comparison"]["bootstrap_ci95_high"] < 0
+        )
+    )
+
     summary = {
         "feature_profile": feature_profile,
         "folds": fold_results,
@@ -158,6 +183,26 @@ def run_walk_forward(
                 and significant_market_wins == len(fold_results)
             ),
             "by_league": league_stability,
+        },
+        "totals_stability": {
+            "fold_count": len(fold_results),
+            "market_comparable_folds": len(totals_comparable),
+            "folds_beating_market": totals_market_wins,
+            "folds_significantly_beating_market": significant_totals_market_wins,
+            "mean_candidate_minus_market_log_loss": (
+                sum(totals_deltas) / len(totals_deltas)
+                if totals_deltas
+                else None
+            ),
+            "material_market_edge_required": MATERIAL_MARKET_EDGE,
+            "all_folds_beat_market": (
+                len(totals_comparable) == len(fold_results)
+                and totals_market_wins == len(fold_results)
+            ),
+            "all_folds_significantly_beat_market": (
+                len(totals_comparable) == len(fold_results)
+                and significant_totals_market_wins == len(fold_results)
+            ),
         },
         "note": (
             "Walk-forward folds are chronological and have disjoint test seasons. "
