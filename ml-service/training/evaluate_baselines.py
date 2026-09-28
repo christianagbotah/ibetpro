@@ -98,6 +98,7 @@ def evaluate_baselines(feature_csv: Path, start: str, end: str) -> dict:
         result["market"] = {
             **evaluate_probabilities(market_y, np.stack(market_probs)).__dict__,
             "rows": len(market_probs),
+            "coverage": float(len(market_probs) / len(period)),
         }
     else:
         result["market"] = None
