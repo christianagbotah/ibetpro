@@ -19,7 +19,7 @@ from sklearn.preprocessing import StandardScaler
 from lightgbm import LGBMClassifier
 from xgboost import XGBClassifier, XGBRegressor
 
-FEATURE_COLUMNS = [
+CORE_FEATURE_COLUMNS = [
     "home_elo",
     "away_elo",
     "elo_diff",
@@ -44,12 +44,31 @@ FEATURE_COLUMNS = [
     "away_implied_prob",
 ]
 
+ENRICHED_FEATURE_COLUMNS = [
+    "home_possession_5",
+    "away_possession_5",
+    "home_corners_5",
+    "away_corners_5",
+    "home_yellow_cards_5",
+    "away_yellow_cards_5",
+    "home_red_cards_5",
+    "away_red_cards_5",
+]
+
+
+def feature_columns(profile: str) -> list[str]:
+    if profile == "core":
+        return list(CORE_FEATURE_COLUMNS)
+    if profile == "enriched":
+        return [*CORE_FEATURE_COLUMNS, *ENRICHED_FEATURE_COLUMNS]
+    raise ValueError(f"Unsupported feature profile: {profile}")
+
+
 REQUIRED_COLUMNS = [
     "kickoff_utc",
     "home_goals",
     "away_goals",
     "result_class",
-    *FEATURE_COLUMNS,
 ]
 
 
@@ -166,8 +185,19 @@ def blend_probabilities(
     return blended / blended.sum(axis=1, keepdims=True)
 
 
-def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> dict:
+def train(
+    dataset_path: Path,
+    output_dir: Path,
+    split: ChronologicalSplit,
+    feature_profile: str = "core",
+) -> dict:
+    columns = feature_columns(feature_profile)
     frame = load_dataset(dataset_path)
+    missing_features = [column for column in columns if column not in frame.columns]
+    if missing_features:
+        raise ValueError(
+            f"Dataset is missing {feature_profile} feature columns: {missing_features}"
+        )
     train_jobs = max(1, int(os.environ.get("MODEL_TRAIN_N_JOBS", "2")))
 
     train_df = frame[frame["kickoff_utc"] <= split.train_end]
@@ -189,10 +219,10 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
     # Fit imputation values strictly on the training period to avoid
     # calibration/test leakage. Missing market/stat columns are expected for
     # some historical providers and must not cause entire fixtures to vanish.
-    train_medians = train_df[FEATURE_COLUMNS].median(numeric_only=True).fillna(0.0)
+    train_medians = train_df[columns].median(numeric_only=True).fillna(0.0)
 
     def features(df: pd.DataFrame) -> pd.DataFrame:
-        return df[FEATURE_COLUMNS].apply(pd.to_numeric, errors="coerce").fillna(train_medians)
+        return df[columns].apply(pd.to_numeric, errors="coerce").fillna(train_medians)
 
     x_train = features(train_df)
     y_train = train_df["result_class"].astype(int)
@@ -452,7 +482,8 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
 
     metadata = {
         "model_version": "football-ensemble-v0",
-        "feature_columns": FEATURE_COLUMNS,
+        "feature_profile": feature_profile,
+        "feature_columns": columns,
         "training_imputation": {key: float(value) for key, value in train_medians.items()},
         "result_calibration": {
             "selected_model": selected_model_name,
@@ -492,6 +523,11 @@ if __name__ == "__main__":
     parser.add_argument("--train-end", required=True)
     parser.add_argument("--calibration-end", required=True)
     parser.add_argument("--test-end", required=True)
+    parser.add_argument(
+        "--feature-profile",
+        choices=["core", "enriched"],
+        default="core",
+    )
     args = parser.parse_args()
 
     split = ChronologicalSplit(
@@ -499,5 +535,10 @@ if __name__ == "__main__":
         calibration_end=pd.Timestamp(args.calibration_end, tz="UTC"),
         test_end=pd.Timestamp(args.test_end, tz="UTC"),
     )
-    result = train(args.dataset, args.output, split)
+    result = train(
+        args.dataset,
+        args.output,
+        split,
+        feature_profile=args.feature_profile,
+    )
     print(json.dumps(result, indent=2))
