@@ -11,7 +11,10 @@ import numpy as np
 import pandas as pd
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.frozen import FrozenEstimator
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, log_loss, mean_absolute_error
+from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import StandardScaler
 from lightgbm import LGBMClassifier
 from xgboost import XGBClassifier, XGBRegressor
 
@@ -194,6 +197,20 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
             random_state=42,
             n_jobs=train_jobs,
             verbosity=-1,
+        ),
+        "logistic": Pipeline(
+            [
+                ("scale", StandardScaler()),
+                (
+                    "model",
+                    LogisticRegression(
+                        C=0.35,
+                        max_iter=3000,
+                        solver="lbfgs",
+                        random_state=42,
+                    ),
+                ),
+            ]
         ),
     }
     for model in result_models.values():
