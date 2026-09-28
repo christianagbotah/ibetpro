@@ -206,7 +206,18 @@ export async function fetchOddsApiUpcoming(
     throw new Error(`The Odds API error (${response.status}): ${errorText}`);
   }
 
-  return response.json();
+  const data = (await response.json()) as Array<Record<string, unknown>>;
+  return data.map((item) => ({
+    id: String(item.id || ""),
+    sportKey: String(item.sport_key || sport),
+    sportTitle: String(item.sport_title || sport),
+    commenceTime: String(item.commence_time || ""),
+    homeTeam: String(item.home_team || ""),
+    awayTeam: String(item.away_team || ""),
+    bookmakers: Array.isArray(item.bookmakers)
+      ? (item.bookmakers as ExternalBookmaker[])
+      : [],
+  }));
 }
 
 export async function fetchOddsApiSports(): Promise<Array<{ key: string; title: string; group: string }>> {
@@ -274,9 +285,18 @@ export function convertOddsApiToMatch(odds: ExternalOdds): {
     }
   }
 
+  if (
+    !odds.id ||
+    !odds.homeTeam ||
+    !odds.awayTeam ||
+    !odds.commenceTime ||
+    !Number.isFinite(new Date(odds.commenceTime).getTime())
+  ) {
+    throw new Error("Odds API fixture is missing required identity fields");
+  }
+
   if (!homeOdds || !awayOdds) {
-    homeOdds = homeOdds || 2.0;
-    awayOdds = awayOdds || 2.0;
+    throw new Error("Odds API fixture has no genuine home/away H2H prices");
   }
 
   return {
