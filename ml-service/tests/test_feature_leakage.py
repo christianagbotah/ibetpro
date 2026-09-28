@@ -23,6 +23,10 @@ def sample_frame() -> pd.DataFrame:
                 "away_shots": 4,
                 "home_sot": 10,
                 "away_sot": 1,
+                "home_corners": 8,
+                "away_corners": 2,
+                "home_yellow_cards": 1,
+                "away_yellow_cards": 3,
             },
             {
                 "fixture_id": "f2",
@@ -39,6 +43,10 @@ def sample_frame() -> pd.DataFrame:
                 "away_shots": 7,
                 "home_sot": 3,
                 "away_sot": 3,
+                "home_corners": 4,
+                "away_corners": 5,
+                "home_yellow_cards": 2,
+                "away_yellow_cards": 1,
             },
         ]
     )
@@ -67,3 +75,27 @@ def test_elo_updates_only_after_fixture():
     assert features.iloc[0]["away_elo"] == 1500.0
     assert features.iloc[1]["home_elo"] > 1500.0
     assert features.iloc[1]["away_elo"] < 1500.0
+
+
+
+def test_venue_features_update_only_after_fixture():
+    features = build_features(sample_frame(), window=5)
+
+    first = features.iloc[0]
+    second = features.iloc[1]
+
+    # Current fixture must not populate its own venue context.
+    assert first["home_home_form_points_5"] == 0.0
+    assert first["away_away_form_points_5"] == 0.0
+    assert first["home_home_goals_for_5"] == 0.0
+    assert pd.isna(first["home_home_corners_5"])
+
+    # The next same-venue fixture may use the completed first fixture.
+    assert second["home_home_form_points_5"] == 3.0
+    assert second["away_away_form_points_5"] == 0.0
+    assert second["home_home_goals_for_5"] == 5.0
+    assert second["away_away_goals_against_5"] == 5.0
+    assert second["home_home_shots_5"] == 20.0
+    assert second["away_away_sot_5"] == 1.0
+    assert second["home_home_corners_5"] == 8.0
+    assert second["away_away_yellow_cards_5"] == 3.0
