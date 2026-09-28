@@ -67,6 +67,11 @@ class ModelBundle:
         )
         return min(1.0, max(0.0, float(value)))
 
+    @property
+    def selective_policy(self) -> dict | None:
+        value = self.metadata.get("result_calibration", {}).get("selective_policy")
+        return value if isinstance(value, dict) else None
+
 
 def configured_model_dir() -> Path | None:
     value = os.environ.get("IBETPRO_MODEL_DIR")
@@ -147,6 +152,14 @@ def model_status() -> dict:
             "modelVersion": bundle.version if bundle else None,
             "features": len(bundle.feature_columns) if bundle else 0,
             "featureProfile": bundle.feature_profile if bundle else None,
+            "selectivePolicy": {
+                "configured": bool(bundle and bundle.selective_policy),
+                "enabledBands": (
+                    int(bundle.selective_policy.get("enabled_band_count", 0))
+                    if bundle and bundle.selective_policy
+                    else 0
+                ),
+            },
             "blendWeights": {
                 "model": bundle.result_model_weight if bundle else None,
                 "goal": bundle.result_goal_weight if bundle else None,
