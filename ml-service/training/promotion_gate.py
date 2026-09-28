@@ -10,6 +10,8 @@ DEFAULT_GATES = {
     "max_brier": 0.66,
     "min_accuracy": 0.40,
     "max_goal_mae": 1.20,
+    "max_ece": 0.10,
+    "max_rps": 0.25,
     "must_beat_elo_log_loss_by": 0.005,
     "must_beat_market_log_loss_by": 0.0,
 }
@@ -56,6 +58,20 @@ def decide(candidate: dict, baselines: dict, gates: dict | None = None) -> dict:
         result_metrics["accuracy"],
         rules["min_accuracy"],
         ">=",
+    )
+    add(
+        "candidate_ece",
+        result_metrics["expected_calibration_error"] <= rules["max_ece"],
+        result_metrics["expected_calibration_error"],
+        rules["max_ece"],
+        "<=",
+    )
+    add(
+        "candidate_rps",
+        result_metrics["ranked_probability_score"] <= rules["max_rps"],
+        result_metrics["ranked_probability_score"],
+        rules["max_rps"],
+        "<=",
     )
     max_goal_mae = max(goal_metrics["home_mae"], goal_metrics["away_mae"])
     add(
