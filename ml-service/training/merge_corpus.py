@@ -41,6 +41,31 @@ def merge_csvs(input_dir: Path, output: Path) -> dict:
     output.parent.mkdir(parents=True, exist_ok=True)
     merged.to_csv(output, index=False)
 
+    coverage_columns = [
+        "home_xg",
+        "away_xg",
+        "home_shots",
+        "away_shots",
+        "home_sot",
+        "away_sot",
+        "home_possession",
+        "away_possession",
+        "home_corners",
+        "away_corners",
+        "home_yellow_cards",
+        "away_yellow_cards",
+        "home_red_cards",
+        "away_red_cards",
+        "home_odds",
+        "draw_odds",
+        "away_odds",
+    ]
+    coverage = {
+        column: round(float(merged[column].notna().mean()), 4)
+        for column in coverage_columns
+        if column in merged.columns
+    }
+
     report = {
         "files": len(files),
         "rows": int(len(merged)),
@@ -49,19 +74,10 @@ def merge_csvs(input_dir: Path, output: Path) -> dict:
         "end": merged["kickoff_utc"].max().isoformat(),
         "leagues": sorted(merged["league"].dropna().astype(str).unique().tolist()),
         "seasons": sorted(merged["season"].dropna().astype(str).unique().tolist()),
+        "coverage": coverage,
         "missing": {
             column: int(merged[column].isna().sum())
-            for column in [
-                "home_xg",
-                "away_xg",
-                "home_shots",
-                "away_shots",
-                "home_sot",
-                "away_sot",
-                "home_odds",
-                "draw_odds",
-                "away_odds",
-            ]
+            for column in coverage_columns
             if column in merged.columns
         },
     }
