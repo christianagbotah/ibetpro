@@ -13,7 +13,7 @@ DEFAULT_GATES = {
     "max_ece": 0.10,
     "max_rps": 0.25,
     "must_beat_elo_log_loss_by": 0.005,
-    "must_beat_market_log_loss_by": 0.0,
+    "must_beat_market_log_loss_by": 0.001,
     "min_market_coverage": 0.90,
 }
 
@@ -126,12 +126,13 @@ def decide(candidate: dict, baselines: dict, gates: dict | None = None) -> dict:
                 ">=",
             )
             paired_delta = float(market_comparison.get("delta", float("inf")))
+            required_delta = -float(rules["must_beat_market_log_loss_by"])
             add(
                 "paired_market_log_loss_delta",
-                paired_delta < 0.0,
+                paired_delta <= required_delta,
                 paired_delta,
-                0.0,
-                "<",
+                required_delta,
+                "<=",
             )
             ci_high = float(
                 market_comparison.get("bootstrap_ci95_high", float("inf"))
