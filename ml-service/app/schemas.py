@@ -46,6 +46,14 @@ class ModelFeatureVector(BaseModel):
     home_implied_prob: float | None = None
     draw_implied_prob: float | None = None
     away_implied_prob: float | None = None
+    home_possession_5: float | None = None
+    away_possession_5: float | None = None
+    home_corners_5: float | None = None
+    away_corners_5: float | None = None
+    home_yellow_cards_5: float | None = None
+    away_yellow_cards_5: float | None = None
+    home_red_cards_5: float | None = None
+    away_red_cards_5: float | None = None
 
 
 class PredictionInput(BaseModel):
