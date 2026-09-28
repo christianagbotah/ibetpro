@@ -132,5 +132,16 @@ export async function buildOnlineModelFeatures(
     home_implied_prob: implied(match.homeOdds),
     draw_implied_prob: implied(match.drawOdds),
     away_implied_prob: implied(match.awayOdds),
+
+    // Enriched rolling features stay unavailable until per-fixture historical
+    // stat snapshots are stored online. Do not substitute season aggregates.
+    home_possession_5: null,
+    away_possession_5: null,
+    home_corners_5: null,
+    away_corners_5: null,
+    home_yellow_cards_5: null,
+    away_yellow_cards_5: null,
+    home_red_cards_5: null,
+    away_red_cards_5: null,
   };
 }
