@@ -77,6 +77,24 @@ def render(work_dir: Path) -> str:
             "",
         ]
 
+    if candidate:
+        market_comparison = candidate.get("metrics", {}).get("market_comparison")
+        if market_comparison:
+            lines += [
+                "## Paired market comparison",
+                "",
+                "Candidate and market are scored on the same fixtures using per-match log loss.",
+                "",
+                f"- Rows: **{market_comparison.get('rows', '—')}**",
+                f"- Coverage: **{fmt(market_comparison.get('coverage'))}**",
+                f"- Candidate minus market log loss: **{fmt(market_comparison.get('delta'))}**",
+                f"- 95% bootstrap CI: **[{fmt(market_comparison.get('bootstrap_ci95_low'))}, {fmt(market_comparison.get('bootstrap_ci95_high'))}]**",
+                f"- Bootstrap P(candidate better): **{fmt(market_comparison.get('probability_candidate_better'))}**",
+                "",
+                "A promotion-quality market edge requires the entire 95% confidence interval to remain below zero.",
+                "",
+            ]
+
     if baselines:
         lines += [
             "## Baselines",
