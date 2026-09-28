@@ -49,21 +49,7 @@ function average(values: number[], fallback = 0): number {
     : fallback;
 }
 
-async function lastFinishedMatches(
-  team: string,
-  asOf: Date,
-  sport: string,
-  league: string,
-  venue: "any" | "home" | "away" = "any",
-  take = 10
-) {
-  const teamWhere =
-    venue === "home"
-      ? { homeTeam: team }
-      : venue === "away"
-        ? { awayTeam: team }
-        : { OR: [{ homeTeam: team }, { awayTeam: team }] };
-
+async function lastFinishedMatches(team: string, asOf: Date, sport: string, league: string) {
   return prisma.match.findMany({
     where: {
       status: "finished",
@@ -72,10 +58,10 @@ async function lastFinishedMatches(
       commenceTime: { lt: asOf },
       homeScore: { not: null },
       awayScore: { not: null },
-      ...teamWhere,
+      OR: [{ homeTeam: team }, { awayTeam: team }],
     },
     orderBy: { commenceTime: "desc" },
-    take,
+    take: 5,
     select: {
       id: true,
       commenceTime: true,
@@ -107,13 +93,10 @@ export async function buildOnlineModelFeatures(
   const featureAsOf =
     asOf.getTime() < match.commenceTime.getTime() ? asOf : match.commenceTime;
 
-  const [homeHistory, awayHistory, homeVenueHistory, awayVenueHistory] =
-    await Promise.all([
-      lastFinishedMatches(match.homeTeam, featureAsOf, match.sport, match.league, "any", 10),
-      lastFinishedMatches(match.awayTeam, featureAsOf, match.sport, match.league, "any", 10),
-      lastFinishedMatches(match.homeTeam, featureAsOf, match.sport, match.league, "home", 5),
-      lastFinishedMatches(match.awayTeam, featureAsOf, match.sport, match.league, "away", 5),
-    ]);
+  const [homeHistory, awayHistory] = await Promise.all([
+    lastFinishedMatches(match.homeTeam, featureAsOf, match.sport, match.league),
+    lastFinishedMatches(match.awayTeam, featureAsOf, match.sport, match.league),
+  ]);
 
   const homeElo = Number(homeStats?.eloRating ?? 1500);
   const awayElo = Number(awayStats?.eloRating ?? 1500);
@@ -122,24 +105,12 @@ export async function buildOnlineModelFeatures(
     home_elo: homeElo,
     away_elo: awayElo,
     elo_diff: homeElo - awayElo,
-    home_form_points_5: average(homeHistory.slice(0, 5).map((item) => pointsFor(match.homeTeam, item))),
-    away_form_points_5: average(awayHistory.slice(0, 5).map((item) => pointsFor(match.awayTeam, item))),
-    home_form_points_10: average(homeHistory.map((item) => pointsFor(match.homeTeam, item))),
-    away_form_points_10: average(awayHistory.map((item) => pointsFor(match.awayTeam, item))),
-    home_goals_for_5: average(homeHistory.slice(0, 5).map((item) => goalsFor(match.homeTeam, item))),
-    away_goals_for_5: average(awayHistory.slice(0, 5).map((item) => goalsFor(match.awayTeam, item))),
-    home_goals_against_5: average(homeHistory.slice(0, 5).map((item) => goalsAgainst(match.homeTeam, item))),
-    away_goals_against_5: average(awayHistory.slice(0, 5).map((item) => goalsAgainst(match.awayTeam, item))),
-    home_goals_for_10: average(homeHistory.map((item) => goalsFor(match.homeTeam, item))),
-    away_goals_for_10: average(awayHistory.map((item) => goalsFor(match.awayTeam, item))),
-    home_goals_against_10: average(homeHistory.map((item) => goalsAgainst(match.homeTeam, item))),
-    away_goals_against_10: average(awayHistory.map((item) => goalsAgainst(match.awayTeam, item))),
-    home_home_points_5: average(homeVenueHistory.map((item) => pointsFor(match.homeTeam, item))),
-    away_away_points_5: average(awayVenueHistory.map((item) => pointsFor(match.awayTeam, item))),
-    home_home_goals_for_5: average(homeVenueHistory.map((item) => goalsFor(match.homeTeam, item))),
-    away_away_goals_for_5: average(awayVenueHistory.map((item) => goalsFor(match.awayTeam, item))),
-    home_home_goals_against_5: average(homeVenueHistory.map((item) => goalsAgainst(match.homeTeam, item))),
-    away_away_goals_against_5: average(awayVenueHistory.map((item) => goalsAgainst(match.awayTeam, item))),
+    home_form_points_5: average(homeHistory.map((item) => pointsFor(match.homeTeam, item))),
+    away_form_points_5: average(awayHistory.map((item) => pointsFor(match.awayTeam, item))),
+    home_goals_for_5: average(homeHistory.map((item) => goalsFor(match.homeTeam, item))),
+    away_goals_for_5: average(awayHistory.map((item) => goalsFor(match.awayTeam, item))),
+    home_goals_against_5: average(homeHistory.map((item) => goalsAgainst(match.homeTeam, item))),
+    away_goals_against_5: average(awayHistory.map((item) => goalsAgainst(match.awayTeam, item))),
 
     // Until per-fixture xG/shot history is stored with as-of timestamps,
     // leave these absent so the trained model uses training-period imputation.
