@@ -1,13 +1,15 @@
 from training.promotion_gate import decide
 
 
-def candidate(log_loss=0.90, brier=0.55, accuracy=0.48, home_mae=0.85, away_mae=0.90):
+def candidate(log_loss=0.90, brier=0.55, accuracy=0.48, ece=0.06, rps=0.20, home_mae=0.85, away_mae=0.90):
     return {
         "metrics": {
             "result": {
                 "log_loss": log_loss,
                 "multiclass_brier": brier,
                 "accuracy": accuracy,
+                "expected_calibration_error": ece,
+                "ranked_probability_score": rps,
             },
             "goals": {
                 "home_mae": home_mae,
@@ -56,3 +58,12 @@ def test_bad_goal_model_blocks_promotion():
         check for check in result["checks"] if check["name"] == "goal_mae"
     )
     assert goal_check["passed"] is False
+
+
+def test_bad_calibration_blocks_promotion():
+    result = decide(candidate(ece=0.16), baselines())
+    assert result["all_gates_passed"] is False
+    calibration_check = next(
+        check for check in result["checks"] if check["name"] == "candidate_ece"
+    )
+    assert calibration_check["passed"] is False
