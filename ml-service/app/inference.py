@@ -104,10 +104,15 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
 
     raw = payload.modelFeatures.model_dump()
     row = {}
+    observed_features = 0
+    imputed_features: list[str] = []
     for feature in bundle.feature_columns:
         value = raw.get(feature)
         if value is None:
+            imputed_features.append(feature)
             value = bundle.imputation.get(feature, 0.0)
+        else:
+            observed_features += 1
         row[feature] = float(value)
 
     frame = pd.DataFrame([row], columns=bundle.feature_columns)
@@ -149,6 +154,15 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
     home_win, draw, away_win = map(float, result_probs)
 
     warnings: list[str] = []
+    if imputed_features:
+        warnings.append(
+            f"{len(imputed_features)} of {len(bundle.feature_columns)} model features were imputed."
+        )
+        if len(imputed_features) / max(len(bundle.feature_columns), 1) >= 0.25:
+            warnings.append(
+                "A substantial share of trained-model features is unavailable for this fixture; confidence is reduced."
+            )
+
     divergence = max(
         abs(home_win - matrix_home),
         abs(draw - matrix_draw),
@@ -159,9 +173,20 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
             "Result and goal-model distributions disagree materially; interpret confidence cautiously."
         )
 
-    completeness = sum(value is not None for value in raw.values()) / max(len(raw), 1)
+    completeness = observed_features / max(len(bundle.feature_columns), 1)
     separation = max(home_win, draw, away_win) - min(home_win, draw, away_win)
-    confidence = max(0.35, min(0.92, 0.40 + completeness * 0.30 + separation * 0.25 - divergence * 0.20))
+    imputation_penalty = min(0.20, (1.0 - completeness) * 0.25)
+    confidence = max(
+        0.25,
+        min(
+            0.92,
+            0.40
+            + completeness * 0.30
+            + separation * 0.25
+            - divergence * 0.20
+            - imputation_penalty,
+        ),
+    )
 
     scorelines = sorted(matrix, key=lambda item: item.probability, reverse=True)[:10]
     scorelines = [
