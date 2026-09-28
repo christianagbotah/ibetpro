@@ -111,6 +111,26 @@ def ranked_probability_score(
     observed_cdf = np.cumsum(observed, axis=1)[:, :-1]
     return float(np.mean(np.sum((predicted_cdf - observed_cdf) ** 2, axis=1) / 2.0))
 
+
+def elo_probabilities(frame: pd.DataFrame) -> np.ndarray:
+    home = frame["home_elo"].astype(float).to_numpy() + 65.0
+    away = frame["away_elo"].astype(float).to_numpy()
+    home_no_draw = 1.0 / (1.0 + 10 ** ((away - home) / 400.0))
+    draw = np.full(len(frame), 0.25, dtype=float)
+    home_prob = home_no_draw * 0.75
+    away_prob = (1.0 - home_no_draw) * 0.75
+    return np.column_stack([home_prob, draw, away_prob])
+
+
+def blend_probabilities(
+    model_probs: np.ndarray,
+    elo_probs: np.ndarray,
+    model_weight: float,
+) -> np.ndarray:
+    blended = model_weight * model_probs + (1.0 - model_weight) * elo_probs
+    return blended / blended.sum(axis=1, keepdims=True)
+
+
 def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> dict:
     frame = load_dataset(dataset_path)
     train_jobs = max(1, int(os.environ.get("MODEL_TRAIN_N_JOBS", "2")))
@@ -159,14 +179,71 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
     )
     result_model.fit(x_train, y_train)
 
-    calibrator = CalibratedClassifierCV(
-        FrozenEstimator(result_model),
-        method="isotonic",
+    calibration_df = calibration_df.sort_values("kickoff_utc").reset_index(drop=True)
+    split_at = max(1, len(calibration_df) // 2)
+    calibration_fit_df = calibration_df.iloc[:split_at]
+    calibration_select_df = calibration_df.iloc[split_at:]
+    if calibration_select_df.empty:
+        raise ValueError("Calibration selection split is empty")
+
+    calibration_candidates = {}
+    selection_y = calibration_select_df["result_class"].astype(int).to_numpy()
+    selection_x = features(calibration_select_df)
+
+    raw_selection = result_model.predict_proba(selection_x)
+    calibration_candidates["raw"] = {
+        "log_loss": float(log_loss(selection_y, raw_selection, labels=[0, 1, 2])),
+        "probabilities": raw_selection,
+    }
+
+    for method in ("sigmoid", "isotonic"):
+        candidate = CalibratedClassifierCV(
+            FrozenEstimator(result_model),
+            method=method,
+        )
+        candidate.fit(
+            features(calibration_fit_df),
+            calibration_fit_df["result_class"].astype(int),
+        )
+        probabilities = candidate.predict_proba(selection_x)
+        calibration_candidates[method] = {
+            "log_loss": float(
+                log_loss(selection_y, probabilities, labels=[0, 1, 2])
+            ),
+            "probabilities": probabilities,
+        }
+
+    selected_method = min(
+        calibration_candidates,
+        key=lambda name: calibration_candidates[name]["log_loss"],
     )
-    calibrator.fit(
-        features(calibration_df),
-        calibration_df["result_class"].astype(int),
-    )
+
+    if selected_method == "raw":
+        calibrator = None
+    else:
+        calibrator = CalibratedClassifierCV(
+            FrozenEstimator(result_model),
+            method=selected_method,
+        )
+        calibrator.fit(
+            features(calibration_df),
+            calibration_df["result_class"].astype(int),
+        )
+
+    selected_model_probs = calibration_candidates[selected_method]["probabilities"]
+    selection_elo = elo_probabilities(calibration_select_df)
+    blend_grid = [round(value, 2) for value in np.linspace(0.0, 1.0, 11)]
+    blend_scores = {
+        weight: float(
+            log_loss(
+                selection_y,
+                blend_probabilities(selected_model_probs, selection_elo, weight),
+                labels=[0, 1, 2],
+            )
+        )
+        for weight in blend_grid
+    }
+    result_model_weight = min(blend_scores, key=blend_scores.get)
 
     home_goal_model = XGBRegressor(
         objective="count:poisson",
@@ -199,7 +276,16 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
 
     x_test = features(test_df)
     y_test = test_df["result_class"].astype(int).to_numpy()
-    probabilities = calibrator.predict_proba(x_test)
+    calibrated_test = (
+        result_model.predict_proba(x_test)
+        if calibrator is None
+        else calibrator.predict_proba(x_test)
+    )
+    probabilities = blend_probabilities(
+        calibrated_test,
+        elo_probabilities(test_df),
+        result_model_weight,
+    )
     predicted_class = np.argmax(probabilities, axis=1)
 
     home_goal_pred = np.clip(home_goal_model.predict(x_test), 0, 6)
@@ -231,7 +317,7 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
 
     output_dir.mkdir(parents=True, exist_ok=True)
     joblib.dump(result_model, output_dir / "result_xgb.joblib")
-    joblib.dump(calibrator, output_dir / "result_calibrator.joblib")
+    joblib.dump(calibrator if calibrator is not None else result_model, output_dir / "result_calibrator.joblib")
     joblib.dump(home_goal_model, output_dir / "home_goals_xgb.joblib")
     joblib.dump(away_goal_model, output_dir / "away_goals_xgb.joblib")
 
@@ -253,6 +339,17 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
         "model_version": "xgb-football-v0",
         "feature_columns": FEATURE_COLUMNS,
         "training_imputation": {key: float(value) for key, value in train_medians.items()},
+        "result_calibration": {
+            "selected_method": selected_method,
+            "selection_log_loss": {
+                name: float(value["log_loss"])
+                for name, value in calibration_candidates.items()
+            },
+            "result_model_weight": float(result_model_weight),
+            "blend_selection_log_loss": {
+                str(weight): float(score) for weight, score in blend_scores.items()
+            },
+        },
         "artifacts": artifacts,
         "metrics": metrics,
         "promotion_status": "candidate",
