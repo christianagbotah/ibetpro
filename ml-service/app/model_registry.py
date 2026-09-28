@@ -39,6 +39,14 @@ class ModelBundle:
             for key, value in self.metadata.get("training_imputation", {}).items()
         }
 
+    @property
+    def result_model_weight(self) -> float:
+        value = (
+            self.metadata.get("result_calibration", {})
+            .get("result_model_weight", 1.0)
+        )
+        return min(1.0, max(0.0, float(value)))
+
 
 def configured_model_dir() -> Path | None:
     value = os.environ.get("IBETPRO_MODEL_DIR")
