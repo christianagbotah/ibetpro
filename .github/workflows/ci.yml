@@ -64,7 +64,8 @@ jobs:
 
       - run: pip install -r requirements.txt
       - run: python -m compileall app training
-      - run: python - <<'PY'
+      - run: |
+          python - <<'PY'
           from app.schemas import PredictionInput, TeamFeatureSnapshot
           from app.baselines import poisson_baseline
 
