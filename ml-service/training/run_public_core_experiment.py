@@ -91,7 +91,8 @@ def main() -> None:
     segments = args.work_dir / "segments.json"
     run([
         "python",
-        "training/evaluate_segments.py",
+        "-m",
+        "training.evaluate_segments",
         "--dataset",
         str(features),
         "--model-dir",
@@ -119,7 +120,8 @@ def main() -> None:
     if gate_code == 0:
         run([
             "python",
-            "training/evaluate_holdout.py",
+            "-m",
+            "training.evaluate_holdout",
             "--dataset",
             str(features),
             "--model-dir",
