@@ -143,6 +143,49 @@ async function lastFinishedMatches(
   });
 }
 
+async function lastVenueMatches(
+  team: string,
+  venue: "home" | "away",
+  asOf: Date,
+  sport: string,
+  league: string
+): Promise<HistoricalMatch[]> {
+  return prisma.match.findMany({
+    where: {
+      status: "finished",
+      sport,
+      league,
+      commenceTime: { lt: asOf },
+      homeScore: { not: null },
+      awayScore: { not: null },
+      ...(venue === "home" ? { homeTeam: team } : { awayTeam: team }),
+    },
+    orderBy: { commenceTime: "desc" },
+    take: 5,
+    select: {
+      id: true,
+      commenceTime: true,
+      homeTeam: true,
+      awayTeam: true,
+      homeScore: true,
+      awayScore: true,
+      statSnapshots: {
+        select: {
+          teamSide: true,
+          teamName: true,
+          possession: true,
+          shots: true,
+          shotsOnTarget: true,
+          corners: true,
+          yellowCards: true,
+          redCards: true,
+          xg: true,
+        },
+      },
+    },
+  });
+}
+
 function restDays(lastMatch: HistoricalMatch | undefined, asOf: Date): number {
   if (!lastMatch) return 7;
   const days = (asOf.getTime() - lastMatch.commenceTime.getTime()) / 86_400_000;
@@ -179,13 +222,30 @@ export async function buildOnlineModelFeatures(
   const featureAsOf =
     asOf.getTime() < match.commenceTime.getTime() ? asOf : match.commenceTime;
 
-  const [homeHistory, awayHistory] = await Promise.all([
-    lastFinishedMatches(match.homeTeam, featureAsOf, match.sport, match.league),
-    lastFinishedMatches(match.awayTeam, featureAsOf, match.sport, match.league),
-  ]);
+  const [homeHistory, awayHistory, homeVenueHistory, awayVenueHistory] =
+    await Promise.all([
+      lastFinishedMatches(match.homeTeam, featureAsOf, match.sport, match.league),
+      lastFinishedMatches(match.awayTeam, featureAsOf, match.sport, match.league),
+      lastVenueMatches(
+        match.homeTeam,
+        "home",
+        featureAsOf,
+        match.sport,
+        match.league
+      ),
+      lastVenueMatches(
+        match.awayTeam,
+        "away",
+        featureAsOf,
+        match.sport,
+        match.league
+      ),
+    ]);
 
   const homeRolling = rollingStats(match.homeTeam, homeHistory);
   const awayRolling = rollingStats(match.awayTeam, awayHistory);
+  const homeVenueRolling = rollingStats(match.homeTeam, homeVenueHistory);
+  const awayVenueRolling = rollingStats(match.awayTeam, awayVenueHistory);
 
   const [homeElo, awayElo] = await Promise.all([
     getCausalElo(match.homeTeam, match.sport, match.league, featureAsOf),
@@ -235,5 +295,31 @@ export async function buildOnlineModelFeatures(
     away_yellow_cards_5: awayRolling.yellowCards,
     home_red_cards_5: homeRolling.redCards,
     away_red_cards_5: awayRolling.redCards,
+    home_home_form_points_5: average(
+      homeVenueHistory.map((item) => pointsFor(match.homeTeam, item))
+    ),
+    away_away_form_points_5: average(
+      awayVenueHistory.map((item) => pointsFor(match.awayTeam, item))
+    ),
+    home_home_goals_for_5: average(
+      homeVenueHistory.map((item) => goalsFor(match.homeTeam, item))
+    ),
+    home_home_goals_against_5: average(
+      homeVenueHistory.map((item) => goalsAgainst(match.homeTeam, item))
+    ),
+    away_away_goals_for_5: average(
+      awayVenueHistory.map((item) => goalsFor(match.awayTeam, item))
+    ),
+    away_away_goals_against_5: average(
+      awayVenueHistory.map((item) => goalsAgainst(match.awayTeam, item))
+    ),
+    home_home_shots_5: homeVenueRolling.shots,
+    away_away_shots_5: awayVenueRolling.shots,
+    home_home_sot_5: homeVenueRolling.shotsOnTarget,
+    away_away_sot_5: awayVenueRolling.shotsOnTarget,
+    home_home_corners_5: homeVenueRolling.corners,
+    away_away_corners_5: awayVenueRolling.corners,
+    home_home_yellow_cards_5: homeVenueRolling.yellowCards,
+    away_away_yellow_cards_5: awayVenueRolling.yellowCards,
   };
 }
