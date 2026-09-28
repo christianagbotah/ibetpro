@@ -1,7 +1,8 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
-import { predictMatch } from "@/lib/prediction/service";
+import { predictMatch, predictShadowCandidate } from "@/lib/prediction/service";
 import { persistPredictionSnapshot } from "@/lib/prediction/store";
+import { persistShadowComparison } from "@/lib/prediction/shadow-store";
 import { buildOnlineModelFeatures } from "@/lib/prediction/model-features";
 import type { PredictionInput, TeamFeatureSnapshot } from "@/lib/prediction/contracts";
 
@@ -98,6 +99,10 @@ export async function POST(request: NextRequest) {
 
     const richPrediction = await predictMatch(input);
     const snapshotId = await persistPredictionSnapshot(input, richPrediction);
+    const shadowCandidate = await predictShadowCandidate(input);
+    const shadowComparisonId = shadowCandidate
+      ? (await persistShadowComparison(input, richPrediction, shadowCandidate)).id
+      : null;
     const maxResult = Math.max(
       richPrediction.result.homeWin,
       richPrediction.result.draw,
@@ -143,6 +148,7 @@ export async function POST(request: NextRequest) {
       },
       richPrediction,
       snapshotId,
+      shadowComparisonId,
       homeTeamStats,
       awayTeamStats,
     });
