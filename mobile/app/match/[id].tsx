@@ -63,7 +63,27 @@ export default function MatchAnalysisScreen() {
     <SafeAreaView style={styles.screen} edges={["bottom"]}>
       <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.headerCard}>
-          <Text style={styles.kicker}>AI MATCH FORECAST</Text>
+          <View style={styles.kickerRow}>
+            <Text style={styles.kicker}>AI MATCH FORECAST</Text>
+            <View
+              style={[
+                styles.modeBadge,
+                prediction.resultMode === "selective-model"
+                  ? styles.modeBadgeSelective
+                  : prediction.resultMode === "market-consensus"
+                    ? styles.modeBadgeMarket
+                    : styles.modeBadgeBaseline,
+              ]}
+            >
+              <Text style={styles.modeBadgeText}>
+                {prediction.resultMode === "selective-model"
+                  ? "SELECTIVE EDGE"
+                  : prediction.resultMode === "market-consensus"
+                    ? "MARKET CONSENSUS"
+                    : "BASELINE"}
+              </Text>
+            </View>
+          </View>
           <View style={styles.resultRow}>
             <View style={styles.resultBox}>
               <Text style={styles.resultLabel}>HOME</Text>
@@ -153,7 +173,13 @@ const styles = StyleSheet.create({
   center: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12, backgroundColor: "#0b0f14" },
   content: { padding: 16, gap: 14, paddingBottom: 40 },
   headerCard: { backgroundColor: "#121922", borderRadius: 18, padding: 16, borderWidth: 1, borderColor: "#202b38" },
+  kickerRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 },
   kicker: { color: "#7e90a4", fontSize: 11, fontWeight: "800", letterSpacing: 1.2 },
+  modeBadge: { borderRadius: 999, paddingHorizontal: 8, paddingVertical: 4 },
+  modeBadgeSelective: { backgroundColor: "#12351f" },
+  modeBadgeMarket: { backgroundColor: "#35260f" },
+  modeBadgeBaseline: { backgroundColor: "#202b38" },
+  modeBadgeText: { color: "#e6edf3", fontSize: 9, fontWeight: "800" },
   resultRow: { flexDirection: "row", gap: 8, marginTop: 14 },
   resultBox: { flex: 1, backgroundColor: "#0b0f14", borderRadius: 12, alignItems: "center", paddingVertical: 13 },
   resultLabel: { color: "#68798c", fontSize: 10, fontWeight: "700" },
