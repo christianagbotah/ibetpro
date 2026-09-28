@@ -26,6 +26,21 @@ def _fair_odds(probability: float) -> float | None:
     return round(1.0 / probability, 2) if 0 < probability <= 1 else None
 
 
+def _policy_allows_divergence(divergence: float, policy: dict) -> bool:
+    bands = policy.get("bands", [])
+    for index, band in enumerate(bands):
+        if not band.get("use_candidate"):
+            continue
+        lower = float(band["lower"])
+        upper = float(band["upper"])
+        is_last = index == len(bands) - 1
+        if divergence >= lower and (
+            divergence <= upper if is_last else divergence < upper
+        ):
+            return True
+    return False
+
+
 def _score_matrix(home_lambda: float, away_lambda: float) -> list[ScoreProbability]:
     matrix: list[ScoreProbability] = []
     for home in range(9):
@@ -163,19 +178,64 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
         0.0,
         1.0 - model_weight - goal_weight - market_weight,
     )
-    result_probs = (
+    global_probs = (
         model_weight * model_probs
         + goal_weight * goal_probs
         + market_weight * market_probs
         + elo_weight * elo_probs
     )
-    result_probs = result_probs / result_probs.sum()
+    global_probs = global_probs / global_probs.sum()
 
-    # Result classifier is the authoritative 1X2 estimator; the goal models
-    # remain authoritative for score/goal-derived markets.
+    selective_policy = getattr(bundle, "selective_policy", None)
+    selective_used = False
+    selective_abstained = False
+    selective_divergence = None
+
+    if market_available and selective_policy:
+        weights = selective_policy.get("alternative_weights", {})
+        alternative_model_weight = float(weights.get("model", 0.0))
+        alternative_goal_weight = float(weights.get("goal", 0.0))
+        alternative_market_weight = float(weights.get("market", 1.0))
+        alternative_elo_weight = max(
+            0.0,
+            1.0
+            - alternative_model_weight
+            - alternative_goal_weight
+            - alternative_market_weight,
+        )
+        alternative_probs = (
+            alternative_model_weight * model_probs
+            + alternative_goal_weight * goal_probs
+            + alternative_market_weight * market_probs
+            + alternative_elo_weight * elo_probs
+        )
+        alternative_probs = alternative_probs / alternative_probs.sum()
+        selective_divergence = float(
+            np.max(np.abs(alternative_probs - market_probs))
+        )
+        selective_used = _policy_allows_divergence(
+            selective_divergence,
+            selective_policy,
+        )
+        selective_abstained = not selective_used
+        result_probs = alternative_probs if selective_used else market_probs
+    else:
+        result_probs = global_probs
+
+    # Result classifier/ensemble is authoritative for 1X2; goal models remain
+    # authoritative for score and goal-derived markets.
     home_win, draw, away_win = map(float, result_probs)
 
     warnings: list[str] = []
+    if selective_used:
+        warnings.append(
+            f"Selective model deviation was authorized for this fixture (market divergence {selective_divergence:.3f})."
+        )
+    elif selective_abstained:
+        warnings.append(
+            "Model did not meet the calibrated selective-edge condition; 1X2 probabilities use market consensus."
+        )
+
     if market_weight > 0 and not market_available:
         warnings.append(
             "Market ensemble weight is configured but genuine market probabilities are unavailable; the market component fell back to ELO."
