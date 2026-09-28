@@ -18,6 +18,11 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler
 from lightgbm import LGBMClassifier
 from xgboost import XGBClassifier, XGBRegressor
+from training.selective_policy import (
+    SelectivePolicyRules,
+    apply_selective_policy,
+    learn_selective_policy,
+)
 
 CORE_FEATURE_COLUMNS = [
     "home_elo",
@@ -704,6 +709,56 @@ def train(
         min_market_improvement=min_market_improvement,
         near_best_tolerance=near_best_tolerance,
     )
+
+    # Learn a selective-deviation policy separately from the conservative
+    # global blend. The alternative blend may only be used later for fixtures
+    # whose calibration divergence band shows a statistically credible edge.
+    non_market_candidates = [
+        weights
+        for weights in blend_candidates
+        if weights[2] < 0.999 and (weights[0] + weights[1]) > 0.0
+    ]
+    alternative_weights = min(
+        non_market_candidates,
+        key=lambda weights: blend_scores[
+            "model=%.2f,goal=%.2f,market=%.2f" % weights
+        ],
+    )
+    alternative_selection = blend_probabilities(
+        selected_model_probs,
+        selection_elo,
+        alternative_weights[0],
+        selection_goal_probs,
+        alternative_weights[1],
+        selection_market,
+        alternative_weights[2],
+    )
+    selective_policy = learn_selective_policy(
+        selection_y,
+        alternative_selection,
+        selection_market,
+        rules=SelectivePolicyRules(
+            min_rows=int(os.environ.get("SELECTIVE_MIN_ROWS", "80")),
+            min_log_loss_improvement=float(
+                os.environ.get("SELECTIVE_MIN_LOG_LOSS_IMPROVEMENT", "0.003")
+            ),
+            require_ci_below_zero=True,
+            bootstrap_iterations=int(
+                os.environ.get("SELECTIVE_BOOTSTRAP_ITERATIONS", "3000")
+            ),
+        ),
+    )
+    selective_policy["alternative_weights"] = {
+        "model": float(alternative_weights[0]),
+        "goal": float(alternative_weights[1]),
+        "market": float(alternative_weights[2]),
+        "elo": float(
+            1.0
+            - alternative_weights[0]
+            - alternative_weights[1]
+            - alternative_weights[2]
+        ),
+    }
     x_test = features(test_df)
     y_test = test_df["result_class"].astype(int).to_numpy()
     calibrated_test = (
@@ -750,7 +805,8 @@ def train(
 
     test_elo = elo_probabilities(test_df)
     test_market = market_probabilities(test_df, fallback=test_elo)
-    probabilities = blend_probabilities(
+
+    global_probabilities = blend_probabilities(
         calibrated_test,
         test_elo,
         result_model_weight,
@@ -758,6 +814,20 @@ def train(
         result_goal_weight,
         test_market,
         result_market_weight,
+    )
+    alternative_test = blend_probabilities(
+        calibrated_test,
+        test_elo,
+        alternative_weights[0],
+        goal_test_probs,
+        alternative_weights[1],
+        test_market,
+        alternative_weights[2],
+    )
+    probabilities, selective_mask = apply_selective_policy(
+        alternative_test,
+        test_market,
+        selective_policy,
     )
     predicted_class = np.argmax(probabilities, axis=1)
 
@@ -792,6 +862,21 @@ def train(
             "accuracy": float(accuracy_score(y_test, predicted_class)),
             "expected_calibration_error": expected_calibration_error(y_test, probabilities),
             "ranked_probability_score": ranked_probability_score(y_test, probabilities),
+        },
+        "global_blend_result": {
+            "log_loss": float(
+                log_loss(y_test, global_probabilities, labels=[0, 1, 2])
+            ),
+            "multiclass_brier": multiclass_brier(y_test, global_probabilities),
+            "accuracy": float(
+                accuracy_score(y_test, np.argmax(global_probabilities, axis=1))
+            ),
+        },
+        "selective": {
+            "candidate_rows": int(selective_mask.sum()),
+            "candidate_rate": float(selective_mask.mean()),
+            "abstained_rows": int((~selective_mask).sum()),
+            "policy": selective_policy,
         },
         "goals": {
             "home_mae": float(mean_absolute_error(test_df["home_goals"], home_goal_pred)),
@@ -856,6 +941,7 @@ def train(
             "blend_selection_log_loss": {
                 str(weight): float(score) for weight, score in blend_scores.items()
             },
+            "selective_policy": selective_policy,
         },
         "artifacts": artifacts,
         "metrics": metrics,
