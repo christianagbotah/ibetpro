@@ -48,3 +48,12 @@ def test_baseline_stays_poisson_without_consensus():
     assert abs(
         result.result.homeWin + result.result.draw + result.result.awayWin - 1.0
     ) < 0.001
+
+
+def test_baseline_rejects_stale_consensus():
+    payload = _input(True)
+    payload.modelFeatures.market_consensus_age_minutes = 720
+
+    result = poisson_baseline(payload)
+
+    assert result.resultMode == "baseline"
