@@ -53,6 +53,20 @@ export interface ModelFeatureVector {
   away_yellow_cards_5?: number | null;
   home_red_cards_5?: number | null;
   away_red_cards_5?: number | null;
+  home_home_form_points_5?: number | null;
+  away_away_form_points_5?: number | null;
+  home_home_goals_for_5?: number | null;
+  home_home_goals_against_5?: number | null;
+  away_away_goals_for_5?: number | null;
+  away_away_goals_against_5?: number | null;
+  home_home_shots_5?: number | null;
+  away_away_shots_5?: number | null;
+  home_home_sot_5?: number | null;
+  away_away_sot_5?: number | null;
+  home_home_corners_5?: number | null;
+  away_away_corners_5?: number | null;
+  home_home_yellow_cards_5?: number | null;
+  away_away_yellow_cards_5?: number | null;
 }
 
 export interface PredictionInput {
