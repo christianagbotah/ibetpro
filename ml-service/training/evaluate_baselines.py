@@ -8,8 +8,6 @@ import numpy as np
 import pandas as pd
 from sklearn.metrics import log_loss
 
-from training.build_features import build_features
-
 
 @dataclass(frozen=True)
 class BaselineMetrics:
