@@ -49,6 +49,7 @@ class ModelFeatureVector(BaseModel):
     home_market_prob: float | None = None
     draw_market_prob: float | None = None
     away_market_prob: float | None = None
+    market_consensus_available: bool | None = None
     market_overround: float | None = None
     market_entropy: float | None = None
     market_home_away_log_ratio: float | None = None
