@@ -60,7 +60,9 @@ def load_dataset(path: Path) -> pd.DataFrame:
 
     frame = frame.copy()
     frame["kickoff_utc"] = pd.to_datetime(frame["kickoff_utc"], utc=True)
-    frame = frame.sort_values("kickoff_utc").dropna(subset=REQUIRED_COLUMNS)
+    frame = frame.sort_values("kickoff_utc")
+    target_columns = ["kickoff_utc", "home_goals", "away_goals", "result_class"]
+    frame = frame.dropna(subset=target_columns)
     return frame
 
 
@@ -88,7 +90,15 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
             f"calibration={len(calibration_df)}, test={len(test_df)}"
         )
 
-    x_train = train_df[FEATURE_COLUMNS]
+    # Fit imputation values strictly on the training period to avoid
+    # calibration/test leakage. Missing market/stat columns are expected for
+    # some historical providers and must not cause entire fixtures to vanish.
+    train_medians = train_df[FEATURE_COLUMNS].median(numeric_only=True).fillna(0.0)
+
+    def features(df: pd.DataFrame) -> pd.DataFrame:
+        return df[FEATURE_COLUMNS].apply(pd.to_numeric, errors="coerce").fillna(train_medians)
+
+    x_train = features(train_df)
     y_train = train_df["result_class"].astype(int)
 
     result_model = XGBClassifier(
@@ -110,7 +120,7 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
 
     calibrator = CalibratedClassifierCV(result_model, method="isotonic", cv="prefit")
     calibrator.fit(
-        calibration_df[FEATURE_COLUMNS],
+        features(calibration_df),
         calibration_df["result_class"].astype(int),
     )
 
@@ -143,7 +153,7 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
     home_goal_model.fit(x_train, train_df["home_goals"])
     away_goal_model.fit(x_train, train_df["away_goals"])
 
-    x_test = test_df[FEATURE_COLUMNS]
+    x_test = features(test_df)
     y_test = test_df["result_class"].astype(int).to_numpy()
     probabilities = calibrator.predict_proba(x_test)
     predicted_class = np.argmax(probabilities, axis=1)
@@ -182,6 +192,7 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
     metadata = {
         "model_version": "xgb-football-v0",
         "feature_columns": FEATURE_COLUMNS,
+        "training_imputation": {key: float(value) for key, value in train_medians.items()},
         "metrics": metrics,
         "promotion_status": "candidate",
         "notes": [
