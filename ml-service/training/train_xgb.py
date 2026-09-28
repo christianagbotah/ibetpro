@@ -146,13 +146,19 @@ def elo_probabilities(frame: pd.DataFrame) -> np.ndarray:
     return np.column_stack([home_prob, draw, away_prob])
 
 
+def market_valid_mask(frame: pd.DataFrame) -> np.ndarray:
+    columns = ["home_implied_prob", "draw_implied_prob", "away_implied_prob"]
+    values = frame[columns].apply(pd.to_numeric, errors="coerce").to_numpy(dtype=float)
+    return np.isfinite(values).all(axis=1) & (values.sum(axis=1) > 0)
+
+
 def market_probabilities(
     frame: pd.DataFrame,
     fallback: np.ndarray | None = None,
 ) -> np.ndarray:
     columns = ["home_implied_prob", "draw_implied_prob", "away_implied_prob"]
     values = frame[columns].apply(pd.to_numeric, errors="coerce").to_numpy(dtype=float)
-    valid = np.isfinite(values).all(axis=1) & (values.sum(axis=1) > 0)
+    valid = market_valid_mask(frame)
     result = np.zeros_like(values, dtype=float)
 
     if valid.any():
@@ -166,6 +172,43 @@ def market_probabilities(
             result[~valid] = np.array([1 / 3, 1 / 3, 1 / 3], dtype=float)
 
     return result
+
+
+def paired_log_loss_bootstrap(
+    y_true: np.ndarray,
+    candidate_probs: np.ndarray,
+    benchmark_probs: np.ndarray,
+    iterations: int = 4000,
+    seed: int = 42,
+) -> dict[str, float]:
+    if len(y_true) == 0:
+        raise ValueError("Cannot bootstrap an empty comparison set")
+
+    indices = np.arange(len(y_true))
+    candidate_losses = -np.log(
+        np.clip(candidate_probs[indices, y_true.astype(int)], 1e-12, 1.0)
+    )
+    benchmark_losses = -np.log(
+        np.clip(benchmark_probs[indices, y_true.astype(int)], 1e-12, 1.0)
+    )
+    paired_delta = candidate_losses - benchmark_losses
+
+    rng = np.random.default_rng(seed)
+    sampled_means = np.empty(iterations, dtype=float)
+    for iteration in range(iterations):
+        sample = rng.integers(0, len(paired_delta), size=len(paired_delta))
+        sampled_means[iteration] = float(paired_delta[sample].mean())
+
+    low, high = np.quantile(sampled_means, [0.025, 0.975])
+    return {
+        "candidate_log_loss": float(candidate_losses.mean()),
+        "benchmark_log_loss": float(benchmark_losses.mean()),
+        "delta": float(paired_delta.mean()),
+        "bootstrap_ci95_low": float(low),
+        "bootstrap_ci95_high": float(high),
+        "probability_candidate_better": float(np.mean(sampled_means < 0.0)),
+        "iterations": int(iterations),
+    }
 
 
 def poisson_result_probabilities(
@@ -476,6 +519,20 @@ def train(
     )
     predicted_class = np.argmax(probabilities, axis=1)
 
+    market_mask = market_valid_mask(test_df)
+    if market_mask.any():
+        market_comparison = {
+            **paired_log_loss_bootstrap(
+                y_test[market_mask],
+                probabilities[market_mask],
+                test_market[market_mask],
+            ),
+            "rows": int(market_mask.sum()),
+            "coverage": float(market_mask.mean()),
+        }
+    else:
+        market_comparison = None
+
     metrics = {
         "rows": {
             "train": int(len(train_df)),
@@ -498,6 +555,7 @@ def train(
             "home_mae": float(mean_absolute_error(test_df["home_goals"], home_goal_pred)),
             "away_mae": float(mean_absolute_error(test_df["away_goals"], away_goal_pred)),
         },
+        "market_comparison": market_comparison,
     }
 
     output_dir.mkdir(parents=True, exist_ok=True)
