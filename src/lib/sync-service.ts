@@ -160,21 +160,18 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
 
   // ---- The Odds API: fetch real-time odds ----
   if (dataSource === "odds-api") {
-    // Check API quota before making calls
+    // Low paid quota must not disable free fixture discovery. Keep the
+    // events feed current, but block paid odds enrichment until quota recovers.
+    let paidOddsAllowed = true;
     if (!force && apiQuotaRemaining !== null && apiQuotaRemaining < QUOTA_LOW_THRESHOLD) {
-      const quotaAge = apiQuotaCheckedAt ? Date.now() - apiQuotaCheckedAt.getTime() : Infinity;
+      const quotaAge = apiQuotaCheckedAt
+        ? Date.now() - apiQuotaCheckedAt.getTime()
+        : Infinity;
       if (quotaAge < QUOTA_CHECK_INTERVAL_MS) {
-        console.warn(`[Sync] Odds API quota low: ${apiQuotaRemaining} requests remaining. Skipping sync.`);
-        lastSyncAt = new Date();
-        return {
-          matchesSynced: 0,
-          matchesUpdated: 0,
-          source: "odds-api",
-          errors: [],
-          durationMs: Date.now() - startTime,
-          skipped: true,
-          skipReason: `API quota low: ${apiQuotaRemaining} remaining (threshold: ${QUOTA_LOW_THRESHOLD})`,
-        };
+        paidOddsAllowed = false;
+        console.warn(
+          `[Sync] Odds API quota low: ${apiQuotaRemaining} remaining. Continuing event discovery but pausing paid odds refresh.`
+        );
       }
     }
 
@@ -253,6 +250,13 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
             `Odds API event discovery ${sport}: ${eventError instanceof Error ? eventError.message : "Unknown error"}`
           );
           shouldFetchOdds = true;
+        }
+
+        if (!paidOddsAllowed && !force) {
+          console.log(
+            `[Sync] ${sport}: paid odds refresh needed but quota is below threshold; keeping discovered fixture metadata only.`
+          );
+          continue;
         }
 
         const odds = await fetchOddsApiUpcoming(sport);
