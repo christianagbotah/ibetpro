@@ -7,6 +7,7 @@ from pathlib import Path
 import pandas as pd
 
 from training.train_xgb import ChronologicalSplit, train
+from training.evaluate_segments import evaluate_segments
 
 
 FOLDS = [
@@ -58,6 +59,15 @@ def run_walk_forward(
 
         result = metadata["metrics"]["result"]
         market = metadata["metrics"].get("market_comparison")
+        segment_start = (
+            timestamp(fold["calibration_end"]) + pd.Timedelta(seconds=1)
+        ).isoformat()
+        segments = evaluate_segments(
+            dataset,
+            fold_dir,
+            segment_start,
+            timestamp(fold["test_end"]).isoformat(),
+        )
         fold_results.append(
             {
                 "name": fold["name"],
@@ -69,6 +79,7 @@ def run_walk_forward(
                 "goals": metadata["metrics"]["goals"],
                 "market_comparison": market,
                 "blend": metadata.get("result_calibration", {}),
+                "segments": segments["segments"],
             }
         )
 
@@ -92,6 +103,32 @@ def run_walk_forward(
         for fold in comparable
     ]
 
+    league_names = sorted(
+        {
+            league
+            for fold in fold_results
+            for league in fold.get("segments", {}).keys()
+        }
+    )
+    league_stability = {}
+    for league in league_names:
+        deltas_for_league = [
+            float(fold["segments"][league]["candidate_minus_market_log_loss"])
+            for fold in fold_results
+            if league in fold.get("segments", {})
+        ]
+        league_stability[league] = {
+            "folds": len(deltas_for_league),
+            "folds_beating_market": sum(
+                1 for value in deltas_for_league if value < 0
+            ),
+            "mean_candidate_minus_market_log_loss": (
+                sum(deltas_for_league) / len(deltas_for_league)
+                if deltas_for_league
+                else None
+            ),
+        }
+
     summary = {
         "feature_profile": feature_profile,
         "folds": fold_results,
@@ -111,6 +148,7 @@ def run_walk_forward(
                 len(comparable) == len(fold_results)
                 and significant_market_wins == len(fold_results)
             ),
+            "by_league": league_stability,
         },
         "note": (
             "Walk-forward folds are chronological and have disjoint test seasons. "
