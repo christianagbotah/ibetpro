@@ -5,6 +5,7 @@ from pathlib import Path
 import hashlib
 import json
 import os
+import math
 
 import joblib
 import numpy as np
@@ -126,12 +127,42 @@ def elo_probabilities(frame: pd.DataFrame) -> np.ndarray:
     return np.column_stack([home_prob, draw, away_prob])
 
 
+def poisson_result_probabilities(
+    home_lambdas: np.ndarray,
+    away_lambdas: np.ndarray,
+    max_goals: int = 8,
+) -> np.ndarray:
+    rows: list[list[float]] = []
+    factorials = np.array([math.factorial(i) for i in range(max_goals + 1)], dtype=float)
+    goals = np.arange(max_goals + 1, dtype=float)
+
+    for home_lambda, away_lambda in zip(home_lambdas, away_lambdas):
+        home = np.exp(-home_lambda) * np.power(home_lambda, goals) / factorials
+        away = np.exp(-away_lambda) * np.power(away_lambda, goals) / factorials
+        matrix = np.outer(home, away)
+        matrix = matrix / matrix.sum()
+        rows.append([
+            float(np.tril(matrix, k=-1).sum()),
+            float(np.trace(matrix)),
+            float(np.triu(matrix, k=1).sum()),
+        ])
+
+    return np.asarray(rows, dtype=float)
+
+
 def blend_probabilities(
     model_probs: np.ndarray,
     elo_probs: np.ndarray,
     model_weight: float,
+    goal_probs: np.ndarray | None = None,
+    goal_weight: float = 0.0,
 ) -> np.ndarray:
-    blended = model_weight * model_probs + (1.0 - model_weight) * elo_probs
+    elo_weight = 1.0 - model_weight - goal_weight
+    if elo_weight < -1e-9:
+        raise ValueError("Blend weights exceed 1.0")
+    blended = model_weight * model_probs + max(0.0, elo_weight) * elo_probs
+    if goal_probs is not None and goal_weight > 0:
+        blended = blended + goal_weight * goal_probs
     return blended / blended.sum(axis=1, keepdims=True)
 
 
