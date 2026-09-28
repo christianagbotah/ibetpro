@@ -88,9 +88,14 @@ export async function buildOnlineModelFeatures(
   awayStats: TeamStatsLike,
   asOf = new Date()
 ): Promise<ModelFeatureVector> {
+  // This is a pre-match model. Feature history must never cross the target
+  // fixture's kickoff, even if the endpoint is called during/after the match.
+  const featureAsOf =
+    asOf.getTime() < match.commenceTime.getTime() ? asOf : match.commenceTime;
+
   const [homeHistory, awayHistory] = await Promise.all([
-    lastFinishedMatches(match.homeTeam, asOf, match.sport, match.league),
-    lastFinishedMatches(match.awayTeam, asOf, match.sport, match.league),
+    lastFinishedMatches(match.homeTeam, featureAsOf, match.sport, match.league),
+    lastFinishedMatches(match.awayTeam, featureAsOf, match.sport, match.league),
   ]);
 
   const homeElo = Number(homeStats?.eloRating ?? 1500);
@@ -119,8 +124,8 @@ export async function buildOnlineModelFeatures(
     home_sot_5: null,
     away_sot_5: null,
 
-    home_rest_days: restDays(homeHistory[0], asOf),
-    away_rest_days: restDays(awayHistory[0], asOf),
+    home_rest_days: restDays(homeHistory[0], featureAsOf),
+    away_rest_days: restDays(awayHistory[0], featureAsOf),
 
     // Match-market features are only included when the current provider has
     // genuine odds. Placeholder odds are filtered before this builder is called.
