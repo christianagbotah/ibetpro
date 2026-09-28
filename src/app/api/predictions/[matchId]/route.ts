@@ -105,7 +105,6 @@ export async function GET(
   return NextResponse.json({
     prediction,
     inputAsOf: input.asOf,
-    snapshotId,
   });
 }
 
@@ -133,7 +132,9 @@ export async function POST(
       aiAnalysis: [
         `Model: ${prediction.modelVersion}`,
         `Expected goals: ${input.homeTeam} ${prediction.expectedGoals.home.toFixed(2)} - ${prediction.expectedGoals.away.toFixed(2)} ${input.awayTeam}`,
-        prediction.warnings.length ? `Warnings: ${prediction.warnings.join(" ")}` : "Probability output generated from current feature snapshot.",
+        prediction.warnings.length
+          ? `Warnings: ${prediction.warnings.join(" ")}`
+          : "Probability output generated from current feature snapshot.",
       ].join(" · "),
     },
   });
@@ -141,5 +142,6 @@ export async function POST(
   return NextResponse.json({
     prediction,
     inputAsOf: input.asOf,
+    snapshotId,
   });
 }
