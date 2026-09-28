@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { predictMatch } from "@/lib/prediction/service";
+import { persistPredictionSnapshot } from "@/lib/prediction/store";
+import { buildOnlineModelFeatures } from "@/lib/prediction/model-features";
 import type { PredictionInput, TeamFeatureSnapshot } from "@/lib/prediction/contracts";
 
 export const dynamic = "force-dynamic";
@@ -51,6 +53,22 @@ async function buildInput(matchId: string): Promise<PredictionInput | null> {
     }),
   ]);
 
+  const realHomeOdds = match.apiSource === "api-football" ? null : match.homeOdds;
+  const realDrawOdds = match.apiSource === "api-football" ? null : match.drawOdds;
+  const realAwayOdds = match.apiSource === "api-football" ? null : match.awayOdds;
+
+  const modelFeatures = await buildOnlineModelFeatures(
+    {
+      ...match,
+      homeOdds: realHomeOdds,
+      drawOdds: realDrawOdds,
+      awayOdds: realAwayOdds,
+    },
+    homeStats,
+    awayStats,
+    new Date()
+  );
+
   return {
     matchId: match.id,
     asOf: new Date().toISOString(),
@@ -61,12 +79,13 @@ async function buildInput(matchId: string): Promise<PredictionInput | null> {
     minute: match.minute,
     homeScore: match.homeScore,
     awayScore: match.awayScore,
-    homeOdds: match.homeOdds,
-    drawOdds: match.drawOdds,
-    awayOdds: match.awayOdds,
+    homeOdds: realHomeOdds,
+    drawOdds: realDrawOdds,
+    awayOdds: realAwayOdds,
     overUnderLine: match.overUnderLine,
     home: toSnapshot(homeStats),
     away: toSnapshot(awayStats),
+    modelFeatures,
   };
 }
 
@@ -86,6 +105,7 @@ export async function GET(
   return NextResponse.json({
     prediction,
     inputAsOf: input.asOf,
+    snapshotId,
   });
 }
 
@@ -101,6 +121,7 @@ export async function POST(
   }
 
   const prediction = await predictMatch(input);
+  const snapshotId = await persistPredictionSnapshot(input, prediction);
 
   await prisma.match.update({
     where: { id: matchId },
