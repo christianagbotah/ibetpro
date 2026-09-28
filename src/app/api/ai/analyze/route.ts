@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { predictMatch } from "@/lib/prediction/service";
+import { persistPredictionSnapshot } from "@/lib/prediction/store";
 import type { PredictionInput, TeamFeatureSnapshot } from "@/lib/prediction/contracts";
 
 function toSnapshot(stats: any): TeamFeatureSnapshot | null {
@@ -78,6 +79,7 @@ export async function POST(request: NextRequest) {
     };
 
     const richPrediction = await predictMatch(input);
+    const snapshotId = await persistPredictionSnapshot(input, richPrediction);
     const maxResult = Math.max(
       richPrediction.result.homeWin,
       richPrediction.result.draw,
@@ -122,6 +124,7 @@ export async function POST(request: NextRequest) {
         analysis,
       },
       richPrediction,
+      snapshotId,
       homeTeamStats,
       awayTeamStats,
     });
