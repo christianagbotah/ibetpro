@@ -53,7 +53,7 @@ cd "$RELEASE"
 npm ci --no-audit --no-fund
 npx prisma generate
 
-# Never use --accept-data-loss. Destructive changes must stop for review.
+# Never force destructive schema changes. Data-loss changes must stop for review.
 npx prisma db push
 npm run build
 
