@@ -156,12 +156,39 @@ export function poissonBaselinePredict(input: PredictionInput): MatchPrediction 
   const matrixMass = matrix.reduce((sum, row) => sum + row.probability, 0);
   for (const row of matrix) row.probability /= matrixMass;
 
-  const homeWin = matrix.filter((s) => s.home > s.away).reduce((a, b) => a + b.probability, 0);
-  const draw = matrix.filter((s) => s.home === s.away).reduce((a, b) => a + b.probability, 0);
-  const awayWin = 1 - homeWin - draw;
+  const poissonHomeWin = matrix.filter((s) => s.home > s.away).reduce((a, b) => a + b.probability, 0);
+  const poissonDraw = matrix.filter((s) => s.home === s.away).reduce((a, b) => a + b.probability, 0);
+  const poissonAwayWin = 1 - poissonHomeWin - poissonDraw;
+
+  const marketValues = [
+    input.modelFeatures?.home_market_prob,
+    input.modelFeatures?.draw_market_prob,
+    input.modelFeatures?.away_market_prob,
+  ];
+  const hasConsensus =
+    input.modelFeatures?.market_consensus_available === true &&
+    marketValues.every(
+      (value) => value != null && Number.isFinite(value) && value > 0
+    );
+
+  let homeWin = poissonHomeWin;
+  let draw = poissonDraw;
+  let awayWin = poissonAwayWin;
+  if (hasConsensus) {
+    const total = marketValues.reduce((sum, value) => sum + Number(value), 0);
+    homeWin = Number(marketValues[0]) / total;
+    draw = Number(marketValues[1]) / total;
+    awayWin = Number(marketValues[2]) / total;
+  }
+
   const completeness = dataCompleteness(input);
 
   const warnings: string[] = [];
+  if (hasConsensus) {
+    warnings.push(
+      "1X2 probabilities use normalized market consensus; goal and score markets remain Poisson-derived."
+    );
+  }
   if (completeness < 0.65) warnings.push("Limited feature coverage; confidence is reduced.");
   if (!input.home?.xgFor || !input.away?.xgFor) warnings.push("xG inputs are incomplete; observed scoring rates are being used as fallback.");
   if (!input.homeOdds || !input.awayOdds) warnings.push("Market odds are unavailable; no market calibration signal is included.");
@@ -176,7 +203,7 @@ export function poissonBaselinePredict(input: PredictionInput): MatchPrediction 
 
   return {
     schemaVersion: "1.0",
-    resultMode: "baseline",
+    resultMode: hasConsensus ? "market-consensus" : "baseline",
     modelVersion: "poisson-baseline-v1",
     source: "poisson-baseline-v1",
     generatedAt: new Date().toISOString(),
