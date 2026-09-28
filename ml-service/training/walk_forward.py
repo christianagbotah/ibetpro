@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from training.train_xgb import ChronologicalSplit, train
+from training.train_xgb import ChronologicalSplit, load_dataset, train
 from training.evaluate_segments import evaluate_segments
 
 
@@ -43,14 +43,27 @@ def run_walk_forward(
     dataset: Path,
     output_dir: Path,
     feature_profile: str = "core",
+    league: str | None = None,
 ) -> dict:
     output_dir.mkdir(parents=True, exist_ok=True)
+    working_dataset = dataset
+
+    if league:
+        frame = load_dataset(dataset)
+        if "league" not in frame.columns:
+            raise ValueError("League-specific walk-forward requires a league column")
+        frame = frame[frame["league"] == league].copy()
+        if frame.empty:
+            raise ValueError(f"No fixtures found for league: {league}")
+        working_dataset = output_dir / "_league-dataset.csv"
+        frame.to_csv(working_dataset, index=False)
+
     fold_results: list[dict] = []
 
     for fold in FOLDS:
         fold_dir = output_dir / fold["name"]
         metadata = train(
-            dataset,
+            working_dataset,
             fold_dir,
             ChronologicalSplit(
                 train_end=timestamp(fold["train_end"]),
@@ -67,7 +80,7 @@ def run_walk_forward(
             timestamp(fold["calibration_end"]) + pd.Timedelta(seconds=1)
         ).isoformat()
         segments = evaluate_segments(
-            dataset,
+            working_dataset,
             fold_dir,
             segment_start,
             timestamp(fold["test_end"]).isoformat(),
@@ -165,6 +178,7 @@ def run_walk_forward(
 
     summary = {
         "feature_profile": feature_profile,
+        "league": league,
         "folds": fold_results,
         "stability": {
             "fold_count": len(fold_results),
@@ -251,11 +265,13 @@ if __name__ == "__main__":
         choices=["core", "core_stats", "enriched"],
         default="core",
     )
+    parser.add_argument("--league")
     args = parser.parse_args()
 
     result = run_walk_forward(
         args.dataset,
         args.output,
         feature_profile=args.feature_profile,
+        league=args.league,
     )
     print(json.dumps(result, indent=2))
