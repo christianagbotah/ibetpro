@@ -155,6 +155,8 @@ export default function AdminPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [commissionRate, setCommissionRate] = useState(10);
+  const [researchAction, setResearchAction] = useState<"stats" | "elo" | null>(null);
+  const [researchLeague, setResearchLeague] = useState("Premier League");
 
   // Sync local commissionRate state when adminSettings loads
   useEffect(() => {
@@ -164,6 +166,63 @@ export default function AdminPage() {
   }, [stats.adminSettings]);
 
   const { addToast } = useToast();
+
+  const handleStatsBackfill = async () => {
+    setResearchAction("stats");
+    try {
+      const res = await fetch("/api/admin/ml/stats-backfill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 20 }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Fixture-stat backfill failed");
+      addToast(
+        "success",
+        `Processed ${data.matchesProcessed ?? 0} matches and stored ${data.snapshotsUpserted ?? 0} team-stat snapshots`
+      );
+      if (Array.isArray(data.errors) && data.errors.length > 0) {
+        addToast("warning", `${data.errors.length} fixture-stat requests need review`);
+      }
+    } catch (err) {
+      addToast(
+        "error",
+        err instanceof Error ? err.message : "Fixture-stat backfill failed"
+      );
+    } finally {
+      setResearchAction(null);
+    }
+  };
+
+  const handleEloRebuild = async () => {
+    const league = researchLeague.trim();
+    if (!league) {
+      addToast("error", "Enter the exact league name first");
+      return;
+    }
+
+    setResearchAction("elo");
+    try {
+      const res = await fetch("/api/admin/ml/elo-rebuild", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sport: "football", league }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "ELO rebuild failed");
+      addToast(
+        "success",
+        `Rebuilt ${data.snapshotsCreated ?? 0} causal ELO snapshots from ${data.matchesProcessed ?? 0} finished matches`
+      );
+    } catch (err) {
+      addToast(
+        "error",
+        err instanceof Error ? err.message : "ELO rebuild failed"
+      );
+    } finally {
+      setResearchAction(null);
+    }
+  };
 
   const handleSaveCommission = async () => {
     setSaving(true);
@@ -458,6 +517,51 @@ export default function AdminPage() {
               <p className="mt-1 font-semibold text-foreground">
                 {shadow.evaluation.candidate.awayGoalMae == null ? "—" : shadow.evaluation.candidate.awayGoalMae.toFixed(3)}
               </p>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Research data maintenance</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Fixture-stat backfill calls API-Football and may consume provider quota. ELO rebuild uses only stored finished matches and consumes no provider quota.
+              </p>
+            </div>
+            <div className="flex flex-col lg:flex-row gap-3">
+              <Button
+                variant="outline"
+                onClick={handleStatsBackfill}
+                disabled={researchAction !== null}
+                className="justify-center"
+              >
+                {researchAction === "stats" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Activity className="h-4 w-4" />
+                )}
+                Backfill 20 Fixture Stats
+              </Button>
+              <div className="flex flex-1 gap-2">
+                <Input
+                  value={researchLeague}
+                  onChange={(event) => setResearchLeague(event.target.value)}
+                  placeholder="Exact league name, e.g. Premier League"
+                  className="bg-secondary border-border"
+                />
+                <Button
+                  variant="outline"
+                  onClick={handleEloRebuild}
+                  disabled={researchAction !== null || !researchLeague.trim()}
+                  className="whitespace-nowrap"
+                >
+                  {researchAction === "elo" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <TrendingUp className="h-4 w-4" />
+                  )}
+                  Rebuild ELO
+                </Button>
+              </div>
             </div>
           </div>
 
