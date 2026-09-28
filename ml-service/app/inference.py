@@ -187,11 +187,12 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
     global_probs = global_probs / global_probs.sum()
 
     selective_policy = getattr(bundle, "selective_policy", None)
+    consensus_available = bool(raw.get("market_consensus_available"))
     selective_used = False
     selective_abstained = False
     selective_divergence = None
 
-    if market_available and selective_policy:
+    if market_available and consensus_available and selective_policy:
         weights = selective_policy.get("alternative_weights", {})
         alternative_model_weight = float(weights.get("model", 0.0))
         alternative_goal_weight = float(weights.get("goal", 0.0))
@@ -227,6 +228,11 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
     home_win, draw, away_win = map(float, result_probs)
 
     warnings: list[str] = []
+    if selective_policy and market_available and not consensus_available:
+        warnings.append(
+            "Selective model deviation is disabled because genuine consensus odds are unavailable for this fixture."
+        )
+
     if selective_used:
         warnings.append(
             f"Selective model deviation was authorized for this fixture (market divergence {selective_divergence:.3f})."
