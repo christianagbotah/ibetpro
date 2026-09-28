@@ -19,11 +19,33 @@ type TeamStatsLike = {
   eloRating?: number | null;
 } | null;
 
+type StatSnapshot = {
+  teamSide: string;
+  teamName: string;
+  possession: number | null;
+  shots: number | null;
+  shotsOnTarget: number | null;
+  corners: number | null;
+  yellowCards: number | null;
+  redCards: number | null;
+  xg: number | null;
+};
+
+type HistoricalMatch = {
+  id: string;
+  commenceTime: Date;
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  statSnapshots: StatSnapshot[];
+};
+
 function implied(odds: number | null | undefined): number | null {
   return odds && odds > 1 ? 1 / odds : null;
 }
 
-function pointsFor(team: string, match: MatchLike): number {
+function pointsFor(team: string, match: HistoricalMatch): number {
   if (match.homeScore == null || match.awayScore == null) return 0;
   const isHome = match.homeTeam === team;
   const gf = isHome ? match.homeScore : match.awayScore;
@@ -33,12 +55,12 @@ function pointsFor(team: string, match: MatchLike): number {
   return 0;
 }
 
-function goalsFor(team: string, match: MatchLike): number {
+function goalsFor(team: string, match: HistoricalMatch): number {
   if (match.homeScore == null || match.awayScore == null) return 0;
   return match.homeTeam === team ? match.homeScore : match.awayScore;
 }
 
-function goalsAgainst(team: string, match: MatchLike): number {
+function goalsAgainst(team: string, match: HistoricalMatch): number {
   if (match.homeScore == null || match.awayScore == null) return 0;
   return match.homeTeam === team ? match.awayScore : match.homeScore;
 }
@@ -49,7 +71,41 @@ function average(values: number[], fallback = 0): number {
     : fallback;
 }
 
-async function lastFinishedMatches(team: string, asOf: Date, sport: string, league: string) {
+function averageNullable(values: Array<number | null | undefined>): number | null {
+  const valid = values.filter(
+    (value): value is number => value != null && Number.isFinite(value)
+  );
+  return valid.length ? average(valid) : null;
+}
+
+function teamSnapshot(team: string, match: HistoricalMatch): StatSnapshot | null {
+  return (
+    match.statSnapshots.find((snapshot) => snapshot.teamName === team) ||
+    match.statSnapshots.find(
+      (snapshot) =>
+        (snapshot.teamSide === "home" && match.homeTeam === team) ||
+        (snapshot.teamSide === "away" && match.awayTeam === team)
+    ) ||
+    null
+  );
+}
+
+function opponentSnapshot(team: string, match: HistoricalMatch): StatSnapshot | null {
+  return (
+    match.statSnapshots.find(
+      (snapshot) =>
+        (snapshot.teamSide === "away" && match.homeTeam === team) ||
+        (snapshot.teamSide === "home" && match.awayTeam === team)
+    ) || null
+  );
+}
+
+async function lastFinishedMatches(
+  team: string,
+  asOf: Date,
+  sport: string,
+  league: string
+): Promise<HistoricalMatch[]> {
   return prisma.match.findMany({
     where: {
       status: "finished",
@@ -69,17 +125,47 @@ async function lastFinishedMatches(team: string, asOf: Date, sport: string, leag
       awayTeam: true,
       homeScore: true,
       awayScore: true,
-      homeOdds: true,
-      drawOdds: true,
-      awayOdds: true,
+      statSnapshots: {
+        select: {
+          teamSide: true,
+          teamName: true,
+          possession: true,
+          shots: true,
+          shotsOnTarget: true,
+          corners: true,
+          yellowCards: true,
+          redCards: true,
+          xg: true,
+        },
+      },
     },
   });
 }
 
-function restDays(lastMatch: MatchLike | undefined, asOf: Date): number {
+function restDays(lastMatch: HistoricalMatch | undefined, asOf: Date): number {
   if (!lastMatch) return 7;
   const days = (asOf.getTime() - lastMatch.commenceTime.getTime()) / 86_400_000;
   return Math.min(30, Math.max(0, days));
+}
+
+function rollingStats(team: string, history: HistoricalMatch[]) {
+  const own = history.map((match) => teamSnapshot(team, match));
+  const opponents = history.map((match) => opponentSnapshot(team, match));
+
+  return {
+    xgFor: averageNullable(own.map((snapshot) => snapshot?.xg)),
+    xgAgainst: averageNullable(opponents.map((snapshot) => snapshot?.xg)),
+    shots: averageNullable(own.map((snapshot) => snapshot?.shots)),
+    shotsOnTarget: averageNullable(
+      own.map((snapshot) => snapshot?.shotsOnTarget)
+    ),
+    possession: averageNullable(own.map((snapshot) => snapshot?.possession)),
+    corners: averageNullable(own.map((snapshot) => snapshot?.corners)),
+    yellowCards: averageNullable(
+      own.map((snapshot) => snapshot?.yellowCards)
+    ),
+    redCards: averageNullable(own.map((snapshot) => snapshot?.redCards)),
+  };
 }
 
 export async function buildOnlineModelFeatures(
@@ -88,8 +174,7 @@ export async function buildOnlineModelFeatures(
   awayStats: TeamStatsLike,
   asOf = new Date()
 ): Promise<ModelFeatureVector> {
-  // This is a pre-match model. Feature history must never cross the target
-  // fixture's kickoff, even if the endpoint is called during/after the match.
+  // Pre-match features can use only information available before kickoff.
   const featureAsOf =
     asOf.getTime() < match.commenceTime.getTime() ? asOf : match.commenceTime;
 
@@ -98,6 +183,9 @@ export async function buildOnlineModelFeatures(
     lastFinishedMatches(match.awayTeam, featureAsOf, match.sport, match.league),
   ]);
 
+  const homeRolling = rollingStats(match.homeTeam, homeHistory);
+  const awayRolling = rollingStats(match.awayTeam, awayHistory);
+
   const homeElo = Number(homeStats?.eloRating ?? 1500);
   const awayElo = Number(awayStats?.eloRating ?? 1500);
 
@@ -105,43 +193,44 @@ export async function buildOnlineModelFeatures(
     home_elo: homeElo,
     away_elo: awayElo,
     elo_diff: homeElo - awayElo,
-    home_form_points_5: average(homeHistory.map((item) => pointsFor(match.homeTeam, item))),
-    away_form_points_5: average(awayHistory.map((item) => pointsFor(match.awayTeam, item))),
-    home_goals_for_5: average(homeHistory.map((item) => goalsFor(match.homeTeam, item))),
-    away_goals_for_5: average(awayHistory.map((item) => goalsFor(match.awayTeam, item))),
-    home_goals_against_5: average(homeHistory.map((item) => goalsAgainst(match.homeTeam, item))),
-    away_goals_against_5: average(awayHistory.map((item) => goalsAgainst(match.awayTeam, item))),
-
-    // Until per-fixture xG/shot history is stored with as-of timestamps,
-    // leave these absent so the trained model uses training-period imputation.
-    // This is safer than mixing season aggregates with rolling-match features.
-    home_xg_for_5: null,
-    away_xg_for_5: null,
-    home_xg_against_5: null,
-    away_xg_against_5: null,
-    home_shots_5: null,
-    away_shots_5: null,
-    home_sot_5: null,
-    away_sot_5: null,
-
+    home_form_points_5: average(
+      homeHistory.map((item) => pointsFor(match.homeTeam, item))
+    ),
+    away_form_points_5: average(
+      awayHistory.map((item) => pointsFor(match.awayTeam, item))
+    ),
+    home_goals_for_5: average(
+      homeHistory.map((item) => goalsFor(match.homeTeam, item))
+    ),
+    away_goals_for_5: average(
+      awayHistory.map((item) => goalsFor(match.awayTeam, item))
+    ),
+    home_goals_against_5: average(
+      homeHistory.map((item) => goalsAgainst(match.homeTeam, item))
+    ),
+    away_goals_against_5: average(
+      awayHistory.map((item) => goalsAgainst(match.awayTeam, item))
+    ),
+    home_xg_for_5: homeRolling.xgFor,
+    away_xg_for_5: awayRolling.xgFor,
+    home_xg_against_5: homeRolling.xgAgainst,
+    away_xg_against_5: awayRolling.xgAgainst,
+    home_shots_5: homeRolling.shots,
+    away_shots_5: awayRolling.shots,
+    home_sot_5: homeRolling.shotsOnTarget,
+    away_sot_5: awayRolling.shotsOnTarget,
     home_rest_days: restDays(homeHistory[0], featureAsOf),
     away_rest_days: restDays(awayHistory[0], featureAsOf),
-
-    // Match-market features are only included when the current provider has
-    // genuine odds. Placeholder odds are filtered before this builder is called.
     home_implied_prob: implied(match.homeOdds),
     draw_implied_prob: implied(match.drawOdds),
     away_implied_prob: implied(match.awayOdds),
-
-    // Enriched rolling features stay unavailable until per-fixture historical
-    // stat snapshots are stored online. Do not substitute season aggregates.
-    home_possession_5: null,
-    away_possession_5: null,
-    home_corners_5: null,
-    away_corners_5: null,
-    home_yellow_cards_5: null,
-    away_yellow_cards_5: null,
-    home_red_cards_5: null,
-    away_red_cards_5: null,
+    home_possession_5: homeRolling.possession,
+    away_possession_5: awayRolling.possession,
+    home_corners_5: homeRolling.corners,
+    away_corners_5: awayRolling.corners,
+    home_yellow_cards_5: homeRolling.yellowCards,
+    away_yellow_cards_5: awayRolling.yellowCards,
+    home_red_cards_5: homeRolling.redCards,
+    away_red_cards_5: awayRolling.redCards,
   };
 }
