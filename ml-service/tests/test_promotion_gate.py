@@ -67,3 +67,21 @@ def test_bad_calibration_blocks_promotion():
         check for check in result["checks"] if check["name"] == "candidate_ece"
     )
     assert calibration_check["passed"] is False
+
+
+def test_market_aware_candidate_requires_market_baseline():
+    value = candidate()
+    value["feature_columns"] = [
+        "home_implied_prob",
+        "draw_implied_prob",
+        "away_implied_prob",
+    ]
+    no_market = {"elo": baselines()["elo"], "market": None}
+
+    result = decide(value, no_market)
+
+    assert result["all_gates_passed"] is False
+    check = next(
+        item for item in result["checks"] if item["name"] == "market_baseline_available"
+    )
+    assert check["passed"] is False
