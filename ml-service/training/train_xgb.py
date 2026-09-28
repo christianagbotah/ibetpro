@@ -11,6 +11,7 @@ import joblib
 import numpy as np
 import pandas as pd
 from sklearn.calibration import CalibratedClassifierCV
+from sklearn.compose import ColumnTransformer
 from sklearn.frozen import FrozenEstimator
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import accuracy_score, log_loss, mean_absolute_error
@@ -391,6 +392,70 @@ def train(
     x_train = features(train_df)
     y_train = train_df["result_class"].astype(int)
 
+    market_correction_columns = [
+        column
+        for column in [
+            "home_market_prob",
+            "draw_market_prob",
+            "away_market_prob",
+            "market_overround",
+            "market_entropy",
+            "market_home_away_log_ratio",
+            "market_home_draw_log_ratio",
+            "market_away_draw_log_ratio",
+            "elo_diff",
+            "home_form_points_5",
+            "away_form_points_5",
+            "home_goals_for_5",
+            "away_goals_for_5",
+            "home_goals_against_5",
+            "away_goals_against_5",
+            "home_rest_days",
+            "away_rest_days",
+            "home_home_form_points_5",
+            "away_away_form_points_5",
+            "home_home_goals_for_5",
+            "home_home_goals_against_5",
+            "away_away_goals_for_5",
+            "away_away_goals_against_5",
+            "home_home_shots_5",
+            "away_away_shots_5",
+            "home_home_sot_5",
+            "away_away_sot_5",
+        ]
+        if column in columns
+    ]
+
+    market_correction_models = {
+        "market_correction_c_%s" % str(c_value).replace(".", "_"): Pipeline(
+            [
+                (
+                    "features",
+                    ColumnTransformer(
+                        [
+                            (
+                                "market_correction",
+                                StandardScaler(),
+                                market_correction_columns,
+                            )
+                        ],
+                        remainder="drop",
+                    ),
+                ),
+                (
+                    "model",
+                    LogisticRegression(
+                        C=c_value,
+                        max_iter=3000,
+                        solver="lbfgs",
+                        random_state=42,
+                    ),
+                ),
+            ]
+        )
+        for c_value in (0.01, 0.02, 0.05, 0.10)
+    }
+
     result_models = {
         "xgboost": XGBClassifier(
             objective="multi:softprob",
@@ -440,6 +505,7 @@ def train(
             )
             for c_value in (0.05, 0.10, 0.20, 0.35, 0.60, 1.00, 2.00)
         },
+        **market_correction_models,
     }
     for model in result_models.values():
         model.fit(x_train, y_train)
