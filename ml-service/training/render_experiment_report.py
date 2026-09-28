@@ -25,6 +25,7 @@ def render(work_dir: Path) -> str:
     baselines = load_json(work_dir / "baselines.json")
     promotion = load_json(work_dir / "promotion.json")
     holdout = load_json(work_dir / "untouched-holdout.json")
+    segments = load_json(work_dir / "segments.json")
 
     lines = [
         "# iBetPro Model Experiment Report",
@@ -115,6 +116,27 @@ def render(work_dir: Path) -> str:
             lines.append("| Market | — | — | — | — |")
         lines.append("")
 
+    if segments:
+        segment_rows = segments.get("segments", {})
+        lines += [
+            "## League diagnostics",
+            "",
+            "| League | Rows | Candidate LL | Market LL | ELO LL | Candidate − Market |",
+            "| --- | ---: | ---: | ---: | ---: | ---: |",
+        ]
+        for league, values in segment_rows.items():
+            candidate_segment = values.get("candidate", {})
+            market_segment = values.get("market", {})
+            elo_segment = values.get("elo", {})
+            lines.append(
+                f"| {league} | {candidate_segment.get('rows', '—')} | "
+                f"{fmt(candidate_segment.get('log_loss'))} | "
+                f"{fmt(market_segment.get('log_loss'))} | "
+                f"{fmt(elo_segment.get('log_loss'))} | "
+                f"{fmt(values.get('candidate_minus_market_log_loss'))} |"
+            )
+        lines.append("")
+
     if promotion:
         lines += [
             "## Promotion decision",
@@ -155,7 +177,7 @@ def render(work_dir: Path) -> str:
             "",
         ]
 
-    if not any([quality, candidate, baselines, promotion, holdout]):
+    if not any([quality, candidate, baselines, promotion, holdout, segments]):
         lines.append("No experiment artifacts were produced.")
 
     return "\n".join(lines) + "\n"
