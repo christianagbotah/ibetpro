@@ -31,6 +31,13 @@ def _mean(values: deque[float], fallback: float = 0.0) -> float:
     return float(np.mean(values)) if values else fallback
 
 
+def _recent_mean(values: deque[float], count: int, fallback: float = 0.0) -> float:
+    if not values:
+        return fallback
+    recent = list(values)[-count:]
+    return float(np.mean(recent))
+
+
 def _result_class(home_goals: int, away_goals: int) -> int:
     # 0 = home, 1 = draw, 2 = away
     if home_goals > away_goals:
@@ -48,7 +55,7 @@ def _implied_prob(odds: float | int | None) -> float:
         return np.nan
 
 
-def build_features(raw: pd.DataFrame, window: int = 5) -> pd.DataFrame:
+def build_features(raw: pd.DataFrame, window: int = 10) -> pd.DataFrame:
     missing = [column for column in REQUIRED_RAW_COLUMNS if column not in raw.columns]
     if missing:
         raise ValueError(f"Raw fixture dataset is missing columns: {missing}")
@@ -64,6 +71,12 @@ def build_features(raw: pd.DataFrame, window: int = 5) -> pd.DataFrame:
             "points": deque(maxlen=window),
             "goals_for": deque(maxlen=window),
             "goals_against": deque(maxlen=window),
+            "home_points": deque(maxlen=5),
+            "home_goals_for": deque(maxlen=5),
+            "home_goals_against": deque(maxlen=5),
+            "away_points": deque(maxlen=5),
+            "away_goals_for": deque(maxlen=5),
+            "away_goals_against": deque(maxlen=5),
             "xg_for": deque(maxlen=window),
             "xg_against": deque(maxlen=window),
             "shots": deque(maxlen=window),
@@ -100,12 +113,24 @@ def build_features(raw: pd.DataFrame, window: int = 5) -> pd.DataFrame:
             "home_elo": home_elo,
             "away_elo": away_elo,
             "elo_diff": home_elo - away_elo,
-            "home_form_points_5": _mean(home["points"]),
-            "away_form_points_5": _mean(away["points"]),
-            "home_goals_for_5": _mean(home["goals_for"]),
-            "away_goals_for_5": _mean(away["goals_for"]),
-            "home_goals_against_5": _mean(home["goals_against"]),
-            "away_goals_against_5": _mean(away["goals_against"]),
+            "home_form_points_5": _recent_mean(home["points"], 5),
+            "away_form_points_5": _recent_mean(away["points"], 5),
+            "home_form_points_10": _recent_mean(home["points"], 10),
+            "away_form_points_10": _recent_mean(away["points"], 10),
+            "home_goals_for_5": _recent_mean(home["goals_for"], 5),
+            "away_goals_for_5": _recent_mean(away["goals_for"], 5),
+            "home_goals_against_5": _recent_mean(home["goals_against"], 5),
+            "away_goals_against_5": _recent_mean(away["goals_against"], 5),
+            "home_goals_for_10": _recent_mean(home["goals_for"], 10),
+            "away_goals_for_10": _recent_mean(away["goals_for"], 10),
+            "home_goals_against_10": _recent_mean(home["goals_against"], 10),
+            "away_goals_against_10": _recent_mean(away["goals_against"], 10),
+            "home_home_points_5": _mean(home["home_points"]),
+            "away_away_points_5": _mean(away["away_points"]),
+            "home_home_goals_for_5": _mean(home["home_goals_for"]),
+            "away_away_goals_for_5": _mean(away["away_goals_for"]),
+            "home_home_goals_against_5": _mean(home["home_goals_against"]),
+            "away_away_goals_against_5": _mean(away["away_goals_against"]),
             "home_xg_for_5": _mean(home["xg_for"], _mean(home["goals_for"], 1.35)),
             "away_xg_for_5": _mean(away["xg_for"], _mean(away["goals_for"], 1.35)),
             "home_xg_against_5": _mean(home["xg_against"], _mean(home["goals_against"], 1.35)),
@@ -150,6 +175,13 @@ def build_features(raw: pd.DataFrame, window: int = 5) -> pd.DataFrame:
         away["goals_for"].append(float(away_goals))
         away["goals_against"].append(float(home_goals))
 
+        home["home_points"].append(home_points)
+        home["home_goals_for"].append(float(home_goals))
+        home["home_goals_against"].append(float(away_goals))
+        away["away_points"].append(away_points)
+        away["away_goals_for"].append(float(away_goals))
+        away["away_goals_against"].append(float(home_goals))
+
         home_xg = getattr(fixture, "home_xg", None)
         away_xg = getattr(fixture, "away_xg", None)
         if pd.notna(home_xg):
@@ -188,7 +220,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    parser.add_argument("--window", type=int, default=5)
+    parser.add_argument("--window", type=int, default=10)
     args = parser.parse_args()
 
     raw = pd.read_parquet(args.input) if args.input.suffix.lower() == ".parquet" else pd.read_csv(args.input)
