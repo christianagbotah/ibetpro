@@ -44,6 +44,28 @@ def kickoff_utc(date: str, time: str | None, timezone_name: str) -> str:
     return local.astimezone(ZoneInfo("UTC")).isoformat()
 
 
+def final_score(match: dict) -> list[int] | None:
+    score = match.get("score")
+    if isinstance(score, dict):
+        ft = score.get("ft")
+        if (
+            isinstance(ft, list)
+            and len(ft) == 2
+            and all(isinstance(value, (int, float)) for value in ft)
+        ):
+            return [int(ft[0]), int(ft[1])]
+        return None
+
+    if (
+        isinstance(score, list)
+        and len(score) == 2
+        and all(isinstance(value, (int, float)) for value in score)
+    ):
+        return [int(score[0]), int(score[1])]
+
+    return None
+
+
 def collect(seasons: list[str], leagues: list[str], out: Path) -> Path:
     out.mkdir(parents=True, exist_ok=True)
     raw_dir = out / "openfootball-raw"
@@ -76,8 +98,8 @@ def collect(seasons: list[str], leagues: list[str], out: Path) -> Path:
                 )
 
                 for match in payload.get("matches", []):
-                    score = match.get("score", {}).get("ft")
-                    if not score or len(score) != 2:
+                    score = final_score(match)
+                    if score is None:
                         continue
 
                     home = str(match["team1"])
