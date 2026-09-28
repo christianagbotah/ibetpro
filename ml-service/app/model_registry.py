@@ -59,6 +59,14 @@ class ModelBundle:
         )
         return min(1.0, max(0.0, float(value)))
 
+    @property
+    def result_market_weight(self) -> float:
+        value = (
+            self.metadata.get("result_calibration", {})
+            .get("result_market_weight", 0.0)
+        )
+        return min(1.0, max(0.0, float(value)))
+
 
 def configured_model_dir() -> Path | None:
     value = os.environ.get("IBETPRO_MODEL_DIR")
@@ -142,8 +150,15 @@ def model_status() -> dict:
             "blendWeights": {
                 "model": bundle.result_model_weight if bundle else None,
                 "goal": bundle.result_goal_weight if bundle else None,
+                "market": bundle.result_market_weight if bundle else None,
                 "elo": (
-                    max(0.0, 1.0 - bundle.result_model_weight - bundle.result_goal_weight)
+                    max(
+                        0.0,
+                        1.0
+                        - bundle.result_model_weight
+                        - bundle.result_goal_weight
+                        - bundle.result_market_weight,
+                    )
                     if bundle
                     else None
                 ),
