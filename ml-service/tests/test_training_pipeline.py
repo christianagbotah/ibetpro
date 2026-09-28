@@ -71,7 +71,11 @@ def test_training_pipeline_runs_end_to_end(tmp_path: Path):
 
     assert metadata["model_version"] == "football-ensemble-v0"
     selected_model = metadata["result_calibration"]["selected_model"]
-    assert selected_model in {"xgboost", "lightgbm"} or selected_model.startswith("logistic_c_")
+    assert (
+        selected_model in {"xgboost", "lightgbm"}
+        or selected_model.startswith("logistic_c_")
+        or selected_model.startswith("market_correction_c_")
+    )
     assert metadata["metrics"]["rows"]["train"] > 0
     assert metadata["metrics"]["rows"]["calibration"] > 0
     assert metadata["metrics"]["rows"]["test"] > 0
