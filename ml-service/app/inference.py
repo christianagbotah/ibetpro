@@ -124,17 +124,25 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
         [home_no_draw * 0.75, 0.25, (1.0 - home_no_draw) * 0.75],
         dtype=float,
     )
-    model_weight = bundle.result_model_weight
-    result_probs = model_weight * model_probs + (1.0 - model_weight) * elo_probs
-    result_probs = result_probs / result_probs.sum()
 
     home_lambda = float(np.clip(bundle.home_goal_model.predict(frame)[0], 0.05, 6.0))
     away_lambda = float(np.clip(bundle.away_goal_model.predict(frame)[0], 0.05, 6.0))
 
     matrix = _score_matrix(home_lambda, away_lambda)
-    matrix_home = sum(row.probability for row in matrix if row.home > row.away)
-    matrix_draw = sum(row.probability for row in matrix if row.home == row.away)
+    matrix_home = sum(item.probability for item in matrix if item.home > item.away)
+    matrix_draw = sum(item.probability for item in matrix if item.home == item.away)
     matrix_away = 1.0 - matrix_home - matrix_draw
+    goal_probs = np.array([matrix_home, matrix_draw, matrix_away], dtype=float)
+
+    model_weight = bundle.result_model_weight
+    goal_weight = bundle.result_goal_weight
+    elo_weight = max(0.0, 1.0 - model_weight - goal_weight)
+    result_probs = (
+        model_weight * model_probs
+        + goal_weight * goal_probs
+        + elo_weight * elo_probs
+    )
+    result_probs = result_probs / result_probs.sum()
 
     # Result classifier is the authoritative 1X2 estimator; the goal models
     # remain authoritative for score/goal-derived markets.
