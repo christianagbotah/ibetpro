@@ -77,6 +77,18 @@ export interface ExternalFixture {
   minute: number | null;
 }
 
+export interface ExternalFixtureTeamStats {
+  teamId: number;
+  teamName: string;
+  possession: number | null;
+  shots: number | null;
+  shotsOnTarget: number | null;
+  corners: number | null;
+  yellowCards: number | null;
+  redCards: number | null;
+  xg: number | null;
+}
+
 export interface SyncResult {
   matchesSynced: number;
   teamStatsSynced: number;
@@ -310,6 +322,72 @@ export async function fetchApiFootballTeamStats(
       : 0,
     eloRating: 1500 + (wins - losses) * 15,
   };
+}
+
+
+function parseStatisticValue(value: unknown): number | null {
+  if (value == null) return null;
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value !== "string") return null;
+
+  const normalized = value.trim().replace("%", "");
+  const parsed = Number(normalized);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function fixtureStatistic(
+  statistics: Array<{ type?: string; value?: unknown }>,
+  ...names: string[]
+): number | null {
+  const wanted = new Set(names.map((name) => name.toLowerCase()));
+  const match = statistics.find((item) =>
+    wanted.has(String(item.type || "").toLowerCase())
+  );
+  return parseStatisticValue(match?.value);
+}
+
+export async function fetchApiFootballFixtureStatistics(
+  fixtureId: number
+): Promise<ExternalFixtureTeamStats[]> {
+  const apiKey = config.api.apiFootballKey;
+  if (!apiKey) {
+    throw new Error("API-Football key not configured");
+  }
+
+  const url = `${config.apiUrls.apiFootball}/fixtures/statistics?fixture=${fixtureId}`;
+  const response = await fetch(url, {
+    headers: { "x-apisports-key": apiKey },
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`API-Football fixture statistics error (${response.status})`);
+  }
+
+  const data = await response.json();
+  return (data.response || []).map((block: Record<string, unknown>) => {
+    const team = (block.team || {}) as Record<string, unknown>;
+    const statistics = Array.isArray(block.statistics)
+      ? (block.statistics as Array<{ type?: string; value?: unknown }>)
+      : [];
+
+    return {
+      teamId: Number(team.id || 0),
+      teamName: String(team.name || "Unknown"),
+      possession: fixtureStatistic(statistics, "Ball Possession", "Possession"),
+      shots: fixtureStatistic(statistics, "Total Shots"),
+      shotsOnTarget: fixtureStatistic(statistics, "Shots on Goal", "Shots on Target"),
+      corners: fixtureStatistic(statistics, "Corner Kicks", "Corners"),
+      yellowCards: fixtureStatistic(statistics, "Yellow Cards"),
+      redCards: fixtureStatistic(statistics, "Red Cards"),
+      xg: fixtureStatistic(
+        statistics,
+        "expected_goals",
+        "Expected Goals",
+        "Expected goals"
+      ),
+    };
+  });
 }
 
 export async function fetchApiFootballLiveFixtures(): Promise<ExternalFixture[]> {
