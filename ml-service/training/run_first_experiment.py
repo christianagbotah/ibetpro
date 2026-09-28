@@ -21,6 +21,11 @@ def main() -> None:
     parser.add_argument("--train-end", default="2023-06-30")
     parser.add_argument("--calibration-end", default="2024-06-30")
     parser.add_argument("--test-end", default="2025-06-30")
+    parser.add_argument(
+        "--feature-profile",
+        choices=["core", "enriched"],
+        default="core",
+    )
     args = parser.parse_args()
 
     args.work_dir.mkdir(parents=True, exist_ok=True)
@@ -61,6 +66,8 @@ def main() -> None:
         args.calibration_end,
         "--test-end",
         args.test_end,
+        "--feature-profile",
+        args.feature_profile,
     ])
 
     run([
@@ -94,6 +101,7 @@ def main() -> None:
         "baselines": str(baselines),
         "promotion": str(gate),
         "promotion_gate_exit_code": gate_code,
+        "feature_profile": args.feature_profile,
     }
     print(json.dumps(result, indent=2))
 
