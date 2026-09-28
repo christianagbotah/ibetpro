@@ -77,6 +77,22 @@ export interface ExternalFixture {
   minute: number | null;
 }
 
+export interface ExternalEvent {
+  id: string;
+  sportKey: string;
+  sportTitle: string;
+  commenceTime: string;
+  homeTeam: string;
+  awayTeam: string;
+}
+
+export interface ExternalScoreEvent extends ExternalEvent {
+  completed: boolean;
+  homeScore: number | null;
+  awayScore: number | null;
+  lastUpdate: string | null;
+}
+
 export interface ExternalFixtureTeamStats {
   teamId: number;
   teamName: string;
@@ -99,10 +115,82 @@ export interface SyncResult {
 
 // ==================== THE ODDS API ====================
 
+export async function fetchOddsApiEvents(
+  sport: string = "soccer_epl"
+): Promise<ExternalEvent[]> {
+  const apiKey = config.api.oddsApiKey;
+  if (!apiKey) {
+    throw new Error("The Odds API key not configured");
+  }
+
+  const url = `${config.apiUrls.oddsApi}/sports/${sport}/events?apiKey=${apiKey}&dateFormat=iso`;
+  const response = await fetch(url, { cache: "no-store" });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`The Odds API events error (${response.status}): ${errorText}`);
+  }
+
+  const data = (await response.json()) as Array<Record<string, unknown>>;
+  return data.map((event) => ({
+    id: String(event.id || ""),
+    sportKey: String(event.sport_key || sport),
+    sportTitle: String(event.sport_title || sport),
+    commenceTime: String(event.commence_time || new Date().toISOString()),
+    homeTeam: String(event.home_team || "Unknown"),
+    awayTeam: String(event.away_team || "Unknown"),
+  }));
+}
+
+export async function fetchOddsApiScores(
+  sport: string = "soccer_epl"
+): Promise<ExternalScoreEvent[]> {
+  const apiKey = config.api.oddsApiKey;
+  if (!apiKey) {
+    throw new Error("The Odds API key not configured");
+  }
+
+  const url = `${config.apiUrls.oddsApi}/sports/${sport}/scores?apiKey=${apiKey}&dateFormat=iso`;
+  const response = await fetch(url, { cache: "no-store" });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(`The Odds API scores error (${response.status}): ${errorText}`);
+  }
+
+  const data = (await response.json()) as Array<Record<string, unknown>>;
+  return data.map((event) => {
+    const scoreRows = Array.isArray(event.scores)
+      ? (event.scores as Array<Record<string, unknown>>)
+      : [];
+    const scoreFor = (team: string): number | null => {
+      const row = scoreRows.find((score) => String(score.name || "") === team);
+      const parsed = Number(row?.score);
+      return Number.isFinite(parsed) ? parsed : null;
+    };
+    const homeTeam = String(event.home_team || "Unknown");
+    const awayTeam = String(event.away_team || "Unknown");
+
+    return {
+      id: String(event.id || ""),
+      sportKey: String(event.sport_key || sport),
+      sportTitle: String(event.sport_title || sport),
+      commenceTime: String(event.commence_time || new Date().toISOString()),
+      homeTeam,
+      awayTeam,
+      completed: Boolean(event.completed),
+      homeScore: scoreFor(homeTeam),
+      awayScore: scoreFor(awayTeam),
+      lastUpdate: event.last_update ? String(event.last_update) : null,
+    };
+  });
+}
+
+
 export async function fetchOddsApiUpcoming(
   sport: string = "soccer_epl",
-  regions: string = "uk,eu,us",
-  markets: string = "h2h,totals"
+  regions: string = process.env.ODDS_API_REGIONS || "eu",
+  markets: string = process.env.ODDS_API_MARKETS || "h2h"
 ): Promise<ExternalOdds[]> {
   const apiKey = config.api.oddsApiKey;
   if (!apiKey) {
