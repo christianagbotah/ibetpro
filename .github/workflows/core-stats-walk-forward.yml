@@ -24,7 +24,7 @@ jobs:
         working-directory: ml-service
     env:
       MODEL_TRAIN_N_JOBS: "2"
-      EXPERIMENT_REVISION: "11"
+      EXPERIMENT_REVISION: "12"
 
     steps:
       - uses: actions/checkout@v4
