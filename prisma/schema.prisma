@@ -155,6 +155,7 @@ model Match {
   bets Bet[]
   tips Tip[]
   predictionSnapshots PredictionSnapshot[]
+  oddsSnapshots OddsSnapshot[]
 
   @@index([status])
   @@index([sport, league])
@@ -540,4 +541,52 @@ model PredictionSnapshot {
   @@index([matchId, asOf])
   @@index([modelVersion, generatedAt])
   @@index([source])
+}
+
+
+model ProviderTeamMap {
+  id             String   @id @default(cuid())
+  provider       String
+  providerTeamId String
+  canonicalName  String
+  country        String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@unique([provider, providerTeamId])
+  @@index([canonicalName])
+}
+
+model ProviderLeagueMap {
+  id               String   @id @default(cuid())
+  provider         String
+  providerLeagueId String
+  canonicalName    String
+  country          String?
+  season           String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([provider, providerLeagueId])
+  @@index([canonicalName])
+}
+
+model OddsSnapshot {
+  id                String   @id @default(cuid())
+  matchId           String
+  provider          String
+  providerFixtureId String
+  bookmaker         String?
+  capturedAt        DateTime
+  homeOdds          Float?
+  drawOdds          Float?
+  awayOdds          Float?
+  over25Odds        Float?
+  under25Odds       Float?
+  createdAt         DateTime @default(now())
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@index([matchId, capturedAt])
+  @@index([provider, providerFixtureId, capturedAt])
 }
