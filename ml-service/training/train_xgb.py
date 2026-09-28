@@ -453,13 +453,6 @@ def train(
             "model=%.2f,goal=%.2f,market=%.2f" % weights
         ],
     )
-    result_model_weight, result_goal_weight = min(
-        blend_candidates,
-        key=lambda weights: blend_scores[
-            "model=%.1f,goal=%.1f" % (weights[0], weights[1])
-        ],
-    )
-
     x_test = features(test_df)
     y_test = test_df["result_class"].astype(int).to_numpy()
     calibrated_test = (
@@ -470,12 +463,16 @@ def train(
     home_goal_pred = np.clip(home_goal_model.predict(x_test), 0.05, 6.0)
     away_goal_pred = np.clip(away_goal_model.predict(x_test), 0.05, 6.0)
     goal_test_probs = poisson_result_probabilities(home_goal_pred, away_goal_pred)
+    test_elo = elo_probabilities(test_df)
+    test_market = market_probabilities(test_df, fallback=test_elo)
     probabilities = blend_probabilities(
         calibrated_test,
-        elo_probabilities(test_df),
+        test_elo,
         result_model_weight,
         goal_test_probs,
         result_goal_weight,
+        test_market,
+        result_market_weight,
     )
     predicted_class = np.argmax(probabilities, axis=1)
 
