@@ -309,19 +309,6 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
         )
 
     selected_model_probs = selected_candidate["probabilities"]
-    selection_elo = elo_probabilities(calibration_select_df)
-    blend_grid = [round(value, 2) for value in np.linspace(0.0, 1.0, 11)]
-    blend_scores = {
-        weight: float(
-            log_loss(
-                selection_y,
-                blend_probabilities(selected_model_probs, selection_elo, weight),
-                labels=[0, 1, 2],
-            )
-        )
-        for weight in blend_grid
-    }
-    result_model_weight = min(blend_scores, key=blend_scores.get)
 
     home_goal_model = XGBRegressor(
         objective="count:poisson",
@@ -351,6 +338,48 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
     )
     home_goal_model.fit(x_train, train_df["home_goals"])
     away_goal_model.fit(x_train, train_df["away_goals"])
+
+    selection_elo = elo_probabilities(calibration_select_df)
+    selection_home_lambda = np.clip(
+        home_goal_model.predict(selection_x), 0.05, 6.0
+    )
+    selection_away_lambda = np.clip(
+        away_goal_model.predict(selection_x), 0.05, 6.0
+    )
+    selection_goal_probs = poisson_result_probabilities(
+        selection_home_lambda, selection_away_lambda
+    )
+
+    blend_scores: dict[str, float] = {}
+    blend_candidates: list[tuple[float, float]] = []
+    grid = [round(value, 2) for value in np.linspace(0.0, 1.0, 11)]
+    for model_weight in grid:
+        for goal_weight in grid:
+            if model_weight + goal_weight > 1.000001:
+                continue
+            key = "model=%.1f,goal=%.1f" % (model_weight, goal_weight)
+            score = float(
+                log_loss(
+                    selection_y,
+                    blend_probabilities(
+                        selected_model_probs,
+                        selection_elo,
+                        model_weight,
+                        selection_goal_probs,
+                        goal_weight,
+                    ),
+                    labels=[0, 1, 2],
+                )
+            )
+            blend_scores[key] = score
+            blend_candidates.append((model_weight, goal_weight))
+
+    result_model_weight, result_goal_weight = min(
+        blend_candidates,
+        key=lambda weights: blend_scores[
+            "model=%.1f,goal=%.1f" % (weights[0], weights[1])
+        ],
+    )
 
     x_test = features(test_df)
     y_test = test_df["result_class"].astype(int).to_numpy()
