@@ -14,6 +14,7 @@ DEFAULT_GATES = {
     "max_rps": 0.25,
     "must_beat_elo_log_loss_by": 0.005,
     "must_beat_market_log_loss_by": 0.0,
+    "min_market_coverage": 0.90,
 }
 
 
@@ -107,6 +108,14 @@ def decide(candidate: dict, baselines: dict, gates: dict | None = None) -> dict:
         )
 
     if market:
+        market_coverage = float(market.get("coverage", 0.0))
+        add(
+            "market_baseline_coverage",
+            market_coverage >= rules["min_market_coverage"],
+            market_coverage,
+            rules["min_market_coverage"],
+            ">=",
+        )
         market_log_loss = market["log_loss"]
         market_target = market_log_loss - rules["must_beat_market_log_loss_by"]
         add(
