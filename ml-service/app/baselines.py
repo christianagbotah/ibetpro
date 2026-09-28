@@ -167,6 +167,7 @@ def poisson_baseline(payload: PredictionInput) -> MatchPrediction:
     ]
 
     return MatchPrediction(
+        resultMode="baseline",
         modelVersion="poisson-baseline-v1",
         source="ml-service",
         generatedAt=datetime.now(timezone.utc).isoformat(),
