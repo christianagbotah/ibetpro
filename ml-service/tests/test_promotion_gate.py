@@ -105,3 +105,76 @@ def test_low_market_coverage_blocks_promotion():
         item for item in result["checks"] if item["name"] == "market_baseline_coverage"
     )
     assert check["passed"] is False
+
+
+def market_aware_candidate(
+    *,
+    log_loss=0.90,
+    delta=-0.02,
+    ci_low=-0.04,
+    ci_high=-0.005,
+    coverage=1.0,
+):
+    value = candidate(log_loss=log_loss)
+    value["feature_columns"] = [
+        "home_implied_prob",
+        "draw_implied_prob",
+        "away_implied_prob",
+    ]
+    value["metrics"]["market_comparison"] = {
+        "candidate_log_loss": log_loss,
+        "benchmark_log_loss": log_loss - delta,
+        "delta": delta,
+        "bootstrap_ci95_low": ci_low,
+        "bootstrap_ci95_high": ci_high,
+        "probability_candidate_better": 0.98,
+        "iterations": 4000,
+        "rows": 500,
+        "coverage": coverage,
+    }
+    return value
+
+
+def test_significant_market_edge_can_pass_market_statistics():
+    value = market_aware_candidate()
+    result = decide(value, baselines())
+
+    paired = next(
+        item for item in result["checks"]
+        if item["name"] == "paired_market_ci95_upper"
+    )
+    assert paired["passed"] is True
+
+
+def test_market_edge_requires_confident_bootstrap_improvement():
+    value = market_aware_candidate(
+        delta=-0.003,
+        ci_low=-0.015,
+        ci_high=0.009,
+    )
+
+    result = decide(value, baselines())
+
+    assert result["all_gates_passed"] is False
+    paired = next(
+        item for item in result["checks"]
+        if item["name"] == "paired_market_ci95_upper"
+    )
+    assert paired["passed"] is False
+
+
+def test_positive_paired_market_delta_is_rejected():
+    value = market_aware_candidate(
+        log_loss=0.95,
+        delta=0.002,
+        ci_low=-0.008,
+        ci_high=0.013,
+    )
+
+    result = decide(value, baselines())
+
+    delta_check = next(
+        item for item in result["checks"]
+        if item["name"] == "paired_market_log_loss_delta"
+    )
+    assert delta_check["passed"] is False
