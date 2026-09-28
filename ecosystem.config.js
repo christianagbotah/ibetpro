@@ -12,14 +12,14 @@ module.exports = {
       cwd: "/home/lightworld/webapps/ibetpro",
       env: {
         NODE_ENV: "production",
-        PORT: 3007,
+        PORT: 3017,
         HOSTNAME: "0.0.0.0",
         TZ: "Africa/Accra", // UTC+0, no DST — all times in UTC
       },
       // Production environment overrides
       env_production: {
         NODE_ENV: "production",
-        PORT: 3007,
+        PORT: 3017,
         HOSTNAME: "0.0.0.0",
         TZ: "Africa/Accra",
       },
