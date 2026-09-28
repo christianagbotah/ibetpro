@@ -48,6 +48,10 @@ jobs:
         run: |
           python -m training.build_features             --input data/core-stats/corpus/football-data-core.csv             --output data/core-stats/features.csv
 
+      - name: Validate core-stats coverage
+        run: |
+          python -m training.validate_core_stats_readiness             --dataset data/core-stats/features.csv             --min-coverage 0.90             --start 2021-07-01             --end 2025-06-30             --output data/core-stats/readiness.json
+
       - name: Run core-stats walk forward
         run: |
           python -m training.walk_forward             --dataset data/core-stats/features.csv             --output data/core-stats/folds             --feature-profile core_stats
