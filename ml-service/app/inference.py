@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import os
 from datetime import datetime, timezone
 
 import numpy as np
@@ -188,11 +189,21 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
 
     selective_policy = getattr(bundle, "selective_policy", None)
     consensus_available = bool(raw.get("market_consensus_available"))
+    consensus_age = raw.get("market_consensus_age_minutes")
+    max_consensus_age = float(
+        os.environ.get("SELECTIVE_MAX_CONSENSUS_AGE_MINUTES", "360")
+    )
+    consensus_fresh = (
+        consensus_available
+        and consensus_age is not None
+        and np.isfinite(float(consensus_age))
+        and 0.0 <= float(consensus_age) <= max_consensus_age
+    )
     selective_used = False
     selective_abstained = False
     selective_divergence = None
 
-    if market_available and consensus_available and selective_policy:
+    if market_available and consensus_fresh and selective_policy:
         weights = selective_policy.get("alternative_weights", {})
         alternative_model_weight = float(weights.get("model", 0.0))
         alternative_goal_weight = float(weights.get("goal", 0.0))
@@ -231,6 +242,10 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
     if selective_policy and market_available and not consensus_available:
         warnings.append(
             "Selective model deviation is disabled because genuine consensus odds are unavailable for this fixture."
+        )
+    elif selective_policy and market_available and not consensus_fresh:
+        warnings.append(
+            f"Selective model deviation is disabled because the consensus odds snapshot is older than {max_consensus_age:.0f} minutes."
         )
 
     if selective_used:
