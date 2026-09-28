@@ -67,3 +67,17 @@ def test_elo_updates_only_after_fixture():
     assert features.iloc[0]["away_elo"] == 1500.0
     assert features.iloc[1]["home_elo"] > 1500.0
     assert features.iloc[1]["away_elo"] < 1500.0
+
+
+def test_venue_features_use_only_prior_matches():
+    features = build_features(sample_frame(), window=10)
+
+    first = features.iloc[0]
+    second = features.iloc[1]
+
+    assert first["home_home_points_5"] == 0.0
+    assert first["away_away_points_5"] == 0.0
+    assert second["home_home_points_5"] == 3.0
+    assert second["away_away_points_5"] == 0.0
+    assert second["home_home_goals_for_5"] == 5.0
+    assert second["away_away_goals_against_5"] == 5.0
