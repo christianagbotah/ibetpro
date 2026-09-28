@@ -23,6 +23,31 @@ class TeamFeatureSnapshot(BaseModel):
     form: Optional[str] = None
 
 
+class ModelFeatureVector(BaseModel):
+    home_elo: float
+    away_elo: float
+    elo_diff: float
+    home_form_points_5: float
+    away_form_points_5: float
+    home_goals_for_5: float
+    away_goals_for_5: float
+    home_goals_against_5: float
+    away_goals_against_5: float
+    home_xg_for_5: float | None = None
+    away_xg_for_5: float | None = None
+    home_xg_against_5: float | None = None
+    away_xg_against_5: float | None = None
+    home_shots_5: float | None = None
+    away_shots_5: float | None = None
+    home_sot_5: float | None = None
+    away_sot_5: float | None = None
+    home_rest_days: float | None = None
+    away_rest_days: float | None = None
+    home_implied_prob: float | None = None
+    draw_implied_prob: float | None = None
+    away_implied_prob: float | None = None
+
+
 class PredictionInput(BaseModel):
     matchId: str
     asOf: str
@@ -39,6 +64,7 @@ class PredictionInput(BaseModel):
     overUnderLine: Optional[float] = None
     home: Optional[TeamFeatureSnapshot] = None
     away: Optional[TeamFeatureSnapshot] = None
+    modelFeatures: Optional[ModelFeatureVector] = None
 
 
 class ScoreProbability(BaseModel):
