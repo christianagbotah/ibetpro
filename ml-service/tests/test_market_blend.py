@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from training.train_xgb import blend_probabilities, select_conservative_blend
+from training.train_xgb import (blend_probabilities, paired_binary_log_loss_bootstrap, poisson_over25_probabilities, select_conservative_blend)
 
 
 def test_market_component_is_applied_exactly():
@@ -94,3 +94,28 @@ def test_conservative_blend_prefers_market_heavier_near_best_candidate():
     )
 
     assert selected == (0.1, 0.0, 0.9)
+
+
+def test_poisson_over25_probability_and_binary_market_bootstrap():
+    probabilities = poisson_over25_probabilities(
+        np.array([1.6, 0.7]),
+        np.array([1.2, 0.6]),
+    )
+
+    assert probabilities.shape == (2,)
+    assert 0.0 < probabilities[1] < probabilities[0] < 1.0
+
+    observed = np.array([1, 0, 1, 0])
+    candidate = np.array([0.75, 0.25, 0.70, 0.30])
+    benchmark = np.array([0.60, 0.40, 0.55, 0.45])
+    comparison = paired_binary_log_loss_bootstrap(
+        observed,
+        candidate,
+        benchmark,
+        iterations=500,
+        seed=7,
+    )
+
+    assert comparison["candidate_log_loss"] < comparison["benchmark_log_loss"]
+    assert comparison["delta"] < 0
+    assert comparison["candidate_brier"] < comparison["benchmark_brier"]
