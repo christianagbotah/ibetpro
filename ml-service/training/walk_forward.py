@@ -127,19 +127,19 @@ def run_walk_forward(
 
     league_names = sorted(
         {
-            league
+            segment_league
             for fold in fold_results
-            for league in fold.get("segments", {}).keys()
+            for segment_league in fold.get("segments", {}).keys()
         }
     )
     league_stability = {}
-    for league in league_names:
+    for league_name in league_names:
         deltas_for_league = [
-            float(fold["segments"][league]["candidate_minus_market_log_loss"])
+            float(fold["segments"][league_name]["candidate_minus_market_log_loss"])
             for fold in fold_results
-            if league in fold.get("segments", {})
+            if league_name in fold.get("segments", {})
         ]
-        league_stability[league] = {
+        league_stability[league_name] = {
             "folds": len(deltas_for_league),
             "folds_beating_market": sum(
                 1
