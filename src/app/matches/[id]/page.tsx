@@ -5,7 +5,6 @@ import { useToast } from "@/components/ui/toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Separator } from "@/components/ui/separator";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
@@ -16,10 +15,8 @@ import {
   Zap,
   Clock,
   Radio,
-  ChevronRight,
   AlertTriangle,
   CheckCircle,
-  XCircle,
 } from "lucide-react";
 import { useState, useCallback } from "react";
 import { getSportName, getSportShortName } from "@/lib/sports";
@@ -481,120 +478,114 @@ export default function MatchDetailPage() {
           </CardContent>
         </Card>
 
-        {/* Team Comparison */}
+        {/* Evidence and data quality */}
         <Card className="bg-card border-border">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-base">
               <Target className="h-4 w-4 text-amber-400" />
-              Team Comparison
+              Evidence & Data Quality
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-3">
-            {hasAiData ? (
+          <CardContent className="space-y-4">
+            {analysisResult?.richPrediction ? (
               <>
-                {[
-                  { label: "Attack", home: (homeWinProb || 0) * 100, away: (awayWinProb || 0) * 100, homeLabel: `${Math.round((homeWinProb || 0) * 100)}`, awayLabel: `${Math.round((awayWinProb || 0) * 100)}` },
-                  { label: "Defense", home: (1 - (awayWinProb || 0)) * 50, away: (1 - (homeWinProb || 0)) * 50, homeLabel: `${Math.round((1 - (awayWinProb || 0)) * 50)}`, awayLabel: `${Math.round((1 - (homeWinProb || 0)) * 50)}` },
-                  { label: "Overall", home: (homeWinProb || 0) * 80, away: (awayWinProb || 0) * 80, homeLabel: `${Math.round((homeWinProb || 0) * 80)}`, awayLabel: `${Math.round((awayWinProb || 0) * 80)}` },
-                  { label: "Form", home: (homeWinProb || 0) * 90, away: (awayWinProb || 0) * 90, homeLabel: `${Math.round((homeWinProb || 0) * 90)}`, awayLabel: `${Math.round((awayWinProb || 0) * 90)}` },
-                ].map((stat) => {
-                  const maxVal = Math.max(stat.home, stat.away, 1);
-                  return (
-                    <div key={stat.label} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-foreground font-medium w-8 text-right">{stat.homeLabel}</span>
-                        <span className="text-muted-foreground">{stat.label}</span>
-                        <span className="text-foreground font-medium w-8">{stat.awayLabel}</span>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="rounded-lg bg-secondary/50 p-3">
+                    <p className="text-xs text-muted-foreground">Model</p>
+                    <p className="text-sm font-semibold text-foreground truncate">
+                      {analysisResult.richPrediction.modelVersion}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground mt-1">
+                      {analysisResult.richPrediction.source}
+                    </p>
+                  </div>
+                  <div className="rounded-lg bg-secondary/50 p-3">
+                    <p className="text-xs text-muted-foreground">Data completeness</p>
+                    <p className="text-xl font-bold text-foreground">
+                      {Math.round(analysisResult.richPrediction.dataCompleteness * 100)}%
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {[analysisResult.homeTeamStats, analysisResult.awayTeamStats].map((stats, index) => {
+                    const teamName = index === 0 ? match.homeTeam : match.awayTeam;
+                    return (
+                      <div key={teamName} className="rounded-lg border border-border p-3">
+                        <p className="text-sm font-semibold text-foreground truncate">{teamName}</p>
+                        {stats ? (
+                          <div className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
+                            <div>
+                              <p className="text-muted-foreground">Matches</p>
+                              <p className="font-medium text-foreground">{stats.matchesPlayed}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">W-D-L</p>
+                              <p className="font-medium text-foreground">
+                                {stats.wins}-{stats.draws}-{stats.losses}
+                              </p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Goals for</p>
+                              <p className="font-medium text-foreground">{stats.goalsFor}</p>
+                            </div>
+                            <div>
+                              <p className="text-muted-foreground">Goals against</p>
+                              <p className="font-medium text-foreground">{stats.goalsAgainst}</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-xs text-muted-foreground mt-2">
+                            No provider team-stat snapshot available.
+                          </p>
+                        )}
                       </div>
-                      <div className="flex gap-1">
-                        <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-primary transition-all"
-                            style={{ width: `${(stat.home / maxVal) * 100}%` }}
-                          />
-                        </div>
-                        <div className="flex-1 h-1.5 rounded-full bg-secondary overflow-hidden">
-                          <div
-                            className="h-full rounded-full bg-amber-400 transition-all ml-auto"
-                            style={{ width: `${(stat.away / maxVal) * 100}%` }}
-                          />
-                        </div>
-                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="rounded-lg border border-border p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-xs text-muted-foreground">Expected goals</p>
+                      <p className="text-sm font-semibold text-foreground mt-1">
+                        {match.homeTeam} {analysisResult.richPrediction.expectedGoals.home.toFixed(2)}
+                        {" — "}
+                        {analysisResult.richPrediction.expectedGoals.away.toFixed(2)} {match.awayTeam}
+                      </p>
                     </div>
-                  );
-                })}
+                    <Badge variant="secondary" className="text-[10px]">
+                      Total {analysisResult.richPrediction.expectedGoals.total.toFixed(2)}
+                    </Badge>
+                  </div>
+                </div>
+
+                {analysisResult.richPrediction.warnings.length > 0 ? (
+                  <div className="space-y-2">
+                    {analysisResult.richPrediction.warnings.map((warning, index) => (
+                      <div
+                        key={index}
+                        className="flex items-start gap-2 rounded-lg bg-amber-400/5 border border-amber-400/15 p-3"
+                      >
+                        <AlertTriangle className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+                        <p className="text-xs text-muted-foreground">{warning}</p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 rounded-lg bg-emerald-400/5 border border-emerald-400/15 p-3">
+                    <CheckCircle className="h-4 w-4 text-emerald-400" />
+                    <p className="text-xs text-muted-foreground">
+                      No model-data warnings were raised for this snapshot.
+                    </p>
+                  </div>
+                )}
               </>
             ) : (
               <div className="text-center py-6">
-                <p className="text-sm text-muted-foreground">Run AI analysis to see team comparison</p>
-              </div>
-            )}
-
-            <Separator className="my-3" />
-
-            {/* Detailed Analysis Sections */}
-            {analysisResult?.detailedAnalysis && (
-              <div className="space-y-4">
-                {/* Key Factors */}
-                <div>
-                  <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-2">
-                    Key Factors
-                  </div>
-                  {analysisResult.detailedAnalysis.keyFactors.map((factor, i) => (
-                    <div key={i} className="flex items-start gap-2 mb-1">
-                      <ChevronRight className="h-3 w-3 text-primary mt-0.5 shrink-0" />
-                      <span className="text-xs text-foreground">{factor}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Strengths */}
-                <div>
-                  <div className="flex items-center gap-1 text-xs font-medium text-emerald-400 uppercase tracking-wider mb-2">
-                    <CheckCircle className="h-3 w-3" />
-                    Strengths
-                  </div>
-                  {analysisResult.detailedAnalysis.strengths.points.map((s, i) => (
-                    <div key={i} className="flex items-start gap-2 mb-1">
-                      <CheckCircle className="h-3 w-3 text-emerald-400 mt-0.5 shrink-0" />
-                      <span className="text-xs text-foreground">{s}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Weaknesses */}
-                <div>
-                  <div className="flex items-center gap-1 text-xs font-medium text-red-400 uppercase tracking-wider mb-2">
-                    <XCircle className="h-3 w-3" />
-                    Weaknesses
-                  </div>
-                  {analysisResult.detailedAnalysis.weaknesses.points.map((w, i) => (
-                    <div key={i} className="flex items-start gap-2 mb-1">
-                      <XCircle className="h-3 w-3 text-red-400 mt-0.5 shrink-0" />
-                      <span className="text-xs text-foreground">{w}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Risk Assessment */}
-                <div className="rounded-lg bg-secondary/50 p-3">
-                  <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className={`h-4 w-4 ${
-                      analysisResult.detailedAnalysis.riskAssessment.level === "low" ? "text-emerald-400" :
-                      analysisResult.detailedAnalysis.riskAssessment.level === "medium" ? "text-amber-400" : "text-red-400"
-                    }`} />
-                    <span className="text-xs font-medium text-foreground">Risk Assessment</span>
-                    <Badge className={`text-[10px] ${
-                      analysisResult.detailedAnalysis.riskAssessment.level === "low" ? "bg-emerald-400/10 text-emerald-400" :
-                      analysisResult.detailedAnalysis.riskAssessment.level === "medium" ? "bg-amber-400/10 text-amber-400" : "bg-red-400/10 text-red-400"
-                    }`}>
-                      {analysisResult.detailedAnalysis.riskAssessment.level.toUpperCase()}
-                    </Badge>
-                  </div>
-                  {analysisResult.detailedAnalysis.riskAssessment.factors.map((f, i) => (
-                    <p key={i} className="text-[11px] text-muted-foreground">{f}</p>
-                  ))}
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  Run AI analysis to inspect real model evidence and data quality.
+                </p>
               </div>
             )}
           </CardContent>
