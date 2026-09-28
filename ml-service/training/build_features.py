@@ -209,6 +209,8 @@ def build_features(raw: pd.DataFrame, window: int = 5) -> pd.DataFrame:
             "home_implied_prob": home_implied,
             "draw_implied_prob": draw_implied,
             "away_implied_prob": away_implied,
+            "over25_odds": getattr(fixture, "over25_odds", np.nan),
+            "under25_odds": getattr(fixture, "under25_odds", np.nan),
             **market_structure,
             "home_goals": int(fixture.home_goals),
             "away_goals": int(fixture.away_goals),
