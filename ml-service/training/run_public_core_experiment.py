@@ -88,6 +88,22 @@ def main() -> None:
         str(baselines),
     ])
 
+    segments = args.work_dir / "segments.json"
+    run([
+        "python",
+        "training/evaluate_segments.py",
+        "--dataset",
+        str(features),
+        "--model-dir",
+        str(candidate),
+        "--start",
+        "2024-07-01",
+        "--end",
+        args.test_end,
+        "--output",
+        str(segments),
+    ])
+
     gate_code = run([
         "python",
         "training/promotion_gate.py",
@@ -120,6 +136,7 @@ def main() -> None:
         "candidate": str(candidate),
         "baselines": str(baselines),
         "promotion": str(promotion),
+        "segments": str(segments),
         "promotion_gate_exit_code": gate_code,
         "untouched_holdout_starts": "2025-07-01",
         "untouched_holdout_evaluated": gate_code == 0,
