@@ -7,6 +7,8 @@ on:
       - revamp/production-foundation
     paths:
       - .github/workflows/openfootball-bootstrap.yml
+      - ml-service/training/collect_openfootball.py
+      - ml-service/tests/test_openfootball_collector.py
 
 permissions:
   contents: read
