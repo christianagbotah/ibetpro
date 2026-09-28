@@ -49,6 +49,7 @@ export interface ModelFeatureVector {
   draw_market_prob?: number | null;
   away_market_prob?: number | null;
   market_consensus_available?: boolean | null;
+  market_consensus_age_minutes?: number | null;
   market_overround?: number | null;
   market_entropy?: number | null;
   market_home_away_log_ratio?: number | null;
