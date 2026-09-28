@@ -90,9 +90,16 @@ def _markets(
     ]
 
 
-def predict(payload: PredictionInput) -> MatchPrediction:
+def predict(payload: PredictionInput, require_model: bool = False) -> MatchPrediction:
     bundle = get_model_bundle()
     if bundle is None or payload.modelFeatures is None:
+        if require_model:
+            missing = []
+            if bundle is None:
+                missing.append("configured trained model")
+            if payload.modelFeatures is None:
+                missing.append("modelFeatures")
+            raise RuntimeError("Candidate inference unavailable: missing " + ", ".join(missing))
         return poisson_baseline(payload)
 
     raw = payload.modelFeatures.model_dump()
