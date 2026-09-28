@@ -376,6 +376,7 @@ export async function buildOnlineModelFeatures(
     draw_implied_prob: drawImplied,
     away_implied_prob: awayImplied,
     ...market,
+    market_consensus_available: Boolean(consensusOdds),
     home_possession_5: homeRolling.possession,
     away_possession_5: awayRolling.possession,
     home_corners_5: homeRolling.corners,
