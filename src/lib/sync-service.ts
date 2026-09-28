@@ -319,17 +319,33 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
               },
             });
 
-            await persistOddsSnapshot(syncedMatch.id, {
-              provider: "odds-api",
-              providerFixtureId: matchData.externalId,
-              capturedAt: new Date().toISOString(),
-              bookmaker: "best-available",
-              home: matchData.homeOdds,
-              draw: matchData.drawOdds,
-              away: matchData.awayOdds,
-              over25: matchData.overUnderLine === 2.5 ? matchData.overOdds : null,
-              under25: matchData.overUnderLine === 2.5 ? matchData.underOdds : null,
-            });
+            const capturedAt = new Date().toISOString();
+            await Promise.all([
+              persistOddsSnapshot(syncedMatch.id, {
+                provider: "odds-api",
+                providerFixtureId: matchData.externalId,
+                capturedAt,
+                bookmaker: "best-available",
+                home: matchData.homeOdds,
+                draw: matchData.drawOdds,
+                away: matchData.awayOdds,
+                over25:
+                  matchData.overUnderLine === 2.5 ? matchData.overOdds : null,
+                under25:
+                  matchData.overUnderLine === 2.5 ? matchData.underOdds : null,
+              }),
+              persistOddsSnapshot(syncedMatch.id, {
+                provider: "odds-api",
+                providerFixtureId: matchData.externalId,
+                capturedAt,
+                bookmaker: "consensus",
+                home: matchData.consensusHomeOdds,
+                draw: matchData.consensusDrawOdds,
+                away: matchData.consensusAwayOdds,
+                over25: null,
+                under25: null,
+              }),
+            ]);
 
             if (existing) matchesUpdated++;
             else matchesSynced++;
