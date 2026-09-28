@@ -291,6 +291,50 @@ def blend_probabilities(
     return blended / blended.sum(axis=1, keepdims=True)
 
 
+def select_conservative_blend(
+    candidates: list[tuple[float, float, float]],
+    scores: dict[str, float],
+    min_market_improvement: float = 0.001,
+    near_best_tolerance: float = 0.0005,
+) -> tuple[float, float, float]:
+    """Select blend weights with a market-prior stability guardrail.
+
+    Pure market (0, 0, 1) is always a valid candidate. We only deviate from it
+    when calibration-selection Log Loss improves by a predeclared minimum.
+    Among statistically/negligibly near-best candidates, prefer the blend with
+    the largest market weight to reduce season-to-season weight variance.
+    """
+
+    def key(weights: tuple[float, float, float]) -> str:
+        return "model=%.2f,goal=%.2f,market=%.2f" % weights
+
+    pure_market = (0.0, 0.0, 1.0)
+    if pure_market not in candidates:
+        raise ValueError("Blend grid must contain pure market candidate")
+
+    market_score = scores[key(pure_market)]
+    best = min(candidates, key=lambda weights: scores[key(weights)])
+    best_score = scores[key(best)]
+
+    if market_score - best_score < min_market_improvement:
+        return pure_market
+
+    eligible = [
+        weights
+        for weights in candidates
+        if scores[key(weights)] <= best_score + near_best_tolerance
+    ]
+    return max(
+        eligible,
+        key=lambda weights: (
+            weights[2],
+            -(weights[0] + weights[1]),
+            -weights[1],
+            -weights[0],
+        ),
+    )
+
+
 def train(
     dataset_path: Path,
     output_dir: Path,
@@ -539,11 +583,21 @@ def train(
                     (model_weight, goal_weight, market_weight)
                 )
 
-    result_model_weight, result_goal_weight, result_market_weight = min(
+    min_market_improvement = float(
+        os.environ.get("MIN_MARKET_CALIBRATION_IMPROVEMENT", "0.001")
+    )
+    near_best_tolerance = float(
+        os.environ.get("BLEND_NEAR_BEST_TOLERANCE", "0.0005")
+    )
+    (
+        result_model_weight,
+        result_goal_weight,
+        result_market_weight,
+    ) = select_conservative_blend(
         blend_candidates,
-        key=lambda weights: blend_scores[
-            "model=%.2f,goal=%.2f,market=%.2f" % weights
-        ],
+        blend_scores,
+        min_market_improvement=min_market_improvement,
+        near_best_tolerance=near_best_tolerance,
     )
     x_test = features(test_df)
     y_test = test_df["result_class"].astype(int).to_numpy()
@@ -652,6 +706,10 @@ def train(
                 - result_goal_weight
                 - result_market_weight
             ),
+            "min_market_calibration_improvement": float(
+                min_market_improvement
+            ),
+            "near_best_tolerance": float(near_best_tolerance),
             "blend_selection_log_loss": {
                 str(weight): float(score) for weight, score in blend_scores.items()
             },
