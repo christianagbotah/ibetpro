@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from pathlib import Path
 import hashlib
 import json
+import os
 
 import joblib
 import numpy as np
@@ -112,6 +113,7 @@ def ranked_probability_score(
 
 def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> dict:
     frame = load_dataset(dataset_path)
+    train_jobs = max(1, int(os.environ.get("MODEL_TRAIN_N_JOBS", "2")))
 
     train_df = frame[frame["kickoff_utc"] <= split.train_end]
     calibration_df = frame[
@@ -153,7 +155,7 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
         reg_lambda=2.0,
         eval_metric="mlogloss",
         random_state=42,
-        n_jobs=-1,
+        n_jobs=train_jobs,
     )
     result_model.fit(x_train, y_train)
 
@@ -177,7 +179,7 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
         reg_alpha=0.2,
         reg_lambda=2.0,
         random_state=43,
-        n_jobs=-1,
+        n_jobs=train_jobs,
     )
     away_goal_model = XGBRegressor(
         objective="count:poisson",
@@ -190,7 +192,7 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
         reg_alpha=0.2,
         reg_lambda=2.0,
         random_state=44,
-        n_jobs=-1,
+        n_jobs=train_jobs,
     )
     home_goal_model.fit(x_train, train_df["home_goals"])
     away_goal_model.fit(x_train, train_df["away_goals"])
