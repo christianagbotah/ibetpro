@@ -297,8 +297,10 @@ export async function fetchApiFootballTeamStats(
     attackRating: Math.round(attackRating * 10) / 10,
     defenseRating: Math.round(defenseRating * 10) / 10,
     overallRating: Math.round(overallRating * 10) / 10,
-    xgFor: stats.goals?.for?.total?.total || 0,
-    xgAgainst: stats.goals?.against?.total?.total || 0,
+    // API-Football team statistics do not provide true expected-goals values
+    // in this response. Never substitute actual goal totals for xG.
+    xgFor: 0,
+    xgAgainst: 0,
     shotsPerGame: matchesPlayed > 0 ? Math.round(((stats.shots?.total || 0) / matchesPlayed) * 10) / 10 : 0,
     shotsOnTargetPerGame: matchesPlayed > 0 ? Math.round(((stats.shots?.on || 0) / matchesPlayed) * 10) / 10 : 0,
     possessionAvg: stats.possession ? parseFloat(stats.possession as unknown as string) || 50 : 50,
