@@ -110,6 +110,7 @@ export interface ProbabilityMarket {
 }
 
 export interface MatchPrediction {
+  resultMode: "baseline" | "market-consensus" | "selective-model";
   schemaVersion: "1.0";
   modelVersion: string;
   source: PredictionSource;
