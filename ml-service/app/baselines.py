@@ -102,9 +102,39 @@ def poisson_baseline(payload: PredictionInput) -> MatchPrediction:
         for row in matrix
     ]
 
-    home_win = sum(row.probability for row in matrix if row.home > row.away)
-    draw = sum(row.probability for row in matrix if row.home == row.away)
-    away_win = 1.0 - home_win - draw
+    poisson_home_win = sum(row.probability for row in matrix if row.home > row.away)
+    poisson_draw = sum(row.probability for row in matrix if row.home == row.away)
+    poisson_away_win = 1.0 - poisson_home_win - poisson_draw
+
+    market_values = (
+        [
+            payload.modelFeatures.home_market_prob,
+            payload.modelFeatures.draw_market_prob,
+            payload.modelFeatures.away_market_prob,
+        ]
+        if payload.modelFeatures
+        else [None, None, None]
+    )
+    has_consensus = bool(
+        payload.modelFeatures
+        and payload.modelFeatures.market_consensus_available is True
+        and all(
+            value is not None and math.isfinite(float(value)) and float(value) > 0
+            for value in market_values
+        )
+    )
+
+    if has_consensus:
+        total = sum(float(value) for value in market_values)
+        home_win, draw, away_win = [
+            float(value) / total for value in market_values
+        ]
+    else:
+        home_win, draw, away_win = (
+            poisson_home_win,
+            poisson_draw,
+            poisson_away_win,
+        )
 
     def p(predicate) -> float:
         return sum(row.probability for row in matrix if predicate(row))
@@ -150,6 +180,10 @@ def poisson_baseline(payload: PredictionInput) -> MatchPrediction:
 
     completeness = _completeness(payload)
     warnings: list[str] = []
+    if has_consensus:
+        warnings.append(
+            "1X2 probabilities use normalized market consensus; goal and score markets remain Poisson-derived."
+        )
     if completeness < 0.65:
         warnings.append("Limited feature coverage; confidence is reduced.")
     if not (payload.home and payload.home.xgFor) or not (payload.away and payload.away.xgFor):
@@ -167,7 +201,7 @@ def poisson_baseline(payload: PredictionInput) -> MatchPrediction:
     ]
 
     return MatchPrediction(
-        resultMode="baseline",
+        resultMode="market-consensus" if has_consensus else "baseline",
         modelVersion="poisson-baseline-v1",
         source="ml-service",
         generatedAt=datetime.now(timezone.utc).isoformat(),
