@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from fastapi import FastAPI
 
-from .baselines import poisson_baseline
+from .inference import predict as predict_match
+from .model_registry import model_status
 from .schemas import MatchPrediction, PredictionInput
 
 app = FastAPI(
@@ -13,11 +14,11 @@ app = FastAPI(
 
 
 @app.get("/health")
-def health() -> dict[str, str]:
+def health() -> dict:
     return {
         "status": "ok",
         "service": "ibetpro-ml",
-        "model": "poisson-baseline-v1",
+        "model": model_status(),
     }
 
 
@@ -25,4 +26,4 @@ def health() -> dict[str, str]:
 def predict(payload: PredictionInput) -> MatchPrediction:
     # Baseline path. Trained models will be promoted behind this same contract
     # after chronological holdout + calibration gates pass.
-    return poisson_baseline(payload)
+    return predict_match(payload)
