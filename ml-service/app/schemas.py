@@ -46,6 +46,14 @@ class ModelFeatureVector(BaseModel):
     home_implied_prob: float | None = None
     draw_implied_prob: float | None = None
     away_implied_prob: float | None = None
+    home_market_prob: float | None = None
+    draw_market_prob: float | None = None
+    away_market_prob: float | None = None
+    market_overround: float | None = None
+    market_entropy: float | None = None
+    market_home_away_log_ratio: float | None = None
+    market_home_draw_log_ratio: float | None = None
+    market_away_draw_log_ratio: float | None = None
     home_possession_5: float | None = None
     away_possession_5: float | None = None
     home_corners_5: float | None = None
