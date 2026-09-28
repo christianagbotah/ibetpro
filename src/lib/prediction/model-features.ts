@@ -46,6 +46,67 @@ function implied(odds: number | null | undefined): number | null {
   return odds && odds > 1 ? 1 / odds : null;
 }
 
+function marketStructure(
+  homeImplied: number | null,
+  drawImplied: number | null,
+  awayImplied: number | null
+) {
+  if (
+    homeImplied == null ||
+    drawImplied == null ||
+    awayImplied == null ||
+    !Number.isFinite(homeImplied) ||
+    !Number.isFinite(drawImplied) ||
+    !Number.isFinite(awayImplied)
+  ) {
+    return {
+      home_market_prob: null,
+      draw_market_prob: null,
+      away_market_prob: null,
+      market_overround: null,
+      market_entropy: null,
+      market_home_away_log_ratio: null,
+      market_home_draw_log_ratio: null,
+      market_away_draw_log_ratio: null,
+    };
+  }
+
+  const overround = homeImplied + drawImplied + awayImplied;
+  if (!(overround > 0)) {
+    return {
+      home_market_prob: null,
+      draw_market_prob: null,
+      away_market_prob: null,
+      market_overround: null,
+      market_entropy: null,
+      market_home_away_log_ratio: null,
+      market_home_draw_log_ratio: null,
+      market_away_draw_log_ratio: null,
+    };
+  }
+
+  const home = homeImplied / overround;
+  const draw = drawImplied / overround;
+  const away = awayImplied / overround;
+  const eps = 1e-12;
+  const entropy = -[home, draw, away].reduce(
+    (sum, probability) =>
+      sum + probability * Math.log(Math.max(probability, eps)),
+    0
+  );
+
+  return {
+    home_market_prob: home,
+    draw_market_prob: draw,
+    away_market_prob: away,
+    market_overround: overround,
+    market_entropy: entropy,
+    market_home_away_log_ratio: Math.log(Math.max(home, eps) / Math.max(away, eps)),
+    market_home_draw_log_ratio: Math.log(Math.max(home, eps) / Math.max(draw, eps)),
+    market_away_draw_log_ratio: Math.log(Math.max(away, eps) / Math.max(draw, eps)),
+  };
+}
+
 function pointsFor(team: string, match: HistoricalMatch): number {
   if (match.homeScore == null || match.awayScore == null) return 0;
   const isHome = match.homeTeam === team;
@@ -252,6 +313,11 @@ export async function buildOnlineModelFeatures(
     getCausalElo(match.awayTeam, match.sport, match.league, featureAsOf),
   ]);
 
+  const homeImplied = implied(match.homeOdds);
+  const drawImplied = implied(match.drawOdds);
+  const awayImplied = implied(match.awayOdds);
+  const market = marketStructure(homeImplied, drawImplied, awayImplied);
+
   return {
     home_elo: homeElo,
     away_elo: awayElo,
@@ -284,9 +350,10 @@ export async function buildOnlineModelFeatures(
     away_sot_5: awayRolling.shotsOnTarget,
     home_rest_days: restDays(homeHistory[0], featureAsOf),
     away_rest_days: restDays(awayHistory[0], featureAsOf),
-    home_implied_prob: implied(match.homeOdds),
-    draw_implied_prob: implied(match.drawOdds),
-    away_implied_prob: implied(match.awayOdds),
+    home_implied_prob: homeImplied,
+    draw_implied_prob: drawImplied,
+    away_implied_prob: awayImplied,
+    ...market,
     home_possession_5: homeRolling.possession,
     away_possession_5: awayRolling.possession,
     home_corners_5: homeRolling.corners,
