@@ -165,8 +165,16 @@ export function poissonBaselinePredict(input: PredictionInput): MatchPrediction 
     input.modelFeatures?.draw_market_prob,
     input.modelFeatures?.away_market_prob,
   ];
+  const consensusAge = input.modelFeatures?.market_consensus_age_minutes;
+  const maxConsensusAge = Number(
+    process.env.SELECTIVE_MAX_CONSENSUS_AGE_MINUTES || 360
+  );
   const hasConsensus =
     input.modelFeatures?.market_consensus_available === true &&
+    consensusAge != null &&
+    Number.isFinite(consensusAge) &&
+    consensusAge >= 0 &&
+    consensusAge <= maxConsensusAge &&
     marketValues.every(
       (value) => value != null && Number.isFinite(value) && value > 0
     );
