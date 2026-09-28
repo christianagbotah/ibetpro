@@ -86,8 +86,8 @@ export async function rebuildLeagueEloSnapshots(
 
   await prisma.$transaction(async (tx) => {
     await tx.teamEloSnapshot.deleteMany({ where: { sport, league } });
-    for (const row of rows) {
-      await tx.teamEloSnapshot.create({ data: row });
+    if (rows.length) {
+      await tx.teamEloSnapshot.createMany({ data: rows });
     }
   });
 
