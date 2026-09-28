@@ -25,23 +25,35 @@ export async function backfillFinishedFixtureStats(
   let snapshotsUpserted = 0;
   let skipped = 0;
 
-  const matches = await prisma.match.findMany({
+  // Fetch a wider candidate window and filter in memory so fixtures with
+  // exactly one stored side remain retryable. A relation "none" filter would
+  // permanently skip partially backfilled matches.
+  const recentMatches = await prisma.match.findMany({
     where: {
       apiSource: "api-football",
       status: "finished",
-      statSnapshots: { none: {} },
       externalId: { not: null },
     },
     orderBy: { commenceTime: "desc" },
-    take: boundedLimit,
+    take: boundedLimit * 4,
     select: {
       id: true,
       externalId: true,
       homeTeam: true,
       awayTeam: true,
       commenceTime: true,
+      statSnapshots: {
+        select: { teamSide: true },
+      },
     },
   });
+
+  const matches = recentMatches
+    .filter((match) => {
+      const sides = new Set(match.statSnapshots.map((snapshot) => snapshot.teamSide));
+      return !sides.has("home") || !sides.has("away");
+    })
+    .slice(0, boundedLimit);
 
   for (const match of matches) {
     const fixtureId = fixtureIdFromMatch(match.externalId);
