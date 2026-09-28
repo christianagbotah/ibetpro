@@ -24,6 +24,7 @@ def render(work_dir: Path) -> str:
     candidate = load_json(work_dir / "candidate" / "metadata.json")
     baselines = load_json(work_dir / "baselines.json")
     promotion = load_json(work_dir / "promotion.json")
+    holdout = load_json(work_dir / "untouched-holdout.json")
 
     lines = [
         "# iBetPro Model Experiment Report",
@@ -113,7 +114,30 @@ def render(work_dir: Path) -> str:
             )
         lines.append("")
 
-    if not any([quality, candidate, baselines, promotion]):
+    if holdout:
+        result = holdout.get("result", {})
+        goals = holdout.get("goals", {})
+        lines += [
+            "## Untouched holdout",
+            "",
+            "**This section is final evidence only and must not be used for model selection or tuning.**",
+            "",
+            f"- Rows: **{holdout.get('rows', '—')}**",
+            f"- Period: **{holdout.get('period', {}).get('start', '—')} → {holdout.get('period', {}).get('end', '—')}**",
+            "",
+            "| Metric | Holdout |",
+            "| --- | ---: |",
+            f"| Log loss | {fmt(result.get('log_loss'))} |",
+            f"| Multiclass Brier | {fmt(result.get('multiclass_brier'))} |",
+            f"| Accuracy | {fmt(result.get('accuracy'))} |",
+            f"| Expected calibration error | {fmt(result.get('expected_calibration_error'))} |",
+            f"| Ranked probability score | {fmt(result.get('ranked_probability_score'))} |",
+            f"| Home-goal MAE | {fmt(goals.get('home_mae'))} |",
+            f"| Away-goal MAE | {fmt(goals.get('away_mae'))} |",
+            "",
+        ]
+
+    if not any([quality, candidate, baselines, promotion, holdout]):
         lines.append("No experiment artifacts were produced.")
 
     return "\n".join(lines) + "\n"
