@@ -82,6 +82,7 @@ def _payload() -> PredictionInput:
             home_implied_prob=0.50,
             draw_implied_prob=0.30,
             away_implied_prob=0.25,
+            market_consensus_available=True,
         ),
     )
 
@@ -107,3 +108,17 @@ def test_selective_policy_can_authorize_model_deviation(monkeypatch):
     assert result.result.draw == 0.15
     assert result.result.awayWin == 0.15
     assert any("Selective model deviation" in warning for warning in result.warnings)
+
+
+def test_selective_policy_requires_genuine_consensus(monkeypatch):
+    monkeypatch.setattr(inference, "get_model_bundle", lambda: _Bundle(True))
+    payload = _payload()
+    payload.modelFeatures.market_consensus_available = False
+
+    result = inference.predict(payload, require_model=True)
+
+    assert result.resultMode != "selective-model"
+    assert any(
+        "genuine consensus odds are unavailable" in warning
+        for warning in result.warnings
+    )
