@@ -61,7 +61,7 @@ def test_current_fixture_does_not_leak_into_its_features():
     # The first match has no prior history. Its own 5 goals / 3.0 xG must not
     # appear in the features used to predict that same fixture.
     assert first["home_goals_for_5"] == 0.0
-    assert first["home_xg_for_5"] == 1.35
+    assert pd.isna(first["home_xg_for_5"])
 
     # The second fixture may use the first fixture because it was known by then.
     assert second["home_goals_for_5"] == 5.0
