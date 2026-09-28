@@ -229,20 +229,23 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
             n_jobs=train_jobs,
             verbosity=-1,
         ),
-        "logistic": Pipeline(
-            [
-                ("scale", StandardScaler()),
-                (
-                    "model",
-                    LogisticRegression(
-                        C=0.35,
-                        max_iter=3000,
-                        solver="lbfgs",
-                        random_state=42,
+        **{
+            "logistic_c_%s" % str(c_value).replace(".", "_"): Pipeline(
+                [
+                    ("scale", StandardScaler()),
+                    (
+                        "model",
+                        LogisticRegression(
+                            C=c_value,
+                            max_iter=3000,
+                            solver="lbfgs",
+                            random_state=42,
+                        ),
                     ),
-                ),
-            ]
-        ),
+                ]
+            )
+            for c_value in (0.05, 0.10, 0.20, 0.35, 0.60, 1.00, 2.00)
+        },
     }
     for model in result_models.values():
         model.fit(x_train, y_train)
@@ -352,7 +355,7 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
 
     blend_scores: dict[str, float] = {}
     blend_candidates: list[tuple[float, float]] = []
-    grid = [round(value, 2) for value in np.linspace(0.0, 1.0, 11)]
+    grid = [round(value, 2) for value in np.linspace(0.0, 1.0, 21)]
     for model_weight in grid:
         for goal_weight in grid:
             if model_weight + goal_weight > 1.000001:
