@@ -1,0 +1,20 @@
+{
+  "provider": "api-football",
+  "competitions": [
+    { "league_id": 39, "name": "Premier League", "seasons": [2019, 2020, 2021, 2022, 2023, 2024, 2025] },
+    { "league_id": 140, "name": "La Liga", "seasons": [2019, 2020, 2021, 2022, 2023, 2024, 2025] }
+  ],
+  "first_training_scope": {
+    "leagues": [39, 140],
+    "train_through": "2023-06-30",
+    "calibration_through": "2024-06-30",
+    "test_through": "2025-06-30",
+    "untouched_holdout_after": "2025-07-01"
+  },
+  "rules": [
+    "Never use post-kickoff information in pre-match feature rows.",
+    "Preserve provider-native fixture/team identifiers.",
+    "Do not synthesize odds or xG when unavailable.",
+    "Keep raw provider responses immutable beside normalized exports."
+  ]
+}
