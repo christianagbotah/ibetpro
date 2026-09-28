@@ -146,6 +146,28 @@ def elo_probabilities(frame: pd.DataFrame) -> np.ndarray:
     return np.column_stack([home_prob, draw, away_prob])
 
 
+def market_probabilities(
+    frame: pd.DataFrame,
+    fallback: np.ndarray | None = None,
+) -> np.ndarray:
+    columns = ["home_implied_prob", "draw_implied_prob", "away_implied_prob"]
+    values = frame[columns].apply(pd.to_numeric, errors="coerce").to_numpy(dtype=float)
+    valid = np.isfinite(values).all(axis=1) & (values.sum(axis=1) > 0)
+    result = np.zeros_like(values, dtype=float)
+
+    if valid.any():
+        rows = values[valid]
+        result[valid] = rows / rows.sum(axis=1, keepdims=True)
+
+    if (~valid).any():
+        if fallback is not None:
+            result[~valid] = fallback[~valid]
+        else:
+            result[~valid] = np.array([1 / 3, 1 / 3, 1 / 3], dtype=float)
+
+    return result
+
+
 def poisson_result_probabilities(
     home_lambdas: np.ndarray,
     away_lambdas: np.ndarray,
@@ -175,13 +197,19 @@ def blend_probabilities(
     model_weight: float,
     goal_probs: np.ndarray | None = None,
     goal_weight: float = 0.0,
+    market_probs: np.ndarray | None = None,
+    market_weight: float = 0.0,
 ) -> np.ndarray:
-    elo_weight = 1.0 - model_weight - goal_weight
+    elo_weight = 1.0 - model_weight - goal_weight - market_weight
     if elo_weight < -1e-9:
         raise ValueError("Blend weights exceed 1.0")
+
     blended = model_weight * model_probs + max(0.0, elo_weight) * elo_probs
     if goal_probs is not None and goal_weight > 0:
         blended = blended + goal_weight * goal_probs
+    if market_probs is not None and market_weight > 0:
+        blended = blended + market_weight * market_probs
+
     return blended / blended.sum(axis=1, keepdims=True)
 
 
@@ -382,31 +410,49 @@ def train(
     selection_goal_probs = poisson_result_probabilities(
         selection_home_lambda, selection_away_lambda
     )
+    selection_market = market_probabilities(
+        calibration_select_df,
+        fallback=selection_elo,
+    )
 
     blend_scores: dict[str, float] = {}
-    blend_candidates: list[tuple[float, float]] = []
+    blend_candidates: list[tuple[float, float, float]] = []
     grid = [round(value, 2) for value in np.linspace(0.0, 1.0, 21)]
     for model_weight in grid:
         for goal_weight in grid:
-            if model_weight + goal_weight > 1.000001:
-                continue
-            key = "model=%.1f,goal=%.1f" % (model_weight, goal_weight)
-            score = float(
-                log_loss(
-                    selection_y,
-                    blend_probabilities(
-                        selected_model_probs,
-                        selection_elo,
-                        model_weight,
-                        selection_goal_probs,
-                        goal_weight,
-                    ),
-                    labels=[0, 1, 2],
+            for market_weight in grid:
+                if model_weight + goal_weight + market_weight > 1.000001:
+                    continue
+                key = (
+                    "model=%.2f,goal=%.2f,market=%.2f"
+                    % (model_weight, goal_weight, market_weight)
                 )
-            )
-            blend_scores[key] = score
-            blend_candidates.append((model_weight, goal_weight))
+                score = float(
+                    log_loss(
+                        selection_y,
+                        blend_probabilities(
+                            selected_model_probs,
+                            selection_elo,
+                            model_weight,
+                            selection_goal_probs,
+                            goal_weight,
+                            selection_market,
+                            market_weight,
+                        ),
+                        labels=[0, 1, 2],
+                    )
+                )
+                blend_scores[key] = score
+                blend_candidates.append(
+                    (model_weight, goal_weight, market_weight)
+                )
 
+    result_model_weight, result_goal_weight, result_market_weight = min(
+        blend_candidates,
+        key=lambda weights: blend_scores[
+            "model=%.2f,goal=%.2f,market=%.2f" % weights
+        ],
+    )
     result_model_weight, result_goal_weight = min(
         blend_candidates,
         key=lambda weights: blend_scores[
@@ -494,8 +540,12 @@ def train(
             },
             "result_model_weight": float(result_model_weight),
             "result_goal_weight": float(result_goal_weight),
+            "result_market_weight": float(result_market_weight),
             "result_elo_weight": float(
-                1.0 - result_model_weight - result_goal_weight
+                1.0
+                - result_model_weight
+                - result_goal_weight
+                - result_market_weight
             ),
             "blend_selection_log_loss": {
                 str(weight): float(score) for weight, score in blend_scores.items()
