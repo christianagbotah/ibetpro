@@ -90,6 +90,12 @@ def normalize(frame: pd.DataFrame, code: str, start_year: int) -> pd.DataFrame:
                 "home_odds": first_present(row, "AvgH", "B365H", "WHH", "PSH"),
                 "draw_odds": first_present(row, "AvgD", "B365D", "WHD", "PSD"),
                 "away_odds": first_present(row, "AvgA", "B365A", "WHA", "PSA"),
+                "over25_odds": first_present(
+                    row, "Avg>2.5", "B365>2.5", "P>2.5", "Max>2.5"
+                ),
+                "under25_odds": first_present(
+                    row, "Avg<2.5", "B365<2.5", "P<2.5", "Max<2.5"
+                ),
                 "closing_home_odds": first_present(row, "AvgCH", "B365CH", "PSCH"),
                 "closing_draw_odds": first_present(row, "AvgCD", "B365CD", "PSCD"),
                 "closing_away_odds": first_present(row, "AvgCA", "B365CA", "PSCA"),
