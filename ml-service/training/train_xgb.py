@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+import hashlib
 import json
 
 import joblib
@@ -232,10 +233,25 @@ def train(dataset_path: Path, output_dir: Path, split: ChronologicalSplit) -> di
     joblib.dump(home_goal_model, output_dir / "home_goals_xgb.joblib")
     joblib.dump(away_goal_model, output_dir / "away_goals_xgb.joblib")
 
+    def sha256(path: Path) -> str:
+        digest = hashlib.sha256()
+        with path.open("rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    artifacts = {
+        "result_xgb.joblib": sha256(output_dir / "result_xgb.joblib"),
+        "result_calibrator.joblib": sha256(output_dir / "result_calibrator.joblib"),
+        "home_goals_xgb.joblib": sha256(output_dir / "home_goals_xgb.joblib"),
+        "away_goals_xgb.joblib": sha256(output_dir / "away_goals_xgb.joblib"),
+    }
+
     metadata = {
         "model_version": "xgb-football-v0",
         "feature_columns": FEATURE_COLUMNS,
         "training_imputation": {key: float(value) for key, value in train_medians.items()},
+        "artifacts": artifacts,
         "metrics": metrics,
         "promotion_status": "candidate",
         "notes": [
