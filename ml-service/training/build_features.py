@@ -56,6 +56,39 @@ def _implied_prob(odds: float | int | None) -> float:
         return np.nan
 
 
+def _market_structure(
+    home_implied: float,
+    draw_implied: float,
+    away_implied: float,
+) -> dict[str, float]:
+    values = np.asarray([home_implied, draw_implied, away_implied], dtype=float)
+    if not np.isfinite(values).all() or float(values.sum()) <= 0.0:
+        return {
+            "home_market_prob": np.nan,
+            "draw_market_prob": np.nan,
+            "away_market_prob": np.nan,
+            "market_overround": np.nan,
+            "market_entropy": np.nan,
+            "market_home_away_log_ratio": np.nan,
+            "market_home_draw_log_ratio": np.nan,
+            "market_away_draw_log_ratio": np.nan,
+        }
+
+    overround = float(values.sum())
+    probs = values / overround
+    eps = 1e-12
+    return {
+        "home_market_prob": float(probs[0]),
+        "draw_market_prob": float(probs[1]),
+        "away_market_prob": float(probs[2]),
+        "market_overround": overround,
+        "market_entropy": float(-np.sum(probs * np.log(np.clip(probs, eps, 1.0)))),
+        "market_home_away_log_ratio": float(np.log(max(probs[0], eps) / max(probs[2], eps))),
+        "market_home_draw_log_ratio": float(np.log(max(probs[0], eps) / max(probs[1], eps))),
+        "market_away_draw_log_ratio": float(np.log(max(probs[2], eps) / max(probs[1], eps))),
+    }
+
+
 def build_features(raw: pd.DataFrame, window: int = 5) -> pd.DataFrame:
     missing = [column for column in REQUIRED_RAW_COLUMNS if column not in raw.columns]
     if missing:
@@ -116,6 +149,15 @@ def build_features(raw: pd.DataFrame, window: int = 5) -> pd.DataFrame:
         home_elo = float(home["elo"])
         away_elo = float(away["elo"])
 
+        home_implied = _implied_prob(getattr(fixture, "home_odds", None))
+        draw_implied = _implied_prob(getattr(fixture, "draw_odds", None))
+        away_implied = _implied_prob(getattr(fixture, "away_odds", None))
+        market_structure = _market_structure(
+            home_implied,
+            draw_implied,
+            away_implied,
+        )
+
         row = {
             "fixture_id": fixture.fixture_id,
             "kickoff_utc": kickoff,
@@ -164,9 +206,10 @@ def build_features(raw: pd.DataFrame, window: int = 5) -> pd.DataFrame:
             "away_away_yellow_cards_5": _mean(away["away_yellow_cards"], np.nan),
             "home_rest_days": min(max(home_rest, 0.0), 30.0),
             "away_rest_days": min(max(away_rest, 0.0), 30.0),
-            "home_implied_prob": _implied_prob(getattr(fixture, "home_odds", None)),
-            "draw_implied_prob": _implied_prob(getattr(fixture, "draw_odds", None)),
-            "away_implied_prob": _implied_prob(getattr(fixture, "away_odds", None)),
+            "home_implied_prob": home_implied,
+            "draw_implied_prob": draw_implied,
+            "away_implied_prob": away_implied,
+            **market_structure,
             "home_goals": int(fixture.home_goals),
             "away_goals": int(fixture.away_goals),
             "result_class": _result_class(int(fixture.home_goals), int(fixture.away_goals)),
