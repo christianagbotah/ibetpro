@@ -10,6 +10,9 @@ from training.train_xgb import ChronologicalSplit, train
 from training.evaluate_segments import evaluate_segments
 
 
+MATERIAL_MARKET_EDGE = 0.001
+
+
 FOLDS = [
     {
         "name": "2022-23",
@@ -90,12 +93,15 @@ def run_walk_forward(
     market_wins = sum(
         1
         for fold in comparable
-        if fold["market_comparison"]["delta"] < 0
+        if fold["market_comparison"]["delta"] <= -MATERIAL_MARKET_EDGE
     )
     significant_market_wins = sum(
         1
         for fold in comparable
-        if fold["market_comparison"]["bootstrap_ci95_high"] < 0
+        if (
+            fold["market_comparison"]["delta"] <= -MATERIAL_MARKET_EDGE
+            and fold["market_comparison"]["bootstrap_ci95_high"] < 0
+        )
     )
 
     deltas = [
@@ -120,7 +126,9 @@ def run_walk_forward(
         league_stability[league] = {
             "folds": len(deltas_for_league),
             "folds_beating_market": sum(
-                1 for value in deltas_for_league if value < 0
+                1
+                for value in deltas_for_league
+                if value <= -MATERIAL_MARKET_EDGE
             ),
             "mean_candidate_minus_market_log_loss": (
                 sum(deltas_for_league) / len(deltas_for_league)
@@ -140,6 +148,7 @@ def run_walk_forward(
             "mean_candidate_minus_market_log_loss": (
                 sum(deltas) / len(deltas) if deltas else None
             ),
+            "material_market_edge_required": MATERIAL_MARKET_EDGE,
             "all_folds_beat_market": (
                 len(comparable) == len(fold_results)
                 and market_wins == len(fold_results)
