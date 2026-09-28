@@ -22,6 +22,31 @@ export interface TeamFeatureSnapshot {
   form?: string | null;
 }
 
+export interface ModelFeatureVector {
+  home_elo: number;
+  away_elo: number;
+  elo_diff: number;
+  home_form_points_5: number;
+  away_form_points_5: number;
+  home_goals_for_5: number;
+  away_goals_for_5: number;
+  home_goals_against_5: number;
+  away_goals_against_5: number;
+  home_xg_for_5?: number | null;
+  away_xg_for_5?: number | null;
+  home_xg_against_5?: number | null;
+  away_xg_against_5?: number | null;
+  home_shots_5?: number | null;
+  away_shots_5?: number | null;
+  home_sot_5?: number | null;
+  away_sot_5?: number | null;
+  home_rest_days?: number | null;
+  away_rest_days?: number | null;
+  home_implied_prob?: number | null;
+  draw_implied_prob?: number | null;
+  away_implied_prob?: number | null;
+}
+
 export interface PredictionInput {
   matchId: string;
   asOf: string;
@@ -38,6 +63,7 @@ export interface PredictionInput {
   overUnderLine?: number | null;
   home: TeamFeatureSnapshot | null;
   away: TeamFeatureSnapshot | null;
+  modelFeatures?: ModelFeatureVector | null;
 }
 
 export interface ScoreProbability {
