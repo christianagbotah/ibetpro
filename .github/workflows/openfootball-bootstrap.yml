@@ -9,6 +9,9 @@ on:
       - .github/workflows/openfootball-bootstrap.yml
       - ml-service/training/collect_openfootball.py
       - ml-service/tests/test_openfootball_collector.py
+      - ml-service/training/evaluate_baselines.py
+      - ml-service/training/promotion_gate.py
+      - ml-service/training/train_xgb.py
 
 permissions:
   contents: read
