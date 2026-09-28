@@ -123,6 +123,7 @@ class ResultProbabilities(BaseModel):
 
 
 class MatchPrediction(BaseModel):
+    resultMode: Literal["baseline", "market-consensus", "selective-model"] = "baseline"
     schemaVersion: Literal["1.0"] = "1.0"
     modelVersion: str
     source: Literal["heuristic-baseline-v1", "poisson-baseline-v1", "ml-service"]
