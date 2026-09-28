@@ -286,6 +286,13 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
     ]
 
     return MatchPrediction(
+        resultMode=(
+            "selective-model"
+            if selective_used
+            else "market-consensus"
+            if selective_abstained
+            else "baseline"
+        ),
         modelVersion=bundle.version,
         source="ml-service",
         generatedAt=datetime.now(timezone.utc).isoformat(),
