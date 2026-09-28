@@ -84,6 +84,7 @@ def run_walk_forward(
                 "market_comparison": market,
                 "totals_market_comparison": totals_market,
                 "blend": metadata.get("result_calibration", {}),
+                "selective": metadata["metrics"].get("selective", {}),
                 "segments": segments["segments"],
             }
         )
@@ -183,6 +184,30 @@ def run_walk_forward(
                 and significant_market_wins == len(fold_results)
             ),
             "by_league": league_stability,
+        },
+        "selective_stability": {
+            "folds_with_candidate_rows": sum(
+                1
+                for fold in fold_results
+                if int(fold.get("selective", {}).get("candidate_rows", 0)) > 0
+            ),
+            "mean_candidate_rate": (
+                sum(
+                    float(fold.get("selective", {}).get("candidate_rate", 0.0))
+                    for fold in fold_results
+                )
+                / len(fold_results)
+                if fold_results
+                else 0.0
+            ),
+            "candidate_rows": sum(
+                int(fold.get("selective", {}).get("candidate_rows", 0))
+                for fold in fold_results
+            ),
+            "abstained_rows": sum(
+                int(fold.get("selective", {}).get("abstained_rows", 0))
+                for fold in fold_results
+            ),
         },
         "totals_stability": {
             "fold_count": len(fold_results),
