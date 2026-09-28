@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { useState, useCallback } from "react";
 import { getSportName, getSportShortName } from "@/lib/sports";
+import { RichPredictionPanel } from "@/components/ai/rich-prediction-panel";
 
 interface MatchDetail {
   id: string;
@@ -106,6 +107,18 @@ export default function MatchDetailPage() {
     homeTeamStats: TeamStatsData | null;
     awayTeamStats: TeamStatsData | null;
     detailedAnalysis: DetailedAnalysis | null;
+    richPrediction?: {
+      modelVersion: string;
+      source: string;
+      generatedAt: string;
+      expectedGoals: { home: number; away: number; total: number };
+      result: { homeWin: number; draw: number; awayWin: number };
+      scorelines: Array<{ home: number; away: number; probability: number }>;
+      markets: Array<{ key: string; label: string; probability: number; fairOdds: number | null }>;
+      confidence: number;
+      dataCompleteness: number;
+      warnings: string[];
+    };
   } | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   const [placingBet, setPlacingBet] = useState(false);
@@ -130,6 +143,7 @@ export default function MatchDetailPage() {
         setAnalysisResult({
           ...result,
           detailedAnalysis: detailResult?.detailedAnalysis || null,
+          richPrediction: result.richPrediction,
         });
         addToast("success", "AI analysis completed successfully!");
       }
@@ -586,6 +600,14 @@ export default function MatchDetailPage() {
           </CardContent>
         </Card>
       </div>
+
+      {analysisResult?.richPrediction && (
+        <RichPredictionPanel
+          prediction={analysisResult.richPrediction}
+          homeTeam={match.homeTeam}
+          awayTeam={match.awayTeam}
+        />
+      )}
 
       {/* Related Matches */}
       {relatedMatches.length > 0 && (
