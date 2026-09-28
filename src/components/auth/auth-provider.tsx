@@ -1,11 +1,6 @@
 "use client";
 
-// ============================================================================
-// iBetPro Auth Context Provider
-// Provides session state and auth methods to the entire app
-// ============================================================================
-
-import { createContext, useContext, useEffect, useState, ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, ReactNode } from "react";
 import { SessionProvider, useSession, signIn, signOut } from "next-auth/react";
 
 interface AuthContextType {
@@ -37,32 +32,37 @@ export function useAuth() {
 
 function AuthContextInner({ children }: { children: ReactNode }) {
   const { data: session, status } = useSession();
-  const [user, setUser] = useState<AuthContextType["user"]>(null);
-  const [botInitialized, setBotInitialized] = useState(false);
+  const botInitializedForUserRef = useRef<string | null>(null);
+
+  const sessionUser = session?.user as
+    | { id?: string; email?: string | null; name?: string | null; role?: string }
+    | undefined;
+
+  const user =
+    sessionUser?.id && sessionUser.email
+      ? {
+          id: sessionUser.id,
+          email: sessionUser.email,
+          name: sessionUser.name || "",
+          role: sessionUser.role || "user",
+        }
+      : null;
 
   useEffect(() => {
-    if (session?.user) {
-      const u = session.user as { id: string; email: string; name: string; role: string };
-      setUser({
-        id: u.id,
-        email: u.email,
-        name: u.name,
-        role: u.role,
-      });
-    } else {
-      setUser(null);
+    if (!user?.id) {
+      botInitializedForUserRef.current = null;
+      return;
     }
-  }, [session]);
 
-  // Initialize bot engine once when user is authenticated
-  useEffect(() => {
-    if (user && !botInitialized) {
-      setBotInitialized(true);
-      fetch("/api/bot/init").catch(() => {
-        // Silently fail — bot init is best-effort
-      });
-    }
-  }, [user, botInitialized]);
+    if (botInitializedForUserRef.current === user.id) return;
+    botInitializedForUserRef.current = user.id;
+
+    fetch("/api/bot/init").catch(() => {
+      if (botInitializedForUserRef.current === user.id) {
+        botInitializedForUserRef.current = null;
+      }
+    });
+  }, [user?.id]);
 
   const login = async (email: string, password: string) => {
     try {
@@ -72,17 +72,16 @@ function AuthContextInner({ children }: { children: ReactNode }) {
         redirect: false,
       });
 
-      // NextAuth v4: check result.ok for success, not just absence of error
       if (result?.ok) {
         return { success: true };
       }
 
-      // Map generic NextAuth error to user-friendly message
-      const errorMsg = result?.error === "CredentialsSignin"
-        ? "Invalid email or password"
-        : result?.error || "Login failed. Please try again.";
+      const errorMsg =
+        result?.error === "CredentialsSignin"
+          ? "Invalid email or password"
+          : result?.error || "Login failed. Please try again.";
       return { success: false, error: errorMsg };
-    } catch (error) {
+    } catch {
       return { success: false, error: "Login failed. Please try again." };
     }
   };
