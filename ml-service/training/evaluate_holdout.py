@@ -14,6 +14,7 @@ from training.train_xgb import (
     elo_probabilities,
     expected_calibration_error,
     load_dataset,
+    market_probabilities,
     multiclass_brier,
     poisson_result_probabilities,
     ranked_probability_score,
@@ -55,16 +56,20 @@ def evaluate(
     away_goal_pred = np.clip(away_goal_model.predict(x), 0.05, 6.0)
     goal_probs = poisson_result_probabilities(home_goal_pred, away_goal_pred)
     elo_probs = elo_probabilities(holdout)
+    market_probs = market_probabilities(holdout, fallback=elo_probs)
 
     calibration = metadata.get("result_calibration", {})
     model_weight = float(calibration.get("result_model_weight", 1.0))
     goal_weight = float(calibration.get("result_goal_weight", 0.0))
+    market_weight = float(calibration.get("result_market_weight", 0.0))
     probabilities = blend_probabilities(
         model_probs,
         elo_probs,
         model_weight,
         goal_probs,
         goal_weight,
+        market_probs,
+        market_weight,
     )
     predicted = probabilities.argmax(axis=1)
 
