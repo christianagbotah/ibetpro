@@ -1,0 +1,97 @@
+name: iBetPro CC0 Bootstrap Experiment
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - revamp/production-foundation
+    paths:
+      - .github/workflows/openfootball-bootstrap.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ibetpro-openfootball-bootstrap
+  cancel-in-progress: false
+
+jobs:
+  experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: ml-service
+    env:
+      MODEL_TRAIN_N_JOBS: "2"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ml-service/requirements.txt
+
+      - name: Install ML dependencies
+        run: pip install -r requirements.txt
+
+      - name: Validate ML tests
+        run: pytest -q
+
+      - name: Collect CC0 bootstrap corpus
+        run: |
+          python training/collect_openfootball.py             --seasons 2019-20 2020-21 2021-22 2022-23 2023-24 2024-25 2025-26             --leagues en.1 es.1             --out data/openfootball
+
+      - name: Build leak-safe features
+        run: |
+          mkdir -p data/run
+          python training/build_features.py             --input data/openfootball/openfootball-bootstrap.csv             --output data/run/features.csv
+
+      - name: Train candidate
+        run: |
+          python training/train_xgb.py             --dataset data/run/features.csv             --output data/run/candidate             --train-end 2023-06-30             --calibration-end 2024-06-30             --test-end 2025-06-30
+
+      - name: Evaluate baselines
+        run: |
+          python training/evaluate_baselines.py             --features data/run/features.csv             --start 2024-07-01             --end 2025-06-30             --output data/run/baselines.json
+
+      - name: Apply research promotion gates
+        id: gate
+        shell: bash
+        run: |
+          set +e
+          python training/promotion_gate.py             --candidate data/run/candidate/metadata.json             --baselines data/run/baselines.json             --output data/run/promotion.json
+          code=$?
+          echo "gate_exit_code=$code" >> "$GITHUB_OUTPUT"
+          if [ "$code" -ne 0 ] && [ "$code" -ne 2 ]; then
+            exit "$code"
+          fi
+          exit 0
+
+      - name: Render report
+        if: always()
+        run: |
+          python training/render_experiment_report.py             --work-dir data/run             --output data/run/EXPERIMENT-REPORT.md || true
+
+      - name: Publish report summary
+        if: always()
+        shell: bash
+        run: |
+          echo "## CC0 bootstrap source" >> "$GITHUB_STEP_SUMMARY"
+          echo "OpenFootball football.json — CC0-1.0/public domain." >> "$GITHUB_STEP_SUMMARY"
+          if [ -f data/run/EXPERIMENT-REPORT.md ]; then
+            cat data/run/EXPERIMENT-REPORT.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload experiment evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ibetpro-openfootball-bootstrap
+          path: |
+            ml-service/data/run/
+            ml-service/data/openfootball/openfootball-provenance.json
+          if-no-files-found: error
+          retention-days: 30
