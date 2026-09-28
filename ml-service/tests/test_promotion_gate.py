@@ -31,6 +31,7 @@ def baselines():
             "brier": 0.60,
             "accuracy": 0.44,
             "rows": 500,
+            "coverage": 1.0,
         },
     }
 
@@ -83,5 +84,24 @@ def test_market_aware_candidate_requires_market_baseline():
     assert result["all_gates_passed"] is False
     check = next(
         item for item in result["checks"] if item["name"] == "market_baseline_available"
+    )
+    assert check["passed"] is False
+
+
+def test_low_market_coverage_blocks_promotion():
+    value = candidate()
+    value["feature_columns"] = [
+        "home_implied_prob",
+        "draw_implied_prob",
+        "away_implied_prob",
+    ]
+    low_coverage = baselines()
+    low_coverage["market"]["coverage"] = 0.40
+
+    result = decide(value, low_coverage)
+
+    assert result["all_gates_passed"] is False
+    check = next(
+        item for item in result["checks"] if item["name"] == "market_baseline_coverage"
     )
     assert check["passed"] is False
