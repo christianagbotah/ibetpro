@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import type { ModelFeatureVector } from "./contracts";
+import { getCausalElo } from "./elo-snapshots";
 
 type MatchLike = {
   id: string;
@@ -186,8 +187,10 @@ export async function buildOnlineModelFeatures(
   const homeRolling = rollingStats(match.homeTeam, homeHistory);
   const awayRolling = rollingStats(match.awayTeam, awayHistory);
 
-  const homeElo = Number(homeStats?.eloRating ?? 1500);
-  const awayElo = Number(awayStats?.eloRating ?? 1500);
+  const [homeElo, awayElo] = await Promise.all([
+    getCausalElo(match.homeTeam, match.sport, match.league, featureAsOf),
+    getCausalElo(match.awayTeam, match.sport, match.league, featureAsOf),
+  ]);
 
   return {
     home_elo: homeElo,
