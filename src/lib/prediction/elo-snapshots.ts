@@ -14,6 +14,26 @@ function actualScores(homeGoals: number, awayGoals: number): [number, number] {
   return [0.5, 0.5];
 }
 
+export function calculateEloUpdate(
+  homeRating: number,
+  awayRating: number,
+  homeGoals: number,
+  awayGoals: number
+) {
+  const expectedH = expectedHome(homeRating, awayRating);
+  const expectedA = 1 - expectedH;
+  const [actualH, actualA] = actualScores(homeGoals, awayGoals);
+
+  return {
+    homeBefore: homeRating,
+    awayBefore: awayRating,
+    homeAfter: homeRating + K_FACTOR * (actualH - expectedH),
+    awayAfter: awayRating + K_FACTOR * (actualA - expectedA),
+    expectedHome: expectedH,
+    expectedAway: expectedA,
+  };
+}
+
 export async function rebuildLeagueEloSnapshots(
   sport: string,
   league: string
@@ -52,12 +72,15 @@ export async function rebuildLeagueEloSnapshots(
     const homeBefore = ratings.get(match.homeTeam) ?? DEFAULT_ELO;
     const awayBefore = ratings.get(match.awayTeam) ?? DEFAULT_ELO;
 
-    const expectedH = expectedHome(homeBefore, awayBefore);
-    const expectedA = 1 - expectedH;
-    const [actualH, actualA] = actualScores(match.homeScore!, match.awayScore!);
+    const update = calculateEloUpdate(
+      homeBefore,
+      awayBefore,
+      match.homeScore!,
+      match.awayScore!
+    );
 
-    const homeAfter = homeBefore + K_FACTOR * (actualH - expectedH);
-    const awayAfter = awayBefore + K_FACTOR * (actualA - expectedA);
+    const homeAfter = update.homeAfter;
+    const awayAfter = update.awayAfter;
 
     rows.push(
       {
