@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+import os
 from datetime import datetime, timezone
 
 from .schemas import (
@@ -115,9 +116,20 @@ def poisson_baseline(payload: PredictionInput) -> MatchPrediction:
         if payload.modelFeatures
         else [None, None, None]
     )
+    consensus_age = (
+        payload.modelFeatures.market_consensus_age_minutes
+        if payload.modelFeatures
+        else None
+    )
+    max_consensus_age = float(
+        os.environ.get("SELECTIVE_MAX_CONSENSUS_AGE_MINUTES", "360")
+    )
     has_consensus = bool(
         payload.modelFeatures
         and payload.modelFeatures.market_consensus_available is True
+        and consensus_age is not None
+        and math.isfinite(float(consensus_age))
+        and 0.0 <= float(consensus_age) <= max_consensus_age
         and all(
             value is not None and math.isfinite(float(value)) and float(value) > 0
             for value in market_values
