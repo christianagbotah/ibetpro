@@ -46,6 +46,56 @@ def stat_value(stats: list[dict], name: str):
     return None
 
 
+
+def chunks(values: list[int], size: int = 20):
+    for start in range(0, len(values), size):
+        yield values[start : start + size]
+
+
+def embedded_fixture_stats(item: dict) -> dict[int, dict]:
+    result: dict[int, dict] = {}
+    for team_block in item.get("statistics", []) or []:
+        team = team_block.get("team", {})
+        team_id = team.get("id")
+        if team_id is None:
+            continue
+        stats = team_block.get("statistics", []) or []
+        result[int(team_id)] = {
+            "shots": stat_value(stats, "Total Shots"),
+            "sot": stat_value(stats, "Shots on Goal"),
+            "possession": stat_value(stats, "Ball Possession"),
+            "corners": stat_value(stats, "Corner Kicks"),
+            "yellow_cards": stat_value(stats, "Yellow Cards"),
+            "red_cards": stat_value(stats, "Red Cards"),
+        }
+    return result
+
+
+def fetch_batched_fixture_details(
+    http: httpx.Client,
+    fixture_ids: list[int],
+    raw_dir: Path,
+    pause: float,
+) -> dict[int, dict[int, dict]]:
+    details: dict[int, dict[int, dict]] = {}
+    for batch_index, group in enumerate(chunks(fixture_ids, 20), start=1):
+        response = get_json(http, "/fixtures", {"ids": "-".join(map(str, group))})
+        (raw_dir / f"fixture-details-{batch_index:03d}.json").write_text(
+            json.dumps(response, indent=2),
+            encoding="utf-8",
+        )
+        for item in response:
+            fixture_id = item.get("fixture", {}).get("id")
+            if fixture_id is None:
+                continue
+            details[int(fixture_id)] = embedded_fixture_stats(item)
+        print(
+            f"Collected detail batch {batch_index}: "
+            f"{len(group)} fixtures ({len(details)}/{len(fixture_ids)})"
+        )
+        sleep(max(0.0, pause))
+    return details
+
 def fetch_fixture_stats(http: httpx.Client, fixture_id: int) -> dict[int, dict]:
     response = get_json(http, "/fixtures/statistics", {"fixture": fixture_id})
     result: dict[int, dict] = {}
@@ -107,6 +157,24 @@ def collect(league: int, season: int, out: Path, include_detail: bool, pause: fl
             encoding="utf-8",
         )
 
+        finished_ids = [
+            int(item.get("fixture", {}).get("id"))
+            for item in fixtures
+            if item.get("fixture", {}).get("id") is not None
+            and item.get("goals", {}).get("home") is not None
+            and item.get("goals", {}).get("away") is not None
+        ]
+        detail_map = (
+            fetch_batched_fixture_details(
+                http,
+                finished_ids,
+                raw_dir,
+                pause,
+            )
+            if include_detail
+            else {}
+        )
+
         rows: list[dict] = []
         for index, item in enumerate(fixtures, start=1):
             fixture = item.get("fixture", {})
@@ -136,10 +204,19 @@ def collect(league: int, season: int, out: Path, include_detail: bool, pause: fl
                 "home_odds": None,
                 "draw_odds": None,
                 "away_odds": None,
+                "home_possession": None,
+                "away_possession": None,
+                "home_corners": None,
+                "away_corners": None,
+                "home_yellow_cards": None,
+                "away_yellow_cards": None,
+                "home_red_cards": None,
+                "away_red_cards": None,
+                "source": "api-football",
             }
 
             if include_detail and goals.get("home") is not None and goals.get("away") is not None:
-                stats = fetch_fixture_stats(http, fixture_id)
+                stats = detail_map.get(fixture_id, {})
                 home_stats = stats.get(home_id, {})
                 away_stats = stats.get(away_id, {})
                 row.update(
@@ -148,13 +225,21 @@ def collect(league: int, season: int, out: Path, include_detail: bool, pause: fl
                         "away_shots": away_stats.get("shots"),
                         "home_sot": home_stats.get("sot"),
                         "away_sot": away_stats.get("sot"),
+                        "home_possession": home_stats.get("possession"),
+                        "away_possession": away_stats.get("possession"),
+                        "home_corners": home_stats.get("corners"),
+                        "away_corners": away_stats.get("corners"),
+                        "home_yellow_cards": home_stats.get("yellow_cards"),
+                        "away_yellow_cards": away_stats.get("yellow_cards"),
+                        "home_red_cards": home_stats.get("red_cards"),
+                        "away_red_cards": away_stats.get("red_cards"),
                     }
                 )
 
-                # xG is not guaranteed by every API-Football competition/plan.
-                # Leave it null unless a future provider-specific extractor supplies it.
-                row.update(fetch_fixture_odds(http, fixture_id))
-                sleep(max(0.0, pause))
+                # API-Football's historical pre-match odds endpoint does not
+                # provide a durable multi-season archive. Keep historical odds
+                # null here rather than spending quota on requests that cannot
+                # reproduce the required pre-kickoff snapshot.
 
             rows.append(row)
 
@@ -168,7 +253,42 @@ def collect(league: int, season: int, out: Path, include_detail: bool, pause: fl
 
     output = out / f"api-football-{league}-{season}.csv"
     frame.to_csv(output, index=False)
+    coverage_columns = [
+        "home_shots",
+        "away_shots",
+        "home_sot",
+        "away_sot",
+        "home_possession",
+        "away_possession",
+        "home_corners",
+        "away_corners",
+    ]
+    coverage = {
+        column: round(float(frame[column].notna().mean()), 4)
+        for column in coverage_columns
+        if column in frame.columns
+    }
+    (out / f"api-football-{league}-{season}-coverage.json").write_text(
+        json.dumps(
+            {
+                "provider": "api-football",
+                "league": league,
+                "season": season,
+                "rows": int(len(frame)),
+                "detail_enabled": include_detail,
+                "coverage": coverage,
+                "historical_odds_note": (
+                    "Historical pre-match odds intentionally left null; "
+                    "use a provider/source with timestamped historical odds."
+                ),
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
     print(f"Wrote {len(frame):,} finished fixtures to {output}")
+    print("Coverage:", json.dumps(coverage, sort_keys=True))
     return output
 
 
