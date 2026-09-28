@@ -178,3 +178,21 @@ def test_positive_paired_market_delta_is_rejected():
         if item["name"] == "paired_market_log_loss_delta"
     )
     assert delta_check["passed"] is False
+
+
+def test_market_equality_is_not_a_material_edge():
+    value = market_aware_candidate(
+        log_loss=0.9595,
+        delta=0.0,
+        ci_low=-1e-12,
+        ci_high=-1e-15,
+    )
+
+    result = decide(value, baselines())
+
+    assert result["all_gates_passed"] is False
+    delta_check = next(
+        item for item in result["checks"]
+        if item["name"] == "paired_market_log_loss_delta"
+    )
+    assert delta_check["passed"] is False
