@@ -75,12 +75,21 @@ jobs:
           print(f"- Folds significantly beating market: **{stability['folds_significantly_beating_market']}**")
           print(f"- Mean candidate − market Log Loss: **{stability['mean_candidate_minus_market_log_loss']:.6f}**")
           print()
-          print("| Fold | Candidate LL | Market LL | Delta | 95% CI |")
-          print("| --- | ---: | ---: | ---: | --- |")
+          print("| Fold | Model | Calibration | Blend M/G/Market/ELO | Candidate LL | Market LL | Delta | 95% CI |")
+          print("| --- | --- | --- | --- | ---: | ---: | ---: | --- |")
           for fold in data["folds"]:
               market = fold.get("market_comparison") or {}
+              blend = fold.get("blend") or {}
+              weights = (
+                  f"{blend.get('result_model_weight', 0):.2f}/"
+                  f"{blend.get('result_goal_weight', 0):.2f}/"
+                  f"{blend.get('result_market_weight', 0):.2f}/"
+                  f"{blend.get('result_elo_weight', 0):.2f}"
+              )
               print(
-                  f"| {fold['name']} | {market.get('candidate_log_loss', float('nan')):.6f} | "
+                  f"| {fold['name']} | {blend.get('selected_model', '—')} | "
+                  f"{blend.get('selected_method', '—')} | {weights} | "
+                  f"{market.get('candidate_log_loss', float('nan')):.6f} | "
                   f"{market.get('benchmark_log_loss', float('nan')):.6f} | "
                   f"{market.get('delta', float('nan')):.6f} | "
                   f"[{market.get('bootstrap_ci95_low', float('nan')):.6f}, "
