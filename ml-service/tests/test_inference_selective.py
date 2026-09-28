@@ -83,6 +83,7 @@ def _payload() -> PredictionInput:
             draw_implied_prob=0.30,
             away_implied_prob=0.25,
             market_consensus_available=True,
+            market_consensus_age_minutes=30,
         ),
     )
 
@@ -120,5 +121,19 @@ def test_selective_policy_requires_genuine_consensus(monkeypatch):
     assert result.resultMode != "selective-model"
     assert any(
         "genuine consensus odds are unavailable" in warning
+        for warning in result.warnings
+    )
+
+
+def test_selective_policy_rejects_stale_consensus(monkeypatch):
+    monkeypatch.setattr(inference, "get_model_bundle", lambda: _Bundle(True))
+    payload = _payload()
+    payload.modelFeatures.market_consensus_age_minutes = 720
+
+    result = inference.predict(payload, require_model=True)
+
+    assert result.resultMode != "selective-model"
+    assert any(
+        "older than 360 minutes" in warning
         for warning in result.warnings
     )
