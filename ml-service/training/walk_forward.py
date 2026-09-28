@@ -131,7 +131,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument(
         "--feature-profile",
-        choices=["core", "enriched"],
+        choices=["core", "core_stats", "enriched"],
         default="core",
     )
     args = parser.parse_args()
