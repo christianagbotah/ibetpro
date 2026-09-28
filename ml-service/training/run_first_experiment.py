@@ -6,9 +6,12 @@ import subprocess
 from pathlib import Path
 
 
-def run(command: list[str]) -> None:
+def run(command: list[str], allowed_codes: tuple[int, ...] = (0,)) -> int:
     print("$", " ".join(command))
-    subprocess.run(command, check=True)
+    completed = subprocess.run(command, check=False)
+    if completed.returncode not in allowed_codes:
+        raise subprocess.CalledProcessError(completed.returncode, command)
+    return completed.returncode
 
 
 def main() -> None:
@@ -73,7 +76,7 @@ def main() -> None:
         str(baselines),
     ])
 
-    run([
+    gate_code = run([
         "python",
         "training/promotion_gate.py",
         "--candidate",
@@ -82,7 +85,7 @@ def main() -> None:
         str(baselines),
         "--output",
         str(gate),
-    ])
+    ], allowed_codes=(0, 2))
 
     result = {
         "corpus": str(corpus),
@@ -90,6 +93,7 @@ def main() -> None:
         "candidate": str(model_dir),
         "baselines": str(baselines),
         "promotion": str(gate),
+        "promotion_gate_exit_code": gate_code,
     }
     print(json.dumps(result, indent=2))
 
