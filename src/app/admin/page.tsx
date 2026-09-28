@@ -25,6 +25,7 @@ import {
   Loader2,
   CheckCircle,
   AlertTriangle,
+  Brain,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useCurrency } from "@/components/currency-provider";
@@ -39,6 +40,33 @@ interface AdminSettings {
   maintenanceMode: boolean;
   maxUsers: number;
   autoApproveAccounts: boolean;
+}
+
+interface ShadowEvaluationResponse {
+  mode: "baseline" | "shadow" | "active";
+  evaluation: {
+    settledMatches: number;
+    candidateModelVersion: string | null;
+    baseline: {
+      logLoss: number | null;
+      brier: number | null;
+      accuracy: number | null;
+    };
+    candidate: {
+      logLoss: number | null;
+      brier: number | null;
+      accuracy: number | null;
+    };
+    deltas: {
+      logLoss: number | null;
+      brier: number | null;
+    };
+    interpretation: {
+      candidateLogLossBetter: boolean | null;
+      candidateBrierBetter: boolean | null;
+      minimumUsefulSampleReached: boolean;
+    };
+  };
 }
 
 interface Stats {
@@ -88,6 +116,25 @@ export default function AdminPage() {
     adminSettings: null,
     users: [],
   });
+  const { data: shadow } = useFetch<ShadowEvaluationResponse>(
+    "/api/admin/ml/shadow",
+    {
+      mode: "baseline",
+      evaluation: {
+        settledMatches: 0,
+        candidateModelVersion: null,
+        baseline: { logLoss: null, brier: null, accuracy: null },
+        candidate: { logLoss: null, brier: null, accuracy: null },
+        deltas: { logLoss: null, brier: null },
+        interpretation: {
+          candidateLogLossBetter: null,
+          candidateBrierBetter: null,
+          minimumUsefulSampleReached: false,
+        },
+      },
+    }
+  );
+
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -286,6 +333,94 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Brain className="h-4 w-4 text-primary" />
+              Model Research
+            </CardTitle>
+            <Badge
+              variant="secondary"
+              className={
+                shadow.mode === "active"
+                  ? "bg-emerald-400/10 text-emerald-400"
+                  : shadow.mode === "shadow"
+                    ? "bg-amber-400/10 text-amber-400"
+                    : "bg-secondary text-muted-foreground"
+              }
+            >
+              {shadow.mode.toUpperCase()}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="rounded-lg bg-secondary/50 p-3">
+              <p className="text-xs text-muted-foreground">Settled Shadow Matches</p>
+              <p className="text-xl font-bold text-foreground">
+                {shadow.evaluation.settledMatches}
+              </p>
+            </div>
+            <div className="rounded-lg bg-secondary/50 p-3">
+              <p className="text-xs text-muted-foreground">Candidate</p>
+              <p className="text-sm font-semibold text-foreground truncate">
+                {shadow.evaluation.candidateModelVersion || "Not available"}
+              </p>
+            </div>
+            <div className="rounded-lg bg-secondary/50 p-3">
+              <p className="text-xs text-muted-foreground">Candidate Log Loss</p>
+              <p className="text-xl font-bold text-foreground">
+                {shadow.evaluation.candidate.logLoss == null
+                  ? "—"
+                  : shadow.evaluation.candidate.logLoss.toFixed(4)}
+              </p>
+            </div>
+            <div className="rounded-lg bg-secondary/50 p-3">
+              <p className="text-xs text-muted-foreground">Baseline Log Loss</p>
+              <p className="text-xl font-bold text-foreground">
+                {shadow.evaluation.baseline.logLoss == null
+                  ? "—"
+                  : shadow.evaluation.baseline.logLoss.toFixed(4)}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Brier comparison</p>
+              <p className="mt-1 text-foreground">
+                Candidate {shadow.evaluation.candidate.brier == null ? "—" : shadow.evaluation.candidate.brier.toFixed(4)}
+                {" · "}
+                Baseline {shadow.evaluation.baseline.brier == null ? "—" : shadow.evaluation.baseline.brier.toFixed(4)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Accuracy comparison</p>
+              <p className="mt-1 text-foreground">
+                Candidate {shadow.evaluation.candidate.accuracy == null ? "—" : `${Math.round(shadow.evaluation.candidate.accuracy * 100)}%`}
+                {" · "}
+                Baseline {shadow.evaluation.baseline.accuracy == null ? "—" : `${Math.round(shadow.evaluation.baseline.accuracy * 100)}%`}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Research sample</p>
+              <p className={
+                `mt-1 font-medium ${shadow.evaluation.interpretation.minimumUsefulSampleReached ? "text-emerald-400" : "text-amber-400"}`
+              }>
+                {shadow.evaluation.interpretation.minimumUsefulSampleReached
+                  ? "Minimum sample reached"
+                  : `${Math.max(0, 200 - shadow.evaluation.settledMatches)} more settled matches to 200`}
+              </p>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Shadow results are research evidence only. Candidate output does not become user-facing unless the configured mode is explicitly changed to active after validation.
+          </p>
         </CardContent>
       </Card>
 
