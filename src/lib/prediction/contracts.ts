@@ -45,6 +45,14 @@ export interface ModelFeatureVector {
   home_implied_prob?: number | null;
   draw_implied_prob?: number | null;
   away_implied_prob?: number | null;
+  home_possession_5?: number | null;
+  away_possession_5?: number | null;
+  home_corners_5?: number | null;
+  away_corners_5?: number | null;
+  home_yellow_cards_5?: number | null;
+  away_yellow_cards_5?: number | null;
+  home_red_cards_5?: number | null;
+  away_red_cards_5?: number | null;
 }
 
 export interface PredictionInput {
