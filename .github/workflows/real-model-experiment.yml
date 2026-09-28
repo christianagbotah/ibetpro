@@ -4,9 +4,9 @@ on:
   workflow_dispatch:
     inputs:
       include_detail:
-        description: "Collect per-fixture statistics and odds (uses substantially more API quota)"
+        description: "Collect batched historical fixture statistics (required for enriched training)"
         required: true
-        default: false
+        default: true
         type: boolean
       pause_seconds:
         description: "Pause between detailed fixture requests"
@@ -62,9 +62,25 @@ jobs:
           fi
           python training/collect_manifest.py "${ARGS[@]}"
 
+      - name: Merge and assess enriched corpus
+        shell: bash
+        run: |
+          mkdir -p data/run
+          python training/merge_corpus.py \
+            --input-dir data/historical \
+            --output data/run/football.csv
+          python training/data_readiness_gate.py \
+            --quality data/run/corpus-quality.json \
+            --output data/run/data-readiness.json
+
       - name: Run first experiment
         run: |
-          python training/run_first_experiment.py             --raw-dir data/historical             --work-dir data/run             --train-end 2023-06-30             --calibration-end 2024-06-30             --test-end 2025-06-30
+          python training/run_first_experiment.py \
+            --raw-dir data/historical \
+            --work-dir data/run \
+            --train-end 2023-06-30 \
+            --calibration-end 2024-06-30 \
+            --test-end 2025-06-30
 
       - name: Build experiment report
         if: always()
@@ -90,5 +106,6 @@ jobs:
           path: |
             ml-service/data/run/
             ml-service/data/historical/corpus-index.json
+            ml-service/data/run/data-readiness.json
           if-no-files-found: warn
           retention-days: 30
