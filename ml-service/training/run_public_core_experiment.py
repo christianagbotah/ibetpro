@@ -99,6 +99,21 @@ def main() -> None:
         str(promotion),
     ], allowed_codes=(0, 2))
 
+    holdout = args.work_dir / "untouched-holdout.json"
+    if gate_code == 0:
+        run([
+            "python",
+            "training/evaluate_holdout.py",
+            "--dataset",
+            str(features),
+            "--model-dir",
+            str(candidate),
+            "--start",
+            "2025-07-01",
+            "--output",
+            str(holdout),
+        ])
+
     summary = {
         "source": "football-data.co.uk",
         "feature_profile": "core",
@@ -107,6 +122,8 @@ def main() -> None:
         "promotion": str(promotion),
         "promotion_gate_exit_code": gate_code,
         "untouched_holdout_starts": "2025-07-01",
+        "untouched_holdout_evaluated": gate_code == 0,
+        "untouched_holdout": str(holdout) if gate_code == 0 else None,
     }
     (args.work_dir / "run-summary.json").write_text(
         json.dumps(summary, indent=2),
