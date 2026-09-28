@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Brain, Database, Goal, ShieldCheck, TrendingUp } from "lucide-react";
 
 interface RichPrediction {
+  resultMode: "baseline" | "market-consensus" | "selective-model";
   modelVersion: string;
   source: string;
   generatedAt: string;
@@ -47,6 +48,22 @@ export function RichPredictionPanel({
               Full AI Forecast
             </CardTitle>
             <div className="flex flex-wrap gap-2">
+              <Badge
+                variant="secondary"
+                className={
+                  prediction.resultMode === "selective-model"
+                    ? "bg-emerald-500/10 text-emerald-400"
+                    : prediction.resultMode === "market-consensus"
+                      ? "bg-amber-500/10 text-amber-400"
+                      : undefined
+                }
+              >
+                {prediction.resultMode === "selective-model"
+                  ? "Selective model edge"
+                  : prediction.resultMode === "market-consensus"
+                    ? "Market consensus"
+                    : "Baseline"}
+              </Badge>
               <Badge variant="secondary">{prediction.modelVersion}</Badge>
               <Badge variant="outline">{prediction.source}</Badge>
             </div>
