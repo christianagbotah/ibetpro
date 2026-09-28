@@ -1,0 +1,18 @@
+{
+  "expo": {
+    "name": "iBetPro",
+    "slug": "ibetpro",
+    "scheme": "ibetpro",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.lightworldtech.ibetpro"
+    },
+    "android": {
+      "package": "com.lightworldtech.ibetpro"
+    },
+    "plugins": ["expo-router"]
+  }
+}
