@@ -245,6 +245,9 @@ export function convertOddsApiToMatch(odds: ExternalOdds): {
   homeOdds: number;
   drawOdds: number | null;
   awayOdds: number;
+  consensusHomeOdds: number;
+  consensusDrawOdds: number | null;
+  consensusAwayOdds: number;
   overUnderLine: number | null;
   overOdds: number | null;
   underOdds: number | null;
@@ -257,17 +260,29 @@ export function convertOddsApiToMatch(odds: ExternalOdds): {
   let overOdds: number | null = null;
   let underOdds: number | null = null;
   let overUnderLine: number | null = null;
+  const homePrices: number[] = [];
+  const drawPrices: number[] = [];
+  const awayPrices: number[] = [];
 
   for (const bookmaker of odds.bookmakers) {
     for (const market of bookmaker.markets) {
       if (market.key === "h2h") {
         for (const outcome of market.outcomes) {
           if (outcome.name === odds.homeTeam) {
-            if (!homeOdds || outcome.price > homeOdds) homeOdds = outcome.price;
+            if (Number.isFinite(outcome.price) && outcome.price > 1) {
+              homePrices.push(outcome.price);
+              if (!homeOdds || outcome.price > homeOdds) homeOdds = outcome.price;
+            }
           } else if (outcome.name === odds.awayTeam) {
-            if (!awayOdds || outcome.price > awayOdds) awayOdds = outcome.price;
+            if (Number.isFinite(outcome.price) && outcome.price > 1) {
+              awayPrices.push(outcome.price);
+              if (!awayOdds || outcome.price > awayOdds) awayOdds = outcome.price;
+            }
           } else if (outcome.name === "Draw") {
-            if (!drawOdds || outcome.price > drawOdds) drawOdds = outcome.price;
+            if (Number.isFinite(outcome.price) && outcome.price > 1) {
+              drawPrices.push(outcome.price);
+              if (!drawOdds || outcome.price > drawOdds) drawOdds = outcome.price;
+            }
           }
         }
       }
@@ -295,9 +310,16 @@ export function convertOddsApiToMatch(odds: ExternalOdds): {
     throw new Error("Odds API fixture is missing required identity fields");
   }
 
-  if (!homeOdds || !awayOdds) {
+  if (!homeOdds || !awayOdds || !homePrices.length || !awayPrices.length) {
     throw new Error("Odds API fixture has no genuine home/away H2H prices");
   }
+
+  const mean = (values: number[]) =>
+    values.reduce((sum, value) => sum + value, 0) / values.length;
+
+  const consensusHomeOdds = mean(homePrices);
+  const consensusAwayOdds = mean(awayPrices);
+  const consensusDrawOdds = drawPrices.length ? mean(drawPrices) : null;
 
   return {
     externalId: odds.id,
@@ -308,6 +330,9 @@ export function convertOddsApiToMatch(odds: ExternalOdds): {
     homeOdds,
     drawOdds,
     awayOdds,
+    consensusHomeOdds,
+    consensusDrawOdds,
+    consensusAwayOdds,
     overUnderLine,
     overOdds,
     underOdds,
