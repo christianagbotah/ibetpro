@@ -93,6 +93,19 @@ def decide(candidate: dict, baselines: dict, gates: dict | None = None) -> dict:
     )
 
     market = baselines.get("market")
+    uses_market_features = all(
+        name in candidate.get("feature_columns", [])
+        for name in ("home_implied_prob", "draw_implied_prob", "away_implied_prob")
+    )
+    if uses_market_features:
+        add(
+            "market_baseline_available",
+            market is not None,
+            None if market is None else market.get("rows"),
+            "required",
+            "available",
+        )
+
     if market:
         market_log_loss = market["log_loss"]
         market_target = market_log_loss - rules["must_beat_market_log_loss_by"]
