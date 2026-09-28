@@ -80,6 +80,20 @@ def build_features(raw: pd.DataFrame, window: int = 5) -> pd.DataFrame:
             "corners": deque(maxlen=window),
             "yellow_cards": deque(maxlen=window),
             "red_cards": deque(maxlen=window),
+            "home_points": deque(maxlen=window),
+            "home_goals_for": deque(maxlen=window),
+            "home_goals_against": deque(maxlen=window),
+            "home_shots": deque(maxlen=window),
+            "home_sot": deque(maxlen=window),
+            "home_corners": deque(maxlen=window),
+            "home_yellow_cards": deque(maxlen=window),
+            "away_points": deque(maxlen=window),
+            "away_goals_for": deque(maxlen=window),
+            "away_goals_against": deque(maxlen=window),
+            "away_shots": deque(maxlen=window),
+            "away_sot": deque(maxlen=window),
+            "away_corners": deque(maxlen=window),
+            "away_yellow_cards": deque(maxlen=window),
             "elo": 1500.0,
             "last_match": None,
         }
@@ -134,6 +148,20 @@ def build_features(raw: pd.DataFrame, window: int = 5) -> pd.DataFrame:
             "away_yellow_cards_5": _mean(away["yellow_cards"], np.nan),
             "home_red_cards_5": _mean(home["red_cards"], np.nan),
             "away_red_cards_5": _mean(away["red_cards"], np.nan),
+            "home_home_form_points_5": _mean(home["home_points"]),
+            "away_away_form_points_5": _mean(away["away_points"]),
+            "home_home_goals_for_5": _mean(home["home_goals_for"]),
+            "home_home_goals_against_5": _mean(home["home_goals_against"]),
+            "away_away_goals_for_5": _mean(away["away_goals_for"]),
+            "away_away_goals_against_5": _mean(away["away_goals_against"]),
+            "home_home_shots_5": _mean(home["home_shots"], np.nan),
+            "away_away_shots_5": _mean(away["away_shots"], np.nan),
+            "home_home_sot_5": _mean(home["home_sot"], np.nan),
+            "away_away_sot_5": _mean(away["away_sot"], np.nan),
+            "home_home_corners_5": _mean(home["home_corners"], np.nan),
+            "away_away_corners_5": _mean(away["away_corners"], np.nan),
+            "home_home_yellow_cards_5": _mean(home["home_yellow_cards"], np.nan),
+            "away_away_yellow_cards_5": _mean(away["away_yellow_cards"], np.nan),
             "home_rest_days": min(max(home_rest, 0.0), 30.0),
             "away_rest_days": min(max(away_rest, 0.0), 30.0),
             "home_implied_prob": _implied_prob(getattr(fixture, "home_odds", None)),
@@ -192,6 +220,22 @@ def build_features(raw: pd.DataFrame, window: int = 5) -> pd.DataFrame:
         if pd.notna(away_sot):
             away["sot"].append(float(away_sot))
 
+        # Venue-specific state is also updated only after the feature row.
+        home["home_points"].append(home_points)
+        home["home_goals_for"].append(float(home_goals))
+        home["home_goals_against"].append(float(away_goals))
+        away["away_points"].append(away_points)
+        away["away_goals_for"].append(float(away_goals))
+        away["away_goals_against"].append(float(home_goals))
+        if pd.notna(home_shots):
+            home["home_shots"].append(float(home_shots))
+        if pd.notna(away_shots):
+            away["away_shots"].append(float(away_shots))
+        if pd.notna(home_sot):
+            home["home_sot"].append(float(home_sot))
+        if pd.notna(away_sot):
+            away["away_sot"].append(float(away_sot))
+
         for prefix, team_state in (("home", home), ("away", away)):
             possession = getattr(fixture, f"{prefix}_possession", None)
             corners = getattr(fixture, f"{prefix}_corners", None)
@@ -205,6 +249,19 @@ def build_features(raw: pd.DataFrame, window: int = 5) -> pd.DataFrame:
                 team_state["yellow_cards"].append(float(yellow_cards))
             if pd.notna(red_cards):
                 team_state["red_cards"].append(float(red_cards))
+
+        home_corners = getattr(fixture, "home_corners", None)
+        away_corners = getattr(fixture, "away_corners", None)
+        home_yellow = getattr(fixture, "home_yellow_cards", None)
+        away_yellow = getattr(fixture, "away_yellow_cards", None)
+        if pd.notna(home_corners):
+            home["home_corners"].append(float(home_corners))
+        if pd.notna(away_corners):
+            away["away_corners"].append(float(away_corners))
+        if pd.notna(home_yellow):
+            home["home_yellow_cards"].append(float(home_yellow))
+        if pd.notna(away_yellow):
+            away["away_yellow_cards"].append(float(away_yellow))
 
         home["last_match"] = kickoff
         away["last_match"] = kickoff
