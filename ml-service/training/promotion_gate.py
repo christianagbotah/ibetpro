@@ -107,6 +107,43 @@ def decide(candidate: dict, baselines: dict, gates: dict | None = None) -> dict:
             "available",
         )
 
+    market_comparison = candidate.get("metrics", {}).get("market_comparison")
+    if uses_market_features:
+        add(
+            "paired_market_comparison_available",
+            market_comparison is not None,
+            None if market_comparison is None else market_comparison.get("rows"),
+            "required",
+            "available",
+        )
+        if market_comparison is not None:
+            paired_coverage = float(market_comparison.get("coverage", 0.0))
+            add(
+                "paired_market_coverage",
+                paired_coverage >= rules["min_market_coverage"],
+                paired_coverage,
+                rules["min_market_coverage"],
+                ">=",
+            )
+            paired_delta = float(market_comparison.get("delta", float("inf")))
+            add(
+                "paired_market_log_loss_delta",
+                paired_delta < 0.0,
+                paired_delta,
+                0.0,
+                "<",
+            )
+            ci_high = float(
+                market_comparison.get("bootstrap_ci95_high", float("inf"))
+            )
+            add(
+                "paired_market_ci95_upper",
+                ci_high < 0.0,
+                ci_high,
+                0.0,
+                "<",
+            )
+
     if market:
         market_coverage = float(market.get("coverage", 0.0))
         add(
