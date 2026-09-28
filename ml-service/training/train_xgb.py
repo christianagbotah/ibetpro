@@ -292,6 +292,56 @@ def blend_probabilities(
     return blended / blended.sum(axis=1, keepdims=True)
 
 
+def _model_complexity_rank(model_name: str) -> tuple[int, float]:
+    """Lower is deliberately simpler/more regularized."""
+
+    def parse_c(prefix: str) -> float:
+        raw = model_name.removeprefix(prefix).replace("_", ".")
+        try:
+            return float(raw)
+        except ValueError:
+            return float("inf")
+
+    if model_name.startswith("market_correction_c_"):
+        return (0, parse_c("market_correction_c_"))
+    if model_name.startswith("logistic_c_"):
+        return (1, parse_c("logistic_c_"))
+    if model_name == "lightgbm":
+        return (2, 0.0)
+    if model_name == "xgboost":
+        return (3, 0.0)
+    return (4, float("inf"))
+
+
+def select_conservative_result_candidate(
+    candidates: dict[str, dict],
+    tolerance: float = 0.0005,
+) -> str:
+    """Prefer a simpler result model when calibration scores are nearly tied."""
+
+    if not candidates:
+        raise ValueError("No result-model candidates were supplied")
+
+    best_score = min(float(value["log_loss"]) for value in candidates.values())
+    eligible = [
+        (name, value)
+        for name, value in candidates.items()
+        if float(value["log_loss"]) <= best_score + tolerance + 1e-12
+    ]
+
+    method_rank = {"raw": 0, "sigmoid": 1, "isotonic": 2}
+
+    return min(
+        eligible,
+        key=lambda item: (
+            *_model_complexity_rank(str(item[1]["model_name"])),
+            method_rank.get(str(item[1]["method"]), 3),
+            float(item[1]["log_loss"]),
+            item[0],
+        ),
+    )[0]
+
+
 def select_conservative_blend(
     candidates: list[tuple[float, float, float]],
     scores: dict[str, float],
@@ -550,9 +600,12 @@ def train(
                 "probabilities": probabilities,
             }
 
-    selected_key = min(
+    result_selection_tolerance = float(
+        os.environ.get("RESULT_MODEL_NEAR_BEST_TOLERANCE", "0.0005")
+    )
+    selected_key = select_conservative_result_candidate(
         calibration_candidates,
-        key=lambda name: calibration_candidates[name]["log_loss"],
+        tolerance=result_selection_tolerance,
     )
     selected_candidate = calibration_candidates[selected_key]
     selected_model_name = selected_candidate["model_name"]
@@ -759,6 +812,9 @@ def train(
         "result_calibration": {
             "selected_model": selected_model_name,
             "selected_method": selected_method,
+            "result_model_near_best_tolerance": float(
+                result_selection_tolerance
+            ),
             "selection_log_loss": {
                 name: float(value["log_loss"])
                 for name, value in calibration_candidates.items()
