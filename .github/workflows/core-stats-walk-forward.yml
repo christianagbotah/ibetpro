@@ -24,7 +24,7 @@ jobs:
         working-directory: ml-service
     env:
       MODEL_TRAIN_N_JOBS: "2"
-      EXPERIMENT_REVISION: "9"
+      EXPERIMENT_REVISION: "10"
 
     steps:
       - uses: actions/checkout@v4
@@ -94,6 +94,28 @@ jobs:
                   f"{market.get('delta', float('nan')):.6f} | "
                   f"[{market.get('bootstrap_ci95_low', float('nan')):.6f}, "
                   f"{market.get('bootstrap_ci95_high', float('nan')):.6f}] |"
+              )
+          totals = data.get("totals_stability") or {}
+          print()
+          print("## Over/Under 2.5 goal-market evidence")
+          print()
+          if totals.get("mean_candidate_minus_market_log_loss") is not None:
+              print(f"- Folds beating totals market: **{totals['folds_beating_market']}**")
+              print(f"- Folds significantly beating totals market: **{totals['folds_significantly_beating_market']}**")
+              print(f"- Mean goal-model − totals-market Log Loss: **{totals['mean_candidate_minus_market_log_loss']:.6f}**")
+          print()
+          print("| Fold | Goal-model LL | O/U market LL | Delta | 95% CI | Coverage |")
+          print("| --- | ---: | ---: | ---: | --- | ---: |")
+          for fold in data["folds"]:
+              totals_market = fold.get("totals_market_comparison") or {}
+              print(
+                  f"| {fold['name']} | "
+                  f"{totals_market.get('candidate_log_loss', float('nan')):.6f} | "
+                  f"{totals_market.get('benchmark_log_loss', float('nan')):.6f} | "
+                  f"{totals_market.get('delta', float('nan')):.6f} | "
+                  f"[{totals_market.get('bootstrap_ci95_low', float('nan')):.6f}, "
+                  f"{totals_market.get('bootstrap_ci95_high', float('nan')):.6f}] | "
+                  f"{totals_market.get('coverage', float('nan')):.1%} |"
               )
           PY
           else
