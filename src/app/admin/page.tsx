@@ -749,6 +749,22 @@ export default function AdminPage() {
                   : "not run yet"}
               </span>
             </div>
+            <div className="flex flex-wrap gap-2">
+              {(["24h", "6h", "1h"] as const).map((horizon) => (
+                <Button
+                  key={horizon}
+                  variant="outline"
+                  size="sm"
+                  disabled={firstPartyCorpus.horizons[horizon].labeled === 0}
+                  onClick={() => {
+                    window.location.href =
+                      `/api/admin/ml/first-party-corpus/export?horizon=${horizon}`;
+                  }}
+                >
+                  Export {horizon} CSV
+                </Button>
+              ))}
+            </div>
           </div>
 
           <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-3">
