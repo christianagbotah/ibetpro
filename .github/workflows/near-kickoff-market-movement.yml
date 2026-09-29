@@ -1,0 +1,119 @@
+name: iBetPro Near-Kickoff Market Movement
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - revamp/production-foundation
+    paths:
+      - .github/workflows/near-kickoff-market-movement.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ibetpro-near-kickoff-market-movement
+  cancel-in-progress: false
+
+jobs:
+  experiment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    defaults:
+      run:
+        working-directory: ml-service
+    env:
+      MODEL_TRAIN_N_JOBS: "2"
+      EXPERIMENT_REVISION: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ml-service/requirements.txt
+
+      - name: Install ML dependencies
+        run: pip install -r requirements.txt
+
+      - name: Validate ML suite
+        run: pytest -q
+
+      - name: Collect public historical corpus
+        run: |
+          python -m training.collect_football_data             --leagues E0 SP1             --start-years 2019 2020 2021 2022 2023 2024 2025             --output-dir data/near-kickoff/corpus
+
+      - name: Build leak-safe historical features
+        run: |
+          python -m training.build_features             --input data/near-kickoff/corpus/football-data-core.csv             --output data/near-kickoff/features-opening.csv
+
+      - name: Prepare near-kickoff closing-market corpus
+        run: |
+          python -m training.prepare_near_kickoff_movement             --input data/near-kickoff/features-opening.csv             --output data/near-kickoff/features-near-kickoff.csv             --report data/near-kickoff/readiness.json             --min-closing-coverage 0.90
+
+      - name: Run near-kickoff walk forward
+        run: |
+          python -m training.walk_forward             --dataset data/near-kickoff/features-near-kickoff.csv             --output data/near-kickoff/folds             --feature-profile market_movement
+
+      - name: Publish movement evidence
+        if: always()
+        shell: bash
+        run: |
+          python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          print("# iBetPro Near-Kickoff Market Movement")
+          print()
+          readiness = Path("data/near-kickoff/readiness.json")
+          if readiness.exists():
+              info = json.loads(readiness.read_text())
+              print(f"- Closing-market coverage: **{info['closing_market_coverage']:.1%}**")
+              print(f"- Rows: **{info['output_rows']}**")
+              print("- Horizon: **near-kickoff closing market**")
+              print()
+
+          path = Path("data/near-kickoff/folds/walk-forward.json")
+          if not path.exists():
+              print("No walk-forward evidence produced.")
+              raise SystemExit(0)
+
+          data = json.loads(path.read_text())
+          stability = data["stability"]
+          selective = data.get("selective_stability") or {}
+
+          print(f"- Folds beating closing market: **{stability['folds_beating_market']}/{stability['fold_count']}**")
+          print(f"- Folds significantly beating closing market: **{stability['folds_significantly_beating_market']}/{stability['fold_count']}**")
+          print(f"- Mean candidate − closing-market Log Loss: **{stability['mean_candidate_minus_market_log_loss']:.6f}**")
+          print(f"- Mean selective candidate rate: **{selective.get('mean_candidate_rate', 0.0):.1%}**")
+          print()
+          print("| Fold | Candidate LL | Closing market LL | Delta | 95% CI | Candidate rate | Enabled bands |")
+          print("| --- | ---: | ---: | ---: | --- | ---: | ---: |")
+          for fold in data["folds"]:
+              market = fold.get("market_comparison") or {}
+              sel = fold.get("selective") or {}
+              policy = sel.get("policy") or {}
+              print(
+                  f"| {fold['name']} | "
+                  f"{market.get('candidate_log_loss', float('nan')):.6f} | "
+                  f"{market.get('benchmark_log_loss', float('nan')):.6f} | "
+                  f"{market.get('delta', float('nan')):.6f} | "
+                  f"[{market.get('bootstrap_ci95_low', float('nan')):.6f}, "
+                  f"{market.get('bootstrap_ci95_high', float('nan')):.6f}] | "
+                  f"{sel.get('candidate_rate', 0.0):.1%} | "
+                  f"{policy.get('enabled_band_count', 0)} |"
+              )
+          print()
+          print("The 2025/26 untouched holdout is not opened by this workflow.")
+          PY
+
+      - name: Upload near-kickoff evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ibetpro-near-kickoff-market-movement
+          path: ml-service/data/near-kickoff/
+          if-no-files-found: warn
+          retention-days: 30
