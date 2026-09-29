@@ -5,6 +5,7 @@ APP_NAME="${APP_NAME:-ibetpro}"
 BASE_DIR="${BASE_DIR:-/home/lightworld/webapps/ibetpro}"
 RELEASES_DIR="${RELEASES_DIR:-/home/lightworld/releases}"
 LOG_DIR="${LOG_DIR:-/home/lightworld/logs/ibetpro}"
+BACKUPS_DIR="${BACKUPS_DIR:-/home/lightworld/backups}"
 DEPLOY_REF="${DEPLOY_REF:-origin/revamp/production-foundation}"
 APP_PORT="${APP_PORT:-3017}"
 VALIDATION_PORT="${VALIDATION_PORT:-3117}"
@@ -53,9 +54,79 @@ else
   exit 1
 fi
 
+backup_database() {
+  local env_file="$RELEASE/.env.production"
+  [[ -f "$env_file" ]] || {
+    echo "Runtime environment missing before database backup: $env_file" >&2
+    return 1
+  }
+
+  mkdir -p "$BACKUPS_DIR"
+  local output="$BACKUPS_DIR/ibetpro-db-$(date -u +%Y%m%dT%H%M%SZ).sql"
+
+  node - "$env_file" "$output" <<'NODE'
+const fs = require("fs");
+const { spawnSync } = require("child_process");
+
+const [envPath, output] = process.argv.slice(2);
+const line = fs
+  .readFileSync(envPath, "utf8")
+  .split(/\r?\n/)
+  .find((value) => value.startsWith("DATABASE_URL="));
+
+if (!line) {
+  throw new Error("DATABASE_URL missing from runtime environment");
+}
+
+const raw = line
+  .slice("DATABASE_URL=".length)
+  .trim()
+  .replace(/^["']|["']$/g, "");
+const url = new URL(raw);
+const binary = fs.existsSync("/usr/local/apps/mariadb118/bin/mariadb-dump")
+  ? "/usr/local/apps/mariadb118/bin/mariadb-dump"
+  : "mysqldump";
+const args = [
+  "-h",
+  url.hostname,
+  "-P",
+  url.port || "3306",
+  "-u",
+  decodeURIComponent(url.username),
+  decodeURIComponent(url.pathname.slice(1)),
+  "--single-transaction",
+  "--quick",
+  "--routines",
+  "--triggers",
+];
+
+const fd = fs.openSync(output, "w");
+const result = spawnSync(binary, args, {
+  env: {
+    ...process.env,
+    MYSQL_PWD: decodeURIComponent(url.password),
+  },
+  stdio: ["ignore", fd, "inherit"],
+});
+fs.closeSync(fd);
+
+if (result.status !== 0) {
+  try {
+    fs.unlinkSync(output);
+  } catch {}
+  process.exit(result.status || 1);
+}
+
+console.log(`Database backup written: ${output}`);
+NODE
+}
+
 cd "$RELEASE"
 npm ci --no-audit --no-fund
 npx prisma generate
+
+# Backup before any schema synchronization. A failed backup blocks deployment.
+backup_database
 
 # Never force destructive schema changes. Data-loss changes must stop for review.
 npx prisma db push
