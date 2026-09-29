@@ -102,3 +102,54 @@ def test_completeness_uses_trained_feature_schema(monkeypatch):
     assert any("model features were imputed" in warning for warning in result.warnings)
     assert any("substantial share" in warning for warning in result.warnings)
     assert result.confidence < 0.70
+
+
+class _SelectiveBundle(_Bundle):
+    result_market_weight = 0.5
+    selective_policy = {
+        "enabled_band_count": 1,
+        "alternative_weights": {
+            "model": 0.4,
+            "goal": 0.1,
+            "market": 0.5,
+        },
+        "bands": [
+            {
+                "lower": 0.01,
+                "upper": 1.0,
+                "use_candidate": True,
+            }
+        ],
+    }
+
+
+def test_selective_model_falls_back_without_fresh_consensus(monkeypatch):
+    monkeypatch.setattr(inference, "get_model_bundle", lambda: _SelectiveBundle())
+    payload = _payload()
+    payload.modelFeatures.home_implied_prob = 0.50
+    payload.modelFeatures.draw_implied_prob = 0.28
+    payload.modelFeatures.away_implied_prob = 0.22
+    payload.modelFeatures.market_consensus_available = False
+    payload.modelFeatures.market_consensus_age_minutes = None
+
+    result = inference.predict(payload, require_model=True)
+
+    assert result.source == "poisson-baseline-v1"
+    assert result.resultMode == "baseline"
+    assert any("fell back to the baseline model" in warning for warning in result.warnings)
+
+
+def test_selective_model_falls_back_when_consensus_is_stale(monkeypatch):
+    monkeypatch.setattr(inference, "get_model_bundle", lambda: _SelectiveBundle())
+    payload = _payload()
+    payload.modelFeatures.home_implied_prob = 0.50
+    payload.modelFeatures.draw_implied_prob = 0.28
+    payload.modelFeatures.away_implied_prob = 0.22
+    payload.modelFeatures.market_consensus_available = True
+    payload.modelFeatures.market_consensus_age_minutes = 999.0
+
+    result = inference.predict(payload, require_model=True)
+
+    assert result.source == "poisson-baseline-v1"
+    assert result.resultMode == "baseline"
+    assert any("consensus snapshot is older" in warning for warning in result.warnings)
