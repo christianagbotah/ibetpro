@@ -215,7 +215,7 @@ def poisson_baseline(payload: PredictionInput) -> MatchPrediction:
     return MatchPrediction(
         resultMode="market-consensus" if has_consensus else "baseline",
         modelVersion="poisson-baseline-v1",
-        source="ml-service",
+        source="poisson-baseline-v1",
         generatedAt=datetime.now(timezone.utc).isoformat(),
         asOf=payload.asOf,
         matchId=payload.matchId,
