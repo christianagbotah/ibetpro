@@ -158,6 +158,40 @@ def build_features(raw: pd.DataFrame, window: int = 5) -> pd.DataFrame:
             away_implied,
         )
 
+        closing_home_implied = _implied_prob(
+            getattr(fixture, "closing_home_odds", None)
+        )
+        closing_draw_implied = _implied_prob(
+            getattr(fixture, "closing_draw_odds", None)
+        )
+        closing_away_implied = _implied_prob(
+            getattr(fixture, "closing_away_odds", None)
+        )
+        closing_market_structure = _market_structure(
+            closing_home_implied,
+            closing_draw_implied,
+            closing_away_implied,
+        )
+
+        opening_home_market = market_structure["home_market_prob"]
+        opening_draw_market = market_structure["draw_market_prob"]
+        opening_away_market = market_structure["away_market_prob"]
+        closing_home_market = closing_market_structure["home_market_prob"]
+        closing_draw_market = closing_market_structure["draw_market_prob"]
+        closing_away_market = closing_market_structure["away_market_prob"]
+
+        movement_available = all(
+            np.isfinite(value)
+            for value in (
+                opening_home_market,
+                opening_draw_market,
+                opening_away_market,
+                closing_home_market,
+                closing_draw_market,
+                closing_away_market,
+            )
+        )
+
         row = {
             "fixture_id": fixture.fixture_id,
             "kickoff_utc": kickoff,
@@ -209,6 +243,48 @@ def build_features(raw: pd.DataFrame, window: int = 5) -> pd.DataFrame:
             "home_implied_prob": home_implied,
             "draw_implied_prob": draw_implied,
             "away_implied_prob": away_implied,
+            "opening_home_market_prob": opening_home_market,
+            "opening_draw_market_prob": opening_draw_market,
+            "opening_away_market_prob": opening_away_market,
+            "opening_market_overround": market_structure["market_overround"],
+            "closing_home_implied_prob": closing_home_implied,
+            "closing_draw_implied_prob": closing_draw_implied,
+            "closing_away_implied_prob": closing_away_implied,
+            "closing_home_market_prob": closing_home_market,
+            "closing_draw_market_prob": closing_draw_market,
+            "closing_away_market_prob": closing_away_market,
+            "closing_market_overround": closing_market_structure["market_overround"],
+            "closing_market_entropy": closing_market_structure["market_entropy"],
+            "closing_market_home_away_log_ratio": closing_market_structure[
+                "market_home_away_log_ratio"
+            ],
+            "closing_market_home_draw_log_ratio": closing_market_structure[
+                "market_home_draw_log_ratio"
+            ],
+            "closing_market_away_draw_log_ratio": closing_market_structure[
+                "market_away_draw_log_ratio"
+            ],
+            "home_market_prob_move_open": (
+                closing_home_market - opening_home_market
+                if movement_available
+                else np.nan
+            ),
+            "draw_market_prob_move_open": (
+                closing_draw_market - opening_draw_market
+                if movement_available
+                else np.nan
+            ),
+            "away_market_prob_move_open": (
+                closing_away_market - opening_away_market
+                if movement_available
+                else np.nan
+            ),
+            "market_overround_move_open": (
+                closing_market_structure["market_overround"]
+                - market_structure["market_overround"]
+                if movement_available
+                else np.nan
+            ),
             "over25_odds": getattr(fixture, "over25_odds", np.nan),
             "under25_odds": getattr(fixture, "under25_odds", np.nan),
             **market_structure,
