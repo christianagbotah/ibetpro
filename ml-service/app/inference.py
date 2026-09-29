@@ -203,6 +203,18 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
     selective_abstained = False
     selective_divergence = None
 
+    if selective_policy and (not market_available or not consensus_fresh):
+        fallback = poisson_baseline(payload)
+        reason = (
+            "genuine market consensus is unavailable"
+            if not market_available or not consensus_available
+            else f"the consensus snapshot is older than {max_consensus_age:.0f} minutes"
+        )
+        fallback.warnings.append(
+            f"Trained selective inference was not used because {reason}; prediction fell back to the baseline model."
+        )
+        return fallback
+
     if market_available and consensus_fresh and selective_policy:
         weights = selective_policy.get("alternative_weights", {})
         alternative_model_weight = float(weights.get("model", 0.0))
