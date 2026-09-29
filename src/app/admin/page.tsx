@@ -104,6 +104,27 @@ interface MarketHistoryReadiness {
   }>;
 }
 
+interface FirstPartyCorpusReadiness {
+  generatedAt: string;
+  totalSnapshots: number;
+  labeledSnapshots: number;
+  awaitingLabels: number;
+  latestSnapshotAt: string | null;
+  averageFeatureCompleteness: number;
+  averageMarketSnapshotCount: number;
+  averageMarketHistoryMinutes: number | null;
+  horizons: {
+    "24h": { total: number; labeled: number };
+    "6h": { total: number; labeled: number };
+    "1h": { total: number; labeled: number };
+  };
+  settlement: {
+    lastAttemptAt: string | null;
+    lastSuccessAt: string | null;
+    metadata: Record<string, unknown> | null;
+  };
+}
+
 interface ProviderReadiness {
   providers: {
     oddsApi: boolean;
@@ -227,6 +248,30 @@ export default function AdminPage() {
         modelVersion: null,
         reason: null,
         modelMode: "baseline",
+      },
+    }
+  );
+
+  const { data: firstPartyCorpus } = useFetch<FirstPartyCorpusReadiness>(
+    "/api/admin/ml/first-party-corpus",
+    {
+      generatedAt: "",
+      totalSnapshots: 0,
+      labeledSnapshots: 0,
+      awaitingLabels: 0,
+      latestSnapshotAt: null,
+      averageFeatureCompleteness: 0,
+      averageMarketSnapshotCount: 0,
+      averageMarketHistoryMinutes: null,
+      horizons: {
+        "24h": { total: 0, labeled: 0 },
+        "6h": { total: 0, labeled: 0 },
+        "1h": { total: 0, labeled: 0 },
+      },
+      settlement: {
+        lastAttemptAt: null,
+        lastSuccessAt: null,
+        metadata: null,
       },
     }
   );
@@ -654,6 +699,56 @@ export default function AdminPage() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-foreground">First-party training corpus</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Immutable pre-kickoff feature vectors captured from production at 24h, 6h and 1h horizons.
+                </p>
+              </div>
+              <Badge variant="outline">
+                {firstPartyCorpus.labeledSnapshots} labeled
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="rounded-lg bg-background/40 p-3">
+                <p className="text-xs text-muted-foreground">Snapshots</p>
+                <p className="text-lg font-bold text-foreground">
+                  {firstPartyCorpus.totalSnapshots}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {firstPartyCorpus.awaitingLabels} awaiting results
+                </p>
+              </div>
+              {(["24h", "6h", "1h"] as const).map((horizon) => (
+                <div key={horizon} className="rounded-lg bg-background/40 p-3">
+                  <p className="text-xs text-muted-foreground">{horizon} horizon</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {firstPartyCorpus.horizons[horizon].labeled}/
+                    {firstPartyCorpus.horizons[horizon].total}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    labeled / captured
+                  </p>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <span>
+                Feature completeness: {Math.round(firstPartyCorpus.averageFeatureCompleteness * 100)}%
+              </span>
+              <span>
+                Avg consensus snapshots: {firstPartyCorpus.averageMarketSnapshotCount.toFixed(1)}
+              </span>
+              <span>
+                Settlement: {firstPartyCorpus.settlement.lastSuccessAt
+                  ? new Date(firstPartyCorpus.settlement.lastSuccessAt).toLocaleString()
+                  : "not run yet"}
+              </span>
+            </div>
           </div>
 
           <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-3">
