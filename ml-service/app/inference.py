@@ -206,7 +206,7 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
     if selective_policy and (not market_available or not consensus_fresh):
         fallback = poisson_baseline(payload)
         reason = (
-            "genuine market consensus is unavailable"
+            "genuine consensus odds are unavailable"
             if not market_available or not consensus_available
             else f"the consensus snapshot is older than {max_consensus_age:.0f} minutes"
         )
