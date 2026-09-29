@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
+import pytest
 import pandas as pd
 
 from training.build_features import build_features
@@ -67,9 +68,11 @@ def test_training_pipeline_runs_end_to_end(tmp_path: Path):
             calibration_end=pd.Timestamp("2023-09-30T23:59:59Z"),
             test_end=pd.Timestamp("2024-06-30T23:59:59Z"),
         ),
+        prediction_horizon="1h",
     )
 
-    assert metadata["model_version"] == "football-ensemble-v0"
+    assert metadata["model_version"] == "football-ensemble-v0-1h"
+    assert metadata["prediction_horizon"] == "1h"
     selected_model = metadata["result_calibration"]["selected_model"]
     assert (
         selected_model in {"xgboost", "lightgbm"}
@@ -134,3 +137,17 @@ def test_result_selection_does_not_prefer_simple_model_outside_tolerance():
     )
 
     assert selected == "logistic_c_1_0:raw"
+
+
+def test_training_rejects_unknown_prediction_horizon(tmp_path: Path):
+    with pytest.raises(ValueError, match="prediction_horizon"):
+        train(
+            tmp_path / "missing.csv",
+            tmp_path / "model",
+            ChronologicalSplit(
+                train_end=pd.Timestamp("2022-12-31T23:59:59Z"),
+                calibration_end=pd.Timestamp("2023-09-30T23:59:59Z"),
+                test_end=pd.Timestamp("2024-06-30T23:59:59Z"),
+            ),
+            prediction_horizon="2h",
+        )
