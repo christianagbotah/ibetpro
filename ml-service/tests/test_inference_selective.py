@@ -137,3 +137,39 @@ def test_selective_policy_rejects_stale_consensus(monkeypatch):
         "older than 360 minutes" in warning
         for warning in result.warnings
     )
+
+
+def test_horizon_guard_accepts_matching_window():
+    reason = inference.horizon_mismatch_reason(
+        "1h",
+        "upcoming",
+        "2026-09-28T12:00:00Z",
+        "2026-09-28T13:00:00Z",
+    )
+    assert reason is None
+
+
+def test_horizon_guard_rejects_outside_window():
+    reason = inference.horizon_mismatch_reason(
+        "1h",
+        "upcoming",
+        "2026-09-28T12:00:00Z",
+        "2026-09-28T16:00:00Z",
+    )
+    assert reason is not None
+    assert "30-90 minutes" in reason
+
+
+def test_horizon_guard_requires_upcoming_status_and_kickoff():
+    assert "cannot be used" in inference.horizon_mismatch_reason(
+        "6h",
+        "live",
+        "2026-09-28T12:00:00Z",
+        "2026-09-28T18:00:00Z",
+    )
+    assert "requires kickoffAt" in inference.horizon_mismatch_reason(
+        "24h",
+        "upcoming",
+        "2026-09-28T12:00:00Z",
+        None,
+    )
