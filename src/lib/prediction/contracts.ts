@@ -55,6 +55,18 @@ export interface ModelFeatureVector {
   market_home_away_log_ratio?: number | null;
   market_home_draw_log_ratio?: number | null;
   market_away_draw_log_ratio?: number | null;
+  market_snapshot_count?: number | null;
+  market_history_minutes?: number | null;
+  home_market_prob_move_open?: number | null;
+  draw_market_prob_move_open?: number | null;
+  away_market_prob_move_open?: number | null;
+  market_overround_move_open?: number | null;
+  home_market_prob_move_6h?: number | null;
+  draw_market_prob_move_6h?: number | null;
+  away_market_prob_move_6h?: number | null;
+  home_market_prob_move_24h?: number | null;
+  draw_market_prob_move_24h?: number | null;
+  away_market_prob_move_24h?: number | null;
   home_possession_5?: number | null;
   away_possession_5?: number | null;
   home_corners_5?: number | null;
