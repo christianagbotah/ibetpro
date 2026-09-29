@@ -118,6 +118,18 @@ interface FirstPartyCorpusReadiness {
     "6h": { total: number; labeled: number };
     "1h": { total: number; labeled: number };
   };
+  nextFixture: {
+    id: string;
+    league: string;
+    homeTeam: string;
+    awayTeam: string;
+    kickoffAt: string;
+    captureWindows: {
+      "24h": { opensAt: string; targetAt: string; closesAt: string };
+      "6h": { opensAt: string; targetAt: string; closesAt: string };
+      "1h": { opensAt: string; targetAt: string; closesAt: string };
+    };
+  } | null;
   settlement: {
     lastAttemptAt: string | null;
     lastSuccessAt: string | null;
@@ -268,6 +280,7 @@ export default function AdminPage() {
         "6h": { total: 0, labeled: 0 },
         "1h": { total: 0, labeled: 0 },
       },
+      nextFixture: null,
       settlement: {
         lastAttemptAt: null,
         lastSuccessAt: null,
@@ -736,6 +749,30 @@ export default function AdminPage() {
                 </div>
               ))}
             </div>
+            {firstPartyCorpus.nextFixture && (
+              <div className="rounded-lg border border-border bg-background/40 p-3">
+                <p className="text-xs font-semibold text-foreground">
+                  Next capture schedule
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {firstPartyCorpus.nextFixture.homeTeam} vs {firstPartyCorpus.nextFixture.awayTeam}
+                  {" · "}
+                  {firstPartyCorpus.nextFixture.league}
+                  {" · kickoff "}
+                  {new Date(firstPartyCorpus.nextFixture.kickoffAt).toLocaleString()}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(["24h", "6h", "1h"] as const).map((horizon) => (
+                    <Badge key={horizon} variant="outline">
+                      {horizon} opens {new Date(
+                        firstPartyCorpus.nextFixture!.captureWindows[horizon].opensAt
+                      ).toLocaleString()}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span>
                 Feature completeness: {Math.round(firstPartyCorpus.averageFeatureCompleteness * 100)}%
