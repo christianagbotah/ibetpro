@@ -1,0 +1,9 @@
+[Unit]
+Description=iBetPro routine match/odds sync
+After=network-online.target ibetpro-ml.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/lightworld/services/ibetpro-web/current/deploy/run-sync-cron.sh
+TimeoutStartSec=120
