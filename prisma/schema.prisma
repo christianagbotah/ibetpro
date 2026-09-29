@@ -159,6 +159,7 @@ model Match {
   shadowComparisons ShadowPredictionComparison[]
   statSnapshots MatchTeamStatSnapshot[]
   eloSnapshots TeamEloSnapshot[]
+  trainingFeatureSnapshots TrainingFeatureSnapshot[]
 
   @@index([status])
   @@index([sport, league])
@@ -536,6 +537,8 @@ model PredictionSnapshot {
   scorelinesJson    String   @db.LongText
   marketsJson       String   @db.LongText
   warningsJson      String   @db.Text
+  resultMode        String   @default("baseline")
+  modelFeaturesJson String?  @db.LongText
   featureHash       String?
   createdAt         DateTime @default(now())
 
@@ -667,4 +670,41 @@ model TeamEloSnapshot {
   @@unique([matchId, teamName])
   @@index([teamName, sport, league, asOf])
   @@index([sport, league, asOf])
+}
+
+
+model TrainingFeatureSnapshot {
+  id                       String   @id @default(cuid())
+  matchId                  String
+  horizonKey               String
+  featureSchemaVersion     String   @default("online-v1")
+  asOf                     DateTime
+  kickoffAt                DateTime
+  horizonMinutesActual     Int
+  featureHash              String
+  featuresJson             String   @db.LongText
+  featureCompleteness      Float
+  marketConsensusAvailable Boolean  @default(false)
+  marketSnapshotCount      Int      @default(0)
+  marketHistoryMinutes     Float?
+  createdAt                DateTime @default(now())
+
+  match Match @relation(fields: [matchId], references: [id], onDelete: Cascade)
+
+  @@unique([matchId, horizonKey, featureSchemaVersion])
+  @@index([horizonKey, asOf])
+  @@index([kickoffAt])
+  @@index([featureHash])
+}
+
+model ProviderSyncState {
+  key          String   @id
+  provider     String
+  lastAttemptAt DateTime?
+  lastSuccessAt DateTime?
+  metadataJson String?  @db.Text
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([provider, lastSuccessAt])
 }
