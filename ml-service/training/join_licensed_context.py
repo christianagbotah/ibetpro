@@ -79,9 +79,23 @@ def join_licensed_context(
         "closing_draw_odds",
         "closing_away_odds",
     ]
+    coverage_columns = [
+        "home_xg", "away_xg", "home_shots", "away_shots",
+        "home_sot", "away_sot", "home_possession", "away_possession",
+        "home_corners", "away_corners", "home_yellow_cards",
+        "away_yellow_cards", "home_odds", "draw_odds", "away_odds",
+    ]
+    coverage = {
+        column: float(merged[column].notna().mean())
+        for column in coverage_columns
+        if column in merged.columns
+    }
+
     report = {
+        "rows": int(len(merged)),
         "fixtures": int(len(merged)),
         "matched_fixtures": int(matched),
+        "coverage": coverage,
         "opening_market_coverage": float(
             merged[odds_columns].notna().all(axis=1).mean()
         ),
