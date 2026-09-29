@@ -79,6 +79,31 @@ interface ShadowEvaluationResponse {
   };
 }
 
+interface MarketHistoryReadiness {
+  generatedAt: string;
+  upcomingMatches: number;
+  withConsensus: number;
+  withTwoSnapshots: number;
+  history6h: number;
+  history24h: number;
+  history48h: number;
+  coverage: {
+    consensus: number;
+    twoSnapshots: number;
+    history6h: number;
+    history24h: number;
+    history48h: number;
+  };
+  researchReady: boolean;
+  byLeague: Array<{
+    league: string;
+    matches: number;
+    withConsensus: number;
+    withTwoSnapshots: number;
+    history24h: number;
+  }>;
+}
+
 interface Stats {
   totalUsers: number;
   totalBets: number;
@@ -148,6 +173,28 @@ export default function AdminPage() {
           minimumUsefulSampleReached: false,
         },
       },
+    }
+  );
+
+  const { data: marketHistory } = useFetch<MarketHistoryReadiness>(
+    "/api/admin/ml/market-history",
+    {
+      generatedAt: "",
+      upcomingMatches: 0,
+      withConsensus: 0,
+      withTwoSnapshots: 0,
+      history6h: 0,
+      history24h: 0,
+      history48h: 0,
+      coverage: {
+        consensus: 0,
+        twoSnapshots: 0,
+        history6h: 0,
+        history24h: 0,
+        history48h: 0,
+      },
+      researchReady: false,
+      byLeague: [],
     }
   );
 
@@ -518,6 +565,62 @@ export default function AdminPage() {
                 {shadow.evaluation.candidate.awayGoalMae == null ? "—" : shadow.evaluation.candidate.awayGoalMae.toFixed(3)}
               </p>
             </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Odds-movement corpus</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Causal consensus snapshots collected before kickoff for the next research feature family.
+                </p>
+              </div>
+              <Badge
+                variant="secondary"
+                className={
+                  marketHistory.researchReady
+                    ? "bg-emerald-400/10 text-emerald-400"
+                    : "bg-amber-400/10 text-amber-400"
+                }
+              >
+                {marketHistory.researchReady ? "RESEARCH READY" : "COLLECTING"}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="rounded-lg bg-background/40 p-3">
+                <p className="text-xs text-muted-foreground">Fresh consensus</p>
+                <p className="text-lg font-bold text-foreground">
+                  {marketHistory.withConsensus}/{marketHistory.upcomingMatches}
+                </p>
+              </div>
+              <div className="rounded-lg bg-background/40 p-3">
+                <p className="text-xs text-muted-foreground">2+ snapshots</p>
+                <p className="text-lg font-bold text-foreground">
+                  {Math.round(marketHistory.coverage.twoSnapshots * 100)}%
+                </p>
+              </div>
+              <div className="rounded-lg bg-background/40 p-3">
+                <p className="text-xs text-muted-foreground">6h history</p>
+                <p className="text-lg font-bold text-foreground">
+                  {Math.round(marketHistory.coverage.history6h * 100)}%
+                </p>
+              </div>
+              <div className="rounded-lg bg-background/40 p-3">
+                <p className="text-xs text-muted-foreground">24h history</p>
+                <p className="text-lg font-bold text-foreground">
+                  {Math.round(marketHistory.coverage.history24h * 100)}%
+                </p>
+              </div>
+            </div>
+            {marketHistory.byLeague.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {marketHistory.byLeague.map((item) => (
+                  <Badge key={item.league} variant="outline">
+                    {item.league}: {item.history24h}/{item.matches} with 24h
+                  </Badge>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-3">
