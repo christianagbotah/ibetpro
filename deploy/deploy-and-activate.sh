@@ -107,7 +107,7 @@ if [[ -L "$ML_SERVICE_DIR/current" ]]; then
   PREVIOUS_ML_RELEASE="$(readlink -f "$ML_SERVICE_DIR/current" || true)"
 fi
 
-if systemctl list-unit-files "$ML_SERVICE_NAME" >/dev/null 2>&1; then
+if systemctl cat "$ML_SERVICE_NAME" >/dev/null 2>&1; then
   mkdir -p "$ML_SERVICE_DIR"
   ln -sfn "$RELEASE" "$ML_SERVICE_DIR/current"
   chown -h lightworld:lightworld "$ML_SERVICE_DIR/current" 2>/dev/null || true
