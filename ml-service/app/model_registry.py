@@ -69,8 +69,39 @@ class ModelBundle:
 
     @property
     def selective_policy(self) -> dict | None:
-        value = self.metadata.get("result_calibration", {}).get("selective_policy")
-        return value if isinstance(value, dict) else None
+        calibration = self.metadata.get("result_calibration", {})
+        value = calibration.get("selective_policy")
+        stability = calibration.get("selective_stability_approval")
+        if not isinstance(value, dict):
+            return None
+        if not isinstance(stability, dict) or not stability.get("approved"):
+            return None
+
+        stable_bands = {
+            (float(item["lower"]), float(item["upper"]))
+            for item in stability.get("stable_bands", [])
+            if "lower" in item and "upper" in item
+        }
+        if not stable_bands:
+            return None
+
+        filtered = {
+            **value,
+            "bands": [
+                {
+                    **band,
+                    "use_candidate": bool(
+                        band.get("use_candidate")
+                        and (float(band["lower"]), float(band["upper"])) in stable_bands
+                    ),
+                }
+                for band in value.get("bands", [])
+            ],
+        }
+        filtered["enabled_band_count"] = sum(
+            1 for band in filtered["bands"] if band.get("use_candidate")
+        )
+        return filtered
 
 
 def configured_model_dir() -> Path | None:
@@ -153,7 +184,16 @@ def model_status() -> dict:
             "features": len(bundle.feature_columns) if bundle else 0,
             "featureProfile": bundle.feature_profile if bundle else None,
             "selectivePolicy": {
-                "configured": bool(bundle and bundle.selective_policy),
+                "configured": bool(
+                    bundle
+                    and bundle.metadata.get("result_calibration", {}).get("selective_policy")
+                ),
+                "crossSeasonApproved": bool(
+                    bundle
+                    and bundle.metadata.get("result_calibration", {})
+                    .get("selective_stability_approval", {})
+                    .get("approved")
+                ),
                 "enabledBands": (
                     int(bundle.selective_policy.get("enabled_band_count", 0))
                     if bundle and bundle.selective_policy
