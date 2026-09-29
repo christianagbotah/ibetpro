@@ -118,6 +118,12 @@ interface FirstPartyCorpusReadiness {
     "6h": { total: number; labeled: number };
     "1h": { total: number; labeled: number };
   };
+  readiness: {
+    pilotMinLabeledPerHorizon: number;
+    promotionMinLabeledPerHorizon: number;
+    pilotReadyHorizons: string[];
+    promotionReadyHorizons: string[];
+  };
   nextFixture: {
     id: string;
     league: string;
@@ -279,6 +285,12 @@ export default function AdminPage() {
         "24h": { total: 0, labeled: 0 },
         "6h": { total: 0, labeled: 0 },
         "1h": { total: 0, labeled: 0 },
+      },
+      readiness: {
+        pilotMinLabeledPerHorizon: 300,
+        promotionMinLabeledPerHorizon: 1500,
+        pilotReadyHorizons: [],
+        promotionReadyHorizons: [],
       },
       nextFixture: null,
       settlement: {
@@ -772,6 +784,25 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="rounded-lg border border-border bg-background/40 p-3">
+                <p className="text-xs text-muted-foreground">Pilot experiment gate</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">
+                  {firstPartyCorpus.readiness.pilotReadyHorizons.length > 0
+                    ? `Ready: ${firstPartyCorpus.readiness.pilotReadyHorizons.join(", ")}`
+                    : `Collecting toward ${firstPartyCorpus.readiness.pilotMinLabeledPerHorizon} labeled matches per horizon`}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-background/40 p-3">
+                <p className="text-xs text-muted-foreground">Promotion research gate</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">
+                  {firstPartyCorpus.readiness.promotionReadyHorizons.length > 0
+                    ? `Ready: ${firstPartyCorpus.readiness.promotionReadyHorizons.join(", ")}`
+                    : `Requires ${firstPartyCorpus.readiness.promotionMinLabeledPerHorizon} labeled matches per horizon`}
+                </p>
+              </div>
+            </div>
 
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
               <span>
