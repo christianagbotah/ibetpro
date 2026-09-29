@@ -95,24 +95,21 @@ jobs:
               )
           selective = data.get("selective_stability") or {}
           print()
-          print("## Selective deviation coverage")
+          print("## Selective deviation stability")
           print()
-          print(f"- Folds with any selective model rows: **{selective.get('folds_with_candidate_rows', 0)}**")
-          print(f"- Mean selective candidate rate: **{selective.get('mean_candidate_rate', 0.0):.1%}**")
-          print(f"- Candidate rows: **{selective.get('candidate_rows', 0)}**")
-          print(f"- Market-abstained rows: **{selective.get('abstained_rows', 0)}**")
+          print(f"- Stable divergence bands: **{selective.get('stable_band_count', 0)}**")
+          print(f"- Eligible for shadow: **{selective.get('eligible_for_shadow', False)}**")
+          print(f"- Required folds: **{selective.get('required_folds', 0)}**")
           print()
-          print("| Fold | Candidate rate | Candidate rows | Abstained rows | Enabled bands |")
-          print("| --- | ---: | ---: | ---: | ---: |")
-          for fold in data["folds"]:
-              selective_fold = fold.get("selective") or {}
-              policy = selective_fold.get("policy") or {}
+          print("| Divergence band | Comparable folds | Beat market | Significant | Shadow-stable |")
+          print("| --- | ---: | ---: | ---: | --- |")
+          for band in selective.get("bands", []):
               print(
-                  f"| {fold['name']} | "
-                  f"{selective_fold.get('candidate_rate', 0.0):.1%} | "
-                  f"{selective_fold.get('candidate_rows', 0)} | "
-                  f"{selective_fold.get('abstained_rows', 0)} | "
-                  f"{policy.get('enabled_band_count', 0)} |"
+                  f"| {band.get('lower', 0):.2f}–{band.get('upper', 0):.2f} | "
+                  f"{band.get('comparable_folds', 0)} | "
+                  f"{band.get('folds_beating_market', 0)} | "
+                  f"{band.get('folds_significantly_beating_market', 0)} | "
+                  f"{'yes' if band.get('stable_for_shadow') else 'no'} |"
               )
 
           totals = data.get("totals_stability") or {}
