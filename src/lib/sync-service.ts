@@ -19,6 +19,7 @@ import { generateDemoMatches } from "./demo-data";
 import { ensureFixtureIdentity } from "./football/identity";
 import { persistOddsSnapshot } from "./football/odds-history";
 import { captureTrainingFeatureSnapshots } from "./prediction/training-corpus";
+import { rebuildLeagueEloSnapshots } from "./prediction/elo-snapshots";
 
 // Track last sync time to avoid excessive API calls
 let lastSyncAt: Date | null = null;
@@ -53,8 +54,10 @@ async function syncOddsApiSettlements(): Promise<{
   skipped: boolean;
   reason?: string;
   errors: string[];
+  affectedCompetitions: Array<{ sport: string; league: string }>;
 }> {
   const errors: string[] = [];
+  const affectedCompetitionKeys = new Set<string>();
   const now = new Date();
 
   const state = await prisma.providerSyncState.findUnique({
@@ -73,6 +76,7 @@ async function syncOddsApiSettlements(): Promise<{
       skipped: true,
       reason: "Completed-score settlement sync is still fresh",
       errors,
+      affectedCompetitions: [],
     };
   }
 
@@ -86,6 +90,7 @@ async function syncOddsApiSettlements(): Promise<{
       skipped: true,
       reason: `Odds API quota below score-settlement floor (${apiQuotaRemaining} < ${SCORE_SETTLEMENT_MIN_QUOTA})`,
       errors,
+      affectedCompetitions: [],
     };
   }
 
@@ -154,8 +159,18 @@ async function syncOddsApiSettlements(): Promise<{
         }
 
         if (event.completed) {
-          const resultUpdate = await prisma.match.updateMany({
+          const match = await prisma.match.findUnique({
             where: { externalId: event.id },
+            select: {
+              id: true,
+              sport: true,
+              league: true,
+            },
+          });
+          if (!match) continue;
+
+          await prisma.match.update({
+            where: { id: match.id },
             data: {
               homeScore: event.homeScore,
               awayScore: event.awayScore,
@@ -164,7 +179,10 @@ async function syncOddsApiSettlements(): Promise<{
               lastSyncedAt: new Date(),
             },
           });
-          updated += resultUpdate.count;
+          updated++;
+          affectedCompetitionKeys.add(
+            JSON.stringify([match.sport, match.league])
+          );
         }
       }
     } catch (error) {
@@ -201,11 +219,19 @@ async function syncOddsApiSettlements(): Promise<{
     });
   }
 
+  const affectedCompetitions = Array.from(affectedCompetitionKeys).map(
+    (key) => {
+      const [sport, league] = JSON.parse(key) as [string, string];
+      return { sport, league };
+    }
+  );
+
   return {
     updated,
     calls,
     skipped: false,
     errors,
+    affectedCompetitions,
   };
 }
 
@@ -546,6 +572,24 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
         console.log(
           `[Sync] Settled ${settlement.updated} completed matches using ${settlement.calls} score calls.`
         );
+      }
+
+      // Refresh causal team strength immediately after verified results land.
+      // This uses only stored finished matches and consumes no provider quota.
+      for (const competition of settlement.affectedCompetitions) {
+        try {
+          const rebuild = await rebuildLeagueEloSnapshots(
+            competition.sport,
+            competition.league
+          );
+          console.log(
+            `[Sync] Rebuilt ${rebuild.snapshotsCreated} ELO snapshots for ${competition.league} after settlement.`
+          );
+        } catch (eloError) {
+          errors.push(
+            `ELO rebuild ${competition.league}: ${eloError instanceof Error ? eloError.message : "Unknown ELO rebuild error"}`
+          );
+        }
       }
     } catch (error) {
       errors.push(
