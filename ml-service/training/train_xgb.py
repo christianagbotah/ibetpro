@@ -78,6 +78,17 @@ CORE_STATS_FEATURE_COLUMNS = [
     "away_away_yellow_cards_5",
 ]
 
+MARKET_MOVEMENT_FEATURE_COLUMNS = [
+    "opening_home_market_prob",
+    "opening_draw_market_prob",
+    "opening_away_market_prob",
+    "opening_market_overround",
+    "home_market_prob_move_open",
+    "draw_market_prob_move_open",
+    "away_market_prob_move_open",
+    "market_overround_move_open",
+]
+
 ENRICHED_FEATURE_COLUMNS = [
     "home_possession_5",
     "away_possession_5",
@@ -95,6 +106,12 @@ def feature_columns(profile: str) -> list[str]:
         return list(CORE_FEATURE_COLUMNS)
     if profile == "core_stats":
         return [*CORE_FEATURE_COLUMNS, *CORE_STATS_FEATURE_COLUMNS]
+    if profile == "market_movement":
+        return [
+            *CORE_FEATURE_COLUMNS,
+            *CORE_STATS_FEATURE_COLUMNS,
+            *MARKET_MOVEMENT_FEATURE_COLUMNS,
+        ]
     if profile == "enriched":
         return [
             *CORE_FEATURE_COLUMNS,
