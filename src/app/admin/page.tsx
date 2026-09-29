@@ -112,6 +112,11 @@ interface ProviderReadiness {
   };
   ml: {
     serviceUrlConfigured: boolean;
+    serviceReachable: boolean;
+    modelConfigured: boolean;
+    modelLoaded: boolean;
+    modelVersion: string | null;
+    reason: string | null;
     modelMode: string;
   };
 }
@@ -214,7 +219,15 @@ export default function AdminPage() {
     "/api/admin/ml/providers",
     {
       providers: { oddsApi: false, apiFootball: false, sportmonks: false },
-      ml: { serviceUrlConfigured: false, modelMode: "baseline" },
+      ml: {
+        serviceUrlConfigured: false,
+        serviceReachable: false,
+        modelConfigured: false,
+        modelLoaded: false,
+        modelVersion: null,
+        reason: null,
+        modelMode: "baseline",
+      },
     }
   );
 
@@ -660,7 +673,8 @@ export default function AdminPage() {
                 ["Sportmonks", providerReadiness.providers.sportmonks],
                 ["The Odds API", providerReadiness.providers.oddsApi],
                 ["API-Football", providerReadiness.providers.apiFootball],
-                ["ML Service", providerReadiness.ml.serviceUrlConfigured],
+                ["ML Service", providerReadiness.ml.serviceReachable],
+                ["Model loaded", providerReadiness.ml.modelLoaded],
               ].map(([label, ready]) => (
                 <div key={String(label)} className="rounded-lg bg-background/40 p-3">
                   <p className="text-xs text-muted-foreground">{String(label)}</p>
@@ -669,6 +683,21 @@ export default function AdminPage() {
                   </p>
                 </div>
               ))}
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <span>
+                ML service: {providerReadiness.ml.serviceReachable ? "reachable" : "unreachable"}
+              </span>
+              <span>·</span>
+              <span>
+                Model: {providerReadiness.ml.modelVersion || "none promoted"}
+              </span>
+              {providerReadiness.ml.reason && (
+                <>
+                  <span>·</span>
+                  <span>{providerReadiness.ml.reason}</span>
+                </>
+              )}
             </div>
           </div>
 
