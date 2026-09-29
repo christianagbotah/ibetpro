@@ -5,6 +5,7 @@ import numpy as np
 from training.selective_policy import (
     SelectivePolicyRules,
     apply_selective_policy,
+    evaluate_selective_bands,
     learn_selective_policy,
     policy_allows_divergence,
 )
@@ -57,3 +58,32 @@ def test_apply_policy_abstains_to_market_when_no_band_enabled():
 
     assert mask.tolist() == [False]
     assert np.allclose(selected, market)
+
+
+def test_evaluate_selective_bands_reports_out_of_sample_edge():
+    y = np.array([0] * 120 + [2] * 120)
+    market = np.tile(np.array([0.45, 0.25, 0.30]), (240, 1))
+    candidate = market.copy()
+    candidate[:120] = np.array([0.50, 0.23, 0.27])
+    candidate[120:] = np.array([0.60, 0.20, 0.20])
+    policy = {
+        "bands": [
+            {"lower": 0.0, "upper": 0.05, "use_candidate": True},
+            {"lower": 0.05, "upper": 1.01, "use_candidate": False},
+        ]
+    }
+
+    evidence = evaluate_selective_bands(
+        y,
+        candidate,
+        market,
+        policy,
+        bootstrap_iterations=500,
+        seed=17,
+    )
+
+    assert evidence[0]["calibration_enabled"] is True
+    assert evidence[0]["candidate_better"] is True
+    assert evidence[0]["significantly_better"] is True
+    assert evidence[1]["calibration_enabled"] is False
+    assert evidence[1]["candidate_better"] is False
