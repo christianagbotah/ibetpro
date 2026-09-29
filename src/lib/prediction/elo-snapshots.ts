@@ -145,3 +145,44 @@ export async function getCausalElo(
 
   return snapshot?.ratingAfter ?? DEFAULT_ELO;
 }
+
+
+export async function repairMissingCausalEloSnapshots(limit = 100) {
+  const candidates = await prisma.match.findMany({
+    where: {
+      status: "finished",
+      homeScore: { not: null },
+      awayScore: { not: null },
+      apiSource: { in: ["odds-api", "api-football", "sportmonks"] },
+      eloSnapshots: { none: {} },
+    },
+    orderBy: { commenceTime: "desc" },
+    take: Math.max(1, Math.min(500, Math.trunc(limit))),
+    select: {
+      sport: true,
+      league: true,
+    },
+  });
+
+  const unique = new Map<string, { sport: string; league: string }>();
+  for (const item of candidates) {
+    const key = JSON.stringify([item.sport, item.league]);
+    unique.set(key, item);
+  }
+
+  const rebuilt = [];
+  for (const competition of unique.values()) {
+    rebuilt.push(
+      await rebuildLeagueEloSnapshots(
+        competition.sport,
+        competition.league
+      )
+    );
+  }
+
+  return {
+    candidateMatches: candidates.length,
+    competitionsRebuilt: rebuilt.length,
+    rebuilt,
+  };
+}
