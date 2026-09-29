@@ -16,6 +16,15 @@ class BaselineMetrics:
     accuracy: float
 
 
+def utc_timestamp(value: str | pd.Timestamp) -> pd.Timestamp:
+    timestamp = pd.Timestamp(value)
+    return (
+        timestamp.tz_localize("UTC")
+        if timestamp.tzinfo is None
+        else timestamp.tz_convert("UTC")
+    )
+
+
 def normalize_market_probs(row: pd.Series) -> np.ndarray | None:
     direct = [
         row.get("home_implied_prob"),
@@ -69,8 +78,8 @@ def evaluate_baselines(feature_csv: Path, start: str, end: str) -> dict:
     frame = pd.read_csv(feature_csv)
     frame["kickoff_utc"] = pd.to_datetime(frame["kickoff_utc"], utc=True)
     period = frame[
-        (frame["kickoff_utc"] >= pd.Timestamp(start, tz="UTC"))
-        & (frame["kickoff_utc"] <= pd.Timestamp(end, tz="UTC"))
+        (frame["kickoff_utc"] >= utc_timestamp(start))
+        & (frame["kickoff_utc"] <= utc_timestamp(end))
     ].copy()
 
     if period.empty:
