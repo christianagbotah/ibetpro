@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import type { ModelFeatureVector } from "./contracts";
 import { getCausalElo } from "./elo-snapshots";
+import { getConsensusOddsMovementFeatures } from "@/lib/football/odds-history";
 
 type MatchLike = {
   id: string;
@@ -325,10 +326,11 @@ export async function buildOnlineModelFeatures(
   const homeVenueRolling = rollingStats(match.homeTeam, homeVenueHistory);
   const awayVenueRolling = rollingStats(match.awayTeam, awayVenueHistory);
 
-  const [homeElo, awayElo, consensusOdds] = await Promise.all([
+  const [homeElo, awayElo, consensusOdds, oddsMovement] = await Promise.all([
     getCausalElo(match.homeTeam, match.sport, match.league, featureAsOf),
     getCausalElo(match.awayTeam, match.sport, match.league, featureAsOf),
     latestConsensusOdds(match.id, featureAsOf),
+    getConsensusOddsMovementFeatures(match.id, featureAsOf),
   ]);
 
   // Historical training uses consensus/average bookmaker prices. Use the
@@ -377,6 +379,7 @@ export async function buildOnlineModelFeatures(
     away_implied_prob: awayImplied,
     ...market,
     market_consensus_available: Boolean(consensusOdds),
+    ...oddsMovement,
     market_consensus_age_minutes: consensusOdds
       ? Math.max(
           0,
