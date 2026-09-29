@@ -63,9 +63,6 @@ export async function GET(request: NextRequest) {
       featuresJson: true,
       horizonMinutesActual: true,
       featureCompleteness: true,
-      marketConsensusAvailable: true,
-      marketSnapshotCount: true,
-      marketHistoryMinutes: true,
       match: {
         select: {
           externalId: true,
@@ -107,9 +104,6 @@ export async function GET(request: NextRequest) {
     "feature_hash",
     "horizon_minutes_actual",
     "feature_completeness",
-    "market_consensus_available",
-    "market_snapshot_count",
-    "market_history_minutes",
   ];
 
   const lines = [[...metadataColumns, ...featureColumns].map(csvCell).join(",")];
@@ -132,9 +126,6 @@ export async function GET(request: NextRequest) {
       snapshot.featureHash,
       snapshot.horizonMinutesActual,
       snapshot.featureCompleteness,
-      snapshot.marketConsensusAvailable,
-      snapshot.marketSnapshotCount,
-      snapshot.marketHistoryMinutes,
       ...featureColumns.map((column) => features[column] ?? null),
     ];
     lines.push(row.map(csvCell).join(","));
