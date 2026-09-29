@@ -10,6 +10,8 @@ else
 fi
 
 APP_NAME="${APP_NAME:-ibetpro}"
+APP_HOST="${APP_HOST:-127.0.0.1}"
+APP_PORT="${APP_PORT:-3017}"
 ML_SERVICE="${ML_SERVICE:-ibetpro-ml.service}"
 ML_SERVICE_DIR="${ML_SERVICE_DIR:-/home/lightworld/services/ibetpro-ml}"
 ML_ENV="${ML_ENV:-$ML_SERVICE_DIR/ml.env}"
@@ -169,7 +171,8 @@ rollback() {
     cp -p "$BACKUP_DIR/root.env" "$WEB_ROOT_ENV"
   fi
   systemctl restart "$ML_SERVICE" || true
-  ML_MODEL_MODE="$OLD_MODE" pm2 restart "$APP_NAME" --update-env >/dev/null 2>&1 || true
+  HOSTNAME="$APP_HOST" PORT="$APP_PORT" NODE_ENV=production ML_MODEL_MODE="$OLD_MODE" \
+    pm2 restart "$APP_NAME" --update-env >/dev/null 2>&1 || true
 }
 
 if [[ "$MODE" == "baseline" ]]; then
@@ -205,16 +208,17 @@ PY
   fi
 fi
 
-ML_MODEL_MODE="$MODE" pm2 restart "$APP_NAME" --update-env >/dev/null
+HOSTNAME="$APP_HOST" PORT="$APP_PORT" NODE_ENV=production ML_MODEL_MODE="$MODE" \
+  pm2 restart "$APP_NAME" --update-env >/dev/null
 
 for _ in $(seq 1 20); do
-  if curl --fail --silent http://127.0.0.1:3017/login >/dev/null 2>&1; then
+  if curl --fail --silent "http://$APP_HOST:$APP_PORT/login" >/dev/null 2>&1; then
     break
   fi
   sleep 1
 done
 
-if ! curl --fail --silent http://127.0.0.1:3017/login >/dev/null 2>&1; then
+if ! curl --fail --silent "http://$APP_HOST:$APP_PORT/login" >/dev/null 2>&1; then
   rollback
   exit 1
 fi
