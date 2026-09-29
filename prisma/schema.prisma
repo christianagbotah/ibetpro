@@ -143,7 +143,7 @@ model Match {
   aiDrawProb     Float?   @default(0)
   aiAwayWinProb  Float?   @default(0)
   aiConfidence   Float?   @default(0)
-  aiAnalysis     String?
+  aiAnalysis     String?  @db.Text
   aiRecommended  String?
   aiRiskScore    Float?   @default(50)
   aiRiskLevel    String?  @default("medium")
