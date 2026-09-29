@@ -32,3 +32,25 @@ def test_too_few_rows_blocks_enriched_training():
     assert result["enriched_training_ready"] is False
     rows = next(check for check in result["checks"] if check["name"] == "rows")
     assert rows["passed"] is False
+
+
+def test_licensed_market_coverage_is_required_when_reported():
+    report = quality()
+    report["opening_market_coverage"] = 0.92
+    report["near_kickoff_market_coverage"] = 0.60
+
+    result = assess(report)
+
+    assert result["enriched_training_ready"] is False
+    failed = {check["name"] for check in result["checks"] if not check["passed"]}
+    assert "near_kickoff_market_coverage" in failed
+
+
+def test_licensed_market_coverage_passes_when_sufficient():
+    report = quality()
+    report["opening_market_coverage"] = 0.92
+    report["near_kickoff_market_coverage"] = 0.84
+
+    result = assess(report)
+
+    assert result["enriched_training_ready"] is True
