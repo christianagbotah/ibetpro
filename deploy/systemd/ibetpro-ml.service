@@ -1,0 +1,27 @@
+[Unit]
+Description=iBetPro ML Inference Service
+Documentation=https://ibetpro.lightworldtech.com
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=lightworld
+Group=lightworld
+WorkingDirectory=/home/lightworld/services/ibetpro-ml/current/ml-service
+Environment=PYTHONUNBUFFERED=1
+Environment=PYTHONDONTWRITEBYTECODE=1
+EnvironmentFile=-/home/lightworld/services/ibetpro-ml/ml.env
+ExecStart=/home/lightworld/venvs/ibetpro-ml/bin/uvicorn app.main:app --host 127.0.0.1 --port 8017
+Restart=always
+RestartSec=3
+
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+LimitNOFILE=65536
+MemoryMax=2G
+
+[Install]
+WantedBy=multi-user.target
