@@ -13,10 +13,10 @@ on:
         required: true
         default: "2025-06-30"
         type: string
-      league_ids:
-        description: "Sportmonks league IDs, space-separated"
+      league_id:
+        description: "Sportmonks league ID (one competition per experiment)"
         required: true
-        default: ""
+        default: "8"
         type: string
       sport_key:
         description: "The Odds API sport key used for historical 1X2 snapshots"
@@ -78,16 +78,7 @@ jobs:
       - name: Collect licensed Sportmonks historical context
         shell: bash
         run: |
-          read -r -a LEAGUES <<< "${{ inputs.league_ids }}"
-          ARGS=(
-            --start "${{ inputs.start_date }}"
-            --end "${{ inputs.end_date }}"
-            --out data/licensed/sportmonks
-          )
-          if [ "${#LEAGUES[@]}" -gt 0 ]; then
-            ARGS+=(--league-ids "${LEAGUES[@]}")
-          fi
-          python -m training.collect_sportmonks "${ARGS[@]}"
+          python -m training.collect_sportmonks             --start "${{ inputs.start_date }}"             --end "${{ inputs.end_date }}"             --league-ids "${{ inputs.league_id }}"             --out data/licensed/sportmonks
 
       - name: Validate licensed walk-forward horizon before odds planning
         shell: bash
