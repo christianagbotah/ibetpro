@@ -124,6 +124,11 @@ def collect(
     fixtures["_away_key"] = fixtures["away_team_name"].astype(str).map(normalize_team)
 
     plan = build_plan(fixtures, offsets_hours, bucket_minutes)
+    regions = [item.strip() for item in region.split(",") if item.strip()]
+    # Historical featured-market endpoint: 10 credits per market per region.
+    # We request only h2h, so this is a worst-case upper bound; empty responses
+    # are not charged by the provider.
+    estimated_max_credits = len(plan) * 10 * max(len(regions), 1)
     out.mkdir(parents=True, exist_ok=True)
     (out / "historical-odds-plan.json").write_text(
         json.dumps(
@@ -134,6 +139,8 @@ def collect(
                 "offsets_hours": list(offsets_hours),
                 "bucket_minutes": bucket_minutes,
                 "planned_api_calls": len(plan),
+                "estimated_max_credits": estimated_max_credits,
+                "credit_formula": "10 x historical calls x regions x 1 h2h market",
                 "fixtures": int(len(fixtures)),
                 "plan": plan,
                 "note": (
@@ -151,16 +158,23 @@ def collect(
             {
                 "fixtures": int(len(fixtures)),
                 "planned_api_calls": len(plan),
+                "estimated_max_credits": estimated_max_credits,
                 "execute": execute,
             },
             indent=2,
         )
     )
     if not execute:
-        return {"planned_api_calls": len(plan), "rows": 0}
+        return {
+            "planned_api_calls": len(plan),
+            "estimated_max_credits": estimated_max_credits,
+            "rows": 0,
+        }
 
     http, key = api_client()
     rows: list[dict] = []
+    credits_used_observed = 0
+    last_remaining: int | None = None
     raw_dir = out / "raw"
     raw_dir.mkdir(exist_ok=True)
 
@@ -177,6 +191,14 @@ def collect(
                 },
             )
             response.raise_for_status()
+            try:
+                credits_used_observed += int(response.headers.get("x-requests-last", "0"))
+            except ValueError:
+                pass
+            try:
+                last_remaining = int(response.headers.get("x-requests-remaining", ""))
+            except ValueError:
+                pass
             payload = response.json()
             (raw_dir / f"snapshot-{index:05d}.json").write_text(
                 json.dumps(payload, indent=2),
@@ -215,6 +237,9 @@ def collect(
         "provider": "the-odds-api",
         "sport_key": sport_key,
         "planned_api_calls": len(plan),
+        "estimated_max_credits": estimated_max_credits,
+        "observed_credits_used": credits_used_observed,
+        "credits_remaining_after_last_call": last_remaining,
         "rows": int(len(frame)),
         "matched_fixtures": int(frame["fixture_id"].nunique()) if not frame.empty else 0,
         "license_note": "Use under the account's paid The Odds API subscription terms.",
