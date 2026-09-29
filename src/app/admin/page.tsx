@@ -305,7 +305,9 @@ export default function AdminPage() {
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [commissionRate, setCommissionRate] = useState(10);
-  const [researchAction, setResearchAction] = useState<"stats" | "elo" | null>(null);
+  const [researchAction, setResearchAction] = useState<
+    "stats" | "elo" | "corpus" | null
+  >(null);
   const [researchLeague, setResearchLeague] = useState("Premier League");
 
   // Sync local commissionRate state when adminSettings loads
@@ -316,6 +318,38 @@ export default function AdminPage() {
   }, [stats.adminSettings]);
 
   const { addToast } = useToast();
+
+  const handleCorpusCapture = async () => {
+    setResearchAction("corpus");
+    try {
+      const res = await fetch("/api/admin/ml/first-party-corpus", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "First-party capture failed");
+
+      if ((data.captured ?? 0) > 0) {
+        addToast(
+          "success",
+          `Captured ${data.captured} first-party training snapshot(s)`
+        );
+        window.location.reload();
+      } else {
+        addToast(
+          "info",
+          data.note ||
+            "No uncaptured fixtures are currently inside a valid horizon window"
+        );
+      }
+    } catch (err) {
+      addToast(
+        "error",
+        err instanceof Error ? err.message : "First-party capture failed"
+      );
+    } finally {
+      setResearchAction(null);
+    }
+  };
 
   const handleStatsBackfill = async () => {
     setResearchAction("stats");
@@ -818,6 +852,19 @@ export default function AdminPage() {
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCorpusCapture}
+                disabled={researchAction !== null}
+              >
+                {researchAction === "corpus" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Database className="h-4 w-4" />
+                )}
+                Capture Eligible Snapshots
+              </Button>
               {(["24h", "6h", "1h"] as const).map((horizon) => (
                 <Button
                   key={horizon}
