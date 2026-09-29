@@ -1,12 +1,10 @@
+# NON-PRODUCTION RESEARCH ONLY.
+# Football-Data free files are not licensed for commercial AI training.
+# This workflow is manual-only and retained solely for reproducibility of prior research evidence.
 name: iBetPro League-Specific Walk Forward
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - revamp/production-foundation
-    paths:
-      - .github/workflows/league-specific-walk-forward.yml
 
 permissions:
   contents: read
