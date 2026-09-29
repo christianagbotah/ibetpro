@@ -9,6 +9,7 @@ import pandas as pd
 from training.evaluate_baselines import evaluate_baselines
 from training.promotion_gate import decide
 from training.train_xgb import ChronologicalSplit, load_dataset, train
+from training.validate_first_party_export import assess
 
 
 ALLOWED_HORIZONS = {"24h", "6h", "1h"}
@@ -56,34 +57,34 @@ def run_first_party_pilot(
     horizon: str,
     minimum_rows: int = 300,
     feature_profile: str = "core",
+    minimum_completeness: float = 0.70,
 ) -> dict:
     if horizon not in ALLOWED_HORIZONS:
         raise ValueError(f"Unsupported horizon: {horizon}")
 
+    readiness = assess(
+        dataset,
+        horizon,
+        min_rows=minimum_rows,
+        min_completeness=minimum_completeness,
+    )
+    output.mkdir(parents=True, exist_ok=True)
+    (output / "first-party-readiness.json").write_text(
+        json.dumps(readiness, indent=2),
+        encoding="utf-8",
+    )
+    if not readiness["ready_for_first_party_training"]:
+        failed = [
+            check["name"]
+            for check in readiness["checks"]
+            if not check["passed"]
+        ]
+        raise ValueError(
+            "First-party export failed readiness checks: "
+            + ", ".join(failed)
+        )
+
     frame = load_dataset(dataset)
-    if "horizon_key" not in frame.columns:
-        raise ValueError("First-party export is missing horizon_key")
-
-    horizons = set(frame["horizon_key"].dropna().astype(str).unique())
-    if horizons != {horizon}:
-        raise ValueError(
-            f"Dataset must contain exactly horizon {horizon}; found {sorted(horizons)}"
-        )
-
-    if "fixture_id" not in frame.columns:
-        raise ValueError("First-party export is missing fixture_id")
-
-    duplicate_fixtures = int(frame["fixture_id"].duplicated().sum())
-    if duplicate_fixtures:
-        raise ValueError(
-            f"First-party horizon export contains {duplicate_fixtures} duplicate fixtures"
-        )
-
-    if len(frame) < minimum_rows:
-        raise ValueError(
-            f"First-party {horizon} corpus has {len(frame)} labeled rows; "
-            f"pilot requires at least {minimum_rows}"
-        )
 
     split = derive_split(frame)
     candidate_dir = output / "candidate"
@@ -92,13 +93,13 @@ def run_first_party_pilot(
         candidate_dir,
         split,
         feature_profile=feature_profile,
+        prediction_horizon=horizon,
     )
     candidate["model_version"] = (
         f"first-party-{horizon}-ensemble-"
         f"{split.test_end.strftime('%Y%m%d')}"
     )
     candidate["training_source"] = "ibetpro-first-party-production"
-    candidate["prediction_horizon"] = horizon
     (candidate_dir / "metadata.json").write_text(
         json.dumps(candidate, indent=2),
         encoding="utf-8",
@@ -161,6 +162,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument("--horizon", required=True, choices=sorted(ALLOWED_HORIZONS))
     parser.add_argument("--minimum-rows", type=int, default=300)
+    parser.add_argument("--minimum-completeness", type=float, default=0.70)
     parser.add_argument(
         "--feature-profile",
         choices=["core", "core_stats", "market_movement", "enriched"],
@@ -174,5 +176,6 @@ if __name__ == "__main__":
         args.horizon,
         minimum_rows=args.minimum_rows,
         feature_profile=args.feature_profile,
+        minimum_completeness=args.minimum_completeness,
     )
     print(json.dumps(result, indent=2))
