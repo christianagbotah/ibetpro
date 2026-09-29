@@ -171,15 +171,52 @@ def normalize_fixture(item: dict) -> dict | None:
     }
 
 
+def _run_key(start_date: str, end_date: str, league_ids: list[int]) -> str:
+    league_key = "-".join(map(str, sorted(league_ids))) if league_ids else "all"
+    return f"{start_date}_{end_date}_leagues-{league_key}"
+
+
+def _request_page(
+    http: httpx.Client,
+    path: str,
+    params: dict,
+    *,
+    max_attempts: int = 5,
+) -> httpx.Response:
+    for attempt in range(1, max_attempts + 1):
+        response = http.get(path, params=params)
+        if response.status_code < 400:
+            return response
+        if response.status_code not in {429, 500, 502, 503, 504}:
+            response.raise_for_status()
+        if attempt == max_attempts:
+            response.raise_for_status()
+
+        retry_after = response.headers.get("retry-after")
+        try:
+            delay = float(retry_after) if retry_after else min(30.0, 2 ** (attempt - 1))
+        except ValueError:
+            delay = min(30.0, 2 ** (attempt - 1))
+        print(
+            f"Sportmonks transient HTTP {response.status_code}; "
+            f"retry {attempt}/{max_attempts} in {delay:.1f}s"
+        )
+        sleep(delay)
+
+    raise RuntimeError("Unreachable Sportmonks retry state")
+
+
 def collect(
     start_date: str,
     end_date: str,
     out: Path,
     league_ids: list[int],
     pause: float,
+    refresh: bool = False,
 ) -> Path:
     out.mkdir(parents=True, exist_ok=True)
-    raw_dir = out / "raw"
+    run_key = _run_key(start_date, end_date, league_ids)
+    raw_dir = out / "raw" / run_key
     raw_dir.mkdir(parents=True, exist_ok=True)
 
     params: dict[str, str | int] = {
@@ -191,20 +228,27 @@ def collect(
 
     rows: list[dict] = []
     page = 1
+    downloaded_pages = 0
+    cached_pages = 0
     with client() as http:
         while True:
             params["page"] = page
-            response = http.get(
-                f"/fixtures/between/{start_date}/{end_date}",
-                params=params,
-            )
-            response.raise_for_status()
-            payload = response.json()
-
-            (raw_dir / f"fixtures-{page:04d}.json").write_text(
-                json.dumps(payload, indent=2),
-                encoding="utf-8",
-            )
+            raw_path = raw_dir / f"fixtures-{page:04d}.json"
+            if raw_path.exists() and not refresh:
+                payload = json.loads(raw_path.read_text(encoding="utf-8"))
+                cached_pages += 1
+            else:
+                response = _request_page(
+                    http,
+                    f"/fixtures/between/{start_date}/{end_date}",
+                    params,
+                )
+                payload = response.json()
+                raw_path.write_text(
+                    json.dumps(payload, indent=2),
+                    encoding="utf-8",
+                )
+                downloaded_pages += 1
 
             items = payload.get("data", []) or []
             for item in items:
@@ -264,6 +308,10 @@ def collect(
                 "league_ids": league_ids,
                 "rows": int(len(frame)),
                 "coverage": coverage,
+                "run_key": run_key,
+                "raw_directory": str(raw_dir),
+                "downloaded_pages": downloaded_pages,
+                "cached_pages": cached_pages,
                 "includes": DEFAULT_INCLUDE,
                 "license_note": (
                     "Use only under the account's Sportmonks commercial/API "
@@ -286,6 +334,11 @@ if __name__ == "__main__":
     parser.add_argument("--league-ids", nargs="*", type=int, default=[])
     parser.add_argument("--out", type=Path, default=Path("data/licensed/sportmonks"))
     parser.add_argument("--pause", type=float, default=0.15)
+    parser.add_argument(
+        "--refresh",
+        action="store_true",
+        help="Ignore cached raw pages and fetch them again.",
+    )
     args = parser.parse_args()
 
     collect(
@@ -294,4 +347,5 @@ if __name__ == "__main__":
         out=args.out,
         league_ids=args.league_ids,
         pause=args.pause,
+        refresh=args.refresh,
     )
