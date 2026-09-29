@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthUser, isAdmin } from "@/lib/session";
-import { HORIZONS } from "@/lib/prediction/training-corpus";
+import { captureTrainingFeatureSnapshots, HORIZONS } from "@/lib/prediction/training-corpus";
 
 export const dynamic = "force-dynamic";
 
@@ -173,4 +173,39 @@ export async function GET() {
       metadata: safeMetadata(settlementState?.metadataJson ?? null),
     },
   });
+}
+
+
+export async function POST() {
+  const user = await getAuthUser();
+  if (!user) {
+    return NextResponse.json(
+      { error: "Authentication required" },
+      { status: 401 }
+    );
+  }
+  if (!(await isAdmin())) {
+    return NextResponse.json(
+      { error: "Admin access required" },
+      { status: 403 }
+    );
+  }
+
+  try {
+    const result = await captureTrainingFeatureSnapshots(new Date());
+    return NextResponse.json({
+      ...result,
+      generatedAt: new Date().toISOString(),
+      note:
+        result.captured > 0
+          ? "Captured immutable first-party training snapshots inside valid pre-kickoff horizon windows."
+          : "No eligible uncaptured fixtures are currently inside a valid 24h, 6h or 1h window.",
+    });
+  } catch (error) {
+    console.error("First-party training capture failed:", error);
+    return NextResponse.json(
+      { error: "First-party training capture failed" },
+      { status: 500 }
+    );
+  }
 }
