@@ -9,6 +9,49 @@ import pandas as pd
 
 from .baselines import poisson_baseline
 from .model_registry import get_model_bundle
+HORIZON_WINDOWS_MINUTES = {
+    "24h": (18 * 60, 30 * 60),
+    "6h": (4 * 60, 8 * 60),
+    "1h": (30, 90),
+}
+
+
+def _parse_utc(value: str) -> datetime:
+    parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def horizon_mismatch_reason(
+    horizon: str | None,
+    status: str,
+    as_of: str,
+    kickoff_at: str | None,
+) -> str | None:
+    if horizon is None:
+        return None
+    if horizon not in HORIZON_WINDOWS_MINUTES:
+        return f"unsupported trained prediction horizon {horizon}"
+    if status != "upcoming":
+        return f"{horizon} pre-match model cannot be used for match status {status}"
+    if not kickoff_at:
+        return f"{horizon} pre-match model requires kickoffAt"
+
+    try:
+        minutes = (_parse_utc(kickoff_at) - _parse_utc(as_of)).total_seconds() / 60.0
+    except ValueError:
+        return "prediction timestamps are invalid"
+
+    lower, upper = HORIZON_WINDOWS_MINUTES[horizon]
+    if minutes < lower or minutes > upper:
+        return (
+            f"{horizon} model requires {lower:.0f}-{upper:.0f} minutes "
+            f"to kickoff; received {minutes:.1f}"
+        )
+    return None
+
+
 from .schemas import (
     ExpectedGoals,
     MatchPrediction,
@@ -117,6 +160,25 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
                 missing.append("modelFeatures")
             raise RuntimeError("Candidate inference unavailable: missing " + ", ".join(missing))
         return poisson_baseline(payload)
+
+    horizon_reason = horizon_mismatch_reason(
+        bundle.prediction_horizon,
+        payload.status,
+        payload.asOf,
+        payload.kickoffAt,
+    )
+    if horizon_reason:
+        if require_model:
+            raise RuntimeError(
+                "Candidate inference unavailable: " + horizon_reason
+            )
+        fallback = poisson_baseline(payload)
+        fallback.warnings.append(
+            "Trained inference was not used because "
+            + horizon_reason
+            + "; prediction fell back to the baseline model."
+        )
+        return fallback
 
     raw = payload.modelFeatures.model_dump()
     row = {}
