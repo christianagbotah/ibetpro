@@ -670,16 +670,41 @@ export default function AdminPage() {
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               {[
-                ["Sportmonks", providerReadiness.providers.sportmonks],
-                ["The Odds API", providerReadiness.providers.oddsApi],
-                ["API-Football", providerReadiness.providers.apiFootball],
-                ["ML Service", providerReadiness.ml.serviceReachable],
-                ["Model loaded", providerReadiness.ml.modelLoaded],
-              ].map(([label, ready]) => (
-                <div key={String(label)} className="rounded-lg bg-background/40 p-3">
-                  <p className="text-xs text-muted-foreground">{String(label)}</p>
-                  <p className={`mt-1 text-sm font-semibold ${ready ? "text-emerald-400" : "text-amber-400"}`}>
-                    {ready ? "Configured" : "Not configured"}
+                {
+                  label: "Sportmonks",
+                  ready: providerReadiness.providers.sportmonks,
+                  readyLabel: "Configured",
+                  pendingLabel: "Not configured",
+                },
+                {
+                  label: "The Odds API",
+                  ready: providerReadiness.providers.oddsApi,
+                  readyLabel: "Configured",
+                  pendingLabel: "Not configured",
+                },
+                {
+                  label: "API-Football",
+                  ready: providerReadiness.providers.apiFootball,
+                  readyLabel: "Configured",
+                  pendingLabel: "Not configured",
+                },
+                {
+                  label: "ML Service",
+                  ready: providerReadiness.ml.serviceReachable,
+                  readyLabel: "Reachable",
+                  pendingLabel: "Unreachable",
+                },
+                {
+                  label: "Model",
+                  ready: providerReadiness.ml.modelLoaded,
+                  readyLabel: "Loaded",
+                  pendingLabel: "Not promoted",
+                },
+              ].map((item) => (
+                <div key={item.label} className="rounded-lg bg-background/40 p-3">
+                  <p className="text-xs text-muted-foreground">{item.label}</p>
+                  <p className={`mt-1 text-sm font-semibold ${item.ready ? "text-emerald-400" : "text-amber-400"}`}>
+                    {item.ready ? item.readyLabel : item.pendingLabel}
                   </p>
                 </div>
               ))}
