@@ -75,6 +75,10 @@ jobs:
             exit 1
           fi
 
+      - name: Validate licensed competition mapping
+        run: |
+          python -m training.validate_provider_pair             --sportmonks-league-id "${{ inputs.league_id }}"             --odds-api-sport-key "${{ inputs.sport_key }}"
+
       - name: Collect licensed Sportmonks historical context
         shell: bash
         run: |
