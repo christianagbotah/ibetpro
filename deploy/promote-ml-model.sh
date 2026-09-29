@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-MODE="${2:-shadow}"
-MODEL_DIR="${1:-}"
+if [[ "${1:-}" == "baseline" ]]; then
+  MODE="baseline"
+  MODEL_DIR=""
+else
+  MODEL_DIR="${1:-}"
+  MODE="${2:-shadow}"
+fi
+
 APP_NAME="${APP_NAME:-ibetpro}"
 ML_SERVICE="${ML_SERVICE:-ibetpro-ml.service}"
 ML_SERVICE_DIR="${ML_SERVICE_DIR:-/home/lightworld/services/ibetpro-ml}"
@@ -13,7 +19,7 @@ VENV_PYTHON="${VENV_PYTHON:-/home/lightworld/venvs/ibetpro-ml/bin/python}"
 case "$MODE" in
   baseline|shadow|active) ;;
   *)
-    echo "Usage: $0 [MODEL_DIR] [baseline|shadow|active]" >&2
+    echo "Usage: $0 baseline | $0 MODEL_DIR [shadow|active]" >&2
     exit 2
     ;;
 esac
@@ -64,6 +70,7 @@ if not approval.get("approved"):
     raise SystemExit(
         "Model is not cross-season approved for selective shadow/active serving."
     )
+
 stable_bands = approval.get("stable_bands") or []
 if not stable_bands:
     raise SystemExit("Approved model has no stable selective bands.")
@@ -102,10 +109,20 @@ if [[ -z "$WEB_CWD" || ! -f "$WEB_CWD/.env" ]]; then
   exit 2
 fi
 
+WEB_ROOT="${WEB_CWD%/.next/standalone}"
+WEB_STANDALONE_ENV="$WEB_CWD/.env"
+WEB_PRODUCTION_ENV="$WEB_ROOT/.env.production"
+WEB_ROOT_ENV="$WEB_ROOT/.env"
+
+OLD_MODE="$(grep '^ML_MODEL_MODE=' "$WEB_STANDALONE_ENV" | tail -1 | cut -d= -f2- | tr -d '"\r' || true)"
+OLD_MODE="${OLD_MODE:-baseline}"
+
 BACKUP_DIR="$(mktemp -d)"
 trap 'rm -rf "$BACKUP_DIR"' EXIT
 cp -p "$ML_ENV" "$BACKUP_DIR/ml.env"
-cp -p "$WEB_CWD/.env" "$BACKUP_DIR/web.env"
+cp -p "$WEB_STANDALONE_ENV" "$BACKUP_DIR/standalone.env"
+[[ -f "$WEB_PRODUCTION_ENV" ]] && cp -p "$WEB_PRODUCTION_ENV" "$BACKUP_DIR/env.production"
+[[ -f "$WEB_ROOT_ENV" ]] && cp -p "$WEB_ROOT_ENV" "$BACKUP_DIR/root.env"
 
 upsert_env() {
   local file="$1"
@@ -119,21 +136,39 @@ upsert_env() {
   rm -f "$tmp"
 }
 
+remove_env() {
+  local file="$1"
+  local key="$2"
+  local tmp
+  tmp="$(mktemp)"
+  grep -v "^${key}=" "$file" >"$tmp" || true
+  cat "$tmp" >"$file"
+  rm -f "$tmp"
+}
+
+set_web_mode() {
+  local mode="$1"
+  upsert_env "$WEB_STANDALONE_ENV" "ML_MODEL_MODE" "$mode"
+  [[ -f "$WEB_PRODUCTION_ENV" ]] && upsert_env "$WEB_PRODUCTION_ENV" "ML_MODEL_MODE" "$mode"
+  [[ -f "$WEB_ROOT_ENV" ]] && upsert_env "$WEB_ROOT_ENV" "ML_MODEL_MODE" "$mode"
+}
+
 rollback() {
   echo "Promotion health check failed; restoring previous ML/web mode." >&2
   cp -p "$BACKUP_DIR/ml.env" "$ML_ENV"
-  cp -p "$BACKUP_DIR/web.env" "$WEB_CWD/.env"
+  cp -p "$BACKUP_DIR/standalone.env" "$WEB_STANDALONE_ENV"
+  [[ -f "$BACKUP_DIR/env.production" ]] && cp -p "$BACKUP_DIR/env.production" "$WEB_PRODUCTION_ENV"
+  [[ -f "$BACKUP_DIR/root.env" ]] && cp -p "$BACKUP_DIR/root.env" "$WEB_ROOT_ENV"
   systemctl restart "$ML_SERVICE" || true
-  pm2 restart "$APP_NAME" --update-env >/dev/null 2>&1 || true
+  ML_MODEL_MODE="$OLD_MODE" pm2 restart "$APP_NAME" --update-env >/dev/null 2>&1 || true
 }
 
 if [[ "$MODE" == "baseline" ]]; then
-  grep -v '^IBETPRO_MODEL_DIR=' "$ML_ENV" >"$ML_ENV.tmp" || true
-  mv "$ML_ENV.tmp" "$ML_ENV"
+  remove_env "$ML_ENV" "IBETPRO_MODEL_DIR"
 else
   upsert_env "$ML_ENV" "IBETPRO_MODEL_DIR" "$MODEL_DIR"
 fi
-upsert_env "$WEB_CWD/.env" "ML_MODEL_MODE" "$MODE"
+set_web_mode "$MODE"
 
 systemctl restart "$ML_SERVICE"
 for _ in $(seq 1 20); do
@@ -161,7 +196,8 @@ PY
   fi
 fi
 
-pm2 restart "$APP_NAME" --update-env >/dev/null
+ML_MODEL_MODE="$MODE" pm2 restart "$APP_NAME" --update-env >/dev/null
+
 for _ in $(seq 1 20); do
   if curl --fail --silent http://127.0.0.1:3017/login >/dev/null 2>&1; then
     break
@@ -173,6 +209,8 @@ if ! curl --fail --silent http://127.0.0.1:3017/login >/dev/null 2>&1; then
   rollback
   exit 1
 fi
+
+pm2 save >/dev/null 2>&1 || true
 
 echo "iBetPro model mode promoted to $MODE."
 cat /tmp/ibetpro-ml-promote-health
