@@ -10,6 +10,7 @@ import { config, getPrimaryDataSource } from "./config";
 import {
   fetchOddsApiEvents,
   fetchOddsApiUpcoming,
+  fetchOddsApiCompletedScores,
   convertOddsApiToMatch,
   fetchApiFootballFixtures,
   fetchApiFootballLiveFixtures,
@@ -17,6 +18,7 @@ import {
 import { generateDemoMatches } from "./demo-data";
 import { ensureFixtureIdentity } from "./football/identity";
 import { persistOddsSnapshot } from "./football/odds-history";
+import { captureTrainingFeatureSnapshots } from "./prediction/training-corpus";
 
 // Track last sync time to avoid excessive API calls
 let lastSyncAt: Date | null = null;
@@ -35,6 +37,177 @@ const QUOTA_CHECK_INTERVAL_MS = 60 * 60 * 1000; // re-check quota every hour
 const QUOTA_LOW_THRESHOLD = 20; // stop paid odds enrichment when fewer than this many requests remain
 const ODDS_REFRESH_INTERVAL_MS =
   parseInt(process.env.ODDS_REFRESH_MIN || "360", 10) * 60 * 1000;
+const SCORE_SETTLEMENT_INTERVAL_MS =
+  parseInt(process.env.SCORE_SETTLEMENT_INTERVAL_MIN || "1440", 10) *
+  60 *
+  1000;
+const SCORE_SETTLEMENT_MIN_QUOTA = parseInt(
+  process.env.SCORE_SETTLEMENT_MIN_QUOTA || "50",
+  10
+);
+const SCORE_SETTLEMENT_STATE_KEY = "odds-api:completed-scores";
+
+async function syncOddsApiSettlements(): Promise<{
+  updated: number;
+  calls: number;
+  skipped: boolean;
+  reason?: string;
+  errors: string[];
+}> {
+  const errors: string[] = [];
+  const now = new Date();
+
+  const state = await prisma.providerSyncState.findUnique({
+    where: { key: SCORE_SETTLEMENT_STATE_KEY },
+    select: { lastSuccessAt: true },
+  });
+
+  if (
+    state?.lastSuccessAt &&
+    now.getTime() - state.lastSuccessAt.getTime() <
+      SCORE_SETTLEMENT_INTERVAL_MS
+  ) {
+    return {
+      updated: 0,
+      calls: 0,
+      skipped: true,
+      reason: "Completed-score settlement sync is still fresh",
+      errors,
+    };
+  }
+
+  if (
+    apiQuotaRemaining !== null &&
+    apiQuotaRemaining < SCORE_SETTLEMENT_MIN_QUOTA
+  ) {
+    return {
+      updated: 0,
+      calls: 0,
+      skipped: true,
+      reason: `Odds API quota below score-settlement floor (${apiQuotaRemaining} < ${SCORE_SETTLEMENT_MIN_QUOTA})`,
+      errors,
+    };
+  }
+
+  const unresolved = await prisma.match.findMany({
+    where: {
+      apiSource: "odds-api",
+      externalId: { not: null },
+      commenceTime: {
+        gte: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000),
+        lte: new Date(now.getTime() - 90 * 60 * 1000),
+      },
+      OR: [{ homeScore: null }, { awayScore: null }],
+    },
+    select: {
+      externalId: true,
+      sport: true,
+    },
+  });
+
+  const bySport = new Map<string, string[]>();
+  for (const match of unresolved) {
+    if (!match.externalId) continue;
+    const ids = bySport.get(match.sport) ?? [];
+    ids.push(match.externalId);
+    bySport.set(match.sport, ids);
+  }
+
+  let updated = 0;
+  let calls = 0;
+
+  await prisma.providerSyncState.upsert({
+    where: { key: SCORE_SETTLEMENT_STATE_KEY },
+    update: { lastAttemptAt: now },
+    create: {
+      key: SCORE_SETTLEMENT_STATE_KEY,
+      provider: "odds-api",
+      lastAttemptAt: now,
+    },
+  });
+
+  for (const [sport, eventIds] of bySport) {
+    try {
+      const result = await fetchOddsApiCompletedScores(
+        sport,
+        eventIds,
+        3
+      );
+      calls++;
+
+      if (result.remainingRequests != null) {
+        apiQuotaRemaining = result.remainingRequests;
+        apiQuotaCheckedAt = new Date();
+      }
+
+      console.log(
+        `[Sync] ${sport}: completed-score settlement call cost ${result.requestCost ?? "unknown"}; remaining ${result.remainingRequests ?? "unknown"}`
+      );
+
+      for (const event of result.events) {
+        if (
+          !event.id ||
+          event.homeScore == null ||
+          event.awayScore == null
+        ) {
+          continue;
+        }
+
+        if (event.completed) {
+          const resultUpdate = await prisma.match.updateMany({
+            where: { externalId: event.id },
+            data: {
+              homeScore: event.homeScore,
+              awayScore: event.awayScore,
+              status: "finished",
+              minute: null,
+              lastSyncedAt: new Date(),
+            },
+          });
+          updated += resultUpdate.count;
+        }
+      }
+    } catch (error) {
+      errors.push(
+        `${sport}: ${error instanceof Error ? error.message : "Unknown score-settlement error"}`
+      );
+    }
+  }
+
+  if (errors.length === 0) {
+    await prisma.providerSyncState.upsert({
+      where: { key: SCORE_SETTLEMENT_STATE_KEY },
+      update: {
+        lastSuccessAt: new Date(),
+        metadataJson: JSON.stringify({
+          calls,
+          updated,
+          unresolved: unresolved.length,
+          remainingRequests: apiQuotaRemaining,
+        }),
+      },
+      create: {
+        key: SCORE_SETTLEMENT_STATE_KEY,
+        provider: "odds-api",
+        lastAttemptAt: now,
+        lastSuccessAt: new Date(),
+        metadataJson: JSON.stringify({
+          calls,
+          updated,
+          unresolved: unresolved.length,
+          remainingRequests: apiQuotaRemaining,
+        }),
+      },
+    });
+  }
+
+  return {
+    updated,
+    calls,
+    skipped: false,
+    errors,
+  };
+}
 
 export interface SyncResult {
   matchesSynced: number;
@@ -358,7 +531,46 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
       }
     }
 
-    // Also mark old matches as finished
+    try {
+      const settlement = await syncOddsApiSettlements();
+      matchesUpdated += settlement.updated;
+      if (settlement.errors.length > 0) {
+        errors.push(
+          ...settlement.errors.map((error) => `Odds API settlement: ${error}`)
+        );
+      }
+      if (!settlement.skipped && settlement.calls > 0) {
+        console.log(
+          `[Sync] Settled ${settlement.updated} completed matches using ${settlement.calls} score calls.`
+        );
+      }
+    } catch (error) {
+      errors.push(
+        `Odds API settlement: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    }
+
+    // Capture immutable 24h/6h/1h feature vectors from already-stored data.
+    // This consumes no additional provider quota.
+    try {
+      const capture = await captureTrainingFeatureSnapshots();
+      if (capture.captured > 0) {
+        console.log(
+          `[Sync] Captured ${capture.captured} first-party training feature snapshots.`
+        );
+      }
+      if (capture.errors.length > 0) {
+        errors.push(
+          ...capture.errors.map((error) => `Training feature capture: ${error}`)
+        );
+      }
+    } catch (error) {
+      errors.push(
+        `Training feature capture: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    }
+
+    // Only mark stale matches finished when an actual score has been observed.
     await markStaleMatchesFinished();
 
     lastSyncAt = new Date();
@@ -558,6 +770,8 @@ async function markStaleMatchesFinished(): Promise<number> {
     where: {
       status: { in: ["upcoming", "live"] },
       commenceTime: { lt: threeHoursAgo },
+      homeScore: { not: null },
+      awayScore: { not: null },
     },
     data: {
       status: "finished",
