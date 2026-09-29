@@ -41,6 +41,20 @@ node -e '
     skipReason:value.skipReason ?? null,
     durationMs:value.durationMs ?? null,
     errors:Array.isArray(value.errors) ? value.errors : [],
+    trainingCapture:value.trainingCapture?.ok === true ? {
+      ok:true,
+      considered:value.trainingCapture.result?.considered ?? 0,
+      captured:value.trainingCapture.result?.captured ?? 0,
+      skippedExisting:value.trainingCapture.result?.skippedExisting ?? 0,
+      skippedNoConsensus:value.trainingCapture.result?.skippedNoConsensus ?? 0,
+      skippedOutsideHorizon:value.trainingCapture.result?.skippedOutsideHorizon ?? 0,
+      errors:Array.isArray(value.trainingCapture.result?.errors)
+        ? value.trainingCapture.result.errors
+        : [],
+    } : value.trainingCapture ? {
+      ok:false,
+      error:value.trainingCapture.error ?? "capture failed",
+    } : null,
     timestamp:value.timestamp ?? null,
   };
   console.log(JSON.stringify(safe));
