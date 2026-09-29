@@ -15,6 +15,7 @@ function stableFeatureHash(input: PredictionInput): string {
     homeOdds: input.homeOdds ?? null,
     drawOdds: input.drawOdds ?? null,
     awayOdds: input.awayOdds ?? null,
+    modelFeatures: input.modelFeatures ?? null,
     home: input.home,
     away: input.away,
   });
@@ -48,6 +49,10 @@ export async function persistPredictionSnapshot(
       scorelinesJson: JSON.stringify(prediction.scorelines),
       marketsJson: JSON.stringify(prediction.markets),
       warningsJson: JSON.stringify(prediction.warnings),
+      resultMode: prediction.resultMode,
+      modelFeaturesJson: input.modelFeatures
+        ? JSON.stringify(input.modelFeatures)
+        : null,
       featureHash: stableFeatureHash(input),
     },
     select: { id: true },
