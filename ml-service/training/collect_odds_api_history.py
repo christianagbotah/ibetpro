@@ -92,7 +92,11 @@ def consensus_1x2(event: dict) -> tuple[float | None, float | None, float | None
     return mean("home"), mean("draw"), mean("away")
 
 
-def match_fixture(event: dict, fixtures: pd.DataFrame) -> str | None:
+def match_fixture(
+    event: dict,
+    fixtures: pd.DataFrame,
+    allowed_fixture_ids: set[str] | None = None,
+) -> str | None:
     event_home = normalize_team(str(event.get("home_team", "")))
     event_away = normalize_team(str(event.get("away_team", "")))
     event_time = pd.to_datetime(event.get("commence_time"), utc=True, errors="coerce")
@@ -103,9 +107,16 @@ def match_fixture(event: dict, fixtures: pd.DataFrame) -> str | None:
         (fixtures["_home_key"] == event_home)
         & (fixtures["_away_key"] == event_away)
         & ((fixtures["kickoff_utc"] - event_time).abs() <= pd.Timedelta(hours=3))
-    ]
+    ].copy()
+    if allowed_fixture_ids is not None:
+        candidates = candidates[
+            candidates["fixture_id"].astype(str).isin(allowed_fixture_ids)
+        ]
     if candidates.empty:
         return None
+
+    candidates["_time_delta"] = (candidates["kickoff_utc"] - event_time).abs()
+    candidates = candidates.sort_values(["_time_delta", "kickoff_utc", "fixture_id"])
     return str(candidates.iloc[0]["fixture_id"])
 
 
@@ -206,8 +217,13 @@ def collect(
             )
 
             snapshot_at = payload.get("timestamp") or request["snapshot_at"]
+            allowed_fixture_ids = set(map(str, request["fixture_ids"]))
             for event in payload.get("data", []) or []:
-                fixture_id = match_fixture(event, fixtures)
+                fixture_id = match_fixture(
+                    event,
+                    fixtures,
+                    allowed_fixture_ids=allowed_fixture_ids,
+                )
                 if not fixture_id:
                     continue
                 home_odds, draw_odds, away_odds = consensus_1x2(event)
