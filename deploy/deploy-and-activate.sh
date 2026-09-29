@@ -8,6 +8,7 @@ LOG_DIR="${LOG_DIR:-/home/lightworld/logs/ibetpro}"
 DEPLOY_REF="${DEPLOY_REF:-origin/revamp/production-foundation}"
 APP_PORT="${APP_PORT:-3017}"
 VALIDATION_PORT="${VALIDATION_PORT:-3117}"
+WEB_SERVICE_DIR="${WEB_SERVICE_DIR:-/home/lightworld/services/ibetpro-web}"
 ML_SERVICE_NAME="${ML_SERVICE_NAME:-ibetpro-ml.service}"
 ML_SERVICE_DIR="${ML_SERVICE_DIR:-/home/lightworld/services/ibetpro-ml}"
 ML_HEALTH_URL="${ML_HEALTH_URL:-http://127.0.0.1:8017/health}"
@@ -136,5 +137,10 @@ if systemctl cat "$ML_SERVICE_NAME" >/dev/null 2>&1; then
   fi
 fi
 
+mkdir -p "$WEB_SERVICE_DIR"
+ln -sfn "$RELEASE" "$WEB_SERVICE_DIR/current"
+chown -h lightworld:lightworld "$WEB_SERVICE_DIR/current" 2>/dev/null || true
+
 pm2 save >/dev/null 2>&1 || true
 echo "Deployed $APP_NAME release $SHORT_SHA on port $APP_PORT"
+echo "Current web release: $(readlink -f "$WEB_SERVICE_DIR/current")"
