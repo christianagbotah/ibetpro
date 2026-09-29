@@ -5,6 +5,13 @@ import { HORIZONS } from "@/lib/prediction/training-corpus";
 
 export const dynamic = "force-dynamic";
 
+const PILOT_MIN_LABELED_PER_HORIZON = Number(
+  process.env.FIRST_PARTY_PILOT_MIN_LABELED || 300
+);
+const PROMOTION_MIN_LABELED_PER_HORIZON = Number(
+  process.env.FIRST_PARTY_PROMOTION_MIN_LABELED || 1500
+);
+
 function safeMetadata(value: string | null) {
   if (!value) return null;
   try {
@@ -119,6 +126,19 @@ export async function GET() {
     averageMarketHistoryMinutes:
       marketHistoryRows > 0 ? marketHistorySum / marketHistoryRows : null,
     horizons,
+    readiness: {
+      pilotMinLabeledPerHorizon: PILOT_MIN_LABELED_PER_HORIZON,
+      promotionMinLabeledPerHorizon: PROMOTION_MIN_LABELED_PER_HORIZON,
+      pilotReadyHorizons: Object.entries(horizons)
+        .filter(([, value]) => value.labeled >= PILOT_MIN_LABELED_PER_HORIZON)
+        .map(([key]) => key),
+      promotionReadyHorizons: Object.entries(horizons)
+        .filter(
+          ([, value]) =>
+            value.labeled >= PROMOTION_MIN_LABELED_PER_HORIZON
+        )
+        .map(([key]) => key),
+    },
     nextFixture: nextFixture
       ? {
           id: nextFixture.id,
