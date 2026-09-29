@@ -167,3 +167,69 @@ def policy_allows_divergence(divergence: float, policy: dict) -> bool:
         ):
             return True
     return False
+
+
+def evaluate_selective_bands(
+    y_true: np.ndarray,
+    candidate_probs: np.ndarray,
+    market_probs: np.ndarray,
+    policy: dict,
+    *,
+    bootstrap_iterations: int = 4000,
+    seed: int = 211,
+) -> list[dict]:
+    """Score each policy divergence band on an untouched evaluation slice."""
+
+    if len(y_true) != len(candidate_probs) or len(y_true) != len(market_probs):
+        raise ValueError("Selective evaluation inputs must have the same row count")
+
+    candidate_losses = row_log_losses(y_true, candidate_probs)
+    market_losses = row_log_losses(y_true, market_probs)
+    deltas = candidate_losses - market_losses
+    divergence = divergence_from_market(candidate_probs, market_probs)
+
+    evidence: list[dict] = []
+    bands = policy.get("bands", [])
+    for index, band in enumerate(bands):
+        lower = float(band["lower"])
+        upper = float(band["upper"])
+        is_last = index == len(bands) - 1
+        mask = (
+            (divergence >= lower)
+            & ((divergence <= upper) if is_last else (divergence < upper))
+        )
+        rows = int(mask.sum())
+        mean_delta = float(deltas[mask].mean()) if rows else None
+        ci_low = ci_high = None
+        if rows:
+            ci_low, ci_high = bootstrap_mean_delta(
+                deltas[mask],
+                bootstrap_iterations,
+                seed + index,
+            )
+
+        evidence.append(
+            {
+                "lower": lower,
+                "upper": upper,
+                "rows": rows,
+                "calibration_enabled": bool(band.get("use_candidate")),
+                "candidate_minus_market_log_loss": mean_delta,
+                "bootstrap_ci95_low": ci_low,
+                "bootstrap_ci95_high": ci_high,
+                "candidate_better": bool(
+                    rows
+                    and mean_delta is not None
+                    and mean_delta < 0.0
+                ),
+                "significantly_better": bool(
+                    rows
+                    and mean_delta is not None
+                    and mean_delta < 0.0
+                    and ci_high is not None
+                    and ci_high < 0.0
+                ),
+            }
+        )
+
+    return evidence
