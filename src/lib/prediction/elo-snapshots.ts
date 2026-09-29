@@ -45,6 +45,9 @@ export async function rebuildLeagueEloSnapshots(
       status: "finished",
       homeScore: { not: null },
       awayScore: { not: null },
+      // Production causal strength must never learn from simulated/manual rows.
+      // Provider-backed finished fixtures are the only eligible evidence.
+      apiSource: { in: ["odds-api", "api-football", "sportmonks"] },
     },
     orderBy: [{ commenceTime: "asc" }, { id: "asc" }],
     select: {
