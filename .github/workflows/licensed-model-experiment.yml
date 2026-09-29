@@ -138,14 +138,17 @@ jobs:
           python -m training.merge_corpus             --input-dir data/licensed             --output data/licensed/run/football.csv
 
       - name: Assess licensed corpus readiness
+        if: ${{ inputs.execute_historical_odds == true }}
         run: |
           python -m training.data_readiness_gate             --quality data/licensed/run/corpus-quality.json             --output data/licensed/run/data-readiness.json
 
       - name: Build causal features
+        if: ${{ inputs.execute_historical_odds == true }}
         run: |
           python -m training.build_features             --input data/licensed/run/football.csv             --output data/licensed/run/features.csv
 
       - name: Run licensed walk-forward
+        if: ${{ inputs.execute_historical_odds == true }}
         run: |
           python -m training.walk_forward             --dataset data/licensed/run/features.csv             --output data/licensed/run/folds             --feature-profile enriched
 
