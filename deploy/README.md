@@ -252,3 +252,34 @@ df -h /home
 - Never manually set active ML mode to bypass promotion evidence.
 - Never expose port 8017 publicly; it is an internal service.
 - Never place provider tokens or model secrets in Git-tracked files.
+
+
+## First-party corpus sync timer
+
+Production first-party training snapshots depend on routine sync calls as
+fixtures enter the 24h, 6h and 1h pre-kickoff capture windows. Install the
+timer after deploying a release that contains the sync units:
+
+```bash
+cp /home/lightworld/services/ibetpro-web/current/deploy/systemd/ibetpro-sync.service /etc/systemd/system/
+cp /home/lightworld/services/ibetpro-web/current/deploy/systemd/ibetpro-sync.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now ibetpro-sync.timer
+```
+
+The timer runs every 30 minutes and calls the localhost-only cron endpoint
+through `deploy/run-sync-cron.sh`. The runner reads `CRON_SECRET` from the
+active release environment without printing it. A normal sync respects provider
+freshness and quota guards; it does not invoke paid historical-odds collection.
+
+Operational checks:
+
+```bash
+systemctl status ibetpro-sync.timer
+systemctl list-timers ibetpro-sync.timer
+journalctl -u ibetpro-sync.service -n 50 --no-pager
+```
+
+The first-party corpus may legitimately remain empty when no supported fixture
+is currently inside a capture window. The admin Model Research page reports
+snapshot counts, labels and per-horizon coverage.
