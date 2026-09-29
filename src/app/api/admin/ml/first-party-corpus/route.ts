@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getAuthUser, isAdmin } from "@/lib/session";
+import { HORIZONS } from "@/lib/prediction/training-corpus";
 
 export const dynamic = "force-dynamic";
 
@@ -28,7 +29,7 @@ export async function GET() {
     );
   }
 
-  const [snapshots, settlementState] = await Promise.all([
+  const [snapshots, settlementState, nextFixture] = await Promise.all([
     prisma.trainingFeatureSnapshot.findMany({
       orderBy: { asOf: "desc" },
       select: {
@@ -52,6 +53,21 @@ export async function GET() {
         lastAttemptAt: true,
         lastSuccessAt: true,
         metadataJson: true,
+      },
+    }),
+    prisma.match.findFirst({
+      where: {
+        apiSource: "odds-api",
+        status: "upcoming",
+        commenceTime: { gt: new Date() },
+      },
+      orderBy: { commenceTime: "asc" },
+      select: {
+        id: true,
+        league: true,
+        homeTeam: true,
+        awayTeam: true,
+        commenceTime: true,
       },
     }),
   ]);
@@ -103,6 +119,34 @@ export async function GET() {
     averageMarketHistoryMinutes:
       marketHistoryRows > 0 ? marketHistorySum / marketHistoryRows : null,
     horizons,
+    nextFixture: nextFixture
+      ? {
+          id: nextFixture.id,
+          league: nextFixture.league,
+          homeTeam: nextFixture.homeTeam,
+          awayTeam: nextFixture.awayTeam,
+          kickoffAt: nextFixture.commenceTime.toISOString(),
+          captureWindows: Object.fromEntries(
+            HORIZONS.map((horizon) => [
+              horizon.key,
+              {
+                opensAt: new Date(
+                  nextFixture.commenceTime.getTime() -
+                    horizon.maxMinutes * 60_000
+                ).toISOString(),
+                targetAt: new Date(
+                  nextFixture.commenceTime.getTime() -
+                    ((horizon.minMinutes + horizon.maxMinutes) / 2) * 60_000
+                ).toISOString(),
+                closesAt: new Date(
+                  nextFixture.commenceTime.getTime() -
+                    horizon.minMinutes * 60_000
+                ).toISOString(),
+              },
+            ])
+          ),
+        }
+      : null,
     settlement: {
       lastAttemptAt: settlementState?.lastAttemptAt?.toISOString() ?? null,
       lastSuccessAt: settlementState?.lastSuccessAt?.toISOString() ?? null,
