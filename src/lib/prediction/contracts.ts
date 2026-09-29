@@ -94,6 +94,7 @@ export interface ModelFeatureVector {
 export interface PredictionInput {
   matchId: string;
   asOf: string;
+  kickoffAt?: string | null;
   league: string;
   homeTeam: string;
   awayTeam: string;
