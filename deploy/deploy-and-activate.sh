@@ -8,6 +8,9 @@ LOG_DIR="${LOG_DIR:-/home/lightworld/logs/ibetpro}"
 DEPLOY_REF="${DEPLOY_REF:-origin/revamp/production-foundation}"
 APP_PORT="${APP_PORT:-3017}"
 VALIDATION_PORT="${VALIDATION_PORT:-3117}"
+ML_SERVICE_NAME="${ML_SERVICE_NAME:-ibetpro-ml.service}"
+ML_SERVICE_DIR="${ML_SERVICE_DIR:-/home/lightworld/services/ibetpro-ml}"
+ML_HEALTH_URL="${ML_HEALTH_URL:-http://127.0.0.1:8017/health}"
 
 cd "$BASE_DIR"
 git fetch origin revamp/production-foundation --quiet
@@ -76,7 +79,7 @@ start_release() {
   local target="$1"
   pm2 delete "$APP_NAME" >/dev/null 2>&1 || true
   PORT="$APP_PORT" HOSTNAME=127.0.0.1 NODE_ENV=production \
-    ML_MODEL_MODE=baseline AUTO_BET_RECOVERY_ENABLED=false \
+    AUTO_BET_RECOVERY_ENABLED=false \
     pm2 start "$target/.next/standalone/server.js" \
       --name "$APP_NAME" \
       --cwd "$target/.next/standalone" \
@@ -97,6 +100,40 @@ if ! curl --fail --silent --show-error \
     start_release "$PREVIOUS_RELEASE"
   fi
   exit 1
+fi
+
+PREVIOUS_ML_RELEASE=""
+if [[ -L "$ML_SERVICE_DIR/current" ]]; then
+  PREVIOUS_ML_RELEASE="$(readlink -f "$ML_SERVICE_DIR/current" || true)"
+fi
+
+if systemctl list-unit-files "$ML_SERVICE_NAME" >/dev/null 2>&1; then
+  mkdir -p "$ML_SERVICE_DIR"
+  ln -sfn "$RELEASE" "$ML_SERVICE_DIR/current"
+  chown -h lightworld:lightworld "$ML_SERVICE_DIR/current" 2>/dev/null || true
+  systemctl restart "$ML_SERVICE_NAME"
+
+  ML_OK=0
+  for _ in $(seq 1 20); do
+    if curl --fail --silent --show-error "$ML_HEALTH_URL" >/dev/null 2>&1; then
+      ML_OK=1
+      break
+    fi
+    sleep 1
+  done
+
+  if [[ "$ML_OK" != "1" ]]; then
+    echo "ML service failed health check; rolling back web + ML release alignment." >&2
+    if [[ -n "$PREVIOUS_ML_RELEASE" && -d "$PREVIOUS_ML_RELEASE" ]]; then
+      ln -sfn "$PREVIOUS_ML_RELEASE" "$ML_SERVICE_DIR/current"
+      chown -h lightworld:lightworld "$ML_SERVICE_DIR/current" 2>/dev/null || true
+      systemctl restart "$ML_SERVICE_NAME" || true
+    fi
+    if [[ -n "$PREVIOUS_RELEASE" && -d "$PREVIOUS_RELEASE" ]]; then
+      start_release "$PREVIOUS_RELEASE"
+    fi
+    exit 1
+  fi
 fi
 
 pm2 save >/dev/null 2>&1 || true
