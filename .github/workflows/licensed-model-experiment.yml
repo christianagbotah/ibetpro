@@ -6,7 +6,7 @@ on:
       start_date:
         description: "Licensed fixture collection start (YYYY-MM-DD)"
         required: true
-        default: "2021-07-01"
+        default: "2019-07-01"
         type: string
       end_date:
         description: "Licensed fixture collection end (YYYY-MM-DD)"
@@ -151,6 +151,31 @@ jobs:
         if: ${{ inputs.execute_historical_odds == true }}
         run: |
           python -m training.walk_forward             --dataset data/licensed/run/features.csv             --output data/licensed/run/folds             --feature-profile enriched
+
+      - name: Package cross-season-approved shadow candidate
+        if: ${{ inputs.execute_historical_odds == true }}
+        shell: bash
+        run: |
+          REPORT=data/licensed/run/folds/walk-forward.json
+          MODEL=data/licensed/run/folds/2024-25
+          if [ ! -f "$REPORT" ] || [ ! -f "$MODEL/metadata.json" ]; then
+            echo "::error::Walk-forward report or final fold model is missing."
+            exit 1
+          fi
+
+          ELIGIBLE=$(python - <<'PY'
+          import json
+          from pathlib import Path
+          data=json.loads(Path("data/licensed/run/folds/walk-forward.json").read_text())
+          print("true" if (data.get("selective_stability") or {}).get("eligible_for_shadow") else "false")
+          PY
+          )
+
+          if [ "$ELIGIBLE" != "true" ]; then
+            echo "No cross-season-stable selective bands. Shadow package intentionally not created."
+          else
+            python -m training.package_shadow_candidate               --model-dir "$MODEL"               --walk-forward "$REPORT"               --output data/licensed/run/shadow-candidate
+          fi
 
       - name: Publish selective stability
         if: always()
