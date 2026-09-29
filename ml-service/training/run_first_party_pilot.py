@@ -93,6 +93,16 @@ def run_first_party_pilot(
         split,
         feature_profile=feature_profile,
     )
+    candidate["model_version"] = (
+        f"first-party-{horizon}-ensemble-"
+        f"{split.test_end.strftime('%Y%m%d')}"
+    )
+    candidate["training_source"] = "ibetpro-first-party-production"
+    candidate["prediction_horizon"] = horizon
+    (candidate_dir / "metadata.json").write_text(
+        json.dumps(candidate, indent=2),
+        encoding="utf-8",
+    )
 
     test_start = split.calibration_end + pd.Timedelta(nanoseconds=1)
     baselines = evaluate_baselines(
