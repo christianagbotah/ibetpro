@@ -24,6 +24,7 @@ Important VPS paths:
 ```text
 /home/lightworld/webapps/ibetpro              # persistent Git checkout / worktree manager
 /home/lightworld/releases/ibetpro-<sha>       # immutable application releases
+/home/lightworld/services/ibetpro-web/current # symlink to active web release
 /home/lightworld/services/ibetpro-ml/current  # symlink to ML code in active release
 /home/lightworld/services/ibetpro-ml/ml.env   # ML-only runtime environment
 /home/lightworld/venvs/ibetpro-ml             # Python inference virtualenv
@@ -34,12 +35,15 @@ release. Old build worktrees can be removed after health verification.
 
 ## Web deployment
 
-The supported deployment path is the atomic release script:
+The supported deployment path is the atomic release script. On an already
+provisioned server, use the stable verified-release symlink:
 
 ```bash
-cd /home/lightworld/webapps/ibetpro
-bash deploy/deploy-and-activate.sh
+bash /home/lightworld/services/ibetpro-web/current/deploy/deploy-and-activate.sh
 ```
+
+The persistent Git repository remains at `/home/lightworld/webapps/ibetpro`
+and is used internally by the deployment script as the worktree manager.
 
 To deploy a specific verified SHA:
 
