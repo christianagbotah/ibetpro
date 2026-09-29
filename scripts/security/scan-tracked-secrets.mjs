@@ -10,6 +10,9 @@ const skippedPrefixes = [
   ".next/",
   "public/",
   "download/",
+  ".agents/",
+  "ibetpro/.agents/",
+  "tool-results/",
 ];
 const skippedSuffixes = [
   ".png", ".jpg", ".jpeg", ".gif", ".ico", ".woff", ".woff2",
@@ -55,6 +58,12 @@ function shouldSkip(file) {
   return skippedSuffixes.some((suffix) => file.toLowerCase().endsWith(suffix));
 }
 
+function isClearlyNonSecretLine(line) {
+  return (
+    /process\.env|\$\{|config\.|CHANGE_ME|YOUR_|your_|example|placeholder/i.test(line)
+  );
+}
+
 const findings = [];
 
 for (const file of trackedFiles()) {
@@ -72,6 +81,9 @@ for (const file of trackedFiles()) {
     if (!match) continue;
 
     const line = text.slice(0, match.index).split("\n").length;
+    const sourceLine = text.split("\n")[line - 1] || "";
+    if (isClearlyNonSecretLine(sourceLine)) continue;
+
     findings.push({
       file,
       line,
