@@ -26,6 +26,7 @@ import {
   CheckCircle,
   AlertTriangle,
   Brain,
+  Database,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useCurrency } from "@/components/currency-provider";
