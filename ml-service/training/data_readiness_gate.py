@@ -9,6 +9,8 @@ DEFAULT_RULES = {
     "minimum_rows": 1500,
     "minimum_shots_coverage": 0.80,
     "minimum_sot_coverage": 0.80,
+    "minimum_opening_market_coverage": 0.85,
+    "minimum_near_kickoff_market_coverage": 0.75,
 }
 
 
@@ -47,13 +49,27 @@ def assess(report: dict, rules: dict | None = None) -> dict:
             float(config["minimum_sot_coverage"]),
         )
 
+    if "opening_market_coverage" in report:
+        add(
+            "opening_market_coverage",
+            float(report.get("opening_market_coverage", 0.0)),
+            float(config["minimum_opening_market_coverage"]),
+        )
+
+    if "near_kickoff_market_coverage" in report:
+        add(
+            "near_kickoff_market_coverage",
+            float(report.get("near_kickoff_market_coverage", 0.0)),
+            float(config["minimum_near_kickoff_market_coverage"]),
+        )
+
     ready = all(check["passed"] for check in checks)
     return {
         "enriched_training_ready": ready,
         "checks": checks,
         "rules": config,
         "note": (
-            "Corpus has enough core enriched-stat coverage for an enriched-model experiment."
+            "Corpus has enough enriched-stat and licensed market coverage for an enriched-model experiment."
             if ready
             else "Keep enriched features disabled until all core coverage gates pass."
         ),
