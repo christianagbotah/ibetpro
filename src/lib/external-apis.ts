@@ -142,6 +142,35 @@ export async function fetchOddsApiEvents(
   }));
 }
 
+function normalizeOddsApiScoreEvent(
+  event: Record<string, unknown>,
+  sport: string
+): ExternalScoreEvent {
+  const scoreRows = Array.isArray(event.scores)
+    ? (event.scores as Array<Record<string, unknown>>)
+    : [];
+  const scoreFor = (team: string): number | null => {
+    const row = scoreRows.find((score) => String(score.name || "") === team);
+    const parsed = Number(row?.score);
+    return Number.isFinite(parsed) ? parsed : null;
+  };
+  const homeTeam = String(event.home_team || "Unknown");
+  const awayTeam = String(event.away_team || "Unknown");
+
+  return {
+    id: String(event.id || ""),
+    sportKey: String(event.sport_key || sport),
+    sportTitle: String(event.sport_title || sport),
+    commenceTime: String(event.commence_time || new Date().toISOString()),
+    homeTeam,
+    awayTeam,
+    completed: Boolean(event.completed),
+    homeScore: scoreFor(homeTeam),
+    awayScore: scoreFor(awayTeam),
+    lastUpdate: event.last_update ? String(event.last_update) : null,
+  };
+}
+
 export async function fetchOddsApiScores(
   sport: string = "soccer_epl"
 ): Promise<ExternalScoreEvent[]> {
@@ -159,31 +188,57 @@ export async function fetchOddsApiScores(
   }
 
   const data = (await response.json()) as Array<Record<string, unknown>>;
-  return data.map((event) => {
-    const scoreRows = Array.isArray(event.scores)
-      ? (event.scores as Array<Record<string, unknown>>)
-      : [];
-    const scoreFor = (team: string): number | null => {
-      const row = scoreRows.find((score) => String(score.name || "") === team);
-      const parsed = Number(row?.score);
-      return Number.isFinite(parsed) ? parsed : null;
-    };
-    const homeTeam = String(event.home_team || "Unknown");
-    const awayTeam = String(event.away_team || "Unknown");
+  return data.map((event) => normalizeOddsApiScoreEvent(event, sport));
+}
 
-    return {
-      id: String(event.id || ""),
-      sportKey: String(event.sport_key || sport),
-      sportTitle: String(event.sport_title || sport),
-      commenceTime: String(event.commence_time || new Date().toISOString()),
-      homeTeam,
-      awayTeam,
-      completed: Boolean(event.completed),
-      homeScore: scoreFor(homeTeam),
-      awayScore: scoreFor(awayTeam),
-      lastUpdate: event.last_update ? String(event.last_update) : null,
-    };
+export interface OddsApiCompletedScoresResult {
+  events: ExternalScoreEvent[];
+  remainingRequests: number | null;
+  requestCost: number | null;
+}
+
+export async function fetchOddsApiCompletedScores(
+  sport: string,
+  eventIds: string[] = [],
+  daysFrom: 1 | 2 | 3 = 3
+): Promise<OddsApiCompletedScoresResult> {
+  const apiKey = config.api.oddsApiKey;
+  if (!apiKey) {
+    throw new Error("The Odds API key not configured");
+  }
+
+  const params = new URLSearchParams({
+    apiKey,
+    dateFormat: "iso",
+    daysFrom: String(daysFrom),
   });
+  if (eventIds.length > 0) {
+    params.set("eventIds", eventIds.join(","));
+  }
+
+  const url = `${config.apiUrls.oddsApi}/sports/${sport}/scores/?${params.toString()}`;
+  const response = await fetch(url, { cache: "no-store" });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `The Odds API completed scores error (${response.status}): ${errorText}`
+    );
+  }
+
+  const data = (await response.json()) as Array<Record<string, unknown>>;
+  const parseHeader = (name: string): number | null => {
+    const raw = response.headers.get(name);
+    if (!raw) return null;
+    const value = Number(raw);
+    return Number.isFinite(value) ? value : null;
+  };
+
+  return {
+    events: data.map((event) => normalizeOddsApiScoreEvent(event, sport)),
+    remainingRequests: parseHeader("x-requests-remaining"),
+    requestCost: parseHeader("x-requests-last"),
+  };
 }
 
 
