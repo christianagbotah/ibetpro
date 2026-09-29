@@ -6,8 +6,8 @@ Agent: Main Agent
 Task: Phase 1 Bet Advisor - Telegram Bot Integration
 
 Work Log:
-- Saved Telegram bot token to .env (8667289261:AAFry07KkbkHEvIgVOP5D2OXgQ0zxdm3i8c)
-- Verified bot is alive: @iBetAssistBot
+- Telegram bot integration configured. The previously committed bot token has been redacted and must be rotated before any further production use.
+- Verified bot integration target: @iBetAssistBot
 - Created /api/telegram/webhook endpoint - handles /start, /help, /status, /stop, /resume, /settings commands
 - Created /api/telegram/connect endpoint - GET status, POST connect, DELETE disconnect
 - Created /api/telegram/setup endpoint - admin webhook registration
@@ -46,7 +46,6 @@ Task: Switch database from SQLite to MySQL for VPS deployment
 Work Log:
 - Verified prisma/schema.prisma already had provider = "mysql"
 - Verified prisma.config.ts already had MySQL URL as default
-- Verified .env and .env.production already had MySQL connection string
 - Removed @libsql/client and @prisma/adapter-libsql from package.json
 - Installed @prisma/adapter-mariadb (Prisma 7.x MySQL driver adapter)
 - Updated src/lib/db.ts to use PrismaMariaDb adapter instead of bare PrismaClient
@@ -68,23 +67,11 @@ Agent: Main Agent
 Task: Update all deployment configs with actual VPS details
 
 Work Log:
-- User provided VPS details: domain=ibetpro.lightworldtech.com, port=3007, dir=/home/lightworld/webapps/ibetpro
-- Updated .env.production: NEXTAUTH_URL=https://ibetpro.lightworldtech.com, PORT=3007
-- Updated .env: NEXTAUTH_URL=http://localhost:3007, PORT=3007
-- Updated package.json: dev script uses port 3007
-- Updated ecosystem.config.js: cwd=/home/lightworld/webapps/ibetpro, PORT=3007, logs to /home/lightworld/webapps/ibetpro/logs/
-- Updated deploy/deploy.sh: APP_DIR, LOG_DIR, DOMAIN, PORT all set to actual VPS values
-- Updated deploy/nginx/ibetpro-http.conf: upstream port 3007, server_name ibetpro.lightworldtech.com
-- Updated deploy/nginx/ibetpro-ssl.conf: upstream port 3007, server_name ibetpro.lightworldtech.com, SSL cert paths
-- Updated deploy/setup-vps.sh: APP_USER=lightworld, APP_DIR, LOG_DIR, removed ibetpro user creation
-- Updated deploy/systemd/ibetpro.service: User=lightworld, paths to /home/lightworld/webapps/ibetpro
-- Updated deploy/.env.example: all values updated with actual domain, port, credentials
-- Updated deploy/update.sh: APP_DIR, DOMAIN, PORT, health check on port 3007
+- Deployment target configured for ibetpro.lightworldtech.com on port 3007 under /home/lightworld/webapps/ibetpro
+- Updated runtime and deployment configuration for the production domain and port
+- Updated PM2, Nginx, setup, systemd, and deployment scripts
 - Build verified with port 3007
 
 Stage Summary:
-- All deployment configs now use actual VPS details
-- Port: 3007 (main app), 3008/3009/3011+ available for microservices
-- Directory: /home/lightworld/webapps/ibetpro
-- Domain: ibetpro.lightworldtech.com
-- User: lightworld (existing Webuzo user, not creating new ibetpro user)
+- Deployment configuration is aligned to the current VPS target
+- Sensitive credentials must remain outside Git and be injected through deployment secrets/environment configuration

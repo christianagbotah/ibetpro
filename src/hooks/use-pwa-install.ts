@@ -8,7 +8,7 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 const DISMISS_KEY = "ibetpro_install_dismissed";
-const DISMISS_DURATION = 7 * 24 * 60 * 60 * 1000; // 7 days
+const DISMISS_DURATION = 7 * 24 * 60 * 60 * 1000;
 
 function isDismissed(): boolean {
   if (typeof window === "undefined") return false;
@@ -22,37 +22,29 @@ function isDismissed(): boolean {
   return true;
 }
 
+function detectInstalled(): boolean {
+  if (typeof window === "undefined") return false;
+  if (window.matchMedia("(display-mode: standalone)").matches) return true;
+  return "standalone" in navigator &&
+    Boolean((navigator as unknown as { standalone?: boolean }).standalone);
+}
+
 export function usePWAInstall() {
   const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
-  const [isInstalled, setIsInstalled] = useState(false);
+  const [isInstalled, setIsInstalled] = useState(detectInstalled);
   const [showBanner, setShowBanner] = useState(false);
 
   useEffect(() => {
-    // Check if already installed (standalone mode)
-    if (window.matchMedia("(display-mode: standalone)").matches) {
-      setIsInstalled(true);
-      return;
-    }
+    if (detectInstalled()) return;
 
-    // Also check navigator.standalone for iOS Safari
-    if ("standalone" in navigator && (navigator as unknown as { standalone: boolean }).standalone) {
-      setIsInstalled(true);
-      return;
-    }
-
-    // Listen for beforeinstallprompt (Chrome/Edge on Android, desktop)
     const beforeInstallHandler = (e: Event) => {
       e.preventDefault();
       setInstallPrompt(e as BeforeInstallPromptEvent);
-      // Show banner after a short delay (if not dismissed)
       if (!isDismissed()) {
         setTimeout(() => setShowBanner(true), 3000);
       }
     };
 
-    window.addEventListener("beforeinstallprompt", beforeInstallHandler);
-
-    // Listen for appinstalled event (if user installs via browser chrome)
     const appInstalledHandler = () => {
       setIsInstalled(true);
       setShowBanner(false);
@@ -60,18 +52,19 @@ export function usePWAInstall() {
       localStorage.removeItem(DISMISS_KEY);
     };
 
+    window.addEventListener("beforeinstallprompt", beforeInstallHandler);
     window.addEventListener("appinstalled", appInstalledHandler);
 
-    // On mobile without beforeinstallprompt support (iOS Safari),
-    // still show the banner with manual instructions
     const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isMobile && !isInstalled && !isDismissed()) {
-      setTimeout(() => setShowBanner(true), 5000);
+    let mobileTimer: ReturnType<typeof setTimeout> | null = null;
+    if (isMobile && !isDismissed()) {
+      mobileTimer = setTimeout(() => setShowBanner(true), 5000);
     }
 
     return () => {
       window.removeEventListener("beforeinstallprompt", beforeInstallHandler);
       window.removeEventListener("appinstalled", appInstalledHandler);
+      if (mobileTimer) clearTimeout(mobileTimer);
     };
   }, []);
 
@@ -102,6 +95,8 @@ export function usePWAInstall() {
     install,
     dismiss,
     canInstall: !!installPrompt,
-    isMobile: typeof window !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
+    isMobile:
+      typeof window !== "undefined" &&
+      /Android|iPhone|iPad|iPod/i.test(navigator.userAgent),
   };
 }

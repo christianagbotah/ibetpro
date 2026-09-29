@@ -1,231 +1,285 @@
-# iBetPro — VPS Deployment Guide
+# iBetPro — Production Deployment
 
-Deploy to a VPS running **Webuzo** with **Nginx** reverse proxy and **PM2** process manager.
+This guide documents the current Lightworld production architecture. Do not use
+older SQLite/port-3000 deployment instructions for this repository.
 
-## Architecture
+## Production architecture
 
+```text
+Internet
+  |
+  v
+Nginx / TLS
+  |
+  v
+Next.js standalone (PM2, 127.0.0.1:3017)
+  |                     |
+  |                     +--> MySQL/MariaDB (localhost:3306)
+  |
+  +--> iBetPro ML FastAPI (systemd, 127.0.0.1:8017)
 ```
-Internet → Nginx (443/80) → Next.js Standalone (3000) → SQLite
-               ↑ SSL              ↑ PM2 manages
-          Let's Encrypt          auto-restart
+
+Important VPS paths:
+
+```text
+/home/lightworld/webapps/ibetpro              # persistent Git checkout / worktree manager
+/home/lightworld/releases/ibetpro-<sha>       # immutable application releases
+/home/lightworld/services/ibetpro-web/current # symlink to active web release
+/home/lightworld/services/ibetpro-ml/current  # symlink to ML code in active release
+/home/lightworld/services/ibetpro-ml/ml.env   # ML-only runtime environment
+/home/lightworld/venvs/ibetpro-ml             # Python inference virtualenv
 ```
 
-## Quick Start
+Production should retain the active iBetPro release and one immediate rollback
+release. Old build worktrees can be removed after health verification.
 
-### 1. First-Time VPS Setup (run as root)
+## Web deployment
+
+The supported deployment path is the atomic release script. On an already
+provisioned server, use the stable verified-release symlink:
 
 ```bash
-# SSH into your VPS
-ssh root@YOUR_VPS_IP
-
-# Upload and run the setup script
-# (or run it directly from the repo)
-sudo bash deploy/setup-vps.sh
+bash /home/lightworld/services/ibetpro-web/current/deploy/deploy-and-activate.sh
 ```
 
-This installs: Node.js 20, PM2, Nginx, Certbot, creates the `ibetpro` user, and configures the firewall.
+The persistent Git repository remains at `/home/lightworld/webapps/ibetpro`
+and is used internally by the deployment script as the worktree manager.
 
-### 2. Build & Deploy (from your local machine)
+To deploy a specific verified SHA:
 
 ```bash
-# On your local machine, build the app
-npm run build
-
-# Deploy to VPS (replace with your domain)
-bash deploy/deploy.sh ibetpro.yourdomain.com
+bash deploy/deploy-and-activate.sh <full-git-sha>
 ```
 
-### 3. Set Up SSL
+The script:
+
+1. Fetches the production-foundation branch.
+2. Creates a detached release worktree under `/home/lightworld/releases`.
+3. Copies runtime environment files from the currently running release.
+4. Runs `npm ci`, Prisma generation and a non-destructive `prisma db push`.
+5. Builds Next.js standalone output.
+6. Starts an isolated smoke server with `ML_MODEL_MODE=baseline`.
+7. Switches PM2 to the new release only after smoke succeeds.
+8. Verifies the production login endpoint.
+9. Aligns the ML service `current` symlink with the same release when the
+   `ibetpro-ml.service` unit is installed.
+10. Rolls both web and ML release pointers back if the ML health check fails.
+
+The production start step deliberately does **not** hard-code
+`ML_MODEL_MODE=baseline`; an explicitly promoted shadow/active mode therefore
+survives normal deployments. The isolated smoke test remains baseline-safe.
+
+## Runtime environment
+
+The standalone server reads its runtime environment from:
+
+```text
+<active-release>/.next/standalone/.env
+```
+
+The release root also keeps `.env.production`, which is propagated to the next
+release. Never commit production secrets.
+
+Common runtime keys include:
+
+```text
+DATABASE_URL
+NEXTAUTH_SECRET
+NEXTAUTH_URL
+ODDS_API_KEY
+API_FOOTBALL_KEY
+SPORTMONKS_API_TOKEN
+ML_SERVICE_URL=http://127.0.0.1:8017
+ML_MODEL_MODE=baseline|shadow|active
+```
+
+A provider being configured does not mean it is healthy. The admin Model
+Research panel probes the ML service health endpoint and separately reports
+provider configuration, ML reachability and whether a model artifact is loaded.
+
+## ML service setup
+
+The production ML service is localhost-only and runs as the unprivileged
+`lightworld` account.
+
+Create the Python environment:
 
 ```bash
-# On the VPS
-sudo certbot --nginx -d ibetpro.yourdomain.com -d www.ibetpro.yourdomain.com
+python3.11 -m venv /home/lightworld/venvs/ibetpro-ml
+/home/lightworld/venvs/ibetpro-ml/bin/pip install -U pip
+/home/lightworld/venvs/ibetpro-ml/bin/pip install   -r /home/lightworld/services/ibetpro-ml/current/ml-service/requirements.txt
 ```
 
-### 4. Register Telegram Webhook
+Install the service unit:
 
 ```bash
-# Login as admin, get your session cookie, then:
-curl -X POST https://ibetpro.yourdomain.com/api/telegram/setup \
-  -H 'Content-Type: application/json' \
-  -H 'Cookie: next-auth.session-token=YOUR_SESSION_TOKEN' \
-  -d '{"webhookUrl": "https://ibetpro.yourdomain.com"}'
+cp deploy/systemd/ibetpro-ml.service /etc/systemd/system/ibetpro-ml.service
+systemctl daemon-reload
+systemctl enable --now ibetpro-ml.service
 ```
 
-### 5. Connect Your Telegram
-
-1. Go to **Settings** → **Telegram Notifications**
-2. Click **Connect Telegram**
-3. Send `/start` in the bot chat
-4. Done — you'll receive AI tip alerts!
-
----
-
-## Manual Deployment (step-by-step)
-
-If you prefer to do things manually:
-
-### On the VPS
+Health check:
 
 ```bash
-# 1. Create directories
-sudo mkdir -p /home/ibetpro/{app,db,logs}
-sudo chown -R ibetpro:ibetpro /home/ibetpro
-
-# 2. Copy files from your local machine
-scp -r .next/standalone/ ibetpro@YOUR_VPS:/home/ibetpro/app/.next/standalone/
-scp -r .next/static/ ibetpro@YOUR_VPS:/home/ibetpro/app/.next/standalone/.next/static/
-scp -r public/ ibetpro@YOUR_VPS:/home/ibetpro/app/.next/standalone/public/
-scp -r src/generated/ ibetpro@YOUR_VPS:/home/ibetpro/app/.next/standalone/src/generated/
-scp ecosystem.config.js ibetpro@YOUR_VPS:/home/ibetpro/app/
-scp .env.production ibetpro@YOUR_VPS:/home/ibetpro/app/.next/standalone/.env
-scp db/custom.db ibetpro@YOUR_VPS:/home/ibetpro/db/
-
-# 3. Start with PM2
-cd /home/ibetpro/app
-pm2 start ecosystem.config.js --env production
-pm2 save
+curl http://127.0.0.1:8017/health
 ```
 
-### Nginx Setup
+A healthy baseline-only service should report `status=ok` with
+`model.loaded=false`. This is expected until a qualified model is promoted.
+
+The candidate-only endpoint intentionally returns HTTP 503 when no trained
+candidate is loaded:
+
+```text
+POST /v1/predict/candidate
+```
+
+That behavior prevents shadow evaluation from silently substituting a baseline.
+
+## Model promotion
+
+Model artifacts are never enabled merely because training completed.
+
+The promotion command validates:
+
+- required model artifacts;
+- artifact SHA-256 checksums from metadata;
+- cross-season selective-policy approval;
+- at least one stable selective divergence band;
+- ML health after restart;
+- web health after the mode switch.
+
+Promote an approved artifact to shadow:
 
 ```bash
-# Copy the HTTP config first (before SSL)
-sudo cp deploy/nginx/ibetpro-http.conf /etc/nginx/sites-available/ibetpro
-# Edit the domain
-sudo sed -i 's/yourdomain.com/YOUR_ACTUAL_DOMAIN/g' /etc/nginx/sites-available/ibetpro
-sudo ln -s /etc/nginx/sites-available/ibetpro /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
-sudo nginx -t && sudo systemctl reload nginx
+bash deploy/promote-ml-model.sh /path/to/approved-model shadow
 ```
 
-### SSL with Let's Encrypt
+Active mode requires a separate explicit confirmation:
 
 ```bash
-sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com
-# Certbot will automatically update the Nginx config with SSL
+CONFIRM_ACTIVE_PROMOTION=YES   bash deploy/promote-ml-model.sh /path/to/approved-model active
 ```
 
----
-
-## Updating the App
-
-After making code changes:
+Return safely to baseline:
 
 ```bash
-# Build locally, then:
-bash deploy/update.sh
-
-# Or on the VPS directly:
-cd /home/ibetpro/app
-pm2 restart ibetpro
+bash deploy/promote-ml-model.sh baseline
 ```
 
----
+Promotion updates the running standalone environment and release-root
+environment so the chosen mode survives the next normal deployment. A failed
+health check restores the previous web and ML configuration.
 
-## Useful Commands
+## Licensed training path
+
+Commercial model promotion must use licensed provider data.
+
+Current production research path:
+
+- Sportmonks — historical fixture/team context and enriched statistics.
+- The Odds API — licensed historical 1X2 snapshots.
+- API-Football — optional operational/backfill source where configured.
+
+The manual workflow is:
+
+```text
+.github/workflows/licensed-model-experiment.yml
+```
+
+Historical Odds API execution is dry-run by default. Review the generated call
+plan and estimated quota before explicitly enabling paid historical requests.
+
+Public/free datasets retained in the repository are research/reproducibility
+sources only where their licence does not permit commercial model training.
+They must not be promoted into the production model path.
+
+## Model modes
+
+### baseline
+
+Default production state. User-facing prediction remains on the verified
+baseline/market-consensus path. A trained candidate is not required.
+
+### shadow
+
+A qualified model is loaded and evaluated without replacing user-facing
+probabilities. Candidate failures must remain visible and auditable.
+
+### active
+
+Only an explicitly approved model may affect user-facing inference. Active mode
+is not an automatic result of a successful training job.
+
+## Operations
+
+Web status:
 
 ```bash
-# PM2
-pm2 status                    # Check process status
-pm2 logs ibetpro              # View logs
-pm2 logs ibetpro --lines 100  # Last 100 lines
-pm2 restart ibetpro           # Restart app
-pm2 stop ibetpro              # Stop app
-pm2 monit                     # Live resource monitor
-pm2 describe ibetpro          # Detailed process info
-
-# Nginx
-sudo nginx -t                 # Test config
-sudo systemctl reload nginx   # Reload config
-sudo systemctl restart nginx  # Full restart
-sudo tail -f /var/log/nginx/ibetpro_access.log  # Access log
-sudo tail -f /var/log/nginx/ibetpro_error.log    # Error log
-
-# Systemd (alternative to PM2)
-sudo systemctl start ibetpro
-sudo systemctl stop ibetpro
-sudo systemctl restart ibetpro
-sudo systemctl status ibetpro
-sudo journalctl -u ibetpro -f  # Follow logs
-
-# Certbot
-sudo certbot renew            # Renew certificates
-sudo certbot certificates     # List certificates
-```
-
----
-
-## File Structure on VPS
-
-```
-/home/ibetpro/
-├── app/
-│   ├── .next/
-│   │   └── standalone/     # Production server
-│   │       ├── server.js   # Entry point
-│   │       ├── .next/      # Static + rendered
-│   │       ├── public/     # Static assets
-│   │       ├── src/generated/  # Prisma client
-│   │       └── .env        # Production env vars
-│   ├── prisma/
-│   │   └── schema.prisma
-│   └── ecosystem.config.js
-├── db/
-│   └── custom.db           # SQLite database
-└── logs/
-    ├── out.log
-    └── error.log
-```
-
----
-
-## Troubleshooting
-
-### App won't start
-```bash
-pm2 logs ibetpro --err --lines 50
-# Common issues:
-# - DATABASE_URL path wrong (must be absolute)
-# - NEXTAUTH_SECRET not set
-# - Port 3000 already in use
-```
-
-### 502 Bad Gateway
-```bash
-# Check if the app is running
 pm2 status
-# Check if Nginx can reach the app
-curl http://localhost:3000
-# Check Nginx error log
-sudo tail -50 /var/log/nginx/ibetpro_error.log
+pm2 describe ibetpro
+pm2 logs ibetpro --lines 100 --nostream
+curl -I http://127.0.0.1:3017/login
 ```
 
-### Telegram webhook not working
+ML status:
+
 ```bash
-# Check webhook info
-curl https://yourdomain.com/api/telegram/webhook
-# Should return bot username and webhook URL
-# If webhook URL is empty, register it again
+systemctl status ibetpro-ml.service
+journalctl -u ibetpro-ml.service -n 100 --no-pager
+curl http://127.0.0.1:8017/health
 ```
 
-### Database issues
+Ports:
+
 ```bash
-# Check database file
-ls -la /home/ibetpro/db/custom.db
-# Check permissions
-sudo chown ibetpro:ibetpro /home/ibetpro/db/custom.db
+ss -ltnp | grep -E ':(3017|8017)\b'
 ```
 
----
+Release/worktree inventory:
 
-## Security Checklist
+```bash
+git -C /home/lightworld/webapps/ibetpro worktree list
+du -sh /home/lightworld/releases/ibetpro-* 2>/dev/null
+df -h /home
+```
 
-- [ ] Change `NEXTAUTH_SECRET` to a random 64-char string
-- [ ] Set `NEXTAUTH_URL` to your actual domain
-- [ ] Enable UFW firewall (SSH + HTTP/HTTPS only)
-- [ ] Set up SSL with Let's Encrypt
-- [ ] Disable root SSH login
-- [ ] Use SSH keys instead of passwords
-- [ ] Run the app as `ibetpro` user (not root)
-- [ ] Keep system updated: `apt-get update && apt-get upgrade`
+## Rollback principles
+
+- Never delete the immediate previous release until the new release has passed
+  public web and ML health checks.
+- Never use `prisma db push --accept-data-loss` in an automated deployment.
+- Never manually set active ML mode to bypass promotion evidence.
+- Never expose port 8017 publicly; it is an internal service.
+- Never place provider tokens or model secrets in Git-tracked files.
+
+
+## First-party corpus sync timer
+
+Production first-party training snapshots depend on routine sync calls as
+fixtures enter the 24h, 6h and 1h pre-kickoff capture windows. Install the
+timer after deploying a release that contains the sync units:
+
+```bash
+cp /home/lightworld/services/ibetpro-web/current/deploy/systemd/ibetpro-sync.service /etc/systemd/system/
+cp /home/lightworld/services/ibetpro-web/current/deploy/systemd/ibetpro-sync.timer /etc/systemd/system/
+systemctl daemon-reload
+systemctl enable --now ibetpro-sync.timer
+```
+
+The timer runs every 30 minutes and calls the localhost-only cron endpoint
+through `deploy/run-sync-cron.sh`. The runner reads `CRON_SECRET` from the
+active release environment without printing it. A normal sync respects provider
+freshness and quota guards; it does not invoke paid historical-odds collection.
+
+Operational checks:
+
+```bash
+systemctl status ibetpro-sync.timer
+systemctl list-timers ibetpro-sync.timer
+journalctl -u ibetpro-sync.service -n 50 --no-pager
+```
+
+The first-party corpus may legitimately remain empty when no supported fixture
+is currently inside a capture window. The admin Model Research page reports
+snapshot counts, labels and per-horizon coverage.

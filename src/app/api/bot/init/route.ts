@@ -25,6 +25,40 @@ let initialized = false;
  */
 export async function GET() {
   try {
+    const recoveryEnabled =
+      String(process.env.AUTO_BET_RECOVERY_ENABLED || "false").toLowerCase() === "true";
+
+    if (!recoveryEnabled) {
+      if (!initialized) {
+        initialized = true;
+        const syncResult = await syncMatchData(true);
+        return NextResponse.json({
+          initialized: true,
+          recoveryEnabled: false,
+          recovered: 0,
+          zombiesRecovered: 0,
+          runningBots: botEngine.getRunningCount(),
+          sync: {
+            source: syncResult.source,
+            matchesSynced: syncResult.matchesSynced,
+            matchesUpdated: syncResult.matchesUpdated,
+            skipped: syncResult.skipped,
+          },
+          message:
+            "Match data initialized. Automatic betting-bot recovery is disabled.",
+        });
+      }
+
+      return NextResponse.json({
+        initialized: true,
+        recoveryEnabled: false,
+        recovered: 0,
+        zombiesRecovered: 0,
+        runningBots: botEngine.getRunningCount(),
+        message: "Automatic betting-bot recovery is disabled.",
+      });
+    }
+
     // Always check for zombie sessions, even if we've initialized before.
     // This handles the case where the engine died but the module-level
     // `initialized` flag is still true.

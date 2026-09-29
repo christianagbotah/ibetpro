@@ -25,6 +25,8 @@ import {
   Loader2,
   CheckCircle,
   AlertTriangle,
+  Brain,
+  Database,
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useCurrency } from "@/components/currency-provider";
@@ -39,6 +41,124 @@ interface AdminSettings {
   maintenanceMode: boolean;
   maxUsers: number;
   autoApproveAccounts: boolean;
+}
+
+interface ShadowEvaluationResponse {
+  mode: "baseline" | "shadow" | "active";
+  evaluation: {
+    settledMatches: number;
+    candidateModelVersion: string | null;
+    baseline: {
+      logLoss: number | null;
+      brier: number | null;
+      rps: number | null;
+      ece: number | null;
+      accuracy: number | null;
+      homeGoalMae: number | null;
+      awayGoalMae: number | null;
+    };
+    candidate: {
+      logLoss: number | null;
+      brier: number | null;
+      rps: number | null;
+      ece: number | null;
+      accuracy: number | null;
+      homeGoalMae: number | null;
+      awayGoalMae: number | null;
+    };
+    deltas: {
+      logLoss: number | null;
+      brier: number | null;
+      rps: number | null;
+      ece: number | null;
+    };
+    interpretation: {
+      candidateLogLossBetter: boolean | null;
+      candidateBrierBetter: boolean | null;
+      minimumUsefulSampleReached: boolean;
+    };
+  };
+}
+
+interface MarketHistoryReadiness {
+  generatedAt: string;
+  upcomingMatches: number;
+  withConsensus: number;
+  withTwoSnapshots: number;
+  history6h: number;
+  history24h: number;
+  history48h: number;
+  coverage: {
+    consensus: number;
+    twoSnapshots: number;
+    history6h: number;
+    history24h: number;
+    history48h: number;
+  };
+  researchReady: boolean;
+  byLeague: Array<{
+    league: string;
+    matches: number;
+    withConsensus: number;
+    withTwoSnapshots: number;
+    history24h: number;
+  }>;
+}
+
+interface FirstPartyCorpusReadiness {
+  generatedAt: string;
+  totalSnapshots: number;
+  labeledSnapshots: number;
+  awaitingLabels: number;
+  latestSnapshotAt: string | null;
+  averageFeatureCompleteness: number;
+  averageMarketSnapshotCount: number;
+  averageMarketHistoryMinutes: number | null;
+  horizons: {
+    "24h": { total: number; labeled: number };
+    "6h": { total: number; labeled: number };
+    "1h": { total: number; labeled: number };
+  };
+  readiness: {
+    pilotMinLabeledPerHorizon: number;
+    promotionMinLabeledPerHorizon: number;
+    pilotReadyHorizons: string[];
+    promotionReadyHorizons: string[];
+  };
+  nextFixture: {
+    id: string;
+    league: string;
+    homeTeam: string;
+    awayTeam: string;
+    kickoffAt: string;
+    captureWindows: {
+      "24h": { opensAt: string; targetAt: string; closesAt: string };
+      "6h": { opensAt: string; targetAt: string; closesAt: string };
+      "1h": { opensAt: string; targetAt: string; closesAt: string };
+    };
+  } | null;
+  settlement: {
+    lastAttemptAt: string | null;
+    lastSuccessAt: string | null;
+    metadata: Record<string, unknown> | null;
+  };
+}
+
+interface ProviderReadiness {
+  providers: {
+    oddsApi: boolean;
+    apiFootball: boolean;
+    sportmonks: boolean;
+  };
+  ml: {
+    serviceUrlConfigured: boolean;
+    serviceReachable: boolean;
+    modelConfigured: boolean;
+    modelLoaded: boolean;
+    modelVersion: string | null;
+    reason: string | null;
+    modelMode: string;
+  };
 }
 
 interface Stats {
@@ -88,10 +208,108 @@ export default function AdminPage() {
     adminSettings: null,
     users: [],
   });
+  const { data: shadow } = useFetch<ShadowEvaluationResponse>(
+    "/api/admin/ml/shadow",
+    {
+      mode: "baseline",
+      evaluation: {
+        settledMatches: 0,
+        candidateModelVersion: null,
+        baseline: {
+          logLoss: null, brier: null, rps: null, ece: null, accuracy: null,
+          homeGoalMae: null, awayGoalMae: null,
+        },
+        candidate: {
+          logLoss: null, brier: null, rps: null, ece: null, accuracy: null,
+          homeGoalMae: null, awayGoalMae: null,
+        },
+        deltas: { logLoss: null, brier: null, rps: null, ece: null },
+        interpretation: {
+          candidateLogLossBetter: null,
+          candidateBrierBetter: null,
+          minimumUsefulSampleReached: false,
+        },
+      },
+    }
+  );
+
+  const { data: marketHistory } = useFetch<MarketHistoryReadiness>(
+    "/api/admin/ml/market-history",
+    {
+      generatedAt: "",
+      upcomingMatches: 0,
+      withConsensus: 0,
+      withTwoSnapshots: 0,
+      history6h: 0,
+      history24h: 0,
+      history48h: 0,
+      coverage: {
+        consensus: 0,
+        twoSnapshots: 0,
+        history6h: 0,
+        history24h: 0,
+        history48h: 0,
+      },
+      researchReady: false,
+      byLeague: [],
+    }
+  );
+
+  const { data: providerReadiness } = useFetch<ProviderReadiness>(
+    "/api/admin/ml/providers",
+    {
+      providers: { oddsApi: false, apiFootball: false, sportmonks: false },
+      ml: {
+        serviceUrlConfigured: false,
+        serviceReachable: false,
+        modelConfigured: false,
+        modelLoaded: false,
+        modelVersion: null,
+        reason: null,
+        modelMode: "baseline",
+      },
+    }
+  );
+
+  const { data: firstPartyCorpus } = useFetch<FirstPartyCorpusReadiness>(
+    "/api/admin/ml/first-party-corpus",
+    {
+      generatedAt: "",
+      totalSnapshots: 0,
+      labeledSnapshots: 0,
+      awaitingLabels: 0,
+      latestSnapshotAt: null,
+      averageFeatureCompleteness: 0,
+      averageMarketSnapshotCount: 0,
+      averageMarketHistoryMinutes: null,
+      horizons: {
+        "24h": { total: 0, labeled: 0 },
+        "6h": { total: 0, labeled: 0 },
+        "1h": { total: 0, labeled: 0 },
+      },
+      readiness: {
+        pilotMinLabeledPerHorizon: 300,
+        promotionMinLabeledPerHorizon: 1500,
+        pilotReadyHorizons: [],
+        promotionReadyHorizons: [],
+      },
+      nextFixture: null,
+      settlement: {
+        lastAttemptAt: null,
+        lastSuccessAt: null,
+        metadata: null,
+      },
+    }
+  );
+
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [commissionRate, setCommissionRate] = useState(10);
+  const [researchAction, setResearchAction] = useState<
+    "stats" | "elo" | "corpus" | null
+  >(null);
+  const [researchLeague, setResearchLeague] = useState("Premier League");
 
   // Sync local commissionRate state when adminSettings loads
   useEffect(() => {
@@ -101,6 +319,95 @@ export default function AdminPage() {
   }, [stats.adminSettings]);
 
   const { addToast } = useToast();
+
+  const handleCorpusCapture = async () => {
+    setResearchAction("corpus");
+    try {
+      const res = await fetch("/api/admin/ml/first-party-corpus", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "First-party capture failed");
+
+      if ((data.captured ?? 0) > 0) {
+        addToast(
+          "success",
+          `Captured ${data.captured} first-party training snapshot(s)`
+        );
+        window.location.reload();
+      } else {
+        addToast(
+          "info",
+          data.note ||
+            "No uncaptured fixtures are currently inside a valid horizon window"
+        );
+      }
+    } catch (err) {
+      addToast(
+        "error",
+        err instanceof Error ? err.message : "First-party capture failed"
+      );
+    } finally {
+      setResearchAction(null);
+    }
+  };
+
+  const handleStatsBackfill = async () => {
+    setResearchAction("stats");
+    try {
+      const res = await fetch("/api/admin/ml/stats-backfill", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ limit: 20 }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Fixture-stat backfill failed");
+      addToast(
+        "success",
+        `Processed ${data.matchesProcessed ?? 0} matches and stored ${data.snapshotsUpserted ?? 0} team-stat snapshots`
+      );
+      if (Array.isArray(data.errors) && data.errors.length > 0) {
+        addToast("warning", `${data.errors.length} fixture-stat requests need review`);
+      }
+    } catch (err) {
+      addToast(
+        "error",
+        err instanceof Error ? err.message : "Fixture-stat backfill failed"
+      );
+    } finally {
+      setResearchAction(null);
+    }
+  };
+
+  const handleEloRebuild = async () => {
+    const league = researchLeague.trim();
+    if (!league) {
+      addToast("error", "Enter the exact league name first");
+      return;
+    }
+
+    setResearchAction("elo");
+    try {
+      const res = await fetch("/api/admin/ml/elo-rebuild", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sport: "football", league }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "ELO rebuild failed");
+      addToast(
+        "success",
+        `Rebuilt ${data.snapshotsCreated ?? 0} causal ELO snapshots from ${data.matchesProcessed ?? 0} finished matches`
+      );
+    } catch (err) {
+      addToast(
+        "error",
+        err instanceof Error ? err.message : "ELO rebuild failed"
+      );
+    } finally {
+      setResearchAction(null);
+    }
+  };
 
   const handleSaveCommission = async () => {
     setSaving(true);
@@ -286,6 +593,414 @@ export default function AdminPage() {
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card className="bg-card border-border">
+        <CardHeader className="pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Brain className="h-4 w-4 text-primary" />
+              Model Research
+            </CardTitle>
+            <Badge
+              variant="secondary"
+              className={
+                shadow.mode === "active"
+                  ? "bg-emerald-400/10 text-emerald-400"
+                  : shadow.mode === "shadow"
+                    ? "bg-amber-400/10 text-amber-400"
+                    : "bg-secondary text-muted-foreground"
+              }
+            >
+              {shadow.mode.toUpperCase()}
+            </Badge>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="rounded-lg bg-secondary/50 p-3">
+              <p className="text-xs text-muted-foreground">Settled Shadow Matches</p>
+              <p className="text-xl font-bold text-foreground">
+                {shadow.evaluation.settledMatches}
+              </p>
+            </div>
+            <div className="rounded-lg bg-secondary/50 p-3">
+              <p className="text-xs text-muted-foreground">Candidate</p>
+              <p className="text-sm font-semibold text-foreground truncate">
+                {shadow.evaluation.candidateModelVersion || "Not available"}
+              </p>
+            </div>
+            <div className="rounded-lg bg-secondary/50 p-3">
+              <p className="text-xs text-muted-foreground">Candidate Log Loss</p>
+              <p className="text-xl font-bold text-foreground">
+                {shadow.evaluation.candidate.logLoss == null
+                  ? "—"
+                  : shadow.evaluation.candidate.logLoss.toFixed(4)}
+              </p>
+            </div>
+            <div className="rounded-lg bg-secondary/50 p-3">
+              <p className="text-xs text-muted-foreground">Baseline Log Loss</p>
+              <p className="text-xl font-bold text-foreground">
+                {shadow.evaluation.baseline.logLoss == null
+                  ? "—"
+                  : shadow.evaluation.baseline.logLoss.toFixed(4)}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Brier comparison</p>
+              <p className="mt-1 text-foreground">
+                Candidate {shadow.evaluation.candidate.brier == null ? "—" : shadow.evaluation.candidate.brier.toFixed(4)}
+                {" · "}
+                Baseline {shadow.evaluation.baseline.brier == null ? "—" : shadow.evaluation.baseline.brier.toFixed(4)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Accuracy comparison</p>
+              <p className="mt-1 text-foreground">
+                Candidate {shadow.evaluation.candidate.accuracy == null ? "—" : `${Math.round(shadow.evaluation.candidate.accuracy * 100)}%`}
+                {" · "}
+                Baseline {shadow.evaluation.baseline.accuracy == null ? "—" : `${Math.round(shadow.evaluation.baseline.accuracy * 100)}%`}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Research sample</p>
+              <p className={
+                `mt-1 font-medium ${shadow.evaluation.interpretation.minimumUsefulSampleReached ? "text-emerald-400" : "text-amber-400"}`
+              }>
+                {shadow.evaluation.interpretation.minimumUsefulSampleReached
+                  ? "Minimum sample reached"
+                  : `${Math.max(0, 200 - shadow.evaluation.settledMatches)} more settled matches to 200`}
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Candidate RPS</p>
+              <p className="mt-1 font-semibold text-foreground">
+                {shadow.evaluation.candidate.rps == null ? "—" : shadow.evaluation.candidate.rps.toFixed(4)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Calibration error (ECE)</p>
+              <p className="mt-1 font-semibold text-foreground">
+                {shadow.evaluation.candidate.ece == null ? "—" : shadow.evaluation.candidate.ece.toFixed(4)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Home-goal MAE</p>
+              <p className="mt-1 font-semibold text-foreground">
+                {shadow.evaluation.candidate.homeGoalMae == null ? "—" : shadow.evaluation.candidate.homeGoalMae.toFixed(3)}
+              </p>
+            </div>
+            <div className="rounded-lg border border-border p-3">
+              <p className="text-xs text-muted-foreground">Away-goal MAE</p>
+              <p className="mt-1 font-semibold text-foreground">
+                {shadow.evaluation.candidate.awayGoalMae == null ? "—" : shadow.evaluation.candidate.awayGoalMae.toFixed(3)}
+              </p>
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Odds-movement corpus</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Causal consensus snapshots collected before kickoff for the next research feature family.
+                </p>
+              </div>
+              <Badge
+                variant="secondary"
+                className={
+                  marketHistory.researchReady
+                    ? "bg-emerald-400/10 text-emerald-400"
+                    : "bg-amber-400/10 text-amber-400"
+                }
+              >
+                {marketHistory.researchReady ? "RESEARCH READY" : "COLLECTING"}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="rounded-lg bg-background/40 p-3">
+                <p className="text-xs text-muted-foreground">Fresh consensus</p>
+                <p className="text-lg font-bold text-foreground">
+                  {marketHistory.withConsensus}/{marketHistory.upcomingMatches}
+                </p>
+              </div>
+              <div className="rounded-lg bg-background/40 p-3">
+                <p className="text-xs text-muted-foreground">2+ snapshots</p>
+                <p className="text-lg font-bold text-foreground">
+                  {Math.round(marketHistory.coverage.twoSnapshots * 100)}%
+                </p>
+              </div>
+              <div className="rounded-lg bg-background/40 p-3">
+                <p className="text-xs text-muted-foreground">6h history</p>
+                <p className="text-lg font-bold text-foreground">
+                  {Math.round(marketHistory.coverage.history6h * 100)}%
+                </p>
+              </div>
+              <div className="rounded-lg bg-background/40 p-3">
+                <p className="text-xs text-muted-foreground">24h history</p>
+                <p className="text-lg font-bold text-foreground">
+                  {Math.round(marketHistory.coverage.history24h * 100)}%
+                </p>
+              </div>
+            </div>
+            {marketHistory.byLeague.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {marketHistory.byLeague.map((item) => (
+                  <Badge key={item.league} variant="outline">
+                    {item.league}: {item.history24h}/{item.matches} with 24h
+                  </Badge>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-foreground">First-party training corpus</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Immutable pre-kickoff feature vectors captured from production at 24h, 6h and 1h horizons.
+                </p>
+              </div>
+              <Badge variant="outline">
+                {firstPartyCorpus.labeledSnapshots} labeled
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              <div className="rounded-lg bg-background/40 p-3">
+                <p className="text-xs text-muted-foreground">Snapshots</p>
+                <p className="text-lg font-bold text-foreground">
+                  {firstPartyCorpus.totalSnapshots}
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  {firstPartyCorpus.awaitingLabels} awaiting results
+                </p>
+              </div>
+              {(["24h", "6h", "1h"] as const).map((horizon) => (
+                <div key={horizon} className="rounded-lg bg-background/40 p-3">
+                  <p className="text-xs text-muted-foreground">{horizon} horizon</p>
+                  <p className="text-lg font-bold text-foreground">
+                    {firstPartyCorpus.horizons[horizon].labeled}/
+                    {firstPartyCorpus.horizons[horizon].total}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    labeled / captured
+                  </p>
+                </div>
+              ))}
+            </div>
+            {firstPartyCorpus.nextFixture && (
+              <div className="rounded-lg border border-border bg-background/40 p-3">
+                <p className="text-xs font-semibold text-foreground">
+                  Next capture schedule
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {firstPartyCorpus.nextFixture.homeTeam} vs {firstPartyCorpus.nextFixture.awayTeam}
+                  {" · "}
+                  {firstPartyCorpus.nextFixture.league}
+                  {" · kickoff "}
+                  {new Date(firstPartyCorpus.nextFixture.kickoffAt).toLocaleString()}
+                </p>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {(["24h", "6h", "1h"] as const).map((horizon) => (
+                    <Badge key={horizon} variant="outline">
+                      {horizon} opens {new Date(
+                        firstPartyCorpus.nextFixture!.captureWindows[horizon].opensAt
+                      ).toLocaleString()}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+              <div className="rounded-lg border border-border bg-background/40 p-3">
+                <p className="text-xs text-muted-foreground">Pilot experiment gate</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">
+                  {firstPartyCorpus.readiness.pilotReadyHorizons.length > 0
+                    ? `Ready: ${firstPartyCorpus.readiness.pilotReadyHorizons.join(", ")}`
+                    : `Collecting toward ${firstPartyCorpus.readiness.pilotMinLabeledPerHorizon} labeled matches per horizon`}
+                </p>
+              </div>
+              <div className="rounded-lg border border-border bg-background/40 p-3">
+                <p className="text-xs text-muted-foreground">Promotion research gate</p>
+                <p className="mt-1 text-sm font-semibold text-foreground">
+                  {firstPartyCorpus.readiness.promotionReadyHorizons.length > 0
+                    ? `Ready: ${firstPartyCorpus.readiness.promotionReadyHorizons.join(", ")}`
+                    : `Requires ${firstPartyCorpus.readiness.promotionMinLabeledPerHorizon} labeled matches per horizon`}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
+              <span>
+                Feature completeness: {Math.round(firstPartyCorpus.averageFeatureCompleteness * 100)}%
+              </span>
+              <span>
+                Avg consensus snapshots: {firstPartyCorpus.averageMarketSnapshotCount.toFixed(1)}
+              </span>
+              <span>
+                Settlement: {firstPartyCorpus.settlement.lastSuccessAt
+                  ? new Date(firstPartyCorpus.settlement.lastSuccessAt).toLocaleString()
+                  : "not run yet"}
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCorpusCapture}
+                disabled={researchAction !== null}
+              >
+                {researchAction === "corpus" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Database className="h-4 w-4" />
+                )}
+                Capture Eligible Snapshots
+              </Button>
+              {(["24h", "6h", "1h"] as const).map((horizon) => (
+                <Button
+                  key={horizon}
+                  variant="outline"
+                  size="sm"
+                  disabled={firstPartyCorpus.horizons[horizon].labeled === 0}
+                  onClick={() => {
+                    window.location.href =
+                      `/api/admin/ml/first-party-corpus/export?horizon=${horizon}`;
+                  }}
+                >
+                  Export {horizon} CSV
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Licensed production data</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Secret-safe readiness for the commercial historical-training path.
+                </p>
+              </div>
+              <Badge variant="secondary">
+                {providerReadiness.ml.modelMode.toUpperCase()}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {[
+                {
+                  label: "Sportmonks",
+                  ready: providerReadiness.providers.sportmonks,
+                  readyLabel: "Configured",
+                  pendingLabel: "Not configured",
+                },
+                {
+                  label: "The Odds API",
+                  ready: providerReadiness.providers.oddsApi,
+                  readyLabel: "Configured",
+                  pendingLabel: "Not configured",
+                },
+                {
+                  label: "API-Football",
+                  ready: providerReadiness.providers.apiFootball,
+                  readyLabel: "Configured",
+                  pendingLabel: "Not configured",
+                },
+                {
+                  label: "ML Service",
+                  ready: providerReadiness.ml.serviceReachable,
+                  readyLabel: "Reachable",
+                  pendingLabel: "Unreachable",
+                },
+                {
+                  label: "Model",
+                  ready: providerReadiness.ml.modelLoaded,
+                  readyLabel: "Loaded",
+                  pendingLabel: "Not promoted",
+                },
+              ].map((item) => (
+                <div key={item.label} className="rounded-lg bg-background/40 p-3">
+                  <p className="text-xs text-muted-foreground">{item.label}</p>
+                  <p className={`mt-1 text-sm font-semibold ${item.ready ? "text-emerald-400" : "text-amber-400"}`}>
+                    {item.ready ? item.readyLabel : item.pendingLabel}
+                  </p>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+              <span>
+                ML service: {providerReadiness.ml.serviceReachable ? "reachable" : "unreachable"}
+              </span>
+              <span>·</span>
+              <span>
+                Model: {providerReadiness.ml.modelVersion || "none promoted"}
+              </span>
+              {providerReadiness.ml.reason && (
+                <>
+                  <span>·</span>
+                  <span>{providerReadiness.ml.reason}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-3">
+            <div>
+              <p className="text-sm font-semibold text-foreground">Research data maintenance</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Fixture-stat backfill calls API-Football and may consume provider quota. ELO rebuild uses only stored finished matches and consumes no provider quota.
+              </p>
+            </div>
+            <div className="flex flex-col lg:flex-row gap-3">
+              <Button
+                variant="outline"
+                onClick={handleStatsBackfill}
+                disabled={researchAction !== null}
+                className="justify-center"
+              >
+                {researchAction === "stats" ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Activity className="h-4 w-4" />
+                )}
+                Backfill 20 Fixture Stats
+              </Button>
+              <div className="flex flex-1 gap-2">
+                <Input
+                  value={researchLeague}
+                  onChange={(event) => setResearchLeague(event.target.value)}
+                  placeholder="Exact league name, e.g. Premier League"
+                  className="bg-secondary border-border"
+                />
+                <Button
+                  variant="outline"
+                  onClick={handleEloRebuild}
+                  disabled={researchAction !== null || !researchLeague.trim()}
+                  className="whitespace-nowrap"
+                >
+                  {researchAction === "elo" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <TrendingUp className="h-4 w-4" />
+                  )}
+                  Rebuild ELO
+                </Button>
+              </div>
+            </div>
+          </div>
+
+          <p className="text-xs text-muted-foreground">
+            Shadow results are research evidence only. Candidate output does not become user-facing unless the configured mode is explicitly changed to active after validation.
+          </p>
         </CardContent>
       </Card>
 
