@@ -46,6 +46,9 @@ jobs:
       - name: Scan tracked secrets
         run: node scripts/security/scan-tracked-secrets.mjs
 
+      - name: Validate deployment shell scripts
+        run: bash -n deploy/*.sh
+
       - run: npm ci
       - run: npx prisma generate
       - run: npx prisma db push
