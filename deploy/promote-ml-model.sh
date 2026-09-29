@@ -149,16 +149,25 @@ remove_env() {
 set_web_mode() {
   local mode="$1"
   upsert_env "$WEB_STANDALONE_ENV" "ML_MODEL_MODE" "$mode"
-  [[ -f "$WEB_PRODUCTION_ENV" ]] && upsert_env "$WEB_PRODUCTION_ENV" "ML_MODEL_MODE" "$mode"
-  [[ -f "$WEB_ROOT_ENV" ]] && upsert_env "$WEB_ROOT_ENV" "ML_MODEL_MODE" "$mode"
+  if [[ -f "$WEB_PRODUCTION_ENV" ]]; then
+    upsert_env "$WEB_PRODUCTION_ENV" "ML_MODEL_MODE" "$mode"
+  fi
+  if [[ -f "$WEB_ROOT_ENV" ]]; then
+    upsert_env "$WEB_ROOT_ENV" "ML_MODEL_MODE" "$mode"
+  fi
+  return 0
 }
 
 rollback() {
   echo "Promotion health check failed; restoring previous ML/web mode." >&2
   cp -p "$BACKUP_DIR/ml.env" "$ML_ENV"
   cp -p "$BACKUP_DIR/standalone.env" "$WEB_STANDALONE_ENV"
-  [[ -f "$BACKUP_DIR/env.production" ]] && cp -p "$BACKUP_DIR/env.production" "$WEB_PRODUCTION_ENV"
-  [[ -f "$BACKUP_DIR/root.env" ]] && cp -p "$BACKUP_DIR/root.env" "$WEB_ROOT_ENV"
+  if [[ -f "$BACKUP_DIR/env.production" ]]; then
+    cp -p "$BACKUP_DIR/env.production" "$WEB_PRODUCTION_ENV"
+  fi
+  if [[ -f "$BACKUP_DIR/root.env" ]]; then
+    cp -p "$BACKUP_DIR/root.env" "$WEB_ROOT_ENV"
+  fi
   systemctl restart "$ML_SERVICE" || true
   ML_MODEL_MODE="$OLD_MODE" pm2 restart "$APP_NAME" --update-env >/dev/null 2>&1 || true
 }
