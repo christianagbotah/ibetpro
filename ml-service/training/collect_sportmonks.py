@@ -146,6 +146,8 @@ def normalize_fixture(item: dict) -> dict | None:
         "season": season.get("name") or str(item.get("season_id", "")),
         "home_team_id": f"sportmonks:{home_id}",
         "away_team_id": f"sportmonks:{away_id}",
+        "home_team_name": home.get("name"),
+        "away_team_name": away.get("name"),
         "home_goals": home_goals,
         "away_goals": away_goals,
         "home_xg": _fixture_xg(item, "home"),
