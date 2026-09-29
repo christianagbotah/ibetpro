@@ -73,6 +73,7 @@ async function buildInput(matchId: string): Promise<PredictionInput | null> {
   return {
     matchId: match.id,
     asOf: new Date().toISOString(),
+    kickoffAt: match.commenceTime.toISOString(),
     league: match.league,
     homeTeam: match.homeTeam,
     awayTeam: match.awayTeam,
