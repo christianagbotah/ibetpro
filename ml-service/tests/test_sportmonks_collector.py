@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from training.collect_sportmonks import normalize_fixture
+from training.collect_sportmonks import _run_key, normalize_fixture
 
 
 def test_sportmonks_fixture_normalization():
@@ -90,3 +90,21 @@ def test_sportmonks_unfinished_fixture_is_not_training_row():
     }
 
     assert normalize_fixture(fixture) is None
+
+
+def test_sportmonks_run_key_is_scoped_by_dates_and_league():
+    a = _run_key("2019-07-01", "2025-06-30", [8])
+    b = _run_key("2020-07-01", "2025-06-30", [8])
+    c = _run_key("2019-07-01", "2025-06-30", [564])
+
+    assert a != b
+    assert a != c
+    assert a == "2019-07-01_2025-06-30_leagues-8"
+
+
+def test_sportmonks_run_key_sorts_leagues_deterministically():
+    assert _run_key("2020-01-01", "2021-01-01", [564, 8]) == _run_key(
+        "2020-01-01",
+        "2021-01-01",
+        [8, 564],
+    )
