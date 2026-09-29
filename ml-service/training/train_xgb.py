@@ -465,7 +465,13 @@ def train(
     output_dir: Path,
     split: ChronologicalSplit,
     feature_profile: str = "core",
+    prediction_horizon: str | None = None,
 ) -> dict:
+    if prediction_horizon not in {None, "24h", "6h", "1h"}:
+        raise ValueError(
+            "prediction_horizon must be one of 24h, 6h, 1h or None"
+        )
+
     columns = feature_columns(feature_profile)
     frame = load_dataset(dataset_path)
     missing_features = [column for column in columns if column not in frame.columns]
@@ -933,8 +939,14 @@ def train(
         "away_goals_xgb.joblib": sha256(output_dir / "away_goals_xgb.joblib"),
     }
 
+    model_version = (
+        f"football-ensemble-v0-{prediction_horizon}"
+        if prediction_horizon
+        else "football-ensemble-v0"
+    )
     metadata = {
-        "model_version": "football-ensemble-v0",
+        "model_version": model_version,
+        "prediction_horizon": prediction_horizon,
         "feature_profile": feature_profile,
         "feature_columns": columns,
         "training_imputation": {key: float(value) for key, value in train_medians.items()},
@@ -994,6 +1006,11 @@ if __name__ == "__main__":
         choices=["core", "core_stats", "market_movement", "enriched"],
         default="core",
     )
+    parser.add_argument(
+        "--prediction-horizon",
+        choices=["24h", "6h", "1h"],
+        help="Stamp the trained artifact with its pre-kickoff serving horizon.",
+    )
     args = parser.parse_args()
 
     split = ChronologicalSplit(
@@ -1006,5 +1023,6 @@ if __name__ == "__main__":
         args.output,
         split,
         feature_profile=args.feature_profile,
+        prediction_horizon=args.prediction_horizon,
     )
     print(json.dumps(result, indent=2))
