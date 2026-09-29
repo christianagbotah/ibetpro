@@ -21,6 +21,23 @@ def normalize_team(value: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", value)
 
 
+def load_team_aliases(path: Path | None) -> dict[str, str]:
+    if path is None:
+        return {}
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, dict):
+        raise ValueError("Team aliases must be a JSON object")
+    return {
+        normalize_team(str(alias)): normalize_team(str(canonical))
+        for alias, canonical in raw.items()
+    }
+
+
+def canonical_team_key(value: str, aliases: dict[str, str] | None = None) -> str:
+    normalized = normalize_team(value)
+    return (aliases or {}).get(normalized, normalized)
+
+
 def bucket_timestamp(value: pd.Timestamp, minutes: int) -> pd.Timestamp:
     epoch = int(value.timestamp())
     step = minutes * 60
@@ -96,9 +113,10 @@ def match_fixture(
     event: dict,
     fixtures: pd.DataFrame,
     allowed_fixture_ids: set[str] | None = None,
+    aliases: dict[str, str] | None = None,
 ) -> str | None:
-    event_home = normalize_team(str(event.get("home_team", "")))
-    event_away = normalize_team(str(event.get("away_team", "")))
+    event_home = canonical_team_key(str(event.get("home_team", "")), aliases)
+    event_away = canonical_team_key(str(event.get("away_team", "")), aliases)
     event_time = pd.to_datetime(event.get("commence_time"), utc=True, errors="coerce")
     if pd.isna(event_time):
         return None
@@ -128,11 +146,17 @@ def collect(
     offsets_hours: tuple[int, ...],
     bucket_minutes: int,
     execute: bool,
+    team_aliases_path: Path | None = None,
 ) -> dict:
+    aliases = load_team_aliases(team_aliases_path)
     fixtures = pd.read_csv(fixtures_path)
     fixtures["kickoff_utc"] = pd.to_datetime(fixtures["kickoff_utc"], utc=True)
-    fixtures["_home_key"] = fixtures["home_team_name"].astype(str).map(normalize_team)
-    fixtures["_away_key"] = fixtures["away_team_name"].astype(str).map(normalize_team)
+    fixtures["_home_key"] = fixtures["home_team_name"].astype(str).map(
+        lambda value: canonical_team_key(value, aliases)
+    )
+    fixtures["_away_key"] = fixtures["away_team_name"].astype(str).map(
+        lambda value: canonical_team_key(value, aliases)
+    )
 
     plan = build_plan(fixtures, offsets_hours, bucket_minutes)
     regions = [item.strip() for item in region.split(",") if item.strip()]
@@ -184,6 +208,7 @@ def collect(
 
     http, key = api_client()
     rows: list[dict] = []
+    unmatched_events: dict[str, dict] = {}
     credits_used_observed = 0
     last_remaining: int | None = None
     raw_dir = out / "raw"
@@ -223,8 +248,19 @@ def collect(
                     event,
                     fixtures,
                     allowed_fixture_ids=allowed_fixture_ids,
+                    aliases=aliases,
                 )
                 if not fixture_id:
+                    key = (
+                        f"{event.get('home_team', '')}|"
+                        f"{event.get('away_team', '')}|"
+                        f"{event.get('commence_time', '')}"
+                    )
+                    unmatched_events[key] = {
+                        "home_team": event.get("home_team"),
+                        "away_team": event.get("away_team"),
+                        "commence_time": event.get("commence_time"),
+                    }
                     continue
                 home_odds, draw_odds, away_odds = consensus_1x2(event)
                 if not all(value is not None for value in (home_odds, draw_odds, away_odds)):
@@ -249,6 +285,19 @@ def collect(
     output = out / "historical-odds.csv"
     frame.to_csv(output, index=False)
 
+    unmatched_path = out / "unmatched-events.json"
+    unmatched_path.write_text(
+        json.dumps(
+            {
+                "count": len(unmatched_events),
+                "events": list(unmatched_events.values()),
+                "note": "Review these before adding explicit aliases. Fuzzy matching is intentionally disabled.",
+            },
+            indent=2,
+        ),
+        encoding="utf-8",
+    )
+
     manifest = {
         "provider": "the-odds-api",
         "sport_key": sport_key,
@@ -258,6 +307,8 @@ def collect(
         "credits_remaining_after_last_call": last_remaining,
         "rows": int(len(frame)),
         "matched_fixtures": int(frame["fixture_id"].nunique()) if not frame.empty else 0,
+        "unmatched_event_count": len(unmatched_events),
+        "team_alias_count": len(aliases),
         "license_note": "Use under the account's paid The Odds API subscription terms.",
     }
     (out / "historical-odds-manifest.json").write_text(
@@ -276,6 +327,11 @@ if __name__ == "__main__":
     parser.add_argument("--offset-hours", nargs="+", type=int, default=list(DEFAULT_OFFSETS_HOURS))
     parser.add_argument("--bucket-minutes", type=int, default=60)
     parser.add_argument(
+        "--team-aliases",
+        type=Path,
+        help="Optional JSON object mapping provider name aliases to canonical team names.",
+    )
+    parser.add_argument(
         "--execute",
         action="store_true",
         help="Actually spend historical API quota. Without this flag the command is dry-run only.",
@@ -290,4 +346,5 @@ if __name__ == "__main__":
         offsets_hours=tuple(args.offset_hours),
         bucket_minutes=args.bucket_minutes,
         execute=args.execute,
+        team_aliases_path=args.team_aliases,
     )
