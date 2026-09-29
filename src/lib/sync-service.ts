@@ -19,7 +19,10 @@ import { generateDemoMatches } from "./demo-data";
 import { ensureFixtureIdentity } from "./football/identity";
 import { persistOddsSnapshot } from "./football/odds-history";
 import { captureTrainingFeatureSnapshots } from "./prediction/training-corpus";
-import { rebuildLeagueEloSnapshots } from "./prediction/elo-snapshots";
+import {
+  rebuildLeagueEloSnapshots,
+  repairMissingCausalEloSnapshots,
+} from "./prediction/elo-snapshots";
 
 // Track last sync time to avoid excessive API calls
 let lastSyncAt: Date | null = null;
@@ -632,6 +635,22 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
     } catch (error) {
       errors.push(
         `Odds API settlement: ${error instanceof Error ? error.message : "Unknown error"}`
+      );
+    }
+
+    // Repair any provider-backed finished competition whose ELO history is
+    // missing. This makes ELO maintenance self-healing after transient DB errors
+    // and still consumes no provider quota.
+    try {
+      const repair = await repairMissingCausalEloSnapshots();
+      if (repair.competitionsRebuilt > 0) {
+        console.log(
+          `[Sync] Repaired causal ELO histories for ${repair.competitionsRebuilt} competitions.`
+        );
+      }
+    } catch (repairError) {
+      errors.push(
+        `ELO repair: ${repairError instanceof Error ? repairError.message : "Unknown ELO repair error"}`
       );
     }
 
