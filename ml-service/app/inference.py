@@ -162,7 +162,7 @@ def predict(payload: PredictionInput, require_model: bool = False) -> MatchPredi
         return poisson_baseline(payload)
 
     horizon_reason = horizon_mismatch_reason(
-        bundle.prediction_horizon,
+        getattr(bundle, "prediction_horizon", None),
         payload.status,
         payload.asOf,
         payload.kickoffAt,
