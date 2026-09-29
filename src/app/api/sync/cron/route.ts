@@ -6,8 +6,24 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { syncMatchData } from "@/lib/sync-service";
+import { captureTrainingFeatureSnapshots } from "@/lib/prediction/training-corpus";
 
 const CRON_SECRET = process.env.CRON_SECRET || "";
+
+async function captureFirstPartySafely() {
+  try {
+    return {
+      ok: true as const,
+      result: await captureTrainingFeatureSnapshots(new Date()),
+    };
+  } catch (error) {
+    console.error("[CronSync] First-party capture error:", error);
+    return {
+      ok: false as const,
+      error: error instanceof Error ? error.message : "Unknown capture error",
+    };
+  }
+}
 
 export async function GET(request: NextRequest) {
   // Verify cron secret (if configured)
@@ -21,6 +37,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const result = await syncMatchData(false);
+    const trainingCapture = await captureFirstPartySafely();
 
     return NextResponse.json({
       success: true,
@@ -31,6 +48,7 @@ export async function GET(request: NextRequest) {
       skipped: result.skipped,
       skipReason: result.skipReason,
       errors: result.errors.length > 0 ? result.errors : undefined,
+      trainingCapture,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
@@ -55,6 +73,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const result = await syncMatchData(true);
+    const trainingCapture = await captureFirstPartySafely();
 
     return NextResponse.json({
       success: true,
@@ -64,6 +83,7 @@ export async function POST(request: NextRequest) {
       durationMs: result.durationMs,
       skipped: result.skipped,
       errors: result.errors.length > 0 ? result.errors : undefined,
+      trainingCapture,
       timestamp: new Date().toISOString(),
     });
   } catch (error) {
