@@ -5,7 +5,14 @@ from pathlib import Path
 
 import pandas as pd
 
-from training.collect_odds_api_history import build_plan, collect, match_fixture, normalize_team
+from training.collect_odds_api_history import (
+    build_plan,
+    canonical_team_key,
+    collect,
+    load_team_aliases,
+    match_fixture,
+    normalize_team,
+)
 
 
 def _fixtures() -> pd.DataFrame:
@@ -96,3 +103,38 @@ def test_match_fixture_respects_planned_fixture_ids():
     )
 
     assert matched == "sportmonks:allowed"
+
+
+def test_explicit_alias_maps_provider_team_name_without_fuzzy_matching(tmp_path: Path):
+    aliases_path = tmp_path / "aliases.json"
+    aliases_path.write_text(
+        json.dumps({"Man Utd": "Manchester United"}),
+        encoding="utf-8",
+    )
+    aliases = load_team_aliases(aliases_path)
+
+    assert canonical_team_key("Man Utd", aliases) == normalize_team("Manchester United")
+    assert canonical_team_key("Manchester United FC", aliases) == normalize_team("Manchester United")
+
+
+def test_unknown_team_name_is_not_fuzzy_matched():
+    fixtures = pd.DataFrame(
+        [
+            {
+                "fixture_id": "sportmonks:mu",
+                "kickoff_utc": pd.Timestamp("2025-08-10T15:00:00Z"),
+                "home_team_name": "Manchester United",
+                "away_team_name": "Arsenal",
+            }
+        ]
+    )
+    fixtures["_home_key"] = fixtures["home_team_name"].map(normalize_team)
+    fixtures["_away_key"] = fixtures["away_team_name"].map(normalize_team)
+
+    event = {
+        "home_team": "Man Utd",
+        "away_team": "Arsenal",
+        "commence_time": "2025-08-10T15:00:00Z",
+    }
+
+    assert match_fixture(event, fixtures, {"sportmonks:mu"}) is None
