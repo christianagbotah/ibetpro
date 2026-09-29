@@ -141,6 +141,17 @@ mkdir -p "$WEB_SERVICE_DIR"
 ln -sfn "$RELEASE" "$WEB_SERVICE_DIR/current"
 chown -h lightworld:lightworld "$WEB_SERVICE_DIR/current" 2>/dev/null || true
 
+# Keep first-party pre-kickoff capture scheduled on every production release.
+# Installation occurs only after web + ML health checks have passed.
+if command -v systemctl >/dev/null 2>&1 \
+  && [[ -f "$RELEASE/deploy/systemd/ibetpro-sync.service" ]] \
+  && [[ -f "$RELEASE/deploy/systemd/ibetpro-sync.timer" ]]; then
+  cp "$RELEASE/deploy/systemd/ibetpro-sync.service" /etc/systemd/system/ibetpro-sync.service
+  cp "$RELEASE/deploy/systemd/ibetpro-sync.timer" /etc/systemd/system/ibetpro-sync.timer
+  systemctl daemon-reload
+  systemctl enable --now ibetpro-sync.timer >/dev/null
+fi
+
 pm2 save >/dev/null 2>&1 || true
 echo "Deployed $APP_NAME release $SHORT_SHA on port $APP_PORT"
 echo "Current web release: $(readlink -f "$WEB_SERVICE_DIR/current")"
