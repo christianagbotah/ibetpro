@@ -262,7 +262,7 @@ if __name__ == "__main__":
     parser.add_argument("--output", required=True, type=Path)
     parser.add_argument(
         "--feature-profile",
-        choices=["core", "core_stats", "enriched"],
+        choices=["core", "core_stats", "market_movement", "enriched"],
         default="core",
     )
     parser.add_argument("--league")
