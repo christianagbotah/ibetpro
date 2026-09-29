@@ -65,35 +65,9 @@ async function syncOddsApiSettlements(): Promise<{
     select: { lastSuccessAt: true },
   });
 
-  if (
-    state?.lastSuccessAt &&
-    now.getTime() - state.lastSuccessAt.getTime() <
-      SCORE_SETTLEMENT_INTERVAL_MS
-  ) {
-    return {
-      updated: 0,
-      calls: 0,
-      skipped: true,
-      reason: "Completed-score settlement sync is still fresh",
-      errors,
-      affectedCompetitions: [],
-    };
-  }
-
-  if (
-    apiQuotaRemaining !== null &&
-    apiQuotaRemaining < SCORE_SETTLEMENT_MIN_QUOTA
-  ) {
-    return {
-      updated: 0,
-      calls: 0,
-      skipped: true,
-      reason: `Odds API quota below score-settlement floor (${apiQuotaRemaining} < ${SCORE_SETTLEMENT_MIN_QUOTA})`,
-      errors,
-      affectedCompetitions: [],
-    };
-  }
-
+  // Discover newly resolvable matches before applying the idle freshness gate.
+  // If a real match has now passed the settlement delay, do not wait up to
+  // another 24 hours merely because an earlier no-op settlement check was fresh.
   const unresolved = await prisma.match.findMany({
     where: {
       apiSource: "odds-api",
@@ -109,6 +83,37 @@ async function syncOddsApiSettlements(): Promise<{
       sport: true,
     },
   });
+
+  if (
+    unresolved.length === 0 &&
+    state?.lastSuccessAt &&
+    now.getTime() - state.lastSuccessAt.getTime() <
+      SCORE_SETTLEMENT_INTERVAL_MS
+  ) {
+    return {
+      updated: 0,
+      calls: 0,
+      skipped: true,
+      reason: "Completed-score settlement sync is still fresh and no unresolved matches are eligible",
+      errors,
+      affectedCompetitions: [],
+    };
+  }
+
+  if (
+    unresolved.length > 0 &&
+    apiQuotaRemaining !== null &&
+    apiQuotaRemaining < SCORE_SETTLEMENT_MIN_QUOTA
+  ) {
+    return {
+      updated: 0,
+      calls: 0,
+      skipped: true,
+      reason: `Odds API quota below score-settlement floor (${apiQuotaRemaining} < ${SCORE_SETTLEMENT_MIN_QUOTA})`,
+      errors,
+      affectedCompetitions: [],
+    };
+  }
 
   const bySport = new Map<string, string[]>();
   for (const match of unresolved) {
