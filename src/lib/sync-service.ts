@@ -384,6 +384,9 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
 
           for (const event of events) {
             if (!existingById.has(event.id)) continue;
+            const eventTime = new Date(event.commenceTime);
+            const discoveredStatus =
+              eventTime.getTime() <= Date.now() ? "live" : "upcoming";
             await prisma.match.updateMany({
               where: { externalId: event.id },
               data: {
@@ -391,8 +394,8 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
                 league: event.sportTitle,
                 homeTeam: event.homeTeam,
                 awayTeam: event.awayTeam,
-                commenceTime: new Date(event.commenceTime),
-                status: "upcoming",
+                commenceTime: eventTime,
+                status: discoveredStatus,
               },
             });
           }
