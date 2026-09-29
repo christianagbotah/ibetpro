@@ -1,12 +1,10 @@
+# NON-PRODUCTION RESEARCH ONLY.
+# Football-Data free files are not licensed for commercial AI training.
+# This workflow is manual-only and retained solely for reproducibility of prior research evidence.
 name: iBetPro Core Stats Walk Forward
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - revamp/production-foundation
-    paths:
-      - .github/workflows/core-stats-walk-forward.yml
 
 permissions:
   contents: read
