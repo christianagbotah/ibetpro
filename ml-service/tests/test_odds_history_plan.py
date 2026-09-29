@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from training.collect_odds_api_history import build_plan, collect
+from training.collect_odds_api_history import build_plan, collect, match_fixture, normalize_team
 
 
 def _fixtures() -> pd.DataFrame:
@@ -61,3 +61,38 @@ def test_dry_run_reports_worst_case_historical_credit_cost(tmp_path: Path):
     assert result["estimated_max_credits"] == 80
     assert plan["estimated_max_credits"] == 80
     assert plan["credit_formula"] == "10 x historical calls x regions x 1 h2h market"
+
+
+def test_match_fixture_respects_planned_fixture_ids():
+    fixtures = pd.DataFrame(
+        [
+            {
+                "fixture_id": "sportmonks:allowed",
+                "kickoff_utc": pd.Timestamp("2025-08-10T15:00:00Z"),
+                "home_team_name": "Manchester City",
+                "away_team_name": "Liverpool",
+            },
+            {
+                "fixture_id": "sportmonks:other",
+                "kickoff_utc": pd.Timestamp("2025-08-10T15:30:00Z"),
+                "home_team_name": "Manchester City",
+                "away_team_name": "Liverpool",
+            },
+        ]
+    )
+    fixtures["_home_key"] = fixtures["home_team_name"].map(normalize_team)
+    fixtures["_away_key"] = fixtures["away_team_name"].map(normalize_team)
+
+    event = {
+        "home_team": "Manchester City",
+        "away_team": "Liverpool",
+        "commence_time": "2025-08-10T15:30:00Z",
+    }
+
+    matched = match_fixture(
+        event,
+        fixtures,
+        allowed_fixture_ids={"sportmonks:allowed"},
+    )
+
+    assert matched == "sportmonks:allowed"
