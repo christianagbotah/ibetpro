@@ -95,6 +95,7 @@ class ModelFeatureVector(BaseModel):
 class PredictionInput(BaseModel):
     matchId: str
     asOf: str
+    kickoffAt: Optional[str] = None
     league: str
     homeTeam: str
     awayTeam: str
