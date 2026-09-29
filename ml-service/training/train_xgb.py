@@ -21,6 +21,7 @@ from xgboost import XGBClassifier, XGBRegressor
 from training.selective_policy import (
     SelectivePolicyRules,
     apply_selective_policy,
+    evaluate_selective_bands,
     learn_selective_policy,
 )
 
@@ -894,6 +895,12 @@ def train(
             "candidate_rate": float(selective_mask.mean()),
             "abstained_rows": int((~selective_mask).sum()),
             "policy": selective_policy,
+            "test_band_evidence": evaluate_selective_bands(
+                y_test,
+                alternative_test,
+                test_market,
+                selective_policy,
+            ),
         },
         "goals": {
             "home_mae": float(mean_absolute_error(test_df["home_goals"], home_goal_pred)),
