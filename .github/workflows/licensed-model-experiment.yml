@@ -126,6 +126,7 @@ jobs:
           print()
           print(f"- Fixtures: **{data.get('fixtures', 0)}**")
           print(f"- Planned API calls: **{data.get('planned_api_calls', 0)}**")
+          print(f"- Worst-case credits: **{data.get('estimated_max_credits', 0)}**")
           print(f"- Offsets: **{data.get('offsets_hours', [])} hours pre-kickoff**")
           print()
           print("Historical odds execution remains opt-in because it consumes paid quota.")
@@ -138,14 +139,22 @@ jobs:
           echo "Dry-run completed. No paid historical odds calls were made."
           exit 0
 
-      - name: Join licensed context and odds
+      - name: Join licensed context and odds causally
+        if: ${{ inputs.execute_historical_odds == true }}
+        shell: bash
         run: |
-          python -m training.merge_corpus             --input-dir data/licensed             --output data/licensed/run/football.csv
+          FIXTURES=$(find data/licensed/sportmonks -maxdepth 1 -name 'sportmonks-*.csv' | head -1)
+          ODDS=data/licensed/odds-history/historical-odds.csv
+          if [ -z "$FIXTURES" ] || [ ! -f "$ODDS" ]; then
+            echo "::error::Licensed fixture or odds corpus is missing."
+            exit 1
+          fi
+          python -m training.join_licensed_context             --fixtures "$FIXTURES"             --odds "$ODDS"             --output data/licensed/run/football.csv
 
       - name: Assess licensed corpus readiness
         if: ${{ inputs.execute_historical_odds == true }}
         run: |
-          python -m training.data_readiness_gate             --quality data/licensed/run/corpus-quality.json             --output data/licensed/run/data-readiness.json
+          python -m training.data_readiness_gate             --quality data/licensed/run/licensed-join-report.json             --output data/licensed/run/data-readiness.json
 
       - name: Build causal features
         if: ${{ inputs.execute_historical_odds == true }}
