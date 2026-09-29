@@ -104,6 +104,18 @@ interface MarketHistoryReadiness {
   }>;
 }
 
+interface ProviderReadiness {
+  providers: {
+    oddsApi: boolean;
+    apiFootball: boolean;
+    sportmonks: boolean;
+  };
+  ml: {
+    serviceUrlConfigured: boolean;
+    modelMode: string;
+  };
+}
+
 interface Stats {
   totalUsers: number;
   totalBets: number;
@@ -195,6 +207,14 @@ export default function AdminPage() {
       },
       researchReady: false,
       byLeague: [],
+    }
+  );
+
+  const { data: providerReadiness } = useFetch<ProviderReadiness>(
+    "/api/admin/ml/providers",
+    {
+      providers: { oddsApi: false, apiFootball: false, sportmonks: false },
+      ml: { serviceUrlConfigured: false, modelMode: "baseline" },
     }
   );
 
@@ -621,6 +641,35 @@ export default function AdminPage() {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Licensed production data</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Secret-safe readiness for the commercial historical-training path.
+                </p>
+              </div>
+              <Badge variant="secondary">
+                {providerReadiness.ml.modelMode.toUpperCase()}
+              </Badge>
+            </div>
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+              {[
+                ["Sportmonks", providerReadiness.providers.sportmonks],
+                ["The Odds API", providerReadiness.providers.oddsApi],
+                ["API-Football", providerReadiness.providers.apiFootball],
+                ["ML Service", providerReadiness.ml.serviceUrlConfigured],
+              ].map(([label, ready]) => (
+                <div key={String(label)} className="rounded-lg bg-background/40 p-3">
+                  <p className="text-xs text-muted-foreground">{String(label)}</p>
+                  <p className={`mt-1 text-sm font-semibold ${ready ? "text-emerald-400" : "text-amber-400"}`}>
+                    {ready ? "Configured" : "Not configured"}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
 
           <div className="rounded-lg border border-border bg-secondary/20 p-4 space-y-3">
