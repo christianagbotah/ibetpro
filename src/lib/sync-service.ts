@@ -46,6 +46,10 @@ const SCORE_SETTLEMENT_MIN_QUOTA = parseInt(
   process.env.SCORE_SETTLEMENT_MIN_QUOTA || "50",
   10
 );
+const SCORE_SETTLEMENT_RETRY_INTERVAL_MS =
+  parseInt(process.env.SCORE_SETTLEMENT_RETRY_INTERVAL_MIN || "120", 10) *
+  60 *
+  1000;
 const SCORE_SETTLEMENT_STATE_KEY = "odds-api:completed-scores";
 
 async function syncOddsApiSettlements(): Promise<{
@@ -62,7 +66,7 @@ async function syncOddsApiSettlements(): Promise<{
 
   const state = await prisma.providerSyncState.findUnique({
     where: { key: SCORE_SETTLEMENT_STATE_KEY },
-    select: { lastSuccessAt: true },
+    select: { lastAttemptAt: true, lastSuccessAt: true },
   });
 
   // Discover newly resolvable matches before applying the idle freshness gate.
@@ -81,8 +85,37 @@ async function syncOddsApiSettlements(): Promise<{
     select: {
       externalId: true,
       sport: true,
+      commenceTime: true,
     },
   });
+
+  const earliestEligibleAt = unresolved.length
+    ? new Date(
+        Math.min(
+          ...unresolved.map(
+            (match) => match.commenceTime.getTime() + 90 * 60 * 1000
+          )
+        )
+      )
+    : null;
+
+  if (
+    unresolved.length > 0 &&
+    earliestEligibleAt &&
+    state?.lastAttemptAt &&
+    state.lastAttemptAt >= earliestEligibleAt &&
+    now.getTime() - state.lastAttemptAt.getTime() <
+      SCORE_SETTLEMENT_RETRY_INTERVAL_MS
+  ) {
+    return {
+      updated: 0,
+      calls: 0,
+      skipped: true,
+      reason: "Completed-score settlement retry backoff is still active",
+      errors,
+      affectedCompetitions: [],
+    };
+  }
 
   if (
     unresolved.length === 0 &&
