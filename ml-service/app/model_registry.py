@@ -37,6 +37,11 @@ class ModelBundle:
         return str(self.metadata.get("feature_profile", "core"))
 
     @property
+    def prediction_horizon(self) -> str | None:
+        value = self.metadata.get("prediction_horizon")
+        return str(value) if value in {"24h", "6h", "1h"} else None
+
+    @property
     def imputation(self) -> dict[str, float]:
         return {
             str(key): float(value)
@@ -183,6 +188,7 @@ def model_status() -> dict:
             "modelVersion": bundle.version if bundle else None,
             "features": len(bundle.feature_columns) if bundle else 0,
             "featureProfile": bundle.feature_profile if bundle else None,
+            "predictionHorizon": bundle.prediction_horizon if bundle else None,
             "selectivePolicy": {
                 "configured": bool(
                     bundle
