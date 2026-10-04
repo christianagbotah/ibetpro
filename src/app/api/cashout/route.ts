@@ -1,7 +1,10 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { shouldCashout } from "@/lib/ai-engine-v2";
-import { executeCashoutOnBroker, calculateCommission } from "@/lib/broker-integration";
+import {
+  executeCashoutOnBroker,
+  calculateCommission,
+} from "@/lib/broker-integration";
 import { config } from "@/lib/config";
 import { requireAuth } from "@/lib/session";
 import {
@@ -11,20 +14,87 @@ import {
 } from "@/lib/bet-exposure";
 import { syncOpenExposureForAccount } from "@/lib/allocation-exposure";
 
+const OPEN_CASHOUT_STATUSES = ["pending", "partial_cashout"];
+const CASHOUT_CLAIM_STATUS = "cashout_settling";
+
+type CashoutType = "full" | "partial";
+
+async function releaseCashoutClaim(
+  betId: string,
+  userId: string,
+  previousStatus: string
+) {
+  await prisma.bet.updateMany({
+    where: {
+      id: betId,
+      userId,
+      status: CASHOUT_CLAIM_STATUS,
+    },
+    data: { status: previousStatus },
+  });
+}
+
+async function logCashoutFailure(input: {
+  userId: string;
+  betId: string;
+  matchId: string;
+  action: string;
+  reasoning: string;
+  details?: Record<string, unknown>;
+}) {
+  try {
+    await prisma.botLog.create({
+      data: {
+        userId: input.userId,
+        action: input.action,
+        betId: input.betId,
+        matchId: input.matchId,
+        details: input.details ? JSON.stringify(input.details) : undefined,
+        reasoning: input.reasoning,
+      },
+    });
+  } catch (error) {
+    console.error("[Cashout] Failed to write recovery log:", error);
+  }
+}
+
+async function syncExposureBestEffort(userId: string, bettingAccountId: string) {
+  try {
+    await syncOpenExposureForAccount(userId, bettingAccountId);
+  } catch (error) {
+    console.error("[Cashout] Exposure sync failed after committed cashout:", error);
+  }
+}
+
 /**
- * Cashout Execution API v2
- * POST /api/cashout - Execute a cashout (full or partial) via broker, update allocation, process commission
- * GET /api/cashout - Get cashout recommendation for a bet
+ * Cashout Execution API v3
+ *
+ * Safety model:
+ * 1. Real-money cashout is fail-closed until a verified broker adapter is wired.
+ * 2. A conditional status update claims the bet before broker execution.
+ * 3. Broker failure releases the claim without changing local money state.
+ * 4. After broker acceptance, all local financial writes commit in one DB transaction.
+ * 5. If that local transaction fails after broker acceptance, the claim remains locked
+ *    for reconciliation so a retry cannot double-cashout or double-credit the user.
  */
 export async function POST(request: NextRequest) {
   try {
     const userId = await requireAuth();
-    const body = await request.json();
-    const { betId, cashoutType = "full" } = body;
+    const body = await request.json().catch(() => ({}));
+    const betId = typeof body?.betId === "string" ? body.betId : "";
+    const requestedType = body?.cashoutType ?? "full";
 
     if (!betId) {
       return NextResponse.json({ error: "Bet ID required" }, { status: 400 });
     }
+
+    if (requestedType !== "full" && requestedType !== "partial") {
+      return NextResponse.json(
+        { error: "cashoutType must be 'full' or 'partial'" },
+        { status: 400 }
+      );
+    }
+    const cashoutType: CashoutType = requestedType;
 
     const bet = await prisma.bet.findFirst({
       where: { id: betId, userId },
@@ -39,8 +109,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Bet not found" }, { status: 404 });
     }
 
-    if (bet.status !== "pending" && bet.status !== "partial_cashout") {
-      return NextResponse.json({ error: `Cannot cash out a bet with status: ${bet.status}` }, { status: 400 });
+    if (!OPEN_CASHOUT_STATUSES.includes(bet.status)) {
+      return NextResponse.json(
+        { error: `Cannot cash out a bet with status: ${bet.status}` },
+        { status: bet.status === CASHOUT_CLAIM_STATUS ? 409 : 400 }
+      );
     }
 
     if (bet.accumulatorId) {
@@ -61,7 +134,17 @@ export async function POST(request: NextRequest) {
     const userSettings = bet.user.settings;
     const bettingAccount = bet.bettingAccount;
 
-    // Get cashout recommendation from AI v2
+    if (userSettings?.brokerMode === "real") {
+      return NextResponse.json(
+        {
+          error:
+            "Real-money cashout is disabled until a verified broker cashout adapter confirms the external cashout.",
+          code: "REAL_CASHOUT_DISABLED",
+        },
+        { status: 409 }
+      );
+    }
+
     const cashoutRec = shouldCashout(
       {
         selection: bet.selection,
@@ -81,19 +164,49 @@ export async function POST(request: NextRequest) {
         sport: match.sport,
         status: match.status,
       },
-      userSettings ? {
-        autoCashoutEnabled: userSettings.autoCashoutEnabled,
-        cashoutThreshold: userSettings.cashoutThreshold,
-        waitFullSettlement: userSettings.waitFullSettlement,
-        partialCashoutEnabled: userSettings.partialCashoutEnabled,
-        partialCashoutPercent: userSettings.partialCashoutPercent,
-      } : undefined
+      userSettings
+        ? {
+            autoCashoutEnabled: userSettings.autoCashoutEnabled,
+            cashoutThreshold: userSettings.cashoutThreshold,
+            waitFullSettlement: userSettings.waitFullSettlement,
+            partialCashoutEnabled: userSettings.partialCashoutEnabled,
+            partialCashoutPercent: userSettings.partialCashoutPercent,
+          }
+        : undefined
     );
 
-    const now = new Date();
     const exposure = getRemainingExposure(bet);
+    const previousStatus = bet.status;
+    const now = new Date();
+    const commissionRate =
+      userSettings?.commissionRate ?? config.commission.defaultRate;
 
-    if (cashoutType === "partial" && cashoutRec.partialCashoutAmount > 0 && userSettings?.partialCashoutEnabled) {
+    let partialPercent = 0;
+    let partialAmount = 0;
+    let partialStakeCashedOut = 0;
+    let partialNewFraction = exposure.cashedOutFraction;
+    let partialOriginalFraction = 0;
+    let realizedGrossProfit = 0;
+    let partialCommission = 0;
+    let realizedNetProfit = 0;
+    let netPartialPayout = 0;
+
+    let cashoutAmount = 0;
+    let grossRemainingProfit = 0;
+    let commission = 0;
+    let netRemainingProfit = 0;
+    let netCashoutPayout = 0;
+    let totalBetProfit = 0;
+    let totalBetCommission = 0;
+
+    if (cashoutType === "partial") {
+      if (!userSettings?.partialCashoutEnabled) {
+        return NextResponse.json(
+          { error: "Partial cashout is not enabled for this account" },
+          { status: 409 }
+        );
+      }
+
       if (exposure.cashedOutFraction > 0) {
         return NextResponse.json(
           {
@@ -104,237 +217,32 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const partialPercent = userSettings?.partialCashoutPercent || 0.5;
+      partialAmount = money(Number(cashoutRec.partialCashoutAmount || 0));
+      if (!Number.isFinite(partialAmount) || partialAmount <= 0) {
+        return NextResponse.json(
+          {
+            error:
+              "No partial-cashout quote is currently available. The request was not converted to a full cashout.",
+          },
+          { status: 409 }
+        );
+      }
+
+      partialPercent = userSettings.partialCashoutPercent || 0.5;
       const partialSlice = getPartialCashoutSlice(bet, partialPercent);
-      const partialAmount = money(cashoutRec.partialCashoutAmount);
-      const realizedGrossProfit = money(
-        partialAmount - partialSlice.stakeCashedOutNow
-      );
+      partialStakeCashedOut = partialSlice.stakeCashedOutNow;
+      partialNewFraction = partialSlice.newCumulativeFraction;
+      partialOriginalFraction = partialSlice.originalStakeFraction;
+      realizedGrossProfit = money(partialAmount - partialStakeCashedOut);
       const commissionCalc = calculateCommission(
         Math.max(0, realizedGrossProfit),
-        userSettings?.commissionRate ?? config.commission.defaultRate
+        commissionRate
       );
-      const partialCommission =
+      partialCommission =
         realizedGrossProfit > 0 ? money(commissionCalc.commission) : 0;
-      const realizedNetProfit = money(
-        realizedGrossProfit - partialCommission
-      );
-      const netPartialPayout = money(partialAmount - partialCommission);
-
-      // Execute partial cashout on broker
-      if (bettingAccount.accessToken) {
-        const brokerCashout = await executeCashoutOnBroker(
-          bettingAccount.platform,
-          bettingAccount.accessToken,
-          `bet_${bet.id}`,
-          "partial",
-          partialPercent
-        );
-
-        if (!brokerCashout.success) {
-          await prisma.botLog.create({
-            data: {
-              userId: bet.userId,
-              action: "cashout_skipped",
-              betId: bet.id,
-              matchId: match.id,
-              reasoning: `Broker cashout failed: ${brokerCashout.error}`,
-            },
-          });
-          return NextResponse.json(
-            {
-              error:
-                "Broker cashout failed. Local records were not changed.",
-              brokerError: brokerCashout.error,
-            },
-            { status: 502 }
-          );
-        }
-      }
-
-      const cumulativeNetProfit = money(
-        (bet.profit || 0) + realizedNetProfit
-      );
-      const cumulativeCommission = money(
-        (bet.commission || 0) + partialCommission
-      );
-
-      const updatedBet = await prisma.bet.update({
-        where: { id: betId },
-        data: {
-          status: "partial_cashout",
-          partialCashoutAmount: money(
-            (bet.partialCashoutAmount || 0) + partialAmount
-          ),
-          partialCashoutPercent: partialSlice.newCumulativeFraction,
-          cashoutAmount: partialAmount,
-          profit: cumulativeNetProfit,
-          commission: cumulativeCommission,
-          cashedOutAt: now,
-          settlementReason: "partial_cashout",
-        },
-      });
-
-      // Realize this partial slice now; only the remaining exposure stays open.
-      await prisma.user.update({
-        where: { id: bet.userId },
-        data: {
-          balance: { increment: netPartialPayout },
-          totalProfit:
-            realizedNetProfit > 0
-              ? { increment: realizedNetProfit }
-              : undefined,
-          totalLoss:
-            realizedNetProfit < 0
-              ? { increment: Math.abs(realizedNetProfit) }
-              : undefined,
-          commissionPaid: { increment: partialCommission },
-          dailyPnl: { increment: realizedNetProfit },
-          weeklyPnl: { increment: realizedNetProfit },
-        },
-      });
-
-      // Update allocation
-      const activeAllocation = await prisma.allocation.findFirst({
-        where: { userId: bet.userId, bettingAccountId: bettingAccount.id, status: "active" },
-      });
-      if (activeAllocation) {
-        await prisma.allocation.update({
-          where: { id: activeAllocation.id },
-          data: {
-            remainingAmount: { increment: netPartialPayout },
-            profitFromAlloc: {
-              increment: realizedNetProfit,
-            },
-            commissionFromAlloc: { increment: partialCommission },
-          },
-        });
-      }
-
-      // Update betting account
-      await prisma.bettingAccount.update({
-        where: { id: bettingAccount.id },
-        data: {
-          allocatedAmount: { increment: netPartialPayout },
-          totalBrokerProfit: { increment: realizedNetProfit },
-        },
-      });
-
-      await prisma.transaction.create({
-        data: {
-          userId: bet.userId,
-          type: "partial_cashout",
-          amount: partialAmount,
-          currency: bettingAccount.currency || "USD",
-          status: "completed",
-          description: `Partial cashout via ${bettingAccount.platform}: ${match.homeTeam} vs ${match.awayTeam} - ${bet.selection} (${Math.round(partialSlice.originalStakeFraction * 100)}% of original stake)`,
-          betId: bet.id,
-        },
-      });
-
-      if (partialCommission > 0) {
-        await prisma.transaction.create({
-          data: {
-            userId: bet.userId,
-            type: "commission",
-            amount: -partialCommission,
-            currency: bettingAccount.currency || "USD",
-            status: "completed",
-            description: `Commission on realized partial-cashout profit: ${match.homeTeam} vs ${match.awayTeam}`,
-            betId: bet.id,
-          },
-        });
-
-        await prisma.commissionLedger.create({
-          data: {
-            userId: bet.userId,
-            bettingAccountId: bettingAccount.id,
-            betId: bet.id,
-            grossProfit: Math.max(0, realizedGrossProfit),
-            commissionRate:
-              userSettings?.commissionRate ?? config.commission.defaultRate,
-            commissionAmount: partialCommission,
-            netProfit: realizedNetProfit,
-            status: "pending",
-          },
-        });
-      }
-
-      await prisma.botLog.create({
-        data: {
-          userId: bet.userId,
-          action: "cashout_executed",
-          betId: bet.id,
-          matchId: match.id,
-          details: JSON.stringify({
-            type: "partial",
-            amount: partialAmount,
-            percent: partialPercent,
-            broker: bettingAccount.platform,
-          }),
-          reasoning: cashoutRec.reasoning,
-          confidence: cashoutRec.settlementProbability,
-          profitImpact: realizedNetProfit,
-        },
-      });
-
-      await syncOpenExposureForAccount(
-        bet.userId,
-        bettingAccount.id
-      );
-
-      return NextResponse.json({
-        success: true,
-        cashoutType: "partial",
-        amount: partialAmount,
-        netAmount: netPartialPayout,
-        realizedProfit: realizedNetProfit,
-        commission: partialCommission,
-        percent: partialSlice.originalStakeFraction,
-        remainingStake: money(
-          bet.stake * (1 - partialSlice.newCumulativeFraction)
-        ),
-        remainingPotentialWin: money(
-          bet.potentialWin * (1 - partialSlice.newCumulativeFraction)
-        ),
-        betStatus: updatedBet.status,
-        cashoutRec,
-      });
+      realizedNetProfit = money(realizedGrossProfit - partialCommission);
+      netPartialPayout = money(partialAmount - partialCommission);
     } else {
-      // Full cashout
-      const cashoutAmount = cashoutRec.cashoutAmount;
-
-      // Execute full cashout on broker
-      if (bettingAccount.accessToken) {
-        const brokerCashout = await executeCashoutOnBroker(
-          bettingAccount.platform,
-          bettingAccount.accessToken,
-          `bet_${bet.id}`,
-          "full"
-        );
-
-        if (!brokerCashout.success) {
-          await prisma.botLog.create({
-            data: {
-              userId: bet.userId,
-              action: "cashout_skipped",
-              betId: bet.id,
-              matchId: match.id,
-              reasoning: `Broker cashout failed: ${brokerCashout.error}`,
-            },
-          });
-          return NextResponse.json(
-            {
-              error:
-                "Broker cashout failed. Local records were not changed.",
-              brokerError: brokerCashout.error,
-            },
-            { status: 502 }
-          );
-        }
-      }
-
-      // Calculate the result on the remaining open exposure only.
       if (exposure.remainingStake <= 0) {
         return NextResponse.json(
           { error: "No remaining stake is available to cash out" },
@@ -342,179 +250,430 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const grossRemainingProfit = money(
-        cashoutAmount - exposure.remainingStake
-      );
+      cashoutAmount = money(Number(cashoutRec.cashoutAmount || 0));
+      if (!Number.isFinite(cashoutAmount) || cashoutAmount <= 0) {
+        return NextResponse.json(
+          { error: "No full-cashout quote is currently available" },
+          { status: 409 }
+        );
+      }
+
+      grossRemainingProfit = money(cashoutAmount - exposure.remainingStake);
       const commissionCalc = calculateCommission(
         Math.max(0, grossRemainingProfit),
-        userSettings?.commissionRate ?? config.commission.defaultRate
+        commissionRate
       );
-      const commission =
+      commission =
         grossRemainingProfit > 0 ? money(commissionCalc.commission) : 0;
-      const netRemainingProfit = money(
-        grossRemainingProfit - commission
-      );
-      const netCashoutPayout = money(cashoutAmount - commission);
-      const totalBetProfit = money(
-        (bet.profit || 0) + netRemainingProfit
-      );
-      const totalBetCommission = money(
-        (bet.commission || 0) + commission
-      );
+      netRemainingProfit = money(grossRemainingProfit - commission);
+      netCashoutPayout = money(cashoutAmount - commission);
+      totalBetProfit = money((bet.profit || 0) + netRemainingProfit);
+      totalBetCommission = money((bet.commission || 0) + commission);
+    }
 
-      const updatedBet = await prisma.bet.update({
-        where: { id: betId },
-        data: {
-          status: "cashed_out",
-          cashoutAmount,
-          cashoutOdds: cashoutAmount / exposure.remainingStake,
-          profit: totalBetProfit,
-          commission: totalBetCommission,
-          settledAt: now,
-          cashedOutAt: now,
-          settlementReason: "cashout",
+    const claim = await prisma.bet.updateMany({
+      where: {
+        id: bet.id,
+        userId,
+        status: previousStatus,
+      },
+      data: { status: CASHOUT_CLAIM_STATUS },
+    });
+
+    if (claim.count !== 1) {
+      return NextResponse.json(
+        {
+          error:
+            "This bet is already being settled or cashed out. No duplicate cashout was executed.",
         },
-      });
+        { status: 409 }
+      );
+    }
 
-      // Realize only the remaining slice. Any prior partial slice was already
-      // reflected in balance/P&L when that partial cashout executed.
-      await prisma.user.update({
-        where: { id: bet.userId },
-        data: {
-          balance: { increment: netCashoutPayout },
-          totalProfit:
-            netRemainingProfit > 0
-              ? { increment: netRemainingProfit }
-              : undefined,
-          totalLoss:
-            netRemainingProfit < 0
-              ? { increment: Math.abs(netRemainingProfit) }
-              : undefined,
-          commissionPaid: { increment: commission },
-          dailyPnl: { increment: netRemainingProfit },
-          weeklyPnl: { increment: netRemainingProfit },
-        },
-      });
+    let brokerAccepted = false;
+    if (bettingAccount.accessToken) {
+      try {
+        const brokerCashout = await executeCashoutOnBroker(
+          bettingAccount.platform,
+          bettingAccount.accessToken,
+          `bet_${bet.id}`,
+          cashoutType,
+          cashoutType === "partial" ? partialPercent : undefined
+        );
 
-      // Update allocation
-      const activeAllocation = await prisma.allocation.findFirst({
-        where: { userId: bet.userId, bettingAccountId: bettingAccount.id, status: "active" },
-      });
-      if (activeAllocation) {
-        await prisma.allocation.update({
-          where: { id: activeAllocation.id },
-          data: {
-            remainingAmount: { increment: netCashoutPayout },
-            profitFromAlloc: {
-              increment: netRemainingProfit,
+        if (!brokerCashout.success) {
+          await releaseCashoutClaim(bet.id, userId, previousStatus);
+          await logCashoutFailure({
+            userId,
+            betId: bet.id,
+            matchId: match.id,
+            action: "cashout_skipped",
+            reasoning: `Broker cashout failed: ${brokerCashout.error || "unknown broker error"}`,
+            details: { cashoutType },
+          });
+          return NextResponse.json(
+            {
+              error: "Broker cashout failed. Local records were not changed.",
+              brokerError: brokerCashout.error,
             },
-            commissionFromAlloc: { increment: commission },
-          },
-        });
-      }
-
-      // Update betting account
-      await prisma.bettingAccount.update({
-        where: { id: bettingAccount.id },
-        data: {
-          allocatedAmount: { increment: netCashoutPayout },
-          totalBrokerProfit: { increment: netRemainingProfit },
-        },
-      });
-
-      await prisma.transaction.create({
-        data: {
-          userId: bet.userId,
-          type: "cashout",
-          amount: cashoutAmount,
-          currency: bettingAccount.currency || "USD",
-          status: "completed",
-          description: `Cashout via ${bettingAccount.platform}: ${match.homeTeam} vs ${match.awayTeam} - ${bet.selection} @ ${bet.odds}`,
+            { status: 502 }
+          );
+        }
+        brokerAccepted = true;
+      } catch (error) {
+        await releaseCashoutClaim(bet.id, userId, previousStatus);
+        const reason =
+          error instanceof Error ? error.message : "Unknown broker cashout error";
+        await logCashoutFailure({
+          userId,
           betId: bet.id,
-        },
-      });
-
-      // Process commission if profit was made
-      if (commission > 0) {
-        await prisma.transaction.create({
-          data: {
-            userId: bet.userId,
-            type: "commission",
-            amount: -commission,
-            currency: bettingAccount.currency || "USD",
-            status: "completed",
-            description: `Commission ${Math.round((userSettings?.commissionRate ?? config.commission.defaultRate) * 100)}% on $${Math.max(0, grossRemainingProfit).toFixed(2)} remaining profit via ${bettingAccount.platform}`,
-            betId: bet.id,
-          },
+          matchId: match.id,
+          action: "cashout_skipped",
+          reasoning: `Broker cashout failed: ${reason}`,
+          details: { cashoutType },
         });
-
-        // Create commission ledger entry
-        await prisma.commissionLedger.create({
-          data: {
-            userId: bet.userId,
-            bettingAccountId: bettingAccount.id,
-            betId: bet.id,
-            grossProfit: Math.max(0, grossRemainingProfit),
-            commissionRate: userSettings?.commissionRate ?? config.commission.defaultRate,
-            commissionAmount: commission,
-            netProfit: netRemainingProfit,
-            status: "pending",
+        return NextResponse.json(
+          {
+            error: "Broker cashout failed. Local records were not changed.",
+            brokerError: reason,
           },
-        });
+          { status: 502 }
+        );
       }
+    }
 
-      // Update accumulator if part of one
-      if (bet.accumulatorId) {
-        const accumulator = await prisma.accumulator.findUnique({
-          where: { id: bet.accumulatorId },
-          include: { bets: true },
-        });
+    try {
+      if (cashoutType === "partial") {
+        const updatedBet = await prisma.$transaction(async (tx) => {
+          const claimedBet = await tx.bet.findFirst({
+            where: {
+              id: bet.id,
+              userId,
+              status: CASHOUT_CLAIM_STATUS,
+            },
+            select: { id: true },
+          });
+          if (!claimedBet) {
+            throw new Error("Cashout claim was lost before local commit");
+          }
 
-        if (accumulator) {
-          const allLegsCashedOut = accumulator.bets.every(
-            (b) => b.status === "cashed_out" || b.id === betId
+          const cumulativeNetProfit = money(
+            (bet.profit || 0) + realizedNetProfit
+          );
+          const cumulativeCommission = money(
+            (bet.commission || 0) + partialCommission
           );
 
-          await prisma.accumulator.update({
-            where: { id: bet.accumulatorId },
+          const updated = await tx.bet.update({
+            where: { id: bet.id },
             data: {
-              status: allLegsCashedOut ? "cashed_out" : accumulator.status,
-              cashoutAmount: (accumulator.cashoutAmount || 0) + cashoutAmount,
-              profit: allLegsCashedOut ? (accumulator.profit || 0) + netRemainingProfit : accumulator.profit,
-              commission: (accumulator.commission || 0) + commission,
-              settledAt: allLegsCashedOut ? now : undefined,
+              status: "partial_cashout",
+              partialCashoutAmount: money(
+                (bet.partialCashoutAmount || 0) + partialAmount
+              ),
+              partialCashoutPercent: partialNewFraction,
+              cashoutAmount: partialAmount,
+              profit: cumulativeNetProfit,
+              commission: cumulativeCommission,
               cashedOutAt: now,
+              settlementReason: "partial_cashout",
+            },
+          });
+
+          await tx.user.update({
+            where: { id: userId },
+            data: {
+              balance: { increment: netPartialPayout },
+              totalProfit:
+                realizedNetProfit > 0
+                  ? { increment: realizedNetProfit }
+                  : undefined,
+              totalLoss:
+                realizedNetProfit < 0
+                  ? { increment: Math.abs(realizedNetProfit) }
+                  : undefined,
+              commissionPaid:
+                partialCommission > 0
+                  ? { increment: partialCommission }
+                  : undefined,
+              dailyPnl:
+                realizedNetProfit !== 0
+                  ? { increment: realizedNetProfit }
+                  : undefined,
+              weeklyPnl:
+                realizedNetProfit !== 0
+                  ? { increment: realizedNetProfit }
+                  : undefined,
+            },
+          });
+
+          const activeAllocation = await tx.allocation.findFirst({
+            where: {
+              userId,
+              bettingAccountId: bettingAccount.id,
+              status: "active",
+            },
+          });
+          if (activeAllocation) {
+            await tx.allocation.update({
+              where: { id: activeAllocation.id },
+              data: {
+                remainingAmount: { increment: netPartialPayout },
+                profitFromAlloc:
+                  realizedNetProfit !== 0
+                    ? { increment: realizedNetProfit }
+                    : undefined,
+                commissionFromAlloc:
+                  partialCommission > 0
+                    ? { increment: partialCommission }
+                    : undefined,
+              },
+            });
+          }
+
+          await tx.bettingAccount.update({
+            where: { id: bettingAccount.id },
+            data: {
+              allocatedAmount: { increment: netPartialPayout },
+              totalBrokerProfit:
+                realizedNetProfit !== 0
+                  ? { increment: realizedNetProfit }
+                  : undefined,
+            },
+          });
+
+          await tx.transaction.create({
+            data: {
+              userId,
+              type: "partial_cashout",
+              amount: partialAmount,
+              currency: bettingAccount.currency || "USD",
+              status: "completed",
+              description: `Partial cashout via ${bettingAccount.platform}: ${match.homeTeam} vs ${match.awayTeam} - ${bet.selection} (${Math.round(partialOriginalFraction * 100)}% of original stake)`,
+              betId: bet.id,
+            },
+          });
+
+          if (partialCommission > 0) {
+            await tx.transaction.create({
+              data: {
+                userId,
+                type: "commission",
+                amount: -partialCommission,
+                currency: bettingAccount.currency || "USD",
+                status: "completed",
+                description: `Commission on realized partial-cashout profit: ${match.homeTeam} vs ${match.awayTeam}`,
+                betId: bet.id,
+              },
+            });
+
+            await tx.commissionLedger.create({
+              data: {
+                userId,
+                bettingAccountId: bettingAccount.id,
+                betId: bet.id,
+                grossProfit: Math.max(0, realizedGrossProfit),
+                commissionRate,
+                commissionAmount: partialCommission,
+                netProfit: realizedNetProfit,
+                status: "pending",
+              },
+            });
+          }
+
+          await tx.botLog.create({
+            data: {
+              userId,
+              action: "cashout_executed",
+              betId: bet.id,
+              matchId: match.id,
+              details: JSON.stringify({
+                type: "partial",
+                amount: partialAmount,
+                percent: partialPercent,
+                broker: bettingAccount.platform,
+                atomic: true,
+              }),
+              reasoning: cashoutRec.reasoning,
+              confidence: cashoutRec.settlementProbability,
+              profitImpact: realizedNetProfit,
+            },
+          });
+
+          return updated;
+        });
+
+        await syncExposureBestEffort(userId, bettingAccount.id);
+
+        return NextResponse.json({
+          success: true,
+          cashoutType: "partial",
+          amount: partialAmount,
+          netAmount: netPartialPayout,
+          realizedProfit: realizedNetProfit,
+          commission: partialCommission,
+          percent: partialOriginalFraction,
+          remainingStake: money(
+            bet.stake * (1 - partialNewFraction)
+          ),
+          remainingPotentialWin: money(
+            bet.potentialWin * (1 - partialNewFraction)
+          ),
+          betStatus: updatedBet.status,
+          cashoutRec,
+        });
+      }
+
+      const updatedBet = await prisma.$transaction(async (tx) => {
+        const claimedBet = await tx.bet.findFirst({
+          where: {
+            id: bet.id,
+            userId,
+            status: CASHOUT_CLAIM_STATUS,
+          },
+          select: { id: true },
+        });
+        if (!claimedBet) {
+          throw new Error("Cashout claim was lost before local commit");
+        }
+
+        const updated = await tx.bet.update({
+          where: { id: bet.id },
+          data: {
+            status: "cashed_out",
+            cashoutAmount,
+            cashoutOdds: cashoutAmount / exposure.remainingStake,
+            profit: totalBetProfit,
+            commission: totalBetCommission,
+            settledAt: now,
+            cashedOutAt: now,
+            settlementReason: "cashout",
+          },
+        });
+
+        await tx.user.update({
+          where: { id: userId },
+          data: {
+            balance: { increment: netCashoutPayout },
+            totalProfit:
+              netRemainingProfit > 0
+                ? { increment: netRemainingProfit }
+                : undefined,
+            totalLoss:
+              netRemainingProfit < 0
+                ? { increment: Math.abs(netRemainingProfit) }
+                : undefined,
+            commissionPaid:
+              commission > 0 ? { increment: commission } : undefined,
+            dailyPnl:
+              netRemainingProfit !== 0
+                ? { increment: netRemainingProfit }
+                : undefined,
+            weeklyPnl:
+              netRemainingProfit !== 0
+                ? { increment: netRemainingProfit }
+                : undefined,
+          },
+        });
+
+        const activeAllocation = await tx.allocation.findFirst({
+          where: {
+            userId,
+            bettingAccountId: bettingAccount.id,
+            status: "active",
+          },
+        });
+        if (activeAllocation) {
+          await tx.allocation.update({
+            where: { id: activeAllocation.id },
+            data: {
+              remainingAmount: { increment: netCashoutPayout },
+              profitFromAlloc:
+                netRemainingProfit !== 0
+                  ? { increment: netRemainingProfit }
+                  : undefined,
+              commissionFromAlloc:
+                commission > 0 ? { increment: commission } : undefined,
             },
           });
         }
-      }
 
-      await prisma.botLog.create({
-        data: {
-          userId: bet.userId,
-          action: "cashout_executed",
-          betId: bet.id,
-          matchId: match.id,
-          accumulatorId: bet.accumulatorId,
-          details: JSON.stringify({
-            type: "full",
-            cashoutAmount,
-            profit: netRemainingProfit,
-            commission,
-            urgency: cashoutRec.urgency,
-            broker: bettingAccount.platform,
-            aiDecision: cashoutRec.aiDecision.action,
-          }),
-          reasoning: cashoutRec.reasoning,
-          confidence: cashoutRec.settlementProbability,
-          profitImpact: netRemainingProfit,
-        },
+        await tx.bettingAccount.update({
+          where: { id: bettingAccount.id },
+          data: {
+            allocatedAmount: { increment: netCashoutPayout },
+            totalBrokerProfit:
+              netRemainingProfit !== 0
+                ? { increment: netRemainingProfit }
+                : undefined,
+          },
+        });
+
+        await tx.transaction.create({
+          data: {
+            userId,
+            type: "cashout",
+            amount: cashoutAmount,
+            currency: bettingAccount.currency || "USD",
+            status: "completed",
+            description: `Cashout via ${bettingAccount.platform}: ${match.homeTeam} vs ${match.awayTeam} - ${bet.selection} @ ${bet.odds}`,
+            betId: bet.id,
+          },
+        });
+
+        if (commission > 0) {
+          await tx.transaction.create({
+            data: {
+              userId,
+              type: "commission",
+              amount: -commission,
+              currency: bettingAccount.currency || "USD",
+              status: "completed",
+              description: `Commission ${Math.round(commissionRate * 100)}% on ${Math.max(0, grossRemainingProfit).toFixed(2)} remaining profit via ${bettingAccount.platform}`,
+              betId: bet.id,
+            },
+          });
+
+          await tx.commissionLedger.create({
+            data: {
+              userId,
+              bettingAccountId: bettingAccount.id,
+              betId: bet.id,
+              grossProfit: Math.max(0, grossRemainingProfit),
+              commissionRate,
+              commissionAmount: commission,
+              netProfit: netRemainingProfit,
+              status: "pending",
+            },
+          });
+        }
+
+        await tx.botLog.create({
+          data: {
+            userId,
+            action: "cashout_executed",
+            betId: bet.id,
+            matchId: match.id,
+            details: JSON.stringify({
+              type: "full",
+              cashoutAmount,
+              profit: netRemainingProfit,
+              commission,
+              urgency: cashoutRec.urgency,
+              broker: bettingAccount.platform,
+              aiDecision: cashoutRec.aiDecision.action,
+              atomic: true,
+            }),
+            reasoning: cashoutRec.reasoning,
+            confidence: cashoutRec.settlementProbability,
+            profitImpact: netRemainingProfit,
+          },
+        });
+
+        return updated;
       });
 
-      await syncOpenExposureForAccount(
-        bet.userId,
-        bettingAccount.id
-      );
+      await syncExposureBestEffort(userId, bettingAccount.id);
 
       return NextResponse.json({
         success: true,
@@ -528,6 +687,35 @@ export async function POST(request: NextRequest) {
         betStatus: updatedBet.status,
         cashoutRec,
       });
+    } catch (error) {
+      const reason =
+        error instanceof Error ? error.message : "Unknown local cashout error";
+
+      if (!brokerAccepted) {
+        await releaseCashoutClaim(bet.id, userId, previousStatus);
+      } else {
+        await logCashoutFailure({
+          userId,
+          betId: bet.id,
+          matchId: match.id,
+          action: "cashout_reconciliation_required",
+          reasoning:
+            "Broker accepted cashout but the local accounting transaction failed. The bet remains locked to prevent duplicate cashout.",
+          details: { cashoutType, localError: reason },
+        });
+      }
+
+      return NextResponse.json(
+        {
+          error: brokerAccepted
+            ? "Broker accepted the cashout, but local accounting requires reconciliation. The bet is locked and cannot be cashed out again."
+            : "Cashout accounting failed. The claim was released and no local money change was committed.",
+          code: brokerAccepted
+            ? "CASHOUT_RECONCILIATION_REQUIRED"
+            : "CASHOUT_LOCAL_COMMIT_FAILED",
+        },
+        { status: 500 }
+      );
     }
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
@@ -576,6 +764,28 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
 
+    if (bet.user.settings?.brokerMode === "real") {
+      return NextResponse.json({
+        betId,
+        canCashout: false,
+        reason:
+          "Real-money cashout is disabled until verified broker cashout execution is enabled.",
+        realExecutionEnabled: false,
+      });
+    }
+
+    if (!OPEN_CASHOUT_STATUSES.includes(bet.status)) {
+      return NextResponse.json({
+        betId,
+        betStatus: bet.status,
+        canCashout: false,
+        reason:
+          bet.status === CASHOUT_CLAIM_STATUS
+            ? "Cashout is already in progress or awaiting reconciliation."
+            : `Bet status ${bet.status} is not cashout-eligible.`,
+      });
+    }
+
     const match = bet.match;
     const userSettings = bet.user.settings;
 
@@ -598,19 +808,26 @@ export async function GET(request: NextRequest) {
         sport: match.sport,
         status: match.status,
       },
-      userSettings ? {
-        autoCashoutEnabled: userSettings.autoCashoutEnabled,
-        cashoutThreshold: userSettings.cashoutThreshold,
-        waitFullSettlement: userSettings.waitFullSettlement,
-        partialCashoutEnabled: userSettings.partialCashoutEnabled,
-        partialCashoutPercent: userSettings.partialCashoutPercent,
-      } : undefined
+      userSettings
+        ? {
+            autoCashoutEnabled: userSettings.autoCashoutEnabled,
+            cashoutThreshold: userSettings.cashoutThreshold,
+            waitFullSettlement: userSettings.waitFullSettlement,
+            partialCashoutEnabled: userSettings.partialCashoutEnabled,
+            partialCashoutPercent: userSettings.partialCashoutPercent,
+          }
+        : undefined
     );
 
     return NextResponse.json({
       betId,
       betStatus: bet.status,
       broker: bet.bettingAccount?.platform || "unknown",
+      canCashout: Number(cashoutRec.cashoutAmount || 0) > 0,
+      partialCashoutAvailable:
+        Boolean(userSettings?.partialCashoutEnabled) &&
+        Number(cashoutRec.partialCashoutAmount || 0) > 0 &&
+        getRemainingExposure(bet).cashedOutFraction === 0,
       matchStatus: {
         homeScore: match.homeScore,
         awayScore: match.awayScore,
@@ -624,6 +841,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
     console.error("Cashout evaluation error:", error);
-    return NextResponse.json({ error: "Failed to evaluate cashout" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to evaluate cashout" },
+      { status: 500 }
+    );
   }
 }
