@@ -10,7 +10,10 @@ import { requireAuth } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 import { botEngine } from "@/lib/bot-engine";
 import { countTickets, sumTicketStake } from "@/lib/bet-accounting";
-import { getRiskPeriodPnl } from "@/lib/risk-period-pnl";
+import {
+  getAutoRealizedPnlSince,
+  getRiskPeriodPnl,
+} from "@/lib/risk-period-pnl";
 
 export async function GET() {
   try {
@@ -36,7 +39,7 @@ export async function GET() {
 
     const periodPnl = await getRiskPeriodPnl(userId, settings?.timezone);
     const todayStart = periodPnl.dayStart;
-    const [todayBets, todayAccumulatorProfit] = await Promise.all([
+    const [todayBets, todayAutoProfit] = await Promise.all([
       prisma.bet.findMany({
         where: {
           userId,
@@ -44,23 +47,11 @@ export async function GET() {
           placedAt: { gte: todayStart },
         },
       }),
-      prisma.accumulator.aggregate({
-        where: {
-          userId,
-          isAutoPlaced: true,
-          placedAt: { gte: todayStart },
-        },
-        _sum: { profit: true },
-      }),
+      getAutoRealizedPnlSince(userId, todayStart),
     ]);
 
     const todayAutoStake = sumTicketStake(todayBets);
     const todayAutoBetCount = countTickets(todayBets);
-    const todayStandaloneProfit = todayBets
-      .filter((bet) => !bet.accumulatorId)
-      .reduce((sum, bet) => sum + (bet.profit || 0), 0);
-    const todayAutoProfit =
-      todayStandaloneProfit + (todayAccumulatorProfit._sum.profit || 0);
 
     const engineStats = botEngine.getStatus(userId);
     const isAuto = settings?.botMode === "auto";

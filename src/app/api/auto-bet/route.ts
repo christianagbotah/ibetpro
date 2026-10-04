@@ -3,7 +3,10 @@ import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/session";
 import { runAutoBetCycle } from "@/lib/risk-aware-auto-bet-runner";
 import { countTickets, sumTicketStake } from "@/lib/bet-accounting";
-import { getRiskPeriodPnl } from "@/lib/risk-period-pnl";
+import {
+  getAutoRealizedPnlSince,
+  getRiskPeriodPnl,
+} from "@/lib/risk-period-pnl";
 
 /**
  * POST /api/auto-bet - execute one atomic Demo AUTO scan.
@@ -64,16 +67,9 @@ export async function GET() {
       include: { match: true, bettingAccount: true },
     });
 
-    const [todayAccumulatorProfit, activeAllocation, todayCommission] =
+    const [todayAutoProfit, activeAllocation, todayCommission] =
       await Promise.all([
-        prisma.accumulator.aggregate({
-          where: {
-            userId,
-            isAutoPlaced: true,
-            placedAt: { gte: todayStart },
-          },
-          _sum: { profit: true },
-        }),
+        getAutoRealizedPnlSince(userId, todayStart),
         prisma.allocation.findFirst({
           where: { userId, status: "active" },
           include: { bettingAccount: true },
@@ -88,11 +84,6 @@ export async function GET() {
 
     const todayAutoBets = countTickets(todayBets);
     const todayAutoStake = sumTicketStake(todayBets);
-    const todayStandaloneProfit = todayBets
-      .filter((bet) => !bet.accumulatorId)
-      .reduce((sum, bet) => sum + (bet.profit || 0), 0);
-    const todayAutoProfit =
-      todayStandaloneProfit + (todayAccumulatorProfit._sum.profit || 0);
 
     return NextResponse.json({
       status: user.settings.autoBettingEnabled ? "active" : "inactive",
