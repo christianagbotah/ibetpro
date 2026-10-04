@@ -80,14 +80,15 @@ CORE_STATS_FEATURE_COLUMNS = [
 ]
 
 MARKET_MOVEMENT_FEATURE_COLUMNS = [
-    "opening_home_market_prob",
-    "opening_draw_market_prob",
-    "opening_away_market_prob",
-    "opening_market_overround",
+    "market_snapshot_count",
+    "market_history_minutes",
     "home_market_prob_move_open",
     "draw_market_prob_move_open",
     "away_market_prob_move_open",
     "market_overround_move_open",
+    "home_market_prob_move_6h",
+    "draw_market_prob_move_6h",
+    "away_market_prob_move_6h",
 ]
 
 ENRICHED_FEATURE_COLUMNS = [
@@ -108,9 +109,11 @@ def feature_columns(profile: str) -> list[str]:
     if profile == "core_stats":
         return [*CORE_FEATURE_COLUMNS, *CORE_STATS_FEATURE_COLUMNS]
     if profile == "market_movement":
+        # This profile must be reproducible from the first-party online
+        # Odds API capture alone. Rich fixture statistics belong to
+        # core_stats/enriched and must not be silently required here.
         return [
             *CORE_FEATURE_COLUMNS,
-            *CORE_STATS_FEATURE_COLUMNS,
             *MARKET_MOVEMENT_FEATURE_COLUMNS,
         ]
     if profile == "enriched":
