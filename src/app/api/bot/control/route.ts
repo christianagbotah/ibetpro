@@ -35,19 +35,36 @@ export async function GET() {
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    const todayBets = await prisma.bet.findMany({
-      where: {
-        userId,
-        isAutoPlaced: true,
-        placedAt: { gte: todayStart },
-      },
-    });
+    const [todayBets, todayAccumulatorProfit] = await Promise.all([
+      prisma.bet.findMany({
+        where: {
+          userId,
+          isAutoPlaced: true,
+          placedAt: { gte: todayStart },
+        },
+      }),
+      prisma.accumulator.aggregate({
+        where: {
+          userId,
+          isAutoPlaced: true,
+          placedAt: { gte: todayStart },
+          status: { in: ["won", "cashed_out"] },
+        },
+        _sum: { profit: true },
+      }),
+    ]);
 
     const todayAutoStake = sumTicketStake(todayBets);
     const todayAutoBetCount = countTickets(todayBets);
-    const todayAutoProfit = todayBets
-      .filter((bet) => bet.status === "won" || bet.status === "cashed_out")
+    const todayStandaloneProfit = todayBets
+      .filter(
+        (bet) =>
+          !bet.accumulatorId &&
+          (bet.status === "won" || bet.status === "cashed_out")
+      )
       .reduce((sum, bet) => sum + (bet.profit || 0), 0);
+    const todayAutoProfit =
+      todayStandaloneProfit + (todayAccumulatorProfit._sum.profit || 0);
 
     const engineStats = botEngine.getStatus(userId);
     const isAuto = settings?.botMode === "auto";
@@ -126,10 +143,16 @@ export async function GET() {
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
     }
     console.error("Bot status error:", error);
-    return NextResponse.json({ error: "Failed to fetch bot status" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch bot status" },
+      { status: 500 }
+    );
   }
 }
 
@@ -224,7 +247,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         success: true,
         botStatus: "running",
-        engineMode: settings.botMode === "auto" ? "atomic-v1" : "advisor-legacy",
+        engineMode:
+          settings.botMode === "auto" ? "atomic-v1" : "advisor-legacy",
         message: result.message,
         engineRunning: true,
       });
@@ -260,10 +284,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid action" }, { status: 400 });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
     }
     console.error("Bot control error:", error);
-    return NextResponse.json({ error: "Failed to control bot" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to control bot" },
+      { status: 500 }
+    );
   }
 }
 
@@ -311,7 +341,10 @@ export async function PATCH() {
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
     }
     console.error("Bot scan error:", error);
     return NextResponse.json({ error: "Scan failed" }, { status: 500 });
