@@ -9,6 +9,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 import { botEngine } from "@/lib/bot-engine";
+import { countTickets, sumTicketStake } from "@/lib/bet-accounting";
 
 /**
  * GET - Get current bot session status
@@ -41,10 +42,11 @@ export async function GET() {
       },
     });
 
-    const todayAutoStake = todayBets.reduce((sum, b) => sum + b.stake, 0);
+    const todayAutoStake = sumTicketStake(todayBets);
+    const todayAutoBetCount = countTickets(todayBets);
     const todayAutoProfit = todayBets
-      .filter((b) => b.status === "won" || b.status === "cashed_out")
-      .reduce((sum, b) => sum + (b.profit || 0), 0);
+      .filter((bet) => bet.status === "won" || bet.status === "cashed_out")
+      .reduce((sum, bet) => sum + (bet.profit || 0), 0);
 
     const connectedAccount = await prisma.bettingAccount.findFirst({
       where: { userId, isConnected: true },
@@ -60,34 +62,39 @@ export async function GET() {
     return NextResponse.json({
       botStatus: session?.status || "stopped",
       engineRunning: botEngine.isRunning(userId),
-      session: session ? {
-        id: session.id,
-        startedAt: session.startedAt,
-        totalScans: session.totalScans,
-        totalBetsPlaced: session.totalBetsPlaced,
-        totalStakeUsed: session.totalStakeUsed,
-        totalProfit: session.totalProfit,
-        lastScanAt: session.lastScanAt,
-        lastBetAt: session.lastBetAt,
-        scanIntervalSec: session.scanIntervalSec,
-        stopReason: session.stopReason,
-      } : null,
-      engineStats: engineStats ? {
-        totalScans: engineStats.totalScans,
-        totalBetsPlaced: engineStats.totalBetsPlaced,
-        totalStakeUsed: engineStats.totalStakeUsed,
-        totalProfit: engineStats.totalProfit,
-        lastScanAt: engineStats.lastScanAt,
-        lastBetAt: engineStats.lastBetAt,
-        startedAt: engineStats.startedAt,
-        errorCount: engineStats.errorCount,
-        lastError: engineStats.lastError,
-      } : null,
+      session: session
+        ? {
+            id: session.id,
+            startedAt: session.startedAt,
+            totalScans: session.totalScans,
+            totalBetsPlaced: session.totalBetsPlaced,
+            totalStakeUsed: session.totalStakeUsed,
+            totalProfit: session.totalProfit,
+            lastScanAt: session.lastScanAt,
+            lastBetAt: session.lastBetAt,
+            scanIntervalSec: session.scanIntervalSec,
+            stopReason: session.stopReason,
+          }
+        : null,
+      engineStats: engineStats
+        ? {
+            totalScans: engineStats.totalScans,
+            totalBetsPlaced: engineStats.totalBetsPlaced,
+            totalStakeUsed: engineStats.totalStakeUsed,
+            totalProfit: engineStats.totalProfit,
+            lastScanAt: engineStats.lastScanAt,
+            lastBetAt: engineStats.lastBetAt,
+            startedAt: engineStats.startedAt,
+            errorCount: engineStats.errorCount,
+            lastError: engineStats.lastError,
+          }
+        : null,
       settings: {
         autoBettingEnabled: settings?.autoBettingEnabled ?? true,
         brokerMode: settings?.brokerMode ?? "demo",
         botMode: settings?.botMode ?? "advisor",
         realExecutionEnabled: false,
+        backgroundAutoExecutionEnabled: false,
         riskLevel: settings?.riskLevel ?? "medium",
         dailyBetLimit: settings?.dailyBetLimit ?? 500,
         stopLossDaily: settings?.stopLossDaily ?? 200,
@@ -96,17 +103,21 @@ export async function GET() {
         betScheduleEnd: settings?.betScheduleEnd ?? "22:00",
       },
       todayStats: {
-        betsPlaced: todayBets.length,
+        betsPlaced: todayAutoBetCount,
         totalStake: todayAutoStake,
         profit: todayAutoProfit,
       },
-      allocation: activeAllocation ? {
-        remaining: activeAllocation.remainingAmount,
-        used: activeAllocation.usedAmount,
-      } : connectedAccount ? {
-        remaining: connectedAccount.allocatedAmount,
-        used: 0,
-      } : null,
+      allocation: activeAllocation
+        ? {
+            remaining: activeAllocation.remainingAmount,
+            used: activeAllocation.usedAmount,
+          }
+        : connectedAccount
+          ? {
+              remaining: connectedAccount.allocatedAmount,
+              used: 0,
+            }
+          : null,
       hasConnectedBroker: !!connectedAccount,
       recentLogs: recentLogs.map((log) => ({
         id: log.id,
@@ -137,7 +148,10 @@ export async function POST(request: NextRequest) {
     const { action, scanIntervalSec } = body;
 
     if (!action || !["start", "stop"].includes(action)) {
-      return NextResponse.json({ error: "Action must be 'start' or 'stop'" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Action must be 'start' or 'stop'" },
+        { status: 400 }
+      );
     }
 
     if (action === "start") {
@@ -146,13 +160,15 @@ export async function POST(request: NextRequest) {
         select: { brokerMode: true, botMode: true, autoBettingEnabled: true },
       });
 
-      if (settings?.brokerMode === "real" && settings.botMode === "auto") {
+      if (settings?.botMode === "auto") {
         return NextResponse.json(
           {
             error:
-              "Automated real-money execution is not enabled yet. Switch the bot to Advisor mode or use Demo broker mode.",
+              "Background AUTO execution is temporarily fail-closed while its scheduler is migrated to atomic placement/cashout accounting. Use Advisor mode; atomic on-demand auto-betting remains available in Demo mode.",
+            code: "BACKGROUND_AUTO_ACCOUNTING_GUARD",
             botStatus: "stopped",
             realExecutionEnabled: false,
+            backgroundAutoExecutionEnabled: false,
           },
           { status: 409 }
         );
@@ -194,7 +210,11 @@ export async function POST(request: NextRequest) {
       if (!result.success) {
         await prisma.botSession.update({
           where: { userId },
-          data: { status: "stopped", stoppedAt: new Date(), stopReason: "start_failed" },
+          data: {
+            status: "stopped",
+            stoppedAt: new Date(),
+            stopReason: "start_failed",
+          },
         });
         return NextResponse.json({ error: result.message }, { status: 400 });
       }
@@ -220,14 +240,16 @@ export async function POST(request: NextRequest) {
         engineRunning: false,
         sessionSummary: {
           totalScans: engineStats?.totalScans || session?.totalScans || 0,
-          totalBetsPlaced: engineStats?.totalBetsPlaced || session?.totalBetsPlaced || 0,
-          totalStakeUsed: engineStats?.totalStakeUsed || session?.totalStakeUsed || 0,
+          totalBetsPlaced:
+            engineStats?.totalBetsPlaced || session?.totalBetsPlaced || 0,
+          totalStakeUsed:
+            engineStats?.totalStakeUsed || session?.totalStakeUsed || 0,
           totalProfit: engineStats?.totalProfit || session?.totalProfit || 0,
           runDuration: engineStats?.startedAt
             ? Math.round((Date.now() - engineStats.startedAt.getTime()) / 60000)
             : session?.startedAt
-            ? Math.round((Date.now() - session.startedAt.getTime()) / 60000)
-            : 0,
+              ? Math.round((Date.now() - session.startedAt.getTime()) / 60000)
+              : 0,
         },
       });
     }
@@ -255,7 +277,10 @@ export async function PATCH() {
     const session = await prisma.botSession.findUnique({ where: { userId } });
 
     if (!engineRunning && (!session || session.status !== "running")) {
-      return NextResponse.json({ botStatus: "stopped", message: "Bot is not running" });
+      return NextResponse.json({
+        botStatus: "stopped",
+        message: "Bot is not running",
+      });
     }
 
     const engineStats = botEngine.getStatus(userId);
@@ -266,21 +291,25 @@ export async function PATCH() {
       message: engineRunning
         ? "Bot is running in the background. Next scan will happen automatically."
         : "Bot session is active but engine is not running. Try restarting the bot.",
-      engineStats: engineStats ? {
-        totalScans: engineStats.totalScans,
-        totalBetsPlaced: engineStats.totalBetsPlaced,
-        totalStakeUsed: engineStats.totalStakeUsed,
-        lastScanAt: engineStats.lastScanAt,
-        lastBetAt: engineStats.lastBetAt,
-        errorCount: engineStats.errorCount,
-      } : null,
-      sessionStats: session ? {
-        totalScans: session.totalScans,
-        totalBetsPlaced: session.totalBetsPlaced,
-        totalStakeUsed: session.totalStakeUsed,
-        lastScanAt: session.lastScanAt,
-        lastBetAt: session.lastBetAt,
-      } : null,
+      engineStats: engineStats
+        ? {
+            totalScans: engineStats.totalScans,
+            totalBetsPlaced: engineStats.totalBetsPlaced,
+            totalStakeUsed: engineStats.totalStakeUsed,
+            lastScanAt: engineStats.lastScanAt,
+            lastBetAt: engineStats.lastBetAt,
+            errorCount: engineStats.errorCount,
+          }
+        : null,
+      sessionStats: session
+        ? {
+            totalScans: session.totalScans,
+            totalBetsPlaced: session.totalBetsPlaced,
+            totalStakeUsed: session.totalStakeUsed,
+            lastScanAt: session.lastScanAt,
+            lastBetAt: session.lastBetAt,
+          }
+        : null,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
