@@ -1,0 +1,51 @@
+name: One-time AUTO Day Boundary Patch
+
+on:
+  push:
+    branches:
+      - work/betting-ticket-summary-20261004
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Align AUTO daily stake boundary to user timezone
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+
+          p = Path("src/lib/auto-bet-runner.ts")
+          s = p.read_text()
+          replacements = [
+              (
+                  'import { sumTicketStake } from "./bet-accounting";\n',
+                  'import { sumTicketStake } from "./bet-accounting";\nimport { getRiskPeriodStarts } from "./risk-period-pnl";\n',
+              ),
+              (
+                  '    const todayStart = new Date();\n    todayStart.setHours(0, 0, 0, 0);\n',
+                  '    const { dayStart: todayStart } = getRiskPeriodStarts(settings.timezone);\n',
+              ),
+          ]
+          for old, new in replacements:
+              count = s.count(old)
+              if count != 1:
+                  raise SystemExit(f"Expected exactly one replacement, found {count}: {old!r}")
+              s = s.replace(old, new, 1)
+          p.write_text(s)
+          PY
+
+          rm .github/workflows/one-time-auto-day-boundary.yml
+          git diff --check
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/auto-bet-runner.ts .github/workflows/one-time-auto-day-boundary.yml
+          git commit -m "Align AUTO daily stake with user timezone"
+          git push origin HEAD:work/betting-ticket-summary-20261004
