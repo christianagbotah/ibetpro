@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
+import { sumTicketStake } from "@/lib/bet-accounting";
 
 export async function GET(request: NextRequest) {
   try {
@@ -179,12 +180,12 @@ export async function POST(request: NextRequest) {
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
-    const todayStake = await prisma.bet.aggregate({
+    const todayBets = await prisma.bet.findMany({
       where: { userId, placedAt: { gte: todayStart } },
-      _sum: { stake: true },
+      select: { stake: true, accumulatorId: true },
     });
     const dailyBetLimit = settings?.dailyBetLimit ?? 500;
-    const usedToday = todayStake._sum.stake ?? 0;
+    const usedToday = sumTicketStake(todayBets);
     if (usedToday + stake > dailyBetLimit) {
       return NextResponse.json(
         {
