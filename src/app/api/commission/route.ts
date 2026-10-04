@@ -1,130 +1,35 @@
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
-import { calculateCommission, transferCommissionToAdmin } from "@/lib/broker-integration";
-import { config } from "@/lib/config";
+import { transferCommissionToAdmin } from "@/lib/broker-integration";
 
 /**
  * Commission API
- * POST /api/commission - Process commission for a settled bet (auto-called by settle/cashout)
- * GET /api/commission - Get commission ledger for user or admin
- * POST /api/commission/transfer - Trigger manual transfer of pending commissions to admin
+ *
+ * Commission creation is intentionally owned by settlement/cashout transactions.
+ * This route only exposes the ledger and explicit transfer of already-created
+ * pending commission entries. The legacy `process` mutation is disabled to
+ * prevent duplicate profit/commission accounting.
  */
 export async function POST(request: NextRequest) {
   try {
     const userId = await requireAuth();
 
     const body = await request.json();
-    const { action, bettingAccountId, betId, accumulatorId, grossProfit } = body;
+    const { action } = body;
 
-    // Action: process commission for a specific bet
-    if (action === "process" && bettingAccountId && grossProfit > 0) {
-      // Get user settings for commission rate
-      const userSettings = await prisma.userSettings.findUnique({
-        where: { userId },
-      });
-
-      const commissionRate = userSettings?.commissionRate || config.commission.defaultRate;
-
-      // Calculate commission
-      const commission = calculateCommission(grossProfit, commissionRate);
-
-      // Create commission ledger entry
-      const ledgerEntry = await prisma.commissionLedger.create({
-        data: {
-          userId,
-          bettingAccountId,
-          betId: betId || null,
-          accumulatorId: accumulatorId || null,
-          grossProfit: commission.grossProfit,
-          commissionRate,
-          commissionAmount: commission.commission,
-          netProfit: commission.netProfit,
-          status: "pending",
+    if (action === "process") {
+      return NextResponse.json(
+        {
+          error:
+            "Direct commission processing is disabled. Commission is created atomically by settlement or cashout.",
+          code: "COMMISSION_SINGLE_WRITER",
         },
-      });
-
-      // Update the user's commission paid
-      await prisma.user.update({
-        where: { id: userId },
-        data: {
-          commissionPaid: { increment: commission.commission },
-          totalProfit: { increment: commission.netProfit },
-        },
-      });
-
-      // Create transaction for commission deduction
-      await prisma.transaction.create({
-        data: {
-          userId,
-          type: "commission",
-          amount: -commission.commission,
-          currency: "USD",
-          status: "completed",
-          description: `Commission ${Math.round(commissionRate * 100)}% on $${grossProfit.toFixed(2)} profit`,
-          betId: betId || undefined,
-          accumulatorId: accumulatorId || undefined,
-        },
-      });
-
-      // Update the allocation if exists
-      const activeAllocation = await prisma.allocation.findFirst({
-        where: { userId, bettingAccountId, status: "active" },
-      });
-
-      if (activeAllocation) {
-        await prisma.allocation.update({
-          where: { id: activeAllocation.id },
-          data: {
-            profitFromAlloc: { increment: commission.grossProfit },
-            commissionFromAlloc: { increment: commission.commission },
-          },
-        });
-      }
-
-      // Try auto-transfer to admin
-      const adminSettings = await prisma.adminSettings.findFirst();
-      if (adminSettings?.autoCommissionTransfer) {
-        const account = await prisma.bettingAccount.findUnique({
-          where: { id: bettingAccountId },
-        });
-
-        if (account?.accessToken && adminSettings.adminWalletAddress) {
-          const transferResult = await transferCommissionToAdmin(
-            account.platform,
-            account.accessToken,
-            commission.commission,
-            adminSettings.adminWalletAddress,
-            ledgerEntry.id
-          );
-
-          if (transferResult.success) {
-            await prisma.commissionLedger.update({
-              where: { id: ledgerEntry.id },
-              data: {
-                status: "transferred",
-                transferRef: transferResult.transferRef,
-                transferredAt: new Date(),
-              },
-            });
-          }
-        }
-      }
-
-      return NextResponse.json({
-        success: true,
-        commission: {
-          id: ledgerEntry.id,
-          grossProfit: commission.grossProfit,
-          commissionRate,
-          commissionAmount: commission.commission,
-          netProfit: commission.netProfit,
-          status: ledgerEntry.status,
-        },
-      });
+        { status: 409 }
+      );
     }
 
-    // Action: transfer all pending commissions to admin
+    // Transfer already-created pending commissions to the configured admin wallet.
     if (action === "transfer_all") {
       const pendingCommissions = await prisma.commissionLedger.findMany({
         where: { userId, status: "pending" },
@@ -134,11 +39,14 @@ export async function POST(request: NextRequest) {
       const adminSettings = await prisma.adminSettings.findFirst();
       const minPayout = adminSettings?.minimumCommissionPayout || 10;
 
-      const totalPending = pendingCommissions.reduce((sum, c) => sum + c.commissionAmount, 0);
+      const totalPending = pendingCommissions.reduce(
+        (sum, commission) => sum + commission.commissionAmount,
+        0
+      );
 
       if (totalPending < minPayout) {
         return NextResponse.json({
-          message: `Total pending commission ($${totalPending.toFixed(2)}) below minimum payout ($${minPayout})`,
+          message: `Total pending commission (${totalPending.toFixed(2)}) is below the minimum payout (${minPayout})`,
           totalPending,
           minimumPayout: minPayout,
         });
@@ -151,7 +59,10 @@ export async function POST(request: NextRequest) {
         if (!entry.bettingAccount.accessToken || !adminSettings?.adminWalletAddress) {
           await prisma.commissionLedger.update({
             where: { id: entry.id },
-            data: { status: "failed", failureReason: "No access token or admin wallet" },
+            data: {
+              status: "failed",
+              failureReason: "No access token or admin wallet",
+            },
           });
           failed++;
           continue;
@@ -172,13 +83,17 @@ export async function POST(request: NextRequest) {
               status: "transferred",
               transferRef: result.transferRef,
               transferredAt: new Date(),
+              failureReason: null,
             },
           });
           transferred++;
         } else {
           await prisma.commissionLedger.update({
             where: { id: entry.id },
-            data: { status: "failed", failureReason: result.error },
+            data: {
+              status: "failed",
+              failureReason: result.error || "Commission transfer failed",
+            },
           });
           failed++;
         }
@@ -198,7 +113,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
     console.error("Commission error:", error);
-    return NextResponse.json({ error: "Failed to process commission" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to process commission request" },
+      { status: 500 }
+    );
   }
 }
 
@@ -207,7 +125,7 @@ export async function GET(request: NextRequest) {
     const userId = await requireAuth();
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
-    const period = searchParams.get("period") || "all"; // "all" | "daily" | "weekly" | "monthly"
+    const period = searchParams.get("period") || "all";
 
     const whereClause: Record<string, unknown> = { userId };
     if (status) whereClause.status = status;
@@ -235,17 +153,34 @@ export async function GET(request: NextRequest) {
       where: whereClause,
       include: {
         bettingAccount: {
-          select: { platform: true, accountName: true },
+          select: {
+            platform: true,
+            accountName: true,
+            currency: true,
+          },
         },
       },
       orderBy: { createdAt: "desc" },
     });
 
-    const totalGrossProfit = ledger.reduce((sum, c) => sum + c.grossProfit, 0);
-    const totalCommission = ledger.reduce((sum, c) => sum + c.commissionAmount, 0);
-    const totalNetProfit = ledger.reduce((sum, c) => sum + c.netProfit, 0);
-    const pendingCommission = ledger.filter((c) => c.status === "pending").reduce((sum, c) => sum + c.commissionAmount, 0);
-    const transferredCommission = ledger.filter((c) => c.status === "transferred").reduce((sum, c) => sum + c.commissionAmount, 0);
+    const totalGrossProfit = ledger.reduce(
+      (sum, commission) => sum + commission.grossProfit,
+      0
+    );
+    const totalCommission = ledger.reduce(
+      (sum, commission) => sum + commission.commissionAmount,
+      0
+    );
+    const totalNetProfit = ledger.reduce(
+      (sum, commission) => sum + commission.netProfit,
+      0
+    );
+    const pendingCommission = ledger
+      .filter((commission) => commission.status === "pending")
+      .reduce((sum, commission) => sum + commission.commissionAmount, 0);
+    const transferredCommission = ledger
+      .filter((commission) => commission.status === "transferred")
+      .reduce((sum, commission) => sum + commission.commissionAmount, 0);
 
     return NextResponse.json({
       ledger,
@@ -263,6 +198,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
     console.error("Commission fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch commission ledger" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch commission ledger" },
+      { status: 500 }
+    );
   }
 }
