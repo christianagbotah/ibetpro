@@ -1,8 +1,9 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
 import { requireAuth } from "@/lib/session";
-import { runAutoBetCycle } from "@/lib/auto-bet-runner";
+import { runAutoBetCycle } from "@/lib/risk-aware-auto-bet-runner";
 import { countTickets, sumTicketStake } from "@/lib/bet-accounting";
+import { getRiskPeriodPnl } from "@/lib/risk-period-pnl";
 
 /**
  * POST /api/auto-bet - execute one atomic Demo AUTO scan.
@@ -42,14 +43,18 @@ export async function GET() {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
+    const periodPnl = await getRiskPeriodPnl(
+      userId,
+      user.settings.timezone
+    );
+
     const recentLogs = await prisma.botLog.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
       take: 20,
     });
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    const todayStart = periodPnl.dayStart;
     const todayBets = await prisma.bet.findMany({
       where: {
         userId,
@@ -66,7 +71,6 @@ export async function GET() {
             userId,
             isAutoPlaced: true,
             placedAt: { gte: todayStart },
-            status: { in: ["won", "cashed_out"] },
           },
           _sum: { profit: true },
         }),
@@ -85,11 +89,7 @@ export async function GET() {
     const todayAutoBets = countTickets(todayBets);
     const todayAutoStake = sumTicketStake(todayBets);
     const todayStandaloneProfit = todayBets
-      .filter(
-        (bet) =>
-          !bet.accumulatorId &&
-          (bet.status === "won" || bet.status === "cashed_out")
-      )
+      .filter((bet) => !bet.accumulatorId)
       .reduce((sum, bet) => sum + (bet.profit || 0), 0);
     const todayAutoProfit =
       todayStandaloneProfit + (todayAccumulatorProfit._sum.profit || 0);
@@ -114,8 +114,8 @@ export async function GET() {
         betsPlaced: todayAutoBets,
         totalStake: todayAutoStake,
         profit: todayAutoProfit,
-        dailyPnl: user.dailyPnl,
-        weeklyPnl: user.weeklyPnl,
+        dailyPnl: periodPnl.dailyPnl,
+        weeklyPnl: periodPnl.weeklyPnl,
       },
       allocation: activeAllocation
         ? {
