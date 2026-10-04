@@ -11,7 +11,6 @@ import {
   getPlatformsForRegion,
   getCurrencyForRegion,
   getRegionInfo,
-  type BrokerPlatformInfo,
 } from "./regions";
 
 // ==================== TYPE DEFINITIONS ====================
@@ -264,7 +263,12 @@ export async function fetchBrokerBalance(
 }
 
 /**
- * Place a bet directly on the broker platform
+ * Place a bet through the broker-execution boundary.
+ *
+ * The current demo implementation returns a simulated accepted bet. Validation
+ * rejection is deliberately fail-fast: the two auto-bet callers historically
+ * continued into local accounting without checking `success`, so returning a
+ * soft failure here could create/debit a local wager that the broker rejected.
  */
 export async function placeBetOnBroker(
   platformId: string,
@@ -280,15 +284,36 @@ export async function placeBetOnBroker(
 ): Promise<BrokerBetResult> {
   const platform = getBrokerPlatform(platformId);
   if (!platform) {
-    return { success: false, error: `Unknown platform: ${platformId}` };
+    throw new Error(`Broker bet rejected: unknown platform ${platformId}`);
+  }
+
+  if (!betDetails.matchId || !betDetails.selection.trim()) {
+    throw new Error("Broker bet rejected: match and selection are required");
+  }
+
+  if (!Number.isFinite(betDetails.odds) || betDetails.odds <= 1) {
+    throw new Error("Broker bet rejected: odds must be greater than 1");
+  }
+
+  if (!Number.isFinite(betDetails.stake) || betDetails.stake <= 0) {
+    throw new Error("Broker bet rejected: stake must be positive");
   }
 
   if (betDetails.stake < platform.features.minStake) {
-    return { success: false, error: `Stake below minimum (${platform.features.minStake})` };
+    throw new Error(
+      `Broker bet rejected: stake below minimum (${platform.features.minStake})`
+    );
   }
+
   if (betDetails.stake > platform.features.maxStake) {
-    return { success: false, error: `Stake above maximum (${platform.features.maxStake})` };
+    throw new Error(
+      `Broker bet rejected: stake above maximum (${platform.features.maxStake})`
+    );
   }
+
+  // accessToken is intentionally not required in demo/manual mode. Real-money
+  // auto execution is separately fail-closed until a verified adapter is wired.
+  void accessToken;
 
   const brokerBetId = `${platformId}_bet_${Date.now()}`;
 
