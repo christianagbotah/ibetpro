@@ -1,7 +1,9 @@
 import { prisma } from "./db";
 import { getRemainingExposure, money } from "./bet-exposure";
 
-const OPEN_BET_STATUSES = ["pending", "partial_cashout"];
+// cashout_settling is still financially open until the local cashout transaction
+// commits. Keeping it here prevents a short-lived claim from freeing capital.
+const OPEN_BET_STATUSES = ["pending", "partial_cashout", "cashout_settling"];
 
 export async function calculateOpenExposure(
   userId: string,
