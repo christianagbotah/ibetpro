@@ -1,79 +1,129 @@
 import { prisma } from "./db";
 import {
   botEngine as legacyBotEngine,
-  BotEngine,
+  BotEngine as LegacyBotEngine,
 } from "./bot-engine-legacy";
+import { atomicAutoEngine } from "./atomic-auto-engine";
 
-const originalStart = legacyBotEngine.start.bind(legacyBotEngine);
-let autoGuardInstalled = false;
+const originalLegacyStart = legacyBotEngine.start.bind(legacyBotEngine);
+const originalLegacyShutdown = legacyBotEngine.shutdown.bind(legacyBotEngine);
 
-/**
- * Temporary fail-closed guard around the legacy background engine.
- *
- * Advisor mode is safe and continues to use the proven legacy scheduler.
- * Background AUTO mode is blocked because the legacy loop still contains
- * pre-atomic placement/cashout accounting. Automated placement remains
- * available through the atomic /api/auto-bet path until the scheduler is
- * migrated onto the shared transactional writers.
- */
-function installAtomicAccountingGuard() {
-  if (autoGuardInstalled) return;
-  autoGuardInstalled = true;
+async function routedStart(
+  userId: string,
+  scanIntervalSec = 30
+): Promise<{ success: boolean; message: string }> {
+  const settings = await prisma.userSettings.findUnique({
+    where: { userId },
+    select: { botMode: true },
+  });
 
-  legacyBotEngine.start = async (
-    userId: string,
-    scanIntervalSec: number = 30
-  ): Promise<{ success: boolean; message: string }> => {
+  if (settings?.botMode === "auto") {
+    return atomicAutoEngine.start(userId, scanIntervalSec);
+  }
+
+  return originalLegacyStart(userId, scanIntervalSec);
+}
+
+// The legacy engine owns a five-minute zombie heartbeat. It calls `this.start`
+// internally, so route that method too: AUTO zombie recovery can never enter
+// legacy placement/cashout logic, while Advisor recovery remains unchanged.
+legacyBotEngine.start = routedStart;
+
+class HybridBotEngine {
+  async start(userId: string, scanIntervalSec = 30) {
+    return routedStart(userId, scanIntervalSec);
+  }
+
+  async stop(userId: string, reason = "user_stopped"): Promise<void> {
     const settings = await prisma.userSettings.findUnique({
       where: { userId },
       select: { botMode: true },
     });
 
-    if (settings?.botMode === "auto") {
-      const message =
-        "Background AUTO execution is temporarily fail-closed while its scheduler is migrated to atomic placement/cashout accounting. Advisor mode and the atomic auto-bet API remain available.";
-
-      await prisma.botSession
-        .upsert({
-          where: { userId },
-          update: {
-            status: "stopped",
-            stoppedAt: new Date(),
-            stopReason: "background_auto_accounting_guard",
-          },
-          create: {
-            userId,
-            status: "stopped",
-            stoppedAt: new Date(),
-            stopReason: "background_auto_accounting_guard",
-            scanIntervalSec,
-          },
-        })
-        .catch(() => {});
-
-      await prisma.botLog
-        .create({
-          data: {
-            userId,
-            action: "bot_stopped",
-            reasoning: message,
-            details: JSON.stringify({
-              guard: "background_auto_accounting_guard",
-              advisorAvailable: true,
-              atomicApiAvailable: true,
-            }),
-          },
-        })
-        .catch(() => {});
-
-      return { success: false, message };
+    if (settings?.botMode === "auto" || atomicAutoEngine.isRunning(userId)) {
+      await atomicAutoEngine.stop(userId, reason);
+      return;
     }
 
-    return originalStart(userId, scanIntervalSec);
-  };
+    await legacyBotEngine.stop(userId, reason);
+  }
+
+  isRunning(userId: string): boolean {
+    return atomicAutoEngine.isRunning(userId) || legacyBotEngine.isRunning(userId);
+  }
+
+  getStatus(userId: string) {
+    return atomicAutoEngine.getStatus(userId) || legacyBotEngine.getStatus(userId);
+  }
+
+  getAllRunningStats() {
+    return [
+      ...atomicAutoEngine.getAllRunningStats(),
+      ...legacyBotEngine.getAllRunningStats(),
+    ];
+  }
+
+  getRunningCount(): number {
+    return this.getAllRunningStats().length;
+  }
+
+  async recoverRunningBots(): Promise<number> {
+    const runningSessions = await prisma.botSession.findMany({
+      where: { status: "running" },
+      select: { userId: true, scanIntervalSec: true },
+    });
+
+    let recovered = 0;
+    for (const session of runningSessions) {
+      if (this.isRunning(session.userId)) continue;
+      try {
+        const result = await routedStart(
+          session.userId,
+          session.scanIntervalSec || 30
+        );
+        if (result.success) recovered++;
+        else {
+          await prisma.botSession.update({
+            where: { userId: session.userId },
+            data: {
+              status: "stopped",
+              stoppedAt: new Date(),
+              stopReason: `recovery_failed: ${result.message}`,
+            },
+          });
+        }
+      } catch (error) {
+        console.error(
+          `[HybridBotEngine] Recovery failed for ${session.userId}:`,
+          error
+        );
+        await prisma.botSession
+          .update({
+            where: { userId: session.userId },
+            data: {
+              status: "stopped",
+              stoppedAt: new Date(),
+              stopReason: "recovery_error",
+            },
+          })
+          .catch(() => {});
+      }
+    }
+    return recovered;
+  }
+
+  async shutdown(): Promise<void> {
+    await atomicAutoEngine.shutdown();
+    await originalLegacyShutdown();
+  }
 }
 
-installAtomicAccountingGuard();
+const hybridBotEngine = new HybridBotEngine();
 
-export const botEngine = legacyBotEngine;
-export { BotEngine };
+// The legacy constructor registered SIGTERM/SIGINT handlers that dynamically
+// call its `shutdown` method. Patch that method so graceful shutdown also
+// clears atomic timers before the process exits.
+legacyBotEngine.shutdown = hybridBotEngine.shutdown.bind(hybridBotEngine);
+
+export const botEngine = hybridBotEngine;
+export { HybridBotEngine as BotEngine, LegacyBotEngine };
