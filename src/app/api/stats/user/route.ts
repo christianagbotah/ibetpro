@@ -106,6 +106,45 @@ export async function GET() {
       (standaloneStakeResult._sum.stake || 0) +
       (accumulatorStakeResult._sum.stake || 0);
 
+    const [
+      autoStandaloneTotal,
+      autoAccumulatorTotal,
+      todayStandaloneStakeResult,
+      todayAccumulatorStakeResult,
+    ] = await Promise.all([
+      prisma.bet.count({
+        where: {
+          userId: user.id,
+          accumulatorId: null,
+          isAutoPlaced: true,
+        },
+      }),
+      prisma.accumulator.count({
+        where: { userId: user.id, isAutoPlaced: true },
+      }),
+      prisma.bet.aggregate({
+        where: {
+          userId: user.id,
+          accumulatorId: null,
+          placedAt: { gte: periodPnl.dayStart },
+        },
+        _sum: { stake: true },
+      }),
+      prisma.accumulator.aggregate({
+        where: {
+          userId: user.id,
+          placedAt: { gte: periodPnl.dayStart },
+        },
+        _sum: { stake: true },
+      }),
+    ]);
+
+    const autoBets = autoStandaloneTotal + autoAccumulatorTotal;
+    const accumulatorBets = accumulatorTotal;
+    const todayStaked =
+      (todayStandaloneStakeResult._sum.stake || 0) +
+      (todayAccumulatorStakeResult._sum.stake || 0);
+
     const monthlyData: Array<{
       month: string;
       profit: number;
@@ -224,6 +263,9 @@ export async function GET() {
         winRate,
         roi: Math.round(roi * 100) / 100,
         totalStaked,
+        autoBets,
+        accumulatorBets,
+        todayStaked,
         activeAccounts,
         monthlyData,
         recentBets,
