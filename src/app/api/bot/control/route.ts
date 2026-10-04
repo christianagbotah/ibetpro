@@ -10,6 +10,7 @@ import { requireAuth } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 import { botEngine } from "@/lib/bot-engine";
 import { countTickets, sumTicketStake } from "@/lib/bet-accounting";
+import { getRiskPeriodPnl } from "@/lib/risk-period-pnl";
 
 export async function GET() {
   try {
@@ -33,8 +34,8 @@ export async function GET() {
         }),
       ]);
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    const periodPnl = await getRiskPeriodPnl(userId, settings?.timezone);
+    const todayStart = periodPnl.dayStart;
     const [todayBets, todayAccumulatorProfit] = await Promise.all([
       prisma.bet.findMany({
         where: {
@@ -48,7 +49,6 @@ export async function GET() {
           userId,
           isAutoPlaced: true,
           placedAt: { gte: todayStart },
-          status: { in: ["won", "cashed_out"] },
         },
         _sum: { profit: true },
       }),
@@ -57,11 +57,7 @@ export async function GET() {
     const todayAutoStake = sumTicketStake(todayBets);
     const todayAutoBetCount = countTickets(todayBets);
     const todayStandaloneProfit = todayBets
-      .filter(
-        (bet) =>
-          !bet.accumulatorId &&
-          (bet.status === "won" || bet.status === "cashed_out")
-      )
+      .filter((bet) => !bet.accumulatorId)
       .reduce((sum, bet) => sum + (bet.profit || 0), 0);
     const todayAutoProfit =
       todayStandaloneProfit + (todayAccumulatorProfit._sum.profit || 0);
@@ -119,6 +115,8 @@ export async function GET() {
         betsPlaced: todayAutoBetCount,
         totalStake: todayAutoStake,
         profit: todayAutoProfit,
+        dailyPnl: periodPnl.dailyPnl,
+        weeklyPnl: periodPnl.weeklyPnl,
       },
       allocation: activeAllocation
         ? {
