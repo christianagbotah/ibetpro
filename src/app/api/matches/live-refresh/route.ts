@@ -11,7 +11,7 @@ const LIVE_SCORE_MIN_QUOTA = Math.max(
   Number(process.env.LIVE_SCORE_MIN_QUOTA || 50)
 );
 const LIVE_STATUS_WINDOW_MS =
-  Math.max(60, Number(process.env.ODDS_DISCOVERY_LIVE_WINDOW_MIN || 240)) *
+  Math.max(120, Number(process.env.ODDS_DISCOVERY_LIVE_WINDOW_MIN || 150)) *
   60 *
   1000;
 
