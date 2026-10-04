@@ -170,7 +170,7 @@ export async function GET() {
         month: monthLabel,
         profit,
         loss,
-        commission: monthCommission._sum.amount || 0,
+        commission: Math.abs(monthCommission._sum.amount || 0),
       });
     }
 
