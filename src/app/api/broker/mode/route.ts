@@ -18,11 +18,13 @@ export async function GET() {
 
     const settings = await prisma.userSettings.findUnique({
       where: { userId },
-      select: { brokerMode: true },
+      select: { brokerMode: true, autoBettingEnabled: true, botMode: true },
     });
 
     return NextResponse.json({
       mode: settings?.brokerMode || "demo",
+      autoBettingEnabled: settings?.autoBettingEnabled ?? false,
+      botMode: settings?.botMode || "advisor",
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
@@ -50,7 +52,6 @@ export async function POST(request: NextRequest) {
       }, { status: 400 });
     }
 
-    // If switching to real mode, verify user has at least one connected broker
     if (mode === "real") {
       const connectedAccounts = await prisma.bettingAccount.count({
         where: {
@@ -67,18 +68,26 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Update the user's broker mode setting
+    const updateData =
+      mode === "real"
+        ? {
+            brokerMode: mode,
+            autoBettingEnabled: false,
+            botMode: "advisor",
+          }
+        : { brokerMode: mode };
+
     const settings = await prisma.userSettings.upsert({
       where: { userId },
-      update: { brokerMode: mode },
+      update: updateData,
       create: {
         userId,
         brokerMode: mode,
-        autoBettingEnabled: true,
+        autoBettingEnabled: mode === "demo",
+        botMode: "advisor",
       },
     });
 
-    // Log the mode change
     await logBrokerEvent({
       userId,
       action: "broker_mode_changed",
@@ -90,9 +99,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       mode: settings.brokerMode,
+      autoBettingEnabled: settings.autoBettingEnabled,
+      botMode: settings.botMode,
       message: mode === "real"
-        ? "Switched to Real mode. Live broker API connections will be used."
-        : "Switched to Demo mode. Simulated broker connections will be used for testing.",
+        ? "Switched to Real mode. Broker connectivity remains available, but automated real-money execution is disabled until verified broker execution is enabled. Advisor mode remains available."
+        : "Switched to Demo mode. Simulated execution is available for testing.",
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
