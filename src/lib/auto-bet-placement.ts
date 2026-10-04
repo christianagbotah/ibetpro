@@ -28,6 +28,31 @@ export type AutoSinglePlacementInput = {
   aiKellyStake?: number | null;
 };
 
+export type AutoAccumulatorLegInput = {
+  matchId: string;
+  homeTeam: string;
+  awayTeam: string;
+  selection: string;
+  odds: number;
+  confidence: number;
+  reasoning: string;
+  kellyStake?: number | null;
+  valueEdge?: number | null;
+  riskScore?: number | null;
+};
+
+export type AutoAccumulatorPlacementInput = {
+  userId: string;
+  bettingAccountId: string;
+  activeAllocationId?: string | null;
+  stake: number;
+  totalOdds: number;
+  potentialWin: number;
+  bonusPercent: number;
+  legs: AutoAccumulatorLegInput[];
+  brokerBetId?: string;
+};
+
 export class AutoPlacementAccountingError extends Error {
   constructor(public readonly code: string, message: string) {
     super(message);
@@ -42,6 +67,90 @@ function assertPositiveMoney(value: number, label: string) {
       `${label} must be a positive finite number`
     );
   }
+}
+
+async function debitPlacementFunds(
+  tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0],
+  input: {
+    userId: string;
+    bettingAccountId: string;
+    activeAllocationId?: string | null;
+    stake: number;
+  }
+) {
+  const userDebit = await tx.user.updateMany({
+    where: {
+      id: input.userId,
+      balance: { gte: input.stake },
+    },
+    data: { balance: { decrement: input.stake } },
+  });
+
+  if (userDebit.count !== 1) {
+    throw new AutoPlacementAccountingError(
+      "INSUFFICIENT_INTERNAL_BALANCE",
+      "Internal bankroll is insufficient for this auto-bet stake"
+    );
+  }
+
+  if (input.activeAllocationId) {
+    const allocationDebit = await tx.allocation.updateMany({
+      where: {
+        id: input.activeAllocationId,
+        userId: input.userId,
+        bettingAccountId: input.bettingAccountId,
+        status: "active",
+        remainingAmount: { gte: input.stake },
+      },
+      data: {
+        usedAmount: { increment: input.stake },
+        remainingAmount: { decrement: input.stake },
+      },
+    });
+
+    if (allocationDebit.count !== 1) {
+      throw new AutoPlacementAccountingError(
+        "INSUFFICIENT_ALLOCATION",
+        "Active allocation no longer has enough remaining funds"
+      );
+    }
+  }
+
+  const accountDebit = await tx.bettingAccount.updateMany({
+    where: {
+      id: input.bettingAccountId,
+      userId: input.userId,
+      isConnected: true,
+      allocatedAmount: { gte: input.stake },
+    },
+    data: {
+      allocatedAmount: { decrement: input.stake },
+      allocationLock: true,
+      lastBetPlacedAt: new Date(),
+      totalBrokerBets: { increment: 1 },
+    },
+  });
+
+  if (accountDebit.count !== 1) {
+    throw new AutoPlacementAccountingError(
+      "INSUFFICIENT_BROKER_ALLOCATION",
+      "Connected betting account no longer has enough allocated funds"
+    );
+  }
+
+  const account = await tx.bettingAccount.findUnique({
+    where: { id: input.bettingAccountId },
+    select: { currency: true, platform: true },
+  });
+
+  if (!account) {
+    throw new AutoPlacementAccountingError(
+      "BETTING_ACCOUNT_MISSING",
+      "Betting account disappeared during placement"
+    );
+  }
+
+  return account;
 }
 
 /**
@@ -60,77 +169,7 @@ export async function recordAutoSinglePlacement(
   assertPositiveMoney(input.potentialWin, "Potential win");
 
   return prisma.$transaction(async (tx) => {
-    const userDebit = await tx.user.updateMany({
-      where: {
-        id: input.userId,
-        balance: { gte: input.stake },
-      },
-      data: { balance: { decrement: input.stake } },
-    });
-
-    if (userDebit.count !== 1) {
-      throw new AutoPlacementAccountingError(
-        "INSUFFICIENT_INTERNAL_BALANCE",
-        "Internal bankroll is insufficient for this auto-bet stake"
-      );
-    }
-
-    if (input.activeAllocationId) {
-      const allocationDebit = await tx.allocation.updateMany({
-        where: {
-          id: input.activeAllocationId,
-          userId: input.userId,
-          bettingAccountId: input.bettingAccountId,
-          status: "active",
-          remainingAmount: { gte: input.stake },
-        },
-        data: {
-          usedAmount: { increment: input.stake },
-          remainingAmount: { decrement: input.stake },
-        },
-      });
-
-      if (allocationDebit.count !== 1) {
-        throw new AutoPlacementAccountingError(
-          "INSUFFICIENT_ALLOCATION",
-          "Active allocation no longer has enough remaining funds"
-        );
-      }
-    }
-
-    const accountDebit = await tx.bettingAccount.updateMany({
-      where: {
-        id: input.bettingAccountId,
-        userId: input.userId,
-        isConnected: true,
-        allocatedAmount: { gte: input.stake },
-      },
-      data: {
-        allocatedAmount: { decrement: input.stake },
-        allocationLock: true,
-        lastBetPlacedAt: new Date(),
-        totalBrokerBets: { increment: 1 },
-      },
-    });
-
-    if (accountDebit.count !== 1) {
-      throw new AutoPlacementAccountingError(
-        "INSUFFICIENT_BROKER_ALLOCATION",
-        "Connected betting account no longer has enough allocated funds"
-      );
-    }
-
-    const account = await tx.bettingAccount.findUnique({
-      where: { id: input.bettingAccountId },
-      select: { currency: true, platform: true },
-    });
-
-    if (!account) {
-      throw new AutoPlacementAccountingError(
-        "BETTING_ACCOUNT_MISSING",
-        "Betting account disappeared during placement"
-      );
-    }
+    const account = await debitPlacementFunds(tx, input);
 
     const bet = await tx.bet.create({
       data: {
@@ -204,6 +243,116 @@ export async function recordAutoSinglePlacement(
       bet,
       currency: account.currency || "USD",
       platform: account.platform,
+    };
+  });
+}
+
+/**
+ * Commit one accumulator ticket and all of its legs atomically. The ticket
+ * stake is debited exactly once; leg rows retain that stake only as ticket
+ * context and must never be row-summed for exposure or daily-limit accounting.
+ */
+export async function recordAutoAccumulatorPlacement(
+  input: AutoAccumulatorPlacementInput
+) {
+  assertPositiveMoney(input.stake, "Accumulator stake");
+  assertPositiveMoney(input.totalOdds, "Accumulator odds");
+  assertPositiveMoney(input.potentialWin, "Accumulator potential win");
+
+  if (input.legs.length < 2) {
+    throw new AutoPlacementAccountingError(
+      "INVALID_ACCUMULATOR",
+      "Accumulator requires at least two legs"
+    );
+  }
+
+  for (const leg of input.legs) {
+    assertPositiveMoney(leg.odds, "Accumulator leg odds");
+  }
+
+  return prisma.$transaction(async (tx) => {
+    const account = await debitPlacementFunds(tx, input);
+
+    const accumulator = await tx.accumulator.create({
+      data: {
+        userId: input.userId,
+        totalOdds: input.totalOdds,
+        stake: input.stake,
+        potentialWin: input.potentialWin,
+        totalLegs: input.legs.length,
+        completedLegs: 0,
+        isAutoPlaced: true,
+        bonusPercent: input.bonusPercent,
+      },
+    });
+
+    for (const leg of input.legs) {
+      await tx.bet.create({
+        data: {
+          userId: input.userId,
+          bettingAccountId: input.bettingAccountId,
+          matchId: leg.matchId,
+          accumulatorId: accumulator.id,
+          betType: "accumulator_leg",
+          selection: leg.selection,
+          odds: leg.odds,
+          stake: input.stake,
+          potentialWin: input.potentialWin,
+          isAutoPlaced: true,
+          aiConfidence: leg.confidence,
+          aiReasoning: leg.reasoning,
+          aiModelUsed: "v2_ensemble",
+          kellyStake: leg.kellyStake ?? undefined,
+          valueEdge: leg.valueEdge ?? undefined,
+          riskScore: leg.riskScore ?? undefined,
+        },
+      });
+    }
+
+    await tx.transaction.create({
+      data: {
+        userId: input.userId,
+        type: "bet_placed",
+        amount: -input.stake,
+        currency: account.currency || "USD",
+        status: "completed",
+        description: `Auto-bet via ${account.platform}: ${input.legs.length}-leg accumulator @ ${input.totalOdds.toFixed(2)}${input.bonusPercent > 0 ? ` (+${input.bonusPercent}% bonus)` : ""}`,
+        accumulatorId: accumulator.id,
+      },
+    });
+
+    const averageConfidence =
+      input.legs.reduce((sum, leg) => sum + leg.confidence, 0) /
+      input.legs.length;
+
+    await tx.botLog.create({
+      data: {
+        userId: input.userId,
+        action: "accumulator_created",
+        accumulatorId: accumulator.id,
+        details: JSON.stringify({
+          legs: input.legs.length,
+          totalOdds: input.totalOdds,
+          stake: input.stake,
+          bonusPercent: input.bonusPercent,
+          broker: account.platform,
+          brokerBetId: input.brokerBetId,
+          accounting: "atomic",
+          legMatches: input.legs.map(
+            (leg) => `${leg.homeTeam} vs ${leg.awayTeam}`
+          ),
+        }),
+        reasoning: `Created ${input.legs.length}-leg accumulator with total odds ${input.totalOdds.toFixed(2)}${input.bonusPercent > 0 ? ` and ${input.bonusPercent}% bonus` : ""}`,
+        confidence: averageConfidence,
+        profitImpact: -input.stake,
+      },
+    });
+
+    return {
+      accumulator,
+      currency: account.currency || "USD",
+      platform: account.platform,
+      averageConfidence,
     };
   });
 }
