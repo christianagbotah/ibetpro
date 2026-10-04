@@ -184,17 +184,53 @@ export class AtomicAutoEngine {
       try {
         await syncMatchData(false);
       } catch (syncError) {
-        console.warn("[AtomicAutoEngine] Match sync failed; using existing data:", syncError);
+        console.warn(
+          "[AtomicAutoEngine] Match sync failed; using existing data:",
+          syncError
+        );
       }
 
       let settlementProfit = 0;
       try {
+        const settlementStartedAt = new Date();
         const settlements = await settleFinishedBetsForUser(userId);
-        settlementProfit = settlements
-          .filter((result) => result.settled)
+        const settledResults = settlements.filter((result) => result.settled);
+        const touchedAccumulatorIds = Array.from(
+          new Set(
+            settledResults
+              .map((result) => result.accumulatorId)
+              .filter(
+                (id): id is string => typeof id === "string" && id.length > 0
+              )
+          )
+        );
+
+        const settledAccumulatorTickets =
+          touchedAccumulatorIds.length > 0
+            ? await prisma.accumulator.findMany({
+                where: {
+                  userId,
+                  id: { in: touchedAccumulatorIds },
+                  settledAt: { gte: settlementStartedAt },
+                  status: { in: ["won", "lost", "void"] },
+                },
+                select: { profit: true },
+              })
+            : [];
+
+        const standaloneProfit = settledResults
+          .filter((result) => !result.accumulatorId)
           .reduce((sum, result) => sum + (result.profit || 0), 0);
+        const accumulatorProfit = settledAccumulatorTickets.reduce(
+          (sum, accumulator) => sum + (accumulator.profit || 0),
+          0
+        );
+        settlementProfit = standaloneProfit + accumulatorProfit;
       } catch (settlementError) {
-        console.error("[AtomicAutoEngine] Settlement cycle failed:", settlementError);
+        console.error(
+          "[AtomicAutoEngine] Settlement cycle failed:",
+          settlementError
+        );
       }
 
       const result = await runAutoBetCycle(userId);
@@ -255,7 +291,8 @@ export class AtomicAutoEngine {
       const current = this.stats.get(userId);
       if (current) {
         current.errorCount += 1;
-        current.lastError = error instanceof Error ? error.message : "Unknown error";
+        current.lastError =
+          error instanceof Error ? error.message : "Unknown error";
         if (current.errorCount >= 10) {
           await this.stop(userId, "too_many_errors");
         }
@@ -302,7 +339,10 @@ export class AtomicAutoEngine {
   }
 
   isRunning(userId: string): boolean {
-    return this.timers.has(userId) && this.stats.get(userId)?.status === "running";
+    return (
+      this.timers.has(userId) &&
+      this.stats.get(userId)?.status === "running"
+    );
   }
 
   getStatus(userId: string): AtomicBotEngineStats | null {
@@ -310,7 +350,9 @@ export class AtomicAutoEngine {
   }
 
   getAllRunningStats(): AtomicBotEngineStats[] {
-    return Array.from(this.stats.values()).filter((stat) => stat.status === "running");
+    return Array.from(this.stats.values()).filter(
+      (stat) => stat.status === "running"
+    );
   }
 
   getRunningCount(): number {

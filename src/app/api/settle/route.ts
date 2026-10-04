@@ -17,6 +17,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json().catch(() => ({}));
     const matchId =
       typeof body?.matchId === "string" && body.matchId ? body.matchId : null;
+    const settlementStartedAt = new Date();
 
     let results;
     if (matchId) {
@@ -39,18 +40,61 @@ export async function POST(request: NextRequest) {
     }
 
     const settled = results.filter((result) => result.settled);
+    const touchedAccumulatorIds = Array.from(
+      new Set(
+        settled
+          .map((result) => result.accumulatorId)
+          .filter((id): id is string => typeof id === "string" && id.length > 0)
+      )
+    );
+
+    const settledAccumulatorTickets =
+      touchedAccumulatorIds.length > 0
+        ? await prisma.accumulator.findMany({
+            where: {
+              userId,
+              id: { in: touchedAccumulatorIds },
+              settledAt: { gte: settlementStartedAt },
+              status: { in: ["won", "lost", "void"] },
+            },
+            select: {
+              id: true,
+              status: true,
+              profit: true,
+              commission: true,
+            },
+          })
+        : [];
+
+    const standaloneSettled = settled.filter(
+      (result) => !result.accumulatorId
+    );
+    const totalProfit =
+      standaloneSettled.reduce(
+        (sum, result) => sum + (result.profit || 0),
+        0
+      ) +
+      settledAccumulatorTickets.reduce(
+        (sum, accumulator) => sum + (accumulator.profit || 0),
+        0
+      );
+    const totalCommission =
+      standaloneSettled.reduce(
+        (sum, result) => sum + (result.commission || 0),
+        0
+      ) +
+      settledAccumulatorTickets.reduce(
+        (sum, accumulator) => sum + (accumulator.commission || 0),
+        0
+      );
+
     return NextResponse.json({
       settled: settled.length,
       skipped: results.length - settled.length,
       bets: settled,
-      totalProfit: settled.reduce(
-        (sum, result) => sum + (result.profit || 0),
-        0
-      ),
-      totalCommission: settled.reduce(
-        (sum, result) => sum + (result.commission || 0),
-        0
-      ),
+      settledAccumulatorTickets: settledAccumulatorTickets.length,
+      totalProfit,
+      totalCommission,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
