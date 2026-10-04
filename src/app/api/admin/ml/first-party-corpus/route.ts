@@ -5,6 +5,7 @@ import {
   captureTrainingFeatureSnapshots,
   FEATURE_SCHEMA_VERSION,
   FIRST_PARTY_CORE_FEATURE_KEYS,
+  FIRST_PARTY_MARKET_MOVEMENT_FEATURE_KEYS,
   HORIZONS,
   featureCompletenessForKeys,
 } from "@/lib/prediction/training-corpus";
@@ -145,6 +146,7 @@ export async function GET() {
   );
 
   let labeled = 0;
+  let profileCompletenessSum = 0;
   let coreCompletenessSum = 0;
   let allFeatureCompletenessSum = 0;
   let marketSnapshotsSum = 0;
@@ -156,13 +158,20 @@ export async function GET() {
       snapshot.match.status === "finished" &&
       snapshot.match.homeScore != null &&
       snapshot.match.awayScore != null;
+    let profileCompleteness = 0;
     let coreCompleteness = 0;
     try {
+      const features = JSON.parse(snapshot.featuresJson);
+      profileCompleteness = featureCompletenessForKeys(
+        features,
+        FIRST_PARTY_MARKET_MOVEMENT_FEATURE_KEYS
+      );
       coreCompleteness = featureCompletenessForKeys(
-        JSON.parse(snapshot.featuresJson),
+        features,
         FIRST_PARTY_CORE_FEATURE_KEYS
       );
     } catch {
+      profileCompleteness = 0;
       coreCompleteness = 0;
     }
 
@@ -185,8 +194,8 @@ export async function GET() {
         if (snapshot.marketConsensusAvailable) horizon.consensus++;
         horizon.minCompleteness =
           horizon.minCompleteness == null
-            ? coreCompleteness
-            : Math.min(horizon.minCompleteness, coreCompleteness);
+            ? profileCompleteness
+            : Math.min(horizon.minCompleteness, profileCompleteness);
 
         const fixtureId = snapshot.match.externalId || snapshot.featureHash;
         if (horizon.fixtureIds.has(fixtureId)) {
@@ -198,6 +207,7 @@ export async function GET() {
     }
 
     if (hasLabel) labeled++;
+    profileCompletenessSum += profileCompleteness;
     coreCompletenessSum += coreCompleteness;
     allFeatureCompletenessSum += snapshot.featureCompleteness;
     marketSnapshotsSum += snapshot.marketSnapshotCount;
@@ -287,6 +297,8 @@ export async function GET() {
     awaitingLabels: snapshots.length - labeled,
     latestSnapshotAt: snapshots[0]?.asOf?.toISOString() ?? null,
     averageFeatureCompleteness:
+      snapshots.length > 0 ? profileCompletenessSum / snapshots.length : 0,
+    averageCoreFeatureCompleteness:
       snapshots.length > 0 ? coreCompletenessSum / snapshots.length : 0,
     averageAllFeatureCompleteness:
       snapshots.length > 0 ? allFeatureCompletenessSum / snapshots.length : 0,
@@ -297,7 +309,7 @@ export async function GET() {
     horizons: horizonSummary,
     readiness: {
       featureSchemaVersion: FEATURE_SCHEMA_VERSION,
-      featureProfile: "core",
+      featureProfile: "market_movement",
       pilotMinLabeledPerHorizon: PILOT_MIN_LABELED_PER_HORIZON,
       pilotMinFeatureCompleteness: PILOT_MIN_FEATURE_COMPLETENESS,
       promotionMinLabeledPerHorizon: PROMOTION_MIN_LABELED_PER_HORIZON,
