@@ -10,6 +10,7 @@ from training.build_features import build_features
 from training.train_xgb import (
     ChronologicalSplit,
     calibration_cv_folds,
+    feature_columns,
     select_conservative_result_candidate,
     train,
 )
@@ -88,6 +89,20 @@ def test_training_pipeline_runs_end_to_end(tmp_path: Path):
     assert metadata["metrics"]["rows"]["calibration"] > 0
     assert metadata["metrics"]["rows"]["test"] > 0
     assert 0 <= metadata["metrics"]["result"]["accuracy"] <= 1
+
+
+def test_market_movement_profile_uses_online_first_party_contract():
+    columns = feature_columns("market_movement")
+
+    assert "market_snapshot_count" in columns
+    assert "market_history_minutes" in columns
+    assert "home_market_prob_move_open" in columns
+    assert "home_market_prob_move_6h" in columns
+    # 24h movement remains captured online, but is not required by this
+    # profile until first-party coverage clears the profile completeness gate.
+    assert "home_market_prob_move_24h" not in columns
+    assert "opening_home_market_prob" not in columns
+    assert "home_home_shots_5" not in columns
 
 
 def test_calibration_cv_folds_requires_each_result_class():
