@@ -2,6 +2,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 import { sumTicketStake } from "@/lib/bet-accounting";
+import { getRiskPeriodStarts } from "@/lib/risk-period-pnl";
 
 export async function GET(request: NextRequest) {
   try {
@@ -178,8 +179,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    const { dayStart: todayStart } = getRiskPeriodStarts(settings?.timezone);
     const todayBets = await prisma.bet.findMany({
       where: { userId, placedAt: { gte: todayStart } },
       select: { stake: true, accumulatorId: true },
