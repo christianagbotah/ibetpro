@@ -1,9 +1,8 @@
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/session";
+import { settleBetById } from "@/lib/settlement";
 import { NextRequest, NextResponse } from "next/server";
-import { config } from "@/lib/config";
 
-// Simple Poisson random number generator
 function poissonRandom(lambda: number): number {
   const L = Math.exp(-lambda);
   let k = 0;
@@ -15,12 +14,17 @@ function poissonRandom(lambda: number): number {
   return k - 1;
 }
 
+/**
+ * Advance a demo fixture only. This endpoint never performs its own financial
+ * accounting; once the fixture finishes every attached wager is handed to the
+ * canonical idempotent settlement engine.
+ */
 export async function POST(request: NextRequest) {
   try {
-    const userId = await requireAuth();
+    await requireAuth();
 
-    const body = await request.json();
-    const { matchId } = body;
+    const body = await request.json().catch(() => ({}));
+    const matchId = typeof body?.matchId === "string" ? body.matchId : "";
 
     if (!matchId) {
       return NextResponse.json({ error: "Match ID is required" }, { status: 400 });
@@ -28,7 +32,11 @@ export async function POST(request: NextRequest) {
 
     const match = await prisma.match.findUnique({
       where: { id: matchId },
-      include: { bets: true },
+      include: {
+        bets: {
+          select: { id: true },
+        },
+      },
     });
 
     if (!match) {
@@ -50,16 +58,16 @@ export async function POST(request: NextRequest) {
     }
 
     if (match.status !== "live") {
-      return NextResponse.json({ error: "Match is not live", match }, { status: 400 });
+      return NextResponse.json(
+        { error: "Match is not live", match },
+        { status: 400 }
+      );
     }
 
-    // Advance the minute by 1-3
     const advance = Math.floor(Math.random() * 3) + 1;
     const currentMinute = (match.minute ?? 0) + advance;
-
-    // Determine max minutes based on sport
-    const isFootball = match.sport === "football";
-    const isBasketball = match.sport === "basketball";
+    const isFootball = match.sport === "football" || match.sport.startsWith("soccer_");
+    const isBasketball = match.sport === "basketball" || match.sport.startsWith("basketball_");
     const maxMinutes = isFootball ? 90 : isBasketball ? 48 : 180;
 
     let homeScore = match.homeScore ?? 0;
@@ -67,40 +75,36 @@ export async function POST(request: NextRequest) {
     let newStatus = match.status;
     const events: string[] = [];
 
-    // Calculate goal probability based on odds (approximate expected goals)
     const homeImplied = 1 / match.homeOdds;
     const awayImplied = 1 / match.awayOdds;
-
-    // Expected goals per minute (simplified)
     const homeGoalRate = (homeImplied * 2.5) / maxMinutes;
     const awayGoalRate = (awayImplied * 2.5) / maxMinutes;
 
-    // For each minute advanced, check if a goal is scored
-    for (let m = 0; m < advance; m++) {
-      const minute = (match.minute ?? 0) + m + 1;
+    for (let offset = 0; offset < advance; offset++) {
+      const minute = (match.minute ?? 0) + offset + 1;
 
-      // Home team goal probability
-      const homeGoals = poissonRandom(homeGoalRate);
-      if (homeGoals > 0) {
-        homeScore += 1; // Cap at 1 goal per minute
-        events.push(`${minute}' - Goal! ${match.homeTeam} scores! (${homeScore}-${awayScore})`);
+      if (poissonRandom(homeGoalRate) > 0) {
+        homeScore += 1;
+        events.push(
+          `${minute}' - Goal! ${match.homeTeam} scores! (${homeScore}-${awayScore})`
+        );
       }
 
-      // Away team goal probability
-      const awayGoals = poissonRandom(awayGoalRate);
-      if (awayGoals > 0) {
+      if (poissonRandom(awayGoalRate) > 0) {
         awayScore += 1;
-        events.push(`${minute}' - Goal! ${match.awayTeam} scores! (${homeScore}-${awayScore})`);
+        events.push(
+          `${minute}' - Goal! ${match.awayTeam} scores! (${homeScore}-${awayScore})`
+        );
       }
     }
 
-    // Check if match should end
     if (currentMinute >= maxMinutes) {
       newStatus = "finished";
-      events.push(`Full Time! ${match.homeTeam} ${homeScore} - ${awayScore} ${match.awayTeam}`);
+      events.push(
+        `Full Time! ${match.homeTeam} ${homeScore} - ${awayScore} ${match.awayTeam}`
+      );
     }
 
-    // Update match
     const updatedMatch = await prisma.match.update({
       where: { id: matchId },
       data: {
@@ -112,90 +116,16 @@ export async function POST(request: NextRequest) {
       include: { bets: true },
     });
 
-    // If match is finished, settle bets
+    const settlementResults = [];
     if (newStatus === "finished") {
+      // The canonical settlement engine owns balance, allocation, account,
+      // commission, accumulator and transaction updates. It is idempotent, so
+      // repeated simulation/settlement requests cannot pay a wager twice.
       for (const bet of match.bets) {
-        if (bet.status !== "pending") continue;
-
-        let betWon = false;
-        if (bet.selection === match.homeTeam) {
-          betWon = homeScore > awayScore;
-        } else if (bet.selection === match.awayTeam) {
-          betWon = awayScore > homeScore;
-        } else if (bet.selection === "Draw") {
-          betWon = homeScore === awayScore;
-        }
-
-        const profit = betWon ? (bet.odds * bet.stake) - bet.stake : -bet.stake;
-
-        await prisma.bet.update({
-          where: { id: bet.id },
-          data: {
-            status: betWon ? "won" : "lost",
-            profit,
-            settledAt: new Date(),
-          },
-        });
-
-        // Create settlement transaction
-        if (betWon) {
-          await prisma.transaction.create({
-            data: {
-              userId: bet.userId,
-              type: "bet_won",
-              amount: bet.odds * bet.stake,
-              currency: "USD",
-              status: "completed",
-              description: `Won bet on ${bet.selection} - ${match.homeTeam} vs ${match.awayTeam}`,
-              betId: bet.id,
-            },
-          });
-
-          // Create commission transaction — use user's configured commission rate
-          const userSettings = await prisma.userSettings.findUnique({
-            where: { userId: bet.userId },
-            select: { commissionRate: true },
-          });
-          const commissionRate = userSettings?.commissionRate ?? config.commission.defaultRate;
-          const commission = profit * commissionRate;
-          await prisma.transaction.create({
-            data: {
-              userId: bet.userId,
-              type: "commission",
-              amount: -commission,
-              currency: "USD",
-              status: "completed",
-              description: `Commission on winning bet - ${match.homeTeam} vs ${match.awayTeam}`,
-              betId: bet.id,
-            },
-          });
-
-          await prisma.user.update({
-            where: { id: bet.userId },
-            data: {
-              totalProfit: { increment: profit - commission },
-              commissionPaid: { increment: commission },
-            },
-          });
-        } else {
-          await prisma.transaction.create({
-            data: {
-              userId: bet.userId,
-              type: "bet_lost",
-              amount: 0,
-              currency: "USD",
-              status: "completed",
-              description: `Lost bet on ${bet.selection} - ${match.homeTeam} vs ${match.awayTeam}`,
-              betId: bet.id,
-            },
-          });
-
-          await prisma.user.update({
-            where: { id: bet.userId },
-            data: {
-              totalLoss: { increment: bet.stake },
-            },
-          });
+        try {
+          settlementResults.push(await settleBetById(bet.id));
+        } catch (error) {
+          console.error(`[DemoSimulation] Settlement failed for ${bet.id}:`, error);
         }
       }
     }
@@ -205,6 +135,11 @@ export async function POST(request: NextRequest) {
       events,
       previousMinute: match.minute,
       newMinute: Math.min(currentMinute, maxMinutes),
+      settlement: {
+        attempted: newStatus === "finished" ? match.bets.length : 0,
+        settled: settlementResults.filter((result) => result.settled).length,
+        skipped: settlementResults.filter((result) => !result.settled).length,
+      },
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
