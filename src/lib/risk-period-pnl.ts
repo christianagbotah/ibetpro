@@ -163,6 +163,77 @@ export async function getRiskPeriodPnl(
 }
 
 /**
+ * Sum realized AUTO PnL from immutable financial-impact events since a UTC
+ * instant. Placement logs are deliberately excluded: staking money is exposure,
+ * not realized loss. Ticket ownership is verified against Bet/Accumulator so
+ * manual wagers do not leak into AUTO performance.
+ */
+export async function getAutoRealizedPnlSince(
+  userId: string,
+  since: Date
+) {
+  const events = await prisma.botLog.findMany({
+    where: {
+      userId,
+      action: { in: REALIZED_PNL_ACTIONS },
+      createdAt: { gte: since },
+    },
+    select: {
+      betId: true,
+      accumulatorId: true,
+      profitImpact: true,
+    },
+  });
+
+  const betIds = Array.from(
+    new Set(events.flatMap((event) => (event.betId ? [event.betId] : [])))
+  );
+  const accumulatorIds = Array.from(
+    new Set(
+      events.flatMap((event) =>
+        event.accumulatorId ? [event.accumulatorId] : []
+      )
+    )
+  );
+
+  const [autoBets, autoAccumulators] = await Promise.all([
+    betIds.length
+      ? prisma.bet.findMany({
+          where: { id: { in: betIds }, userId, isAutoPlaced: true },
+          select: { id: true },
+        })
+      : Promise.resolve([]),
+    accumulatorIds.length
+      ? prisma.accumulator.findMany({
+          where: { id: { in: accumulatorIds }, userId, isAutoPlaced: true },
+          select: { id: true },
+        })
+      : Promise.resolve([]),
+  ]);
+
+  const autoBetIds = new Set(autoBets.map((bet) => bet.id));
+  const autoAccumulatorIds = new Set(
+    autoAccumulators.map((accumulator) => accumulator.id)
+  );
+
+  return money(
+    events.reduce((sum, event) => {
+      if (event.accumulatorId) {
+        return autoAccumulatorIds.has(event.accumulatorId)
+          ? sum + (event.profitImpact || 0)
+          : sum;
+      }
+      if (event.betId) {
+        return autoBetIds.has(event.betId)
+          ? sum + (event.profitImpact || 0)
+          : sum;
+      }
+      return sum;
+    }, 0)
+  );
+}
+
+/**
  * User.dailyPnl / weeklyPnl are retained as compatibility/cache fields for
  * existing UI and risk code. Their authoritative values are reconstructed from
  * immutable realized-PnL events before every AUTO cycle, so no midnight/weekly
