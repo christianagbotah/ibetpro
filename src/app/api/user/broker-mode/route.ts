@@ -13,13 +13,17 @@ export async function GET() {
 
     const settings = await prisma.userSettings.findUnique({
       where: { userId },
-      select: { brokerMode: true },
+      select: { brokerMode: true, autoBettingEnabled: true, botMode: true },
     });
 
     const mode = settings?.brokerMode;
     const brokerMode: "demo" | "real" = mode === "real" || mode === "demo" ? mode : "demo";
 
-    return NextResponse.json({ brokerMode });
+    return NextResponse.json({
+      brokerMode,
+      autoBettingEnabled: settings?.autoBettingEnabled ?? false,
+      botMode: settings?.botMode || "advisor",
+    });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
@@ -47,20 +51,40 @@ export async function PATCH(request: NextRequest) {
       );
     }
 
-    // Upsert user settings to ensure the record exists
+    if (brokerMode === "real") {
+      const connectedAccounts = await prisma.bettingAccount.count({
+        where: { userId, isConnected: true },
+      });
+      if (connectedAccounts === 0) {
+        return NextResponse.json(
+          { error: "Connect at least one broker account before switching to Real mode" },
+          { status: 409 }
+        );
+      }
+    }
+
+    const updateData =
+      brokerMode === "real"
+        ? {
+            brokerMode,
+            autoBettingEnabled: false,
+            botMode: "advisor",
+          }
+        : { brokerMode };
+
     const settings = await prisma.userSettings.upsert({
       where: { userId },
-      update: { brokerMode },
+      update: updateData,
       create: {
         userId,
         brokerMode,
-        autoBettingEnabled: false,
+        autoBettingEnabled: brokerMode === "demo",
+        botMode: "advisor",
         riskLevel: "medium",
         commissionRate: config.commission.defaultRate,
       },
     });
 
-    // Log the mode change
     await logBrokerEvent({
       userId,
       action: "broker_mode_changed",
@@ -72,6 +96,9 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({
       success: true,
       brokerMode: settings.brokerMode,
+      autoBettingEnabled: settings.autoBettingEnabled,
+      botMode: settings.botMode,
+      realExecutionEnabled: false,
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
