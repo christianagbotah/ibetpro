@@ -1,0 +1,187 @@
+import { prisma } from "./db";
+
+const REALIZED_PNL_ACTIONS = [
+  "bet_settled",
+  "accumulator_settled",
+  "cashout_executed",
+];
+
+export type RiskPeriodPnl = {
+  dailyPnl: number;
+  weeklyPnl: number;
+  dayStart: Date;
+  weekStart: Date;
+  timezone: string;
+};
+
+type ZonedParts = {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  second: number;
+};
+
+function money(value: number) {
+  return Math.round((value + Number.EPSILON) * 100) / 100;
+}
+
+function normalizeTimezone(value?: string | null) {
+  const timezone = value || "Africa/Accra";
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: timezone }).format(new Date());
+    return timezone;
+  } catch {
+    return "Africa/Accra";
+  }
+}
+
+function zonedParts(date: Date, timezone: string): ZonedParts {
+  const formatter = new Intl.DateTimeFormat("en-CA", {
+    timeZone: timezone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  });
+
+  const values: Record<string, string> = {};
+  for (const part of formatter.formatToParts(date)) {
+    if (part.type !== "literal") values[part.type] = part.value;
+  }
+
+  return {
+    year: Number(values.year),
+    month: Number(values.month),
+    day: Number(values.day),
+    hour: Number(values.hour),
+    minute: Number(values.minute),
+    second: Number(values.second),
+  };
+}
+
+/**
+ * Convert a local wall-clock time in an IANA timezone to its UTC instant.
+ * Iterating handles DST/offset changes without depending on a third-party date
+ * library. Period boundaries are midnight, where the result is unambiguous for
+ * the timezones supported by the app.
+ */
+function zonedDateTimeToUtc(
+  parts: Pick<ZonedParts, "year" | "month" | "day">,
+  timezone: string
+) {
+  const target = Date.UTC(parts.year, parts.month - 1, parts.day, 0, 0, 0, 0);
+  let guess = target;
+
+  for (let i = 0; i < 4; i++) {
+    const actual = zonedParts(new Date(guess), timezone);
+    const representedAsUtc = Date.UTC(
+      actual.year,
+      actual.month - 1,
+      actual.day,
+      actual.hour,
+      actual.minute,
+      actual.second,
+      0
+    );
+    const adjustment = target - representedAsUtc;
+    if (adjustment === 0) break;
+    guess += adjustment;
+  }
+
+  return new Date(guess);
+}
+
+export function getRiskPeriodStarts(
+  timezoneInput?: string | null,
+  now = new Date()
+) {
+  const timezone = normalizeTimezone(timezoneInput);
+  const local = zonedParts(now, timezone);
+  const dayStart = zonedDateTimeToUtc(local, timezone);
+
+  const localCalendarDate = new Date(
+    Date.UTC(local.year, local.month - 1, local.day)
+  );
+  const daysSinceMonday = (localCalendarDate.getUTCDay() + 6) % 7;
+  localCalendarDate.setUTCDate(
+    localCalendarDate.getUTCDate() - daysSinceMonday
+  );
+
+  const weekStart = zonedDateTimeToUtc(
+    {
+      year: localCalendarDate.getUTCFullYear(),
+      month: localCalendarDate.getUTCMonth() + 1,
+      day: localCalendarDate.getUTCDate(),
+    },
+    timezone
+  );
+
+  return { timezone, dayStart, weekStart };
+}
+
+export async function getRiskPeriodPnl(
+  userId: string,
+  timezoneInput?: string | null,
+  now = new Date()
+): Promise<RiskPeriodPnl> {
+  const { timezone, dayStart, weekStart } = getRiskPeriodStarts(
+    timezoneInput,
+    now
+  );
+
+  const [dailyResult, weeklyResult] = await Promise.all([
+    prisma.botLog.aggregate({
+      where: {
+        userId,
+        action: { in: REALIZED_PNL_ACTIONS },
+        createdAt: { gte: dayStart },
+      },
+      _sum: { profitImpact: true },
+    }),
+    prisma.botLog.aggregate({
+      where: {
+        userId,
+        action: { in: REALIZED_PNL_ACTIONS },
+        createdAt: { gte: weekStart },
+      },
+      _sum: { profitImpact: true },
+    }),
+  ]);
+
+  return {
+    dailyPnl: money(dailyResult._sum.profitImpact || 0),
+    weeklyPnl: money(weeklyResult._sum.profitImpact || 0),
+    dayStart,
+    weekStart,
+    timezone,
+  };
+}
+
+/**
+ * User.dailyPnl / weeklyPnl are retained as compatibility/cache fields for
+ * existing UI and risk code. Their authoritative values are reconstructed from
+ * immutable realized-PnL events before every AUTO cycle, so no midnight/weekly
+ * reset job is required.
+ */
+export async function refreshRiskPeriodPnlCache(userId: string) {
+  const settings = await prisma.userSettings.findUnique({
+    where: { userId },
+    select: { timezone: true },
+  });
+  const pnl = await getRiskPeriodPnl(userId, settings?.timezone);
+
+  await prisma.user.updateMany({
+    where: { id: userId },
+    data: {
+      dailyPnl: pnl.dailyPnl,
+      weeklyPnl: pnl.weeklyPnl,
+    },
+  });
+
+  return pnl;
+}

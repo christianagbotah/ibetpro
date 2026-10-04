@@ -1,5 +1,8 @@
 import { prisma } from "./db";
-import { runAutoBetCycle, type AutoBetCycleResult } from "./auto-bet-runner";
+import {
+  runAutoBetCycle,
+  type AutoBetCycleResult,
+} from "./risk-aware-auto-bet-runner";
 import { syncMatchData } from "./sync-service";
 import { settleFinishedBetsForUser } from "./settlement";
 
