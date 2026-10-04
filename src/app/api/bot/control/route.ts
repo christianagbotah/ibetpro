@@ -1,8 +1,8 @@
 // ============================================================================
 // iBetPro AI Bot Control API
-// POST /api/bot/control - Start/stop the bot (uses background BotEngine)
+// POST /api/bot/control - Start/stop the background Advisor/AUTO engine
 // GET  /api/bot/control - Get bot status
-// PATCH /api/bot/control - Run a manual scan cycle (on-demand)
+// PATCH /api/bot/control - Get current scan state
 // ============================================================================
 
 import { prisma } from "@/lib/db";
@@ -11,26 +11,27 @@ import { NextRequest, NextResponse } from "next/server";
 import { botEngine } from "@/lib/bot-engine";
 import { countTickets, sumTicketStake } from "@/lib/bet-accounting";
 
-/**
- * GET - Get current bot session status
- */
 export async function GET() {
   try {
     const userId = await requireAuth();
 
-    const session = await prisma.botSession.findUnique({
-      where: { userId },
-    });
-
-    const settings = await prisma.userSettings.findUnique({
-      where: { userId },
-    });
-
-    const recentLogs = await prisma.botLog.findMany({
-      where: { userId },
-      orderBy: { createdAt: "desc" },
-      take: 10,
-    });
+    const [session, settings, recentLogs, connectedAccount, activeAllocation] =
+      await Promise.all([
+        prisma.botSession.findUnique({ where: { userId } }),
+        prisma.userSettings.findUnique({ where: { userId } }),
+        prisma.botLog.findMany({
+          where: { userId },
+          orderBy: { createdAt: "desc" },
+          take: 10,
+        }),
+        prisma.bettingAccount.findFirst({
+          where: { userId, isConnected: true },
+          orderBy: { allocatedAmount: "desc" },
+        }),
+        prisma.allocation.findFirst({
+          where: { userId, status: "active" },
+        }),
+      ]);
 
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
@@ -48,20 +49,15 @@ export async function GET() {
       .filter((bet) => bet.status === "won" || bet.status === "cashed_out")
       .reduce((sum, bet) => sum + (bet.profit || 0), 0);
 
-    const connectedAccount = await prisma.bettingAccount.findFirst({
-      where: { userId, isConnected: true },
-      orderBy: { allocatedAmount: "desc" },
-    });
-
-    const activeAllocation = await prisma.allocation.findFirst({
-      where: { userId, status: "active" },
-    });
-
     const engineStats = botEngine.getStatus(userId);
+    const isAuto = settings?.botMode === "auto";
+    const backgroundAutoExecutionEnabled =
+      isAuto && settings?.brokerMode !== "real" && !!settings?.autoBettingEnabled;
 
     return NextResponse.json({
       botStatus: session?.status || "stopped",
       engineRunning: botEngine.isRunning(userId),
+      engineMode: isAuto ? "atomic-v1" : "advisor-legacy",
       session: session
         ? {
             id: session.id,
@@ -94,7 +90,7 @@ export async function GET() {
         brokerMode: settings?.brokerMode ?? "demo",
         botMode: settings?.botMode ?? "advisor",
         realExecutionEnabled: false,
-        backgroundAutoExecutionEnabled: false,
+        backgroundAutoExecutionEnabled,
         riskLevel: settings?.riskLevel ?? "medium",
         dailyBetLimit: settings?.dailyBetLimit ?? 500,
         stopLossDaily: settings?.stopLossDaily ?? 200,
@@ -137,10 +133,6 @@ export async function GET() {
   }
 }
 
-/**
- * POST - Start or stop the bot using the background BotEngine
- * Body: { action: "start" | "stop", scanIntervalSec?: number }
- */
 export async function POST(request: NextRequest) {
   try {
     const userId = await requireAuth();
@@ -160,16 +152,26 @@ export async function POST(request: NextRequest) {
         select: { brokerMode: true, botMode: true, autoBettingEnabled: true },
       });
 
-      if (settings?.botMode === "auto") {
+      if (!settings) {
+        return NextResponse.json({ error: "Settings not found" }, { status: 404 });
+      }
+
+      if (settings.botMode === "auto" && settings.brokerMode === "real") {
         return NextResponse.json(
           {
             error:
-              "Background AUTO execution is temporarily fail-closed while its scheduler is migrated to atomic placement/cashout accounting. Use Advisor mode; atomic on-demand auto-betting remains available in Demo mode.",
-            code: "BACKGROUND_AUTO_ACCOUNTING_GUARD",
+              "Automated real-money execution is not enabled yet. Use Demo broker mode for AUTO, or switch to Advisor mode.",
+            code: "REAL_AUTO_EXECUTION_DISABLED",
             botStatus: "stopped",
             realExecutionEnabled: false,
-            backgroundAutoExecutionEnabled: false,
           },
+          { status: 409 }
+        );
+      }
+
+      if (settings.botMode === "auto" && !settings.autoBettingEnabled) {
+        return NextResponse.json(
+          { error: "Enable auto-betting before starting AUTO mode" },
           { status: 409 }
         );
       }
@@ -216,12 +218,13 @@ export async function POST(request: NextRequest) {
             stopReason: "start_failed",
           },
         });
-        return NextResponse.json({ error: result.message }, { status: 400 });
+        return NextResponse.json({ error: result.message }, { status: 409 });
       }
 
       return NextResponse.json({
         success: true,
         botStatus: "running",
+        engineMode: settings.botMode === "auto" ? "atomic-v1" : "advisor-legacy",
         message: result.message,
         engineRunning: true,
       });
@@ -264,11 +267,6 @@ export async function POST(request: NextRequest) {
   }
 }
 
-/**
- * PATCH - Run a manual scan cycle (on-demand, doesn't start the engine)
- * This is useful for the frontend to trigger an immediate scan without waiting
- * for the next interval tick.
- */
 export async function PATCH() {
   try {
     const userId = await requireAuth();
