@@ -8,8 +8,8 @@ import {
 
 /**
  * Bet Settlement Engine
- * POST /api/settle - idempotently settle supported finished bets for the signed-in user.
- * GET /api/settle - show finished/pending settlement and live-bet status.
+ * POST /api/settle - idempotently settle supported resolved bets for the signed-in user.
+ * GET /api/settle - show resolved/pending settlement and live-bet status.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
           userId,
           matchId,
           status: { in: ["pending", "partial_cashout"] },
-          match: { status: "finished" },
+          match: { status: { in: ["finished", "cancelled", "void"] } },
         },
         select: { id: true },
         orderBy: { placedAt: "asc" },
@@ -76,7 +76,7 @@ export async function GET() {
         where: {
           userId,
           status: { in: ["pending", "partial_cashout"] },
-          match: { status: "finished" },
+          match: { status: { in: ["finished", "cancelled", "void"] } },
         },
         include: { match: true },
         orderBy: { placedAt: "asc" },
