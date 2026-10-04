@@ -298,5 +298,3 @@ export async function refreshActiveOddsApiLiveScores(
 
   return results;
 }
-
-[executed on device: vps.lightworldtech.com (5ce193d7-af15-4a4a-8909-478bdfb81319)]
