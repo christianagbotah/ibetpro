@@ -1,5 +1,6 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuth } from "@/lib/session";
 
 /**
  * Bot Logs API
@@ -7,15 +8,17 @@ import { NextRequest, NextResponse } from "next/server";
  */
 export async function GET(request: NextRequest) {
   try {
+    const userId = await requireAuth();
     const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
     const action = searchParams.get("action");
-    const limit = parseInt(searchParams.get("limit") || "50");
-    const offset = parseInt(searchParams.get("offset") || "0");
-
-    if (!userId) {
-      return NextResponse.json({ error: "User ID required" }, { status: 400 });
-    }
+    const requestedLimit = parseInt(searchParams.get("limit") || "50", 10);
+    const requestedOffset = parseInt(searchParams.get("offset") || "0", 10);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(100, Math.max(1, requestedLimit))
+      : 50;
+    const offset = Number.isFinite(requestedOffset)
+      ? Math.max(0, requestedOffset)
+      : 0;
 
     const where: Record<string, unknown> = { userId };
     if (action) where.action = action;
@@ -56,6 +59,9 @@ export async function GET(request: NextRequest) {
       hasMore: offset + limit < total,
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "Authentication required") {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
     console.error("Error fetching bot logs:", error);
     return NextResponse.json({ error: "Failed to fetch bot logs" }, { status: 500 });
   }

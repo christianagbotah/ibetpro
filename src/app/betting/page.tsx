@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from "react";
-import { useFetch } from "@/lib/hooks";
+import { useFetch, usePolling } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { getSportShortName, getSportName } from "@/lib/sports";
 import { AutoBetConfig } from "@/components/betting/auto-bet-config";
@@ -85,6 +85,11 @@ interface UserSettings {
   minEdgeThreshold: number;
 }
 
+const finiteNumber = (value: unknown, fallback = 0): number => {
+  const parsed = typeof value === "number" ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
 const defaultSettings: UserSettings = {
   autoBettingEnabled: true,
   maxBetAmount: 200,
@@ -112,14 +117,56 @@ const defaultSettings: UserSettings = {
   minEdgeThreshold: 0.03,
 };
 
+const normalizeSettings = (value: unknown): UserSettings => {
+  const raw = value && typeof value === "object" ? value as Partial<UserSettings> : {};
+  return {
+    ...defaultSettings,
+    ...raw,
+    maxBetAmount: finiteNumber(raw.maxBetAmount, defaultSettings.maxBetAmount),
+    minOddsThreshold: finiteNumber(raw.minOddsThreshold, defaultSettings.minOddsThreshold),
+    maxOddsThreshold: finiteNumber(raw.maxOddsThreshold, defaultSettings.maxOddsThreshold),
+    cashoutThreshold: finiteNumber(raw.cashoutThreshold, defaultSettings.cashoutThreshold),
+    commissionRate: finiteNumber(raw.commissionRate, defaultSettings.commissionRate),
+    dailyBetLimit: finiteNumber(raw.dailyBetLimit, defaultSettings.dailyBetLimit),
+    maxAccumulatorLegs: finiteNumber(raw.maxAccumulatorLegs, defaultSettings.maxAccumulatorLegs),
+    minAiConfidence: finiteNumber(raw.minAiConfidence, defaultSettings.minAiConfidence),
+    stopLossDaily: finiteNumber(raw.stopLossDaily, defaultSettings.stopLossDaily),
+    stopLossWeekly: finiteNumber(raw.stopLossWeekly, defaultSettings.stopLossWeekly),
+    profitTargetDaily: finiteNumber(raw.profitTargetDaily, defaultSettings.profitTargetDaily),
+    profitTargetWeekly: finiteNumber(raw.profitTargetWeekly, defaultSettings.profitTargetWeekly),
+    partialCashoutPercent: finiteNumber(raw.partialCashoutPercent, defaultSettings.partialCashoutPercent),
+    kellyFraction: finiteNumber(raw.kellyFraction, defaultSettings.kellyFraction),
+    minEdgeThreshold: finiteNumber(raw.minEdgeThreshold, defaultSettings.minEdgeThreshold),
+    preferredSports: typeof raw.preferredSports === "string" && raw.preferredSports.trim()
+      ? raw.preferredSports
+      : defaultSettings.preferredSports,
+    betTypes: typeof raw.betTypes === "string" && raw.betTypes.trim()
+      ? raw.betTypes
+      : defaultSettings.betTypes,
+    riskLevel: typeof raw.riskLevel === "string" && raw.riskLevel
+      ? raw.riskLevel
+      : defaultSettings.riskLevel,
+    betScheduleStart: typeof raw.betScheduleStart === "string" && raw.betScheduleStart
+      ? raw.betScheduleStart
+      : defaultSettings.betScheduleStart,
+    betScheduleEnd: typeof raw.betScheduleEnd === "string" && raw.betScheduleEnd
+      ? raw.betScheduleEnd
+      : defaultSettings.betScheduleEnd,
+  };
+};
+
 export default function BettingPage() {
   const { addToast } = useToast();
   const { user } = useAuth();
   const { symbol } = useCurrency();
-  const { data: bets, loading, refetch: refetchBets } = useFetch<Bet[]>("/api/bets", []);
+  const { data: bets, loading, refetch: refetchBets } = usePolling<Bet[]>("/api/bets", 15000, []);
   const { data: accounts } = useFetch<Array<{ id: string; platform: string }>>("/api/accounts", []);
+  const { data: pnlData } = usePolling<{ dailyPnl: number; weeklyPnl: number }>(
+    "/api/stats/user",
+    15000,
+    { dailyPnl: 0, weeklyPnl: 0 }
+  );
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
-  const [pnlData, setPnlData] = useState<{ dailyPnl: number; weeklyPnl: number }>({ dailyPnl: 0, weeklyPnl: 0 });
   const [betFilter, setBetFilter] = useState<string>("all");
   const [botRunning, setBotRunning] = useState(false);
   const [botLoading, setBotLoading] = useState(false); // for start/stop API calls
@@ -135,30 +182,18 @@ export default function BettingPage() {
   } | null>(null);
   const [engineRunning, setEngineRunning] = useState(false);
   const pollIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const lastNotifiedBetCountRef = useRef(0);
 
   // Load user settings and bot status
   useEffect(() => {
     async function loadSettings() {
       try {
-        const [settingsRes, statsRes] = await Promise.all([
-          fetch("/api/settings"),
-          fetch("/api/stats/user"),
-        ]);
+        const settingsRes = await fetch("/api/settings");
         if (settingsRes.ok) {
           const data = await settingsRes.json();
           if (data) {
-            setSettings({
-              ...defaultSettings,
-              ...data,
-            });
+            setSettings(normalizeSettings(data));
           }
-        }
-        if (statsRes.ok) {
-          const stats = await statsRes.json();
-          setPnlData({
-            dailyPnl: stats.dailyPnl ?? 0,
-            weeklyPnl: stats.weeklyPnl ?? 0,
-          });
         }
       } catch {
         // Use defaults
@@ -177,6 +212,13 @@ export default function BettingPage() {
           }
           if (data.session) {
             setBotSession(data.session);
+            lastNotifiedBetCountRef.current =
+              data.engineStats?.totalBetsPlaced ??
+              data.session.totalBetsPlaced ??
+              0;
+          } else if (data.engineStats) {
+            lastNotifiedBetCountRef.current =
+              data.engineStats.totalBetsPlaced ?? 0;
           }
         }
       } catch {
@@ -231,13 +273,19 @@ export default function BettingPage() {
             } else if (data.session) {
               setBotSession(data.session);
             }
-            // Check for new bets placed
-            const prevBets = botSession?.totalBetsPlaced ?? 0;
-            const newBetsPlaced = (data.engineStats?.totalBetsPlaced ?? data.session?.totalBetsPlaced ?? 0) - prevBets;
-            if (newBetsPlaced > 0) {
+            // Check for genuinely new bets placed without replaying the same
+            // notification on every 15-second status poll.
+            const currentBetCount =
+              data.engineStats?.totalBetsPlaced ??
+              data.session?.totalBetsPlaced ??
+              0;
+            const previousBetCount = lastNotifiedBetCountRef.current;
+            if (currentBetCount > previousBetCount) {
+              const newBetsPlaced = currentBetCount - previousBetCount;
               addToast("success", `Bot placed ${newBetsPlaced} bet(s)!`);
               refetchBets();
             }
+            lastNotifiedBetCountRef.current = currentBetCount;
           }
         } catch {
           // Ignore poll errors
@@ -274,6 +322,11 @@ export default function BettingPage() {
       const data = await res.json();
       if (res.ok && data.success) {
         setBotRunning(true);
+        lastNotifiedBetCountRef.current =
+          data.engineStats?.totalBetsPlaced ??
+          data.session?.totalBetsPlaced ??
+          data.firstScan?.betsPlaced ??
+          0;
         if (data.firstScan?.betsPlaced > 0) {
           addToast("success", data.message);
         } else {
@@ -373,14 +426,31 @@ export default function BettingPage() {
     }
   };
 
-  // Merge betting account info
-  const enrichedBets = bets.map((bet) => {
-    const account = accounts.find((a) => a.id === bet.bettingAccountId);
-    return {
-      ...bet,
-      bettingAccount: account ? { platform: account.platform } : undefined,
-    };
-  });
+  // Normalize API payloads defensively before rendering. A transient auth/API
+  // response must never turn into a client-side Application Error.
+  const safeAccounts = Array.isArray(accounts) ? accounts : [];
+  const safeBets = Array.isArray(bets) ? bets : [];
+  const enrichedBets = safeBets
+    .filter((bet): bet is Bet => Boolean(bet && typeof bet === "object" && bet.id))
+    .map((bet) => {
+      const account = safeAccounts.find((a) => a?.id === bet.bettingAccountId);
+      return {
+        ...bet,
+        odds: finiteNumber(bet.odds),
+        stake: finiteNumber(bet.stake),
+        potentialWin: finiteNumber(bet.potentialWin),
+        profit: bet.profit == null ? null : finiteNumber(bet.profit),
+        cashoutAmount: bet.cashoutAmount == null ? null : finiteNumber(bet.cashoutAmount),
+        partialCashoutAmount: bet.partialCashoutAmount == null ? null : finiteNumber(bet.partialCashoutAmount),
+        aiConfidence: bet.aiConfidence == null ? null : finiteNumber(bet.aiConfidence),
+        placedAt: bet.placedAt || new Date(0).toISOString(),
+        bettingAccount: account?.platform
+          ? { platform: account.platform }
+          : bet.bettingAccount?.platform
+            ? { platform: bet.bettingAccount.platform }
+            : undefined,
+      };
+    });
 
   const filteredBets =
     betFilter === "all"
@@ -410,7 +480,9 @@ export default function BettingPage() {
     return placedAt.toDateString() === today.toDateString();
   });
   const dailyStake = todayBets.reduce((sum, b) => sum + b.stake, 0);
-  const dailyLimitProgress = Math.min((dailyStake / settings.dailyBetLimit) * 100, 100);
+  const dailyLimitProgress = settings.dailyBetLimit > 0
+    ? Math.min((dailyStake / settings.dailyBetLimit) * 100, 100)
+    : 0;
 
   if (loading) {
     return (
@@ -805,9 +877,9 @@ export default function BettingPage() {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="lg:col-span-2 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        <div className="lg:col-span-2 flex min-h-0 flex-col gap-4 lg:h-full lg:overflow-hidden">
+          <div className="flex shrink-0 flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <h2 className="text-lg font-semibold text-foreground">Your Bets</h2>
             <div className="flex flex-wrap items-center gap-1">
               {["all", "pending", "won", "lost", "auto", "accumulator"].map((filter) => (
@@ -824,7 +896,7 @@ export default function BettingPage() {
             </div>
           </div>
 
-          <div className="space-y-3 max-h-[600px] lg:max-h-[calc(100vh-400px)] overflow-y-auto">
+          <div className="space-y-3 max-h-[600px] overflow-y-auto pr-1 lg:max-h-none lg:min-h-0 lg:flex-1">
             {filteredBets.length === 0 ? (
               <Card className="bg-card border-border">
                 <CardContent className="p-8 text-center">
@@ -867,6 +939,7 @@ function EnhancedBetCard({
   onCashout: (betId: string, type: "full" | "partial") => void;
   settings: UserSettings;
 }) {
+  const { symbol } = useCurrency();
   const statusConfig: Record<string, { icon: typeof Zap; color: string; label: string }> = {
     pending: { icon: Clock, color: "text-amber-400", label: "Pending" },
     won: { icon: TrendingUp, color: "text-emerald-400", label: "Won" },

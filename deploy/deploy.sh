@@ -45,10 +45,9 @@ cd "${APP_DIR}"
 # STEP 1: Pull latest code
 # ============================================================================
 log "Step 1: Pulling latest code..."
-git fetch origin main
-git reset --hard origin/main
+git fetch origin
 CURRENT_COMMIT=$(git log --oneline -1)
-ok "Code updated: ${CURRENT_COMMIT}"
+ok "Deploying checked-out verified commit: ${CURRENT_COMMIT}"
 
 # ============================================================================
 # STEP 2: Install dependencies
@@ -58,33 +57,31 @@ npm install --production=false 2>&1 | tail -5
 ok "Dependencies installed"
 
 # ============================================================================
-# STEP 3: Create .env.production if missing
+# STEP 3: Validate server-side environment
 # ============================================================================
-log "Step 3: Checking environment..."
+log "Step 3: Validating environment..."
 
 if [ ! -f ".env.production" ]; then
-    log "Creating .env.production with default values..."
-    cat > .env.production << 'ENVEOF'
-DATABASE_URL=mysql://lightworld_db_user:myjesus4mE2018@localhost:3306/lightworld_ibetpro_db
-NEXTAUTH_URL=https://ibetpro.lightworldtech.com
-NEXTAUTH_SECRET=CHANGE_ME_TO_A_RANDOM_64_CHAR_STRING
-TELEGRAM_BOT_TOKEN=8667289261:AAFry07KkbkHEvIgVOP5D2OXgQ0zxdm3i8c
-ODDS_API_KEY=87da024b9f311a386a05b9aa6ca40dbe
-CRON_SECRET=ibp_cron_2024_s3cur3
-NODE_ENV=production
-PORT=3007
-HOSTNAME=0.0.0.0
-ENVEOF
-    warn "Created .env.production — UPDATE NEXTAUTH_SECRET with: openssl rand -base64 48"
+    err ".env.production is required. Provision production secrets outside Git; deployment will not generate credential defaults."
 fi
 
-ok "Environment file ready"
+chmod 600 .env.production
+
+for key in DATABASE_URL NEXTAUTH_URL NEXTAUTH_SECRET CRON_SECRET; do
+    if ! grep -q "^${key}=" .env.production; then
+        err "Missing required environment key: ${key}"
+    fi
+done
+
+ok "Server-side environment file validated"
 
 # ============================================================================
 # STEP 4: Generate Prisma client
 # ============================================================================
 log "Step 4: Generating Prisma client..."
-export $(grep -v '^#' ".env.production" | grep DATABASE_URL | xargs)
+set -a
+. ./.env.production
+set +a
 npx prisma generate 2>&1
 ok "Prisma client generated"
 
@@ -112,37 +109,16 @@ ok "Environment configured for ${DOMAIN}:${PORT}"
 # STEP 7: Run database migration
 # ============================================================================
 log "Step 7: Running database migration..."
-export $(grep -v '^#' ".next/standalone/.env" | grep DATABASE_URL | xargs)
+set -a
+. ./.next/standalone/.env
+set +a
 
 # Verify MySQL connection first
-log "Checking MySQL connection..."
-if mysql -u lightworld_db_user -pmyjesus4mE2018 -h localhost lightworld_ibetpro_db -e "SELECT 1;" &>/dev/null; then
-    ok "MySQL connection verified"
+log "Applying Prisma schema without accepting destructive data loss..."
+if npx prisma db push 2>&1; then
+    ok "Database schema synced via Prisma"
 else
-    warn "Direct MySQL test failed, continuing with Prisma anyway..."
-fi
-
-# Use prisma db push as primary — it's idempotent and handles schema drift
-# (migrate deploy fails on existing DBs that were set up with db push)
-if npx prisma db push --accept-data-loss 2>&1; then
-    ok "Database schema synced via db push"
-else
-    err "Database migration FAILED — check MySQL connection and schema"
-fi
-
-# Post-migration: Verify critical columns exist
-log "Verifying critical database columns..."
-if mysql -u lightworld_db_user -pmyjesus4mE2018 -h localhost lightworld_ibetpro_db -e "SELECT timezone FROM UserSettings LIMIT 1;" &>/dev/null; then
-    ok "UserSettings.timezone column exists"
-else
-    warn "UserSettings.timezone column missing — adding it now..."
-    mysql -u lightworld_db_user -pmyjesus4mE2018 -h localhost lightworld_ibetpro_db \
-        -e "ALTER TABLE UserSettings ADD COLUMN timezone VARCHAR(191) NOT NULL DEFAULT 'Africa/Accra';" 2>&1
-    if [ $? -eq 0 ]; then
-        ok "UserSettings.timezone column added successfully"
-    else
-        warn "Could not add timezone column (may already exist). Check manually."
-    fi
+    err "Database schema sync failed. Review Prisma output before retrying."
 fi
 
 # ============================================================================

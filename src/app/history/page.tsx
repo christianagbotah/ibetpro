@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
-import { useFetch } from "@/lib/hooks";
+import { usePolling } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { getSportShortName, getSportName } from "@/lib/sports";
 import { Card, CardContent } from "@/components/ui/card";
@@ -62,7 +62,7 @@ interface Bet {
 export default function HistoryPage() {
   const { addToast } = useToast();
   const { symbol } = useCurrency();
-  const { data: bets, loading } = useFetch<Bet[]>("/api/bets", []);
+  const { data: bets, loading } = usePolling<Bet[]>("/api/bets", 30000, []);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [sportFilter, setSportFilter] = useState<string>("all");
   const [sortBy, setSortBy] = useState<string>("date");

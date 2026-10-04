@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/session";
-import { config, getPrimaryDataSource } from "@/lib/config";
+import { getPrimaryDataSource } from "@/lib/config";
 import { generateDemoMatches, updateLiveDemoMatches } from "@/lib/demo-data";
 
 // Cache demo matches in memory for the session (refreshed periodically)
@@ -20,12 +20,21 @@ export async function GET(request: NextRequest) {
     const sport = searchParams.get("sport");
     const status = searchParams.get("status");
     const id = searchParams.get("id");
+    const requestedLimit = Number(searchParams.get("limit") || 250);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(500, Math.max(1, Math.floor(requestedLimit)))
+      : 250;
 
     // If a specific match ID is requested, return that single match
     if (id) {
       const match = await prisma.match.findUnique({
         where: { id },
-        include: { bets: true },
+        include: {
+          bets: {
+            where: { userId: user.id },
+            orderBy: { placedAt: "desc" },
+          },
+        },
       });
 
       if (!match) {
@@ -37,13 +46,19 @@ export async function GET(request: NextRequest) {
 
     const where: Record<string, unknown> = {};
     if (sport) where.sport = sport;
-    if (status) where.status = status;
+    if (status) {
+      where.status = status;
+    } else {
+      // List views only need actionable fixtures. Historical/settlement rows
+      // remain available through explicit status filters or direct match IDs.
+      where.status = { in: ["live", "upcoming"] };
+    }
 
-    // Try to get matches from database first
+    // Keep high-frequency list polling bounded as global discovery grows.
     const dbMatches = await prisma.match.findMany({
       where,
-      include: { bets: true },
       orderBy: { commenceTime: "asc" },
+      take: limit,
     });
 
     // If we have real data from API sync, use it
@@ -116,8 +131,8 @@ export async function GET(request: NextRequest) {
         // Re-fetch from DB with proper relations
         cachedDemoMatches = await prisma.match.findMany({
           where,
-          include: { bets: true },
           orderBy: { commenceTime: "asc" },
+          take: limit,
         });
         lastDemoRefresh = now;
       }

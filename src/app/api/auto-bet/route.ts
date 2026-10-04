@@ -1,21 +1,17 @@
 import { prisma } from "@/lib/db";
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { analyzeMatch, shouldAutoBet, checkRiskLimits, isWithinBetSchedule } from "@/lib/ai-engine-v2";
 import { placeBetOnBroker, calculateCommission } from "@/lib/broker-integration";
+import { requireAuth } from "@/lib/session";
 
 /**
  * Auto-Bet Bot Engine v2
  * POST /api/auto-bet - Scans matches and places bets automatically using broker allocation
  * GET /api/auto-bet - Get bot status and recent activity
  */
-export async function POST(request: NextRequest) {
+export async function POST() {
   try {
-    const body = await request.json();
-    const { userId } = body;
-
-    if (!userId) {
-      return NextResponse.json({ error: "User ID required" }, { status: 400 });
-    }
+    const userId = await requireAuth();
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -126,6 +122,8 @@ export async function POST(request: NextRequest) {
         status: "upcoming",
         sport: { in: settings.preferredSports.split(",") },
         commenceTime: { gte: new Date() },
+        homeOdds: { gt: 1 },
+        awayOdds: { gt: 1 },
         id: { notIn: existingBetMatchIds },
       },
       orderBy: { commenceTime: "asc" },
@@ -194,7 +192,25 @@ export async function POST(request: NextRequest) {
 
       const recOdds = prediction.recommended === "home" ? match.homeOdds
         : prediction.recommended === "away" ? match.awayOdds
-        : match.drawOdds || 3.0;
+        : prediction.recommended === "draw" ? match.drawOdds
+        : prediction.recommended === "over" ? match.overOdds
+        : prediction.recommended === "under" ? match.underOdds
+        : null;
+
+      // Do not auto-bet a fixture-only row or invent a bookmaker price for a
+      // market that has not been enriched yet.
+      if (recOdds == null || !Number.isFinite(recOdds) || recOdds <= 1) {
+        await prisma.botLog.create({
+          data: {
+            userId,
+            action: "bet_skipped",
+            matchId: match.id,
+            reasoning: "Recommended market odds are not available yet",
+            confidence: prediction.confidence,
+          },
+        });
+        continue;
+      }
 
       // Check odds range
       if (recOdds < settings.minOddsThreshold || recOdds > settings.maxOddsThreshold) {
@@ -513,19 +529,17 @@ export async function POST(request: NextRequest) {
       remainingAllocation: (activeAllocation?.remainingAmount || bettingAccount.allocatedAmount) - betsPlaced.reduce((s, b) => s + b.stake, 0),
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "Authentication required") {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
     console.error("Auto-bet error:", error);
     return NextResponse.json({ error: "Failed to process auto-bet" }, { status: 500 });
   }
 }
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const { searchParams } = new URL(request.url);
-    const userId = searchParams.get("userId");
-
-    if (!userId) {
-      return NextResponse.json({ error: "User ID required" }, { status: 400 });
-    }
+    const userId = await requireAuth();
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
@@ -609,6 +623,9 @@ export async function GET(request: NextRequest) {
       recentLogs,
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "Authentication required") {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
     console.error("Error fetching bot status:", error);
     return NextResponse.json({ error: "Failed to fetch bot status" }, { status: 500 });
   }

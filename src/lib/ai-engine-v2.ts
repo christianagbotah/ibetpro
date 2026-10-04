@@ -5,6 +5,7 @@
 // ============================================================================
 
 import { config } from "./config";
+import { getRemainingExposure } from "./bet-exposure";
 
 // ==================== TYPE DEFINITIONS ====================
 
@@ -621,7 +622,8 @@ export function shouldCashout(
   // Calculate live win probability based on score and time
   const liveWinProb = calculateLiveWinProbability(bet, liveMatch);
 
-  // Calculate cashout value
+  // Calculate cashout value for only the still-open exposure.
+  const exposure = getRemainingExposure(bet);
   const cashoutAmount = calculateCashoutValue(bet, liveMatch, isWinning);
 
   // Time decay factor (urgency increases as match progresses)
@@ -649,9 +651,19 @@ export function shouldCashout(
   let waitOrCashout: CashoutRecommendation["waitOrCashout"] = "wait";
   if (isWinning && liveMatch.status === "finished") {
     waitOrCashout = "wait_for_settlement";
-  } else if (isWinning && !waitFullSettlement && cashoutAmount >= bet.potentialWin * cashoutThreshold) {
+  } else if (
+    isWinning &&
+    !waitFullSettlement &&
+    cashoutAmount >= exposure.remainingPotentialWin * cashoutThreshold
+  ) {
     waitOrCashout = "cashout_full";
-  } else if (isWinning && partialCashoutEnabled && cashoutAmount >= bet.potentialWin * cashoutThreshold * 0.5) {
+  } else if (
+    isWinning &&
+    partialCashoutEnabled &&
+    exposure.cashedOutFraction === 0 &&
+    cashoutAmount >=
+      exposure.remainingPotentialWin * cashoutThreshold * 0.5
+  ) {
     waitOrCashout = "cashout_partial";
   } else if (isLosing && liveWinProb < 0.2 && timeDecay > 0.6) {
     waitOrCashout = "cashout_full";
@@ -663,9 +675,12 @@ export function shouldCashout(
   const shouldCashout = waitOrCashout === "cashout_full" || waitOrCashout === "cashout_partial";
 
   // Partial cashout calculation
-  const partialCashoutAmount = partialCashoutEnabled && isWinning
-    ? Math.round(cashoutAmount * partialCashoutPercent * 100) / 100
-    : 0;
+  const partialCashoutAmount =
+    partialCashoutEnabled &&
+    isWinning &&
+    exposure.cashedOutFraction === 0
+      ? Math.round(cashoutAmount * partialCashoutPercent * 100) / 100
+      : 0;
 
   // Build reasoning
   const reasoning = buildCashoutReasoning(
@@ -741,16 +756,24 @@ function calculateLiveWinProbability(
 }
 
 function calculateCashoutValue(
-  bet: { odds: number; stake: number; potentialWin: number; partialCashoutAmount?: number | null },
+  bet: {
+    odds: number;
+    stake: number;
+    potentialWin: number;
+    partialCashoutAmount?: number | null;
+    partialCashoutPercent?: number | null;
+  },
   liveMatch: { homeScore: number; awayScore: number; minute: number; sport: string; status: string },
   isWinning: boolean
 ): number {
+  const exposure = getRemainingExposure(bet);
+
   if (liveMatch.status === "finished") {
-    return isWinning ? bet.potentialWin : 0;
+    return isWinning ? exposure.remainingPotentialWin : 0;
   }
 
   if (liveMatch.status !== "live") {
-    return bet.stake * 0.95; // Pre-match cashout (slight loss)
+    return exposure.remainingStake * 0.95; // Pre-match cashout (slight loss)
   }
 
   const totalMinutes = getTotalMatchMinutes(liveMatch.sport);
@@ -758,16 +781,19 @@ function calculateCashoutValue(
   const bookmakerMargin = config.ai.cashoutBookmakerMargin;
 
   if (isWinning) {
-    // Winning bet: cashout value increases as match progresses
+    // Winning bet: cashout value increases as match progresses.
     const goalDiff = Math.abs(liveMatch.homeScore - liveMatch.awayScore);
     const safetyBonus = goalDiff >= 2 ? 0.15 : goalDiff >= 1 ? 0.05 : 0;
-    const cashoutValue = bet.potentialWin * (0.3 + timeElapsed * 0.5 + safetyBonus) * bookmakerMargin;
-    return Math.max(bet.stake, cashoutValue);
-  } else {
-    // Losing bet: cashout value decreases rapidly
-    const losingRatio = config.ai.cashoutLosingStakeRatio;
-    return bet.stake * losingRatio * (1 - timeElapsed * 0.5);
+    const cashoutValue =
+      exposure.remainingPotentialWin *
+      (0.3 + timeElapsed * 0.5 + safetyBonus) *
+      bookmakerMargin;
+    return Math.max(exposure.remainingStake, cashoutValue);
   }
+
+  // Losing bet: cashout value decreases rapidly.
+  const losingRatio = config.ai.cashoutLosingStakeRatio;
+  return exposure.remainingStake * losingRatio * (1 - timeElapsed * 0.5);
 }
 
 function getTotalMatchMinutes(sport: string): number {

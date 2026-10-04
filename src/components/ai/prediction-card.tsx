@@ -62,6 +62,16 @@ export function PredictionCard({ match, onQuickBet, onAnalyze, analyzing }: Pred
   };
 
   const hasAnalysis = match.aiRecommended && match.aiConfidence;
+  const displayOdds = (value: number | null) =>
+    value != null && Number.isFinite(value) && value > 1 ? value.toFixed(2) : "Pending";
+  const recommendationHasOdds =
+    match.aiRecommended === "home"
+      ? match.homeOdds > 1
+      : match.aiRecommended === "away"
+        ? match.awayOdds > 1
+        : match.aiRecommended === "draw"
+          ? (match.drawOdds ?? 0) > 1
+          : false;
 
   return (
     <Card className="bg-card border-border overflow-hidden">
@@ -101,7 +111,7 @@ export function PredictionCard({ match, onQuickBet, onAnalyze, analyzing }: Pred
             <div className="text-xs sm:text-sm font-bold text-foreground">
               {match.aiHomeWinProb ? `${Math.round(match.aiHomeWinProb * 100)}%` : "\u2014"}
             </div>
-            <div className="text-[10px] text-primary font-medium">{match.homeOdds}</div>
+            <div className="text-[10px] text-primary font-medium">{displayOdds(match.homeOdds)}</div>
           </div>
           {match.drawOdds ? (
             <div className="text-center rounded-lg bg-secondary/30 p-1.5 sm:p-2">
@@ -109,7 +119,7 @@ export function PredictionCard({ match, onQuickBet, onAnalyze, analyzing }: Pred
               <div className="text-xs sm:text-sm font-bold text-foreground">
                 {match.aiDrawProb ? `${Math.round(match.aiDrawProb * 100)}%` : "\u2014"}
               </div>
-              <div className="text-[10px] text-muted-foreground font-medium">{match.drawOdds}</div>
+              <div className="text-[10px] text-muted-foreground font-medium">{displayOdds(match.drawOdds)}</div>
             </div>
           ) : (
             <div className="text-center rounded-lg bg-secondary/30 p-1.5 sm:p-2">
@@ -123,7 +133,7 @@ export function PredictionCard({ match, onQuickBet, onAnalyze, analyzing }: Pred
             <div className="text-xs sm:text-sm font-bold text-foreground">
               {match.aiAwayWinProb ? `${Math.round(match.aiAwayWinProb * 100)}%` : "\u2014"}
             </div>
-            <div className="text-[10px] text-amber-400 font-medium">{match.awayOdds}</div>
+            <div className="text-[10px] text-amber-400 font-medium">{displayOdds(match.awayOdds)}</div>
           </div>
         </div>
 
@@ -139,7 +149,7 @@ export function PredictionCard({ match, onQuickBet, onAnalyze, analyzing }: Pred
           </div>
           {/* Action buttons — always on their own row on mobile, inline on desktop */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {hasAnalysis && onQuickBet && match.aiRecommended && (
+            {hasAnalysis && onQuickBet && match.aiRecommended && recommendationHasOdds && (
               <Button
                 size="xs"
                 variant="default"
@@ -150,7 +160,7 @@ export function PredictionCard({ match, onQuickBet, onAnalyze, analyzing }: Pred
                 }}
               >
                 <Zap className="h-3 w-3" />
-                Quick Bet
+                Review Bet
               </Button>
             )}
             {!hasAnalysis && onAnalyze && (

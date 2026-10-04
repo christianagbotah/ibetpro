@@ -1,13 +1,13 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { usePolling, useFetch } from "@/lib/hooks";
+import { usePolling } from "@/lib/hooks";
 import { useToast } from "@/components/ui/toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Radio, Eye, DollarSign, Clock, Zap, Volume2, VolumeX, Play, TrendingUp, RefreshCw, Layers, Brain } from "lucide-react";
-import { useAuth } from "@/components/auth/auth-provider";
+
 import { getSportShortName, getSportName } from "@/lib/sports";
 import Link from "next/link";
 import { useCurrency } from "@/components/currency-provider";
@@ -31,6 +31,7 @@ interface LiveMatch {
   aiConfidence: number | null;
   aiRecommended: string | null;
   aiAnalysis: string | null;
+  apiSource: string | null;
 }
 
 interface ActiveBet {
@@ -77,7 +78,6 @@ interface MatchEvent {
 
 export default function MonitorPage() {
   const { addToast } = useToast();
-  const { user } = useAuth();
   const { symbol } = useCurrency();
   const { data: allMatches, loading: matchesLoading, refetch: refetchMatches } = usePolling<LiveMatch[]>("/api/matches", 15000, []);
   const { data: bets, loading: betsLoading, refetch: refetchBets } = usePolling<ActiveBet[]>("/api/bets?status=pending", 15000, []);
@@ -177,13 +177,12 @@ export default function MonitorPage() {
   }, [addToast, refetchMatches, refetchBets]);
 
   const handleAutoSettle = useCallback(async () => {
-    if (!user?.id) return;
     setAutoSettleRunning(true);
     try {
       const res = await fetch("/api/settle", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: user.id }),
+        body: JSON.stringify({}),
       });
       if (res.ok) {
         const result = await res.json();
@@ -199,7 +198,7 @@ export default function MonitorPage() {
     } finally {
       setAutoSettleRunning(false);
     }
-  }, [user?.id, addToast, refetchBets]);
+  }, [addToast, refetchBets]);
 
   const liveMatches = allMatches.filter((m) => m.status === "live" || m.status === "upcoming");
   const liveMatchesList = liveMatches.filter((m) => m.status === "live");
@@ -347,20 +346,22 @@ export default function MonitorPage() {
                       <span className="text-xs text-muted-foreground">{match.minute}&apos;</span>
                       <span className="text-[10px] sm:text-xs text-muted-foreground">{match.league || getSportShortName(match.sport)}</span>
                     </div>
-                    <Button
-                      size="xs"
-                      variant="outline"
-                      className="border-primary/30 text-primary hover:bg-primary/10"
-                      onClick={() => handleSimulate(match.id)}
-                      disabled={simulating === match.id}
-                    >
-                      {simulating === match.id ? (
-                        <div className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Play className="h-3 w-3" />
-                      )}
-                      Simulate
-                    </Button>
+                    {match.apiSource === "demo" && (
+                      <Button
+                        size="xs"
+                        variant="outline"
+                        className="border-primary/30 text-primary hover:bg-primary/10"
+                        onClick={() => handleSimulate(match.id)}
+                        disabled={simulating === match.id}
+                      >
+                        {simulating === match.id ? (
+                          <div className="h-3 w-3 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Play className="h-3 w-3" />
+                        )}
+                        Simulate
+                      </Button>
+                    )}
                   </div>
 
                   <Link href={`/matches/${match.id}`} className="block">

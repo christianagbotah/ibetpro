@@ -1,6 +1,6 @@
 "use client";
 
-import { useFetch } from "@/lib/hooks";
+import { usePolling } from "@/lib/hooks";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -99,8 +99,8 @@ const CustomTooltip = ({ active, payload, label, symbol }: { active?: boolean; p
 
 export default function ProfitsPage() {
   const { symbol } = useCurrency();
-  const { data: transactions, loading: txLoading } = useFetch<Transaction[]>("/api/transactions", []);
-  const { data: stats, loading: statsLoading } = useFetch<UserStats>("/api/stats/user", {
+  const { data: transactions, loading: txLoading } = usePolling<Transaction[]>("/api/transactions", 30000, []);
+  const { data: stats, loading: statsLoading } = usePolling<UserStats>("/api/stats/user", 15000, {
     balance: 0,
     bankroll: 0,
     totalProfit: 0,

@@ -1,8 +1,17 @@
 import { prisma } from "@/lib/db";
 import { NextResponse } from "next/server";
+import { getAuthUser, isAdmin } from "@/lib/session";
 
 export async function GET() {
   try {
+    const user = await getAuthUser();
+    if (!user) {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
+    if (!(await isAdmin())) {
+      return NextResponse.json({ error: "Admin access required" }, { status: 403 });
+    }
+
     // Get total users
     const totalUsers = await prisma.user.count();
 

@@ -35,6 +35,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
 
+    if (match.apiSource !== "demo") {
+      return NextResponse.json(
+        { error: "Simulation is available for demo fixtures only" },
+        { status: 403 }
+      );
+    }
+
+    if (match.homeOdds <= 1 || match.awayOdds <= 1) {
+      return NextResponse.json(
+        { error: "Simulation requires real bookmaker odds for both teams" },
+        { status: 409 }
+      );
+    }
+
     if (match.status !== "live") {
       return NextResponse.json({ error: "Match is not live", match }, { status: 400 });
     }

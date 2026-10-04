@@ -50,7 +50,7 @@ export function BotActivityFeed({ userId, compact = false }: BotActivityFeedProp
   useEffect(() => {
     async function fetchLogs() {
       try {
-        const res = await fetch(`/api/bot-logs?userId=${userId}&limit=${compact ? 10 : 50}`);
+        const res = await fetch(`/api/bot-logs?limit=${compact ? 10 : 50}`);
         if (res.ok) {
           const data = await res.json();
           setLogs(data.logs || []);

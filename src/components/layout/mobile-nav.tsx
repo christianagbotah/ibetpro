@@ -33,7 +33,7 @@ import { usePWAInstall } from "@/hooks/use-pwa-install";
 
 const primaryNavItems = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/analysis", label: "AI", icon: Brain },
+  { href: "/analysis", label: "Predict", icon: Brain },
   { href: "/betting", label: "Bet", icon: Zap },
   { href: "/tips", label: "Tips", icon: Target },
   { href: "/monitor", label: "Live", icon: Radio },
@@ -229,6 +229,27 @@ export function MobileNav() {
                     );
                   })}
                 </div>
+
+                {user?.role === "admin" && (
+                  <div className="mt-4 grid grid-cols-2 gap-3">
+                    <Link
+                      href="/admin"
+                      onClick={handleMoreNavigate}
+                      className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm font-medium text-primary"
+                    >
+                      <Shield className="h-4 w-4" />
+                      Admin Panel
+                    </Link>
+                    <Link
+                      href="/admin/model-performance"
+                      onClick={handleMoreNavigate}
+                      className="flex items-center gap-2 rounded-xl border border-primary/20 bg-primary/5 p-3 text-sm font-medium text-primary"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                      Model Scorecard
+                    </Link>
+                  </div>
+                )}
 
                 {/* Quick stats */}
                 <div className="mt-6 rounded-xl bg-secondary/30 border border-border p-4">

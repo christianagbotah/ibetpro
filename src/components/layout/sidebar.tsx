@@ -21,6 +21,7 @@ import {
   DollarSign,
   Download,
   Target,
+  BarChart3,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -31,7 +32,7 @@ import { useState } from "react";
 
 const navItems = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/analysis", label: "AI Analysis", icon: Brain },
+  { href: "/analysis", label: "Predictions", icon: Brain },
   { href: "/betting", label: "Betting", icon: Zap },
   { href: "/tips", label: "AI Tips", icon: Target },
   { href: "/monitor", label: "Monitor", icon: Monitor },
@@ -44,6 +45,7 @@ const navItems = [
 
 const adminItems = [
   { href: "/admin", label: "Admin Panel", icon: Shield },
+  { href: "/admin/model-performance", label: "Model Scorecard", icon: BarChart3 },
 ];
 
 export function Sidebar({ onNavigate }: { onNavigate?: () => void } = {}) {

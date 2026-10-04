@@ -1,9 +1,11 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { shouldCashout } from "@/lib/ai-engine";
+import { requireAuth } from "@/lib/session";
 
 export async function POST(request: NextRequest) {
   try {
+    const userId = await requireAuth();
     const body = await request.json();
     const { betId } = body;
 
@@ -11,8 +13,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Bet ID is required" }, { status: 400 });
     }
 
-    const bet = await prisma.bet.findUnique({
-      where: { id: betId },
+    const bet = await prisma.bet.findFirst({
+      where: { id: betId, userId },
       include: {
         match: true,
       },
@@ -67,6 +69,9 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "Authentication required") {
+      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+    }
     console.error("Error evaluating cashout:", error);
     return NextResponse.json({ error: "Failed to evaluate cashout" }, { status: 500 });
   }

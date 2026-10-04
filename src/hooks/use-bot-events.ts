@@ -44,6 +44,7 @@ export function useBotEvents(options: UseBotEventsOptions): UseBotEventsReturn {
   const [recentEvents, setRecentEvents] = useState<BotEvent[]>([]);
   const eventSourceRef = useRef<EventSource | null>(null);
   const reconnectTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const connectRef = useRef<() => void>(() => {});
 
   const connect = useCallback(() => {
     // Clean up existing connection
@@ -108,7 +109,7 @@ export function useBotEvents(options: UseBotEventsOptions): UseBotEventsReturn {
         // Auto-reconnect after 10 seconds
         if (enabled) {
           reconnectTimerRef.current = setTimeout(() => {
-            connect();
+            connectRef.current();
           }, 10000);
         }
       };
@@ -116,6 +117,10 @@ export function useBotEvents(options: UseBotEventsOptions): UseBotEventsReturn {
       setConnected(false);
     }
   }, [enabled, onEvent, onBetPlaced, onBetSettled, onCashout, onEngineStatus, onBotStopped]);
+
+  useEffect(() => {
+    connectRef.current = connect;
+  }, [connect]);
 
   // Connect/disconnect based on enabled state
   useEffect(() => {

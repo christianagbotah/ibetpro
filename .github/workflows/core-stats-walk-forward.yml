@@ -1,0 +1,150 @@
+# NON-PRODUCTION RESEARCH ONLY.
+# Football-Data free files are not licensed for commercial AI training.
+# This workflow is manual-only and retained solely for reproducibility of prior research evidence.
+name: iBetPro Core Stats Walk Forward
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ibetpro-core-stats-walk-forward
+  cancel-in-progress: false
+
+jobs:
+  walk-forward:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    defaults:
+      run:
+        working-directory: ml-service
+    env:
+      MODEL_TRAIN_N_JOBS: "2"
+      EXPERIMENT_REVISION: "12"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ml-service/requirements.txt
+
+      - name: Install ML dependencies
+        run: pip install -r requirements.txt
+
+      - name: Validate ML suite
+        run: pytest -q
+
+      - name: Collect public historical corpus
+        run: |
+          python -m training.collect_football_data             --leagues E0 SP1             --start-years 2019 2020 2021 2022 2023 2024 2025             --output-dir data/core-stats/corpus
+
+      - name: Build causal venue-aware features
+        run: |
+          python -m training.build_features             --input data/core-stats/corpus/football-data-core.csv             --output data/core-stats/features.csv
+
+      - name: Validate core-stats coverage
+        run: |
+          python -m training.validate_core_stats_readiness             --dataset data/core-stats/features.csv             --min-coverage 0.90             --start 2021-07-01             --end 2025-06-30             --output data/core-stats/readiness.json
+
+      - name: Run core-stats walk forward
+        run: |
+          python -m training.walk_forward             --dataset data/core-stats/features.csv             --output data/core-stats/folds             --feature-profile core_stats
+
+      - name: Publish stability summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f data/core-stats/folds/walk-forward.json ]; then
+            python - <<'PY' >> "$GITHUB_STEP_SUMMARY"
+          import json
+          from pathlib import Path
+
+          data = json.loads(Path("data/core-stats/folds/walk-forward.json").read_text())
+          stability = data["stability"]
+          print("# iBetPro Core Stats Walk-Forward")
+          print()
+          print(f"- Folds: **{stability['fold_count']}**")
+          print(f"- Folds beating market: **{stability['folds_beating_market']}**")
+          print(f"- Folds significantly beating market: **{stability['folds_significantly_beating_market']}**")
+          print(f"- Mean candidate − market Log Loss: **{stability['mean_candidate_minus_market_log_loss']:.6f}**")
+          print()
+          print("| Fold | Model | Calibration | Blend M/G/Market/ELO | Candidate LL | Market LL | Delta | 95% CI |")
+          print("| --- | --- | --- | --- | ---: | ---: | ---: | --- |")
+          for fold in data["folds"]:
+              market = fold.get("market_comparison") or {}
+              blend = fold.get("blend") or {}
+              weights = (
+                  f"{blend.get('result_model_weight', 0):.2f}/"
+                  f"{blend.get('result_goal_weight', 0):.2f}/"
+                  f"{blend.get('result_market_weight', 0):.2f}/"
+                  f"{blend.get('result_elo_weight', 0):.2f}"
+              )
+              print(
+                  f"| {fold['name']} | {blend.get('selected_model', '—')} | "
+                  f"{blend.get('selected_method', '—')} | {weights} | "
+                  f"{market.get('candidate_log_loss', float('nan')):.6f} | "
+                  f"{market.get('benchmark_log_loss', float('nan')):.6f} | "
+                  f"{market.get('delta', float('nan')):.6f} | "
+                  f"[{market.get('bootstrap_ci95_low', float('nan')):.6f}, "
+                  f"{market.get('bootstrap_ci95_high', float('nan')):.6f}] |"
+              )
+          selective = data.get("selective_stability") or {}
+          print()
+          print("## Selective deviation stability")
+          print()
+          print(f"- Stable divergence bands: **{selective.get('stable_band_count', 0)}**")
+          print(f"- Eligible for shadow: **{selective.get('eligible_for_shadow', False)}**")
+          print(f"- Required folds: **{selective.get('required_folds', 0)}**")
+          print()
+          print("| Divergence band | Comparable folds | Beat market | Significant | Shadow-stable |")
+          print("| --- | ---: | ---: | ---: | --- |")
+          for band in selective.get("bands", []):
+              print(
+                  f"| {band.get('lower', 0):.2f}–{band.get('upper', 0):.2f} | "
+                  f"{band.get('comparable_folds', 0)} | "
+                  f"{band.get('folds_beating_market', 0)} | "
+                  f"{band.get('folds_significantly_beating_market', 0)} | "
+                  f"{'yes' if band.get('stable_for_shadow') else 'no'} |"
+              )
+
+          totals = data.get("totals_stability") or {}
+          print()
+          print("## Over/Under 2.5 goal-market evidence")
+          print()
+          if totals.get("mean_candidate_minus_market_log_loss") is not None:
+              print(f"- Folds beating totals market: **{totals['folds_beating_market']}**")
+              print(f"- Folds significantly beating totals market: **{totals['folds_significantly_beating_market']}**")
+              print(f"- Mean goal-model − totals-market Log Loss: **{totals['mean_candidate_minus_market_log_loss']:.6f}**")
+          print()
+          print("| Fold | Goal-model LL | O/U market LL | Delta | 95% CI | Coverage |")
+          print("| --- | ---: | ---: | ---: | --- | ---: |")
+          for fold in data["folds"]:
+              totals_market = fold.get("totals_market_comparison") or {}
+              print(
+                  f"| {fold['name']} | "
+                  f"{totals_market.get('candidate_log_loss', float('nan')):.6f} | "
+                  f"{totals_market.get('benchmark_log_loss', float('nan')):.6f} | "
+                  f"{totals_market.get('delta', float('nan')):.6f} | "
+                  f"[{totals_market.get('bootstrap_ci95_low', float('nan')):.6f}, "
+                  f"{totals_market.get('bootstrap_ci95_high', float('nan')):.6f}] | "
+                  f"{totals_market.get('coverage', float('nan')):.1%} |"
+              )
+          PY
+          else
+            echo "# iBetPro Core Stats Walk-Forward" >> "$GITHUB_STEP_SUMMARY"
+            echo "No walk-forward report was produced." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload core-stats evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ibetpro-core-stats-walk-forward
+          path: ml-service/data/core-stats/
+          if-no-files-found: warn
+          retention-days: 30

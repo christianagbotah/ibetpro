@@ -1,6 +1,6 @@
 "use client";
 
-import { usePolling, useFetch } from "@/lib/hooks";
+import { usePolling } from "@/lib/hooks";
 import { StatsCards } from "@/components/dashboard/stats-cards";
 import { LiveMatches } from "@/components/dashboard/live-matches";
 import { ActiveBets } from "@/components/dashboard/active-bets";
@@ -69,14 +69,16 @@ interface UserStats {
   winRate: number;
   roi: number;
   commissionRate: number;
+  dailyPnl: number;
+  weeklyPnl: number;
 }
 
 export default function DashboardPage() {
   const { user, isAuthenticated } = useAuth();
   const { symbol } = useCurrency();
   const { data: matches, loading: matchesLoading } = usePolling<Match[]>("/api/matches", 30000, []);
-  const { data: bets, loading: betsLoading } = useFetch<Bet[]>("/api/bets", []);
-  const { data: stats } = useFetch<UserStats>("/api/stats/user", {
+  const { data: bets, loading: betsLoading } = usePolling<Bet[]>("/api/bets", 15000, []);
+  const { data: stats } = usePolling<UserStats>("/api/stats/user", 15000, {
     balance: 0,
     bankroll: 0,
     totalProfit: 0,
@@ -89,6 +91,8 @@ export default function DashboardPage() {
     winRate: 0,
     roi: 0,
     commissionRate: 0.10,
+    dailyPnl: 0,
+    weeklyPnl: 0,
   });
 
   const loading = matchesLoading || betsLoading;
@@ -113,6 +117,10 @@ export default function DashboardPage() {
     .slice(0, 3);
 
   const liveMatches = matches.filter((m) => m.status === "live");
+  const confirmedLiveMatches = liveMatches.filter(
+    (m) => m.homeScore != null && m.awayScore != null
+  );
+  const pendingLiveScores = liveMatches.length - confirmedLiveMatches.length;
 
   const recentSettled = bets
     .filter((b) => b.status === "won" || b.status === "lost" || b.status === "cashed_out")
@@ -132,15 +140,19 @@ export default function DashboardPage() {
             {isAuthenticated ? `Welcome back, ${user?.name}!` : "Welcome to iBetPro"} Here&apos;s your betting overview.
           </p>
         </div>
-        {liveMatches.length > 0 && (
+        {confirmedLiveMatches.length > 0 ? (
           <Badge className="bg-red-500/20 text-red-400 border-red-500/30 px-3 py-1.5 shrink-0 self-start sm:self-auto">
             <span className="relative flex h-2 w-2 mr-2">
               <span className="animate-live-pulse absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
             </span>
-            {liveMatches.length} Live
+            {confirmedLiveMatches.length} Live
           </Badge>
-        )}
+        ) : pendingLiveScores > 0 ? (
+          <Badge className="bg-amber-400/10 text-amber-400 border-amber-400/20 px-3 py-1.5 shrink-0 self-start sm:self-auto">
+            {pendingLiveScores} live window · score pending
+          </Badge>
+        ) : null}
       </div>
 
       <StatsCards
@@ -192,8 +204,8 @@ export default function DashboardPage() {
                     <Brain className="h-5 w-5 text-primary" />
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm font-medium text-foreground">AI Analysis</p>
-                    <p className="text-xs text-muted-foreground">Run predictions on upcoming matches</p>
+                    <p className="text-sm font-medium text-foreground">Match Predictions</p>
+                    <p className="text-xs text-muted-foreground">Live & upcoming AI forecasts</p>
                   </div>
                   <ArrowRight className="h-4 w-4 text-primary" />
                 </div>
