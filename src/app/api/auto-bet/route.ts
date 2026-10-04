@@ -16,10 +16,16 @@ export async function POST() {
     return NextResponse.json(payload, { status: statusCode });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
     }
     console.error("Auto-bet error:", error);
-    return NextResponse.json({ error: "Failed to process auto-bet" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to process auto-bet" },
+      { status: 500 }
+    );
   }
 }
 
@@ -53,23 +59,40 @@ export async function GET() {
       include: { match: true, bettingAccount: true },
     });
 
+    const [todayAccumulatorProfit, activeAllocation, todayCommission] =
+      await Promise.all([
+        prisma.accumulator.aggregate({
+          where: {
+            userId,
+            isAutoPlaced: true,
+            placedAt: { gte: todayStart },
+            status: { in: ["won", "cashed_out"] },
+          },
+          _sum: { profit: true },
+        }),
+        prisma.allocation.findFirst({
+          where: { userId, status: "active" },
+          include: { bettingAccount: true },
+        }),
+        prisma.commissionLedger.findMany({
+          where: {
+            userId,
+            createdAt: { gte: todayStart },
+          },
+        }),
+      ]);
+
     const todayAutoBets = countTickets(todayBets);
     const todayAutoStake = sumTicketStake(todayBets);
-    const todayAutoProfit = todayBets
-      .filter((bet) => bet.status === "won" || bet.status === "cashed_out")
+    const todayStandaloneProfit = todayBets
+      .filter(
+        (bet) =>
+          !bet.accumulatorId &&
+          (bet.status === "won" || bet.status === "cashed_out")
+      )
       .reduce((sum, bet) => sum + (bet.profit || 0), 0);
-
-    const activeAllocation = await prisma.allocation.findFirst({
-      where: { userId, status: "active" },
-      include: { bettingAccount: true },
-    });
-
-    const todayCommission = await prisma.commissionLedger.findMany({
-      where: {
-        userId,
-        createdAt: { gte: todayStart },
-      },
-    });
+    const todayAutoProfit =
+      todayStandaloneProfit + (todayAccumulatorProfit._sum.profit || 0);
 
     return NextResponse.json({
       status: user.settings.autoBettingEnabled ? "active" : "inactive",
@@ -122,9 +145,15 @@ export async function GET() {
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Authentication required") {
-      return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+      return NextResponse.json(
+        { error: "Authentication required" },
+        { status: 401 }
+      );
     }
     console.error("Error fetching bot status:", error);
-    return NextResponse.json({ error: "Failed to fetch bot status" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch bot status" },
+      { status: 500 }
+    );
   }
 }
