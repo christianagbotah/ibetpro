@@ -1,1 +1,302 @@
-{"text":"[Reading 300 lines from start (total: 300 lines, 0 remaining)]\n\nimport { prisma } from \"@/lib/db\";\nimport { fetchOddsApiScores } from \"@/lib/external-apis\";\n\nconst DEFAULT_REFRESH_MS =\n  Math.max(1, Number(process.env.LIVE_SCORE_REFRESH_MIN || 1)) * 60 * 1000;\nconst DEFAULT_QUOTA_FLOOR = Math.max(\n  0,\n  Number(process.env.LIVE_SCORE_MIN_QUOTA || 75)\n);\nconst RETRY_GUARD_MS = 30_000;\n\nexport type LiveScoreRefreshResult = {\n  sport: string;\n  refreshed: boolean;\n  cached: boolean;\n  skipped: boolean;\n  reason?: string;\n  updated: number;\n  scoredEvents: number;\n  requestCost: number | null;\n  remainingRequests: number | null;\n  lastSuccessAt?: string | null;\n};\n\nfunction stateKey(sport: string) {\n  return \"odds-api:live-scores:\" + sport;\n}\n\nfunction metadataQuota(metadataJson: string | null): number | null {\n  if (!metadataJson) return null;\n  try {\n    const value = JSON.parse(metadataJson) as { remainingRequests?: unknown };\n    const parsed = Number(value.remainingRequests);\n    return Number.isFinite(parsed) ? parsed : null;\n  } catch {\n    return null;\n  }\n}\n\nexport function resolveLiveScoreRefreshMs(\n  baseRefreshMs: number,\n  remainingRequests: number | null,\n  quotaFloor: number\n) {\n  const base = Math.max(60_000, baseRefreshMs);\n  if (remainingRequests == null) return base;\n\n  const headroom = remainingRequests - quotaFloor;\n  if (headroom <= 25) return Math.max(base, 10 * 60_000);\n  if (headroom <= 100) return Math.max(base, 5 * 60_000);\n  if (headroom <= 250) return Math.max(base, 2 * 60_000);\n  return base;\n}\n\nexport function estimateSoccerMinute(commenceTime: Date, now: Date): number {\n  const wallMinutes = Math.max(\n    0,\n    Math.floor((now.getTime() - commenceTime.getTime()) / 60_000)\n  );\n  if (wallMinutes <= 45) return wallMinutes;\n  if (wallMinutes <= 60) return 45;\n  return Math.min(90, Math.max(45, wallMinutes - 15));\n}\n\nexport async function refreshOddsApiLiveSport(\n  sport: string,\n  options: {\n    minRefreshMs?: number;\n    quotaFloor?: number;\n  } = {}\n): Promise<LiveScoreRefreshResult> {\n  const now = new Date();\n  const baseRefreshMs = options.minRefreshMs ?? DEFAULT_REFRESH_MS;\n  const quotaFloor = options.quotaFloor ?? DEFAULT_QUOTA_FLOOR;\n  const key = stateKey(sport);\n\n  const state = await prisma.providerSyncState.findUnique({\n    where: { key },\n    select: {\n      lastAttemptAt: true,\n      lastSuccessAt: true,\n      metadataJson: true,\n    },\n  });\n\n  const knownQuota = metadataQuota(state?.metadataJson ?? null);\n  const minRefreshMs = resolveLiveScoreRefreshMs(\n    baseRefreshMs,\n    knownQuota,\n    quotaFloor\n  );\n\n  if (\n    state?.lastSuccessAt &&\n    now.getTime() - state.lastSuccessAt.getTime() < minRefreshMs\n  ) {\n    return {\n      sport,\n      refreshed: false,\n      cached: true,\n      skipped: false,\n      reason: \"Live score cache is still fresh\",\n      updated: 0,\n      scoredEvents: 0,\n      requestCost: null,\n      remainingRequests: knownQuota,\n      lastSuccessAt: state.lastSuccessAt.toISOString(),\n    };\n  }\n\n  if (\n    state?.lastAttemptAt &&\n    now.getTime() - state.lastAttemptAt.getTime() < RETRY_GUARD_MS\n  ) {\n    return {\n      sport,\n      refreshed: false,\n      cached: true,\n      skipped: true,\n      reason: \"Live score refresh already attempted recently\",\n      updated: 0,\n      scoredEvents: 0,\n      requestCost: null,\n      remainingRequests: knownQuota,\n      lastSuccessAt: state.lastSuccessAt?.toISOString() ?? null,\n    };\n  }\n\n  if (knownQuota != null && knownQuota < quotaFloor) {\n    return {\n      sport,\n      refreshed: false,\n      cached: true,\n      skipped: true,\n      reason: \"Live score refresh paused to preserve provider quota\",\n      updated: 0,\n      scoredEvents: 0,\n      requestCost: null,\n      remainingRequests: knownQuota,\n      lastSuccessAt: state?.lastSuccessAt?.toISOString() ?? null,\n    };\n  }\n\n  await prisma.providerSyncState.upsert({\n    where: { key },\n    update: { lastAttemptAt: now },\n    create: {\n      key,\n      provider: \"odds-api\",\n      lastAttemptAt: now,\n    },\n  });\n\n  const result = await fetchOddsApiScores(sport);\n  let updated = 0;\n  let scoredEvents = 0;\n\n  for (const event of result.events) {\n    if (!event.id || event.homeScore == null || event.awayScore == null) continue;\n    scoredEvents += 1;\n\n    const eventTime = new Date(event.commenceTime);\n    const minute =\n      event.completed\n        ? 90\n        : event.sportKey.startsWith(\"soccer_\") &&\n            Number.isFinite(eventTime.getTime())\n          ? estimateSoccerMinute(eventTime, now)\n          : undefined;\n\n    const update = await prisma.match.updateMany({\n      where: {\n        externalId: event.id,\n        apiSource: \"odds-api\",\n        status: { notIn: [\"cancelled\", \"postponed\"] },\n      },\n      data: {\n        homeScore: event.homeScore,\n        awayScore: event.awayScore,\n        status: event.completed ? \"finished\" : \"live\",\n        ...(minute !== undefined ? { minute } : {}),\n      },\n    });\n    updated += update.count;\n  }\n\n  const successAt = new Date();\n  await prisma.providerSyncState.update({\n    where: { key },\n    data: {\n      lastSuccessAt: successAt,\n      metadataJson: JSON.stringify({\n        remainingRequests: result.remainingRequests,\n        requestCost: result.requestCost,\n        events: result.events.length,\n        scoredEvents,\n        updated,\n      }),\n    },\n  });\n\n  return {\n    sport,\n    refreshed: true,\n    cached: false,\n    skipped: false,\n    updated,\n    scoredEvents,\n    requestCost: result.requestCost,\n    remainingRequests: result.remainingRequests,\n    lastSuccessAt: successAt.toISOString(),\n  };\n}\n\nexport async function refreshActiveOddsApiLiveScores(\n  options: {\n    maxSports?: number;\n    minRefreshMs?: number;\n    quotaFloor?: number;\n  } = {}\n) {\n  const maxSports = Math.min(\n    8,\n    Math.max(1, options.maxSports ?? Number(process.env.LIVE_SCORE_FEED_MAX_SPORTS || 4))\n  );\n  const minRefreshMs =\n    options.minRefreshMs ??\n    Math.max(1, Number(process.env.LIVE_SCORE_FEED_REFRESH_MIN || 1)) *\n      60 *\n      1000;\n\n  const sports = await prisma.match.findMany({\n    where: {\n      apiSource: \"odds-api\",\n      status: \"live\",\n      externalId: { not: null },\n    },\n    select: { sport: true },\n    distinct: [\"sport\"],\n    orderBy: { sport: \"asc\" },\n  });\n\n  const keys = sports.map((row) => stateKey(row.sport));\n  const states =\n    keys.length > 0\n      ? await prisma.providerSyncState.findMany({\n          where: { key: { in: keys } },\n          select: { key: true, lastSuccessAt: true, lastAttemptAt: true },\n        })\n      : [];\n  const stateByKey = new Map(states.map((state) => [state.key, state]));\n\n  const selectedSports = [...sports]\n    .sort((a, b) => {\n      const aState = stateByKey.get(stateKey(a.sport));\n      const bState = stateByKey.get(stateKey(b.sport));\n      const aTime =\n        aState?.lastSuccessAt?.getTime() ??\n        aState?.lastAttemptAt?.getTime() ??\n        0;\n      const bTime =\n        bState?.lastSuccessAt?.getTime() ??\n        bState?.lastAttemptAt?.getTime() ??\n        0;\n      return aTime - bTime || a.sport.localeCompare(b.sport);\n    })\n    .slice(0, maxSports);\n\n  const results: LiveScoreRefreshResult[] = [];\n  for (const row of selectedSports) {\n    try {\n      const result = await refreshOddsApiLiveSport(row.sport, {\n        minRefreshMs,\n        quotaFloor: options.quotaFloor,\n      });\n      results.push(result);\n\n      if (\n        result.remainingRequests != null &&\n        result.remainingRequests < (options.quotaFloor ?? DEFAULT_QUOTA_FLOOR)\n      ) {\n        break;\n      }\n    } catch (error) {\n      results.push({\n        sport: row.sport,\n        refreshed: false,\n        cached: false,\n        skipped: true,\n        reason: error instanceof Error ? error.message : \"Live score refresh failed\",\n        updated: 0,\n        scoredEvents: 0,\n        requestCost: null,\n        remainingRequests: null,\n      });\n    }\n  }\n\n  return results;\n}\n\n[executed on device: vps.lightworldtech.com (5ce193d7-af15-4a4a-8909-478bdfb81319)]"}
+import { prisma } from "@/lib/db";
+import { fetchOddsApiScores } from "@/lib/external-apis";
+
+const DEFAULT_REFRESH_MS =
+  Math.max(1, Number(process.env.LIVE_SCORE_REFRESH_MIN || 1)) * 60 * 1000;
+const DEFAULT_QUOTA_FLOOR = Math.max(
+  0,
+  Number(process.env.LIVE_SCORE_MIN_QUOTA || 75)
+);
+const RETRY_GUARD_MS = 30_000;
+
+export type LiveScoreRefreshResult = {
+  sport: string;
+  refreshed: boolean;
+  cached: boolean;
+  skipped: boolean;
+  reason?: string;
+  updated: number;
+  scoredEvents: number;
+  requestCost: number | null;
+  remainingRequests: number | null;
+  lastSuccessAt?: string | null;
+};
+
+function stateKey(sport: string) {
+  return "odds-api:live-scores:" + sport;
+}
+
+function metadataQuota(metadataJson: string | null): number | null {
+  if (!metadataJson) return null;
+  try {
+    const value = JSON.parse(metadataJson) as { remainingRequests?: unknown };
+    const parsed = Number(value.remainingRequests);
+    return Number.isFinite(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+export function resolveLiveScoreRefreshMs(
+  baseRefreshMs: number,
+  remainingRequests: number | null,
+  quotaFloor: number
+) {
+  const base = Math.max(60_000, baseRefreshMs);
+  if (remainingRequests == null) return base;
+
+  const headroom = remainingRequests - quotaFloor;
+  if (headroom <= 25) return Math.max(base, 10 * 60_000);
+  if (headroom <= 100) return Math.max(base, 5 * 60_000);
+  if (headroom <= 250) return Math.max(base, 2 * 60_000);
+  return base;
+}
+
+export function estimateSoccerMinute(commenceTime: Date, now: Date): number {
+  const wallMinutes = Math.max(
+    0,
+    Math.floor((now.getTime() - commenceTime.getTime()) / 60_000)
+  );
+  if (wallMinutes <= 45) return wallMinutes;
+  if (wallMinutes <= 60) return 45;
+  return Math.min(90, Math.max(45, wallMinutes - 15));
+}
+
+export async function refreshOddsApiLiveSport(
+  sport: string,
+  options: {
+    minRefreshMs?: number;
+    quotaFloor?: number;
+  } = {}
+): Promise<LiveScoreRefreshResult> {
+  const now = new Date();
+  const baseRefreshMs = options.minRefreshMs ?? DEFAULT_REFRESH_MS;
+  const quotaFloor = options.quotaFloor ?? DEFAULT_QUOTA_FLOOR;
+  const key = stateKey(sport);
+
+  const state = await prisma.providerSyncState.findUnique({
+    where: { key },
+    select: {
+      lastAttemptAt: true,
+      lastSuccessAt: true,
+      metadataJson: true,
+    },
+  });
+
+  const knownQuota = metadataQuota(state?.metadataJson ?? null);
+  const minRefreshMs = resolveLiveScoreRefreshMs(
+    baseRefreshMs,
+    knownQuota,
+    quotaFloor
+  );
+
+  if (
+    state?.lastSuccessAt &&
+    now.getTime() - state.lastSuccessAt.getTime() < minRefreshMs
+  ) {
+    return {
+      sport,
+      refreshed: false,
+      cached: true,
+      skipped: false,
+      reason: "Live score cache is still fresh",
+      updated: 0,
+      scoredEvents: 0,
+      requestCost: null,
+      remainingRequests: knownQuota,
+      lastSuccessAt: state.lastSuccessAt.toISOString(),
+    };
+  }
+
+  if (
+    state?.lastAttemptAt &&
+    now.getTime() - state.lastAttemptAt.getTime() < RETRY_GUARD_MS
+  ) {
+    return {
+      sport,
+      refreshed: false,
+      cached: true,
+      skipped: true,
+      reason: "Live score refresh already attempted recently",
+      updated: 0,
+      scoredEvents: 0,
+      requestCost: null,
+      remainingRequests: knownQuota,
+      lastSuccessAt: state.lastSuccessAt?.toISOString() ?? null,
+    };
+  }
+
+  if (knownQuota != null && knownQuota < quotaFloor) {
+    return {
+      sport,
+      refreshed: false,
+      cached: true,
+      skipped: true,
+      reason: "Live score refresh paused to preserve provider quota",
+      updated: 0,
+      scoredEvents: 0,
+      requestCost: null,
+      remainingRequests: knownQuota,
+      lastSuccessAt: state?.lastSuccessAt?.toISOString() ?? null,
+    };
+  }
+
+  await prisma.providerSyncState.upsert({
+    where: { key },
+    update: { lastAttemptAt: now },
+    create: {
+      key,
+      provider: "odds-api",
+      lastAttemptAt: now,
+    },
+  });
+
+  const result = await fetchOddsApiScores(sport);
+  let updated = 0;
+  let scoredEvents = 0;
+
+  for (const event of result.events) {
+    if (!event.id || event.homeScore == null || event.awayScore == null) continue;
+    scoredEvents += 1;
+
+    const eventTime = new Date(event.commenceTime);
+    const minute =
+      event.completed
+        ? 90
+        : event.sportKey.startsWith("soccer_") &&
+            Number.isFinite(eventTime.getTime())
+          ? estimateSoccerMinute(eventTime, now)
+          : undefined;
+
+    const update = await prisma.match.updateMany({
+      where: {
+        externalId: event.id,
+        apiSource: "odds-api",
+        status: { notIn: ["cancelled", "postponed"] },
+      },
+      data: {
+        homeScore: event.homeScore,
+        awayScore: event.awayScore,
+        status: event.completed ? "finished" : "live",
+        ...(minute !== undefined ? { minute } : {}),
+      },
+    });
+    updated += update.count;
+  }
+
+  const successAt = new Date();
+  await prisma.providerSyncState.update({
+    where: { key },
+    data: {
+      lastSuccessAt: successAt,
+      metadataJson: JSON.stringify({
+        remainingRequests: result.remainingRequests,
+        requestCost: result.requestCost,
+        events: result.events.length,
+        scoredEvents,
+        updated,
+      }),
+    },
+  });
+
+  return {
+    sport,
+    refreshed: true,
+    cached: false,
+    skipped: false,
+    updated,
+    scoredEvents,
+    requestCost: result.requestCost,
+    remainingRequests: result.remainingRequests,
+    lastSuccessAt: successAt.toISOString(),
+  };
+}
+
+export async function refreshActiveOddsApiLiveScores(
+  options: {
+    maxSports?: number;
+    minRefreshMs?: number;
+    quotaFloor?: number;
+  } = {}
+) {
+  const maxSports = Math.min(
+    8,
+    Math.max(1, options.maxSports ?? Number(process.env.LIVE_SCORE_FEED_MAX_SPORTS || 4))
+  );
+  const minRefreshMs =
+    options.minRefreshMs ??
+    Math.max(1, Number(process.env.LIVE_SCORE_FEED_REFRESH_MIN || 1)) *
+      60 *
+      1000;
+
+  const sports = await prisma.match.findMany({
+    where: {
+      apiSource: "odds-api",
+      status: "live",
+      externalId: { not: null },
+    },
+    select: { sport: true },
+    distinct: ["sport"],
+    orderBy: { sport: "asc" },
+  });
+
+  const keys = sports.map((row) => stateKey(row.sport));
+  const states =
+    keys.length > 0
+      ? await prisma.providerSyncState.findMany({
+          where: { key: { in: keys } },
+          select: { key: true, lastSuccessAt: true, lastAttemptAt: true },
+        })
+      : [];
+  const stateByKey = new Map(states.map((state) => [state.key, state]));
+
+  const selectedSports = [...sports]
+    .sort((a, b) => {
+      const aState = stateByKey.get(stateKey(a.sport));
+      const bState = stateByKey.get(stateKey(b.sport));
+      const aTime =
+        aState?.lastSuccessAt?.getTime() ??
+        aState?.lastAttemptAt?.getTime() ??
+        0;
+      const bTime =
+        bState?.lastSuccessAt?.getTime() ??
+        bState?.lastAttemptAt?.getTime() ??
+        0;
+      return aTime - bTime || a.sport.localeCompare(b.sport);
+    })
+    .slice(0, maxSports);
+
+  const results: LiveScoreRefreshResult[] = [];
+  for (const row of selectedSports) {
+    try {
+      const result = await refreshOddsApiLiveSport(row.sport, {
+        minRefreshMs,
+        quotaFloor: options.quotaFloor,
+      });
+      results.push(result);
+
+      if (
+        result.remainingRequests != null &&
+        result.remainingRequests < (options.quotaFloor ?? DEFAULT_QUOTA_FLOOR)
+      ) {
+        break;
+      }
+    } catch (error) {
+      results.push({
+        sport: row.sport,
+        refreshed: false,
+        cached: false,
+        skipped: true,
+        reason: error instanceof Error ? error.message : "Live score refresh failed",
+        updated: 0,
+        scoredEvents: 0,
+        requestCost: null,
+        remainingRequests: null,
+      });
+    }
+  }
+
+  return results;
+}
+
+[executed on device: vps.lightworldtech.com (5ce193d7-af15-4a4a-8909-478bdfb81319)]
