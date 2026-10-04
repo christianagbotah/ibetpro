@@ -697,7 +697,8 @@ export default function AnalysisPage() {
         <Card className="border-border bg-card">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <div>                <p className="text-xs text-muted-foreground">Confirmed live scores</p>
+              <div>
+                <p className="text-xs text-muted-foreground">Confirmed live scores</p>
                 <p className="mt-1 text-2xl font-bold">{feed.confirmedLiveCount}</p>
                 {feed.pendingLiveScoreCount > 0 && (
                   <p className="mt-0.5 text-[10px] text-amber-400">

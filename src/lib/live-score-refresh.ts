@@ -2,7 +2,7 @@ import { prisma } from "@/lib/db";
 import { fetchOddsApiScores } from "@/lib/external-apis";
 
 const DEFAULT_REFRESH_MS =
-  Math.max(1, Number(process.env.LIVE_SCORE_REFRESH_MIN || 5)) * 60 * 1000;
+  Math.max(1, Number(process.env.LIVE_SCORE_REFRESH_MIN || 1)) * 60 * 1000;
 const DEFAULT_QUOTA_FLOOR = Math.max(
   0,
   Number(process.env.LIVE_SCORE_MIN_QUOTA || 75)
@@ -37,6 +37,21 @@ function metadataQuota(metadataJson: string | null): number | null {
   }
 }
 
+export function resolveLiveScoreRefreshMs(
+  baseRefreshMs: number,
+  remainingRequests: number | null,
+  quotaFloor: number
+) {
+  const base = Math.max(60_000, baseRefreshMs);
+  if (remainingRequests == null) return base;
+
+  const headroom = remainingRequests - quotaFloor;
+  if (headroom <= 25) return Math.max(base, 10 * 60_000);
+  if (headroom <= 100) return Math.max(base, 5 * 60_000);
+  if (headroom <= 250) return Math.max(base, 2 * 60_000);
+  return base;
+}
+
 export function estimateSoccerMinute(commenceTime: Date, now: Date): number {
   const wallMinutes = Math.max(
     0,
@@ -55,7 +70,7 @@ export async function refreshOddsApiLiveSport(
   } = {}
 ): Promise<LiveScoreRefreshResult> {
   const now = new Date();
-  const minRefreshMs = options.minRefreshMs ?? DEFAULT_REFRESH_MS;
+  const baseRefreshMs = options.minRefreshMs ?? DEFAULT_REFRESH_MS;
   const quotaFloor = options.quotaFloor ?? DEFAULT_QUOTA_FLOOR;
   const key = stateKey(sport);
 
@@ -67,6 +82,13 @@ export async function refreshOddsApiLiveSport(
       metadataJson: true,
     },
   });
+
+  const knownQuota = metadataQuota(state?.metadataJson ?? null);
+  const minRefreshMs = resolveLiveScoreRefreshMs(
+    baseRefreshMs,
+    knownQuota,
+    quotaFloor
+  );
 
   if (
     state?.lastSuccessAt &&
@@ -81,7 +103,7 @@ export async function refreshOddsApiLiveSport(
       updated: 0,
       scoredEvents: 0,
       requestCost: null,
-      remainingRequests: metadataQuota(state.metadataJson),
+      remainingRequests: knownQuota,
       lastSuccessAt: state.lastSuccessAt.toISOString(),
     };
   }
@@ -99,12 +121,11 @@ export async function refreshOddsApiLiveSport(
       updated: 0,
       scoredEvents: 0,
       requestCost: null,
-      remainingRequests: metadataQuota(state.metadataJson),
+      remainingRequests: knownQuota,
       lastSuccessAt: state.lastSuccessAt?.toISOString() ?? null,
     };
   }
 
-  const knownQuota = metadataQuota(state?.metadataJson ?? null);
   if (knownQuota != null && knownQuota < quotaFloor) {
     return {
       sport,
@@ -204,7 +225,7 @@ export async function refreshActiveOddsApiLiveScores(
   );
   const minRefreshMs =
     options.minRefreshMs ??
-    Math.max(5, Number(process.env.LIVE_SCORE_FEED_REFRESH_MIN || 10)) *
+    Math.max(1, Number(process.env.LIVE_SCORE_FEED_REFRESH_MIN || 1)) *
       60 *
       1000;
 
@@ -277,3 +298,5 @@ export async function refreshActiveOddsApiLiveScores(
 
   return results;
 }
+
+[executed on device: vps.lightworldtech.com (5ce193d7-af15-4a4a-8909-478bdfb81319)]

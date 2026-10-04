@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/session";
 import { fetchOddsApiScores } from "@/lib/external-apis";
+import { resolveLiveScoreRefreshMs } from "@/lib/live-score-refresh";
 
 const LIVE_SCORE_REFRESH_MS =
-  Math.max(1, Number(process.env.LIVE_SCORE_REFRESH_MIN || 5)) * 60 * 1000;
+  Math.max(1, Number(process.env.LIVE_SCORE_REFRESH_MIN || 1)) * 60 * 1000;
 const LIVE_SCORE_MIN_QUOTA = Math.max(
   0,
   Number(process.env.LIVE_SCORE_MIN_QUOTA || 50)
@@ -109,10 +110,16 @@ export async function POST(request: NextRequest) {
       where: { key },
       select: { lastSuccessAt: true, metadataJson: true },
     });
+    const knownQuota = metadataQuota(state?.metadataJson ?? null);
+    const effectiveRefreshMs = resolveLiveScoreRefreshMs(
+      LIVE_SCORE_REFRESH_MS,
+      knownQuota,
+      LIVE_SCORE_MIN_QUOTA
+    );
 
     if (
       state?.lastSuccessAt &&
-      now.getTime() - state.lastSuccessAt.getTime() < LIVE_SCORE_REFRESH_MS
+      now.getTime() - state.lastSuccessAt.getTime() < effectiveRefreshMs
     ) {
       const cached = await prisma.match.findUnique({ where: { id: matchId } });
       return NextResponse.json({
@@ -125,10 +132,11 @@ export async function POST(request: NextRequest) {
         cacheAgeSeconds: Math.floor(
           (now.getTime() - state.lastSuccessAt.getTime()) / 1000
         ),
+        targetRefreshSeconds: Math.floor(effectiveRefreshMs / 1000),
+        remainingRequests: knownQuota,
       });
     }
 
-    const knownQuota = metadataQuota(state?.metadataJson ?? null);
     if (knownQuota != null && knownQuota < LIVE_SCORE_MIN_QUOTA) {
       return NextResponse.json({
         refreshed: false,
@@ -169,6 +177,7 @@ export async function POST(request: NextRequest) {
       const update = await prisma.match.updateMany({
         where: {
           externalId: event.id,
+          apiSource: "odds-api",
           status: { notIn: ["cancelled", "postponed"] },
         },
         data: {
@@ -226,3 +235,5 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+
+[executed on device: vps.lightworldtech.com (5ce193d7-af15-4a4a-8909-478bdfb81319)]
