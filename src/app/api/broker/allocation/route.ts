@@ -2,6 +2,13 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 import { calculateAllocation, fetchBrokerBalance } from "@/lib/broker-integration";
+import { getRemainingExposure } from "@/lib/bet-exposure";
+
+const OPEN_EXPOSURE_STATUSES = [
+  "pending",
+  "partial_cashout",
+  "cashout_settling",
+];
 
 /**
  * Broker Allocation API
@@ -17,10 +24,12 @@ export async function POST(request: NextRequest) {
     const { bettingAccountId, amount } = body;
 
     if (!bettingAccountId || !amount || amount <= 0) {
-      return NextResponse.json({ error: "Betting account ID and positive amount required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Betting account ID and positive amount required" },
+        { status: 400 }
+      );
     }
 
-    // Verify the account belongs to the user
     const account = await prisma.bettingAccount.findFirst({
       where: { id: bettingAccountId, userId },
     });
@@ -30,24 +39,30 @@ export async function POST(request: NextRequest) {
     }
 
     if (!account.isConnected) {
-      return NextResponse.json({ error: "Broker account is not connected" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Broker account is not connected" },
+        { status: 400 }
+      );
     }
 
-    // Check if there are active bets using the current allocation
     const activeBets = await prisma.bet.findMany({
       where: {
         userId,
         bettingAccountId,
-        status: { in: ["pending", "partial_cashout"] },
+        status: { in: OPEN_EXPOSURE_STATUSES },
       },
     });
 
-    const activeBetStake = activeBets.reduce((sum, b) => sum + b.stake, 0);
+    const activeBetStake = activeBets.reduce(
+      (sum, bet) => sum + getRemainingExposure(bet).remainingStake,
+      0
+    );
 
-    // Fetch current broker balance
-    const balance = await fetchBrokerBalance(account.platform, account.accessToken || "");
+    const balance = await fetchBrokerBalance(
+      account.platform,
+      account.accessToken || ""
+    );
 
-    // Calculate allocation
     const allocation = calculateAllocation(
       balance.total || account.balance,
       amount,
@@ -55,15 +70,18 @@ export async function POST(request: NextRequest) {
     );
 
     if (allocation.allocated < amount && activeBetStake > 0) {
-      return NextResponse.json({
-        error: "Cannot allocate requested amount - insufficient available balance after accounting for active bets",
-        available: allocation.available,
-        locked: allocation.locked,
-        activeBetStake,
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error:
+            "Cannot allocate requested amount - insufficient available balance after accounting for active bets",
+          available: allocation.available,
+          locked: allocation.locked,
+          activeBetStake,
+        },
+        { status: 400 }
+      );
     }
 
-    // Create allocation record
     const allocationRecord = await prisma.allocation.create({
       data: {
         userId,
@@ -77,7 +95,6 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Update the betting account with new allocation
     const updatedAccount = await prisma.bettingAccount.update({
       where: { id: bettingAccountId },
       data: {
@@ -149,12 +166,29 @@ export async function GET(request: NextRequest) {
       orderBy: { createdAt: "desc" },
     });
 
-    const activeAllocations = allocations.filter((a) => a.status === "active");
-    const totalAllocated = activeAllocations.reduce((sum, a) => sum + a.amount, 0);
-    const totalUsed = activeAllocations.reduce((sum, a) => sum + a.usedAmount, 0);
-    const totalRemaining = activeAllocations.reduce((sum, a) => sum + a.remainingAmount, 0);
-    const totalProfit = activeAllocations.reduce((sum, a) => sum + a.profitFromAlloc, 0);
-    const totalCommission = activeAllocations.reduce((sum, a) => sum + a.commissionFromAlloc, 0);
+    const activeAllocations = allocations.filter(
+      (allocation) => allocation.status === "active"
+    );
+    const totalAllocated = activeAllocations.reduce(
+      (sum, allocation) => sum + allocation.amount,
+      0
+    );
+    const totalUsed = activeAllocations.reduce(
+      (sum, allocation) => sum + allocation.usedAmount,
+      0
+    );
+    const totalRemaining = activeAllocations.reduce(
+      (sum, allocation) => sum + allocation.remainingAmount,
+      0
+    );
+    const totalProfit = activeAllocations.reduce(
+      (sum, allocation) => sum + allocation.profitFromAlloc,
+      0
+    );
+    const totalCommission = activeAllocations.reduce(
+      (sum, allocation) => sum + allocation.commissionFromAlloc,
+      0
+    );
 
     return NextResponse.json({
       allocations,
@@ -165,7 +199,8 @@ export async function GET(request: NextRequest) {
         totalProfit: Math.round(totalProfit * 100) / 100,
         totalCommission: Math.round(totalCommission * 100) / 100,
         activeCount: activeAllocations.length,
-        netAfterCommission: Math.round((totalProfit - totalCommission) * 100) / 100,
+        netAfterCommission:
+          Math.round((totalProfit - totalCommission) * 100) / 100,
       },
     });
   } catch (error) {
@@ -173,7 +208,10 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
     console.error("Allocation fetch error:", error);
-    return NextResponse.json({ error: "Failed to fetch allocations" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to fetch allocations" },
+      { status: 500 }
+    );
   }
 }
 
@@ -185,38 +223,50 @@ export async function DELETE(request: NextRequest) {
     const { allocationId, bettingAccountId } = body;
 
     if (!allocationId && !bettingAccountId) {
-      return NextResponse.json({ error: "Allocation ID or betting account ID required" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Allocation ID or betting account ID required" },
+        { status: 400 }
+      );
     }
 
-    // Find the active allocation
-    const whereClause: Record<string, unknown> = { userId, status: "active" };
+    const whereClause: Record<string, unknown> = {
+      userId,
+      status: "active",
+    };
     if (allocationId) whereClause.id = allocationId;
     if (bettingAccountId) whereClause.bettingAccountId = bettingAccountId;
 
     const allocation = await prisma.allocation.findFirst({ where: whereClause });
 
     if (!allocation) {
-      return NextResponse.json({ error: "No active allocation found" }, { status: 404 });
+      return NextResponse.json(
+        { error: "No active allocation found" },
+        { status: 404 }
+      );
     }
 
-    // Check for active bets
     const activeBets = await prisma.bet.findMany({
       where: {
         userId,
         bettingAccountId: allocation.bettingAccountId,
-        status: { in: ["pending", "partial_cashout"] },
+        status: { in: OPEN_EXPOSURE_STATUSES },
       },
     });
 
     if (activeBets.length > 0) {
-      return NextResponse.json({
-        error: "Cannot release allocation while there are active bets",
-        activeBets: activeBets.length,
-        activeBetStake: activeBets.reduce((sum, b) => sum + b.stake, 0),
-      }, { status: 400 });
+      return NextResponse.json(
+        {
+          error: "Cannot release allocation while there are active bets",
+          activeBets: activeBets.length,
+          activeBetStake: activeBets.reduce(
+            (sum, bet) => sum + getRemainingExposure(bet).remainingStake,
+            0
+          ),
+        },
+        { status: 400 }
+      );
     }
 
-    // Release the allocation
     await prisma.allocation.update({
       where: { id: allocation.id },
       data: {
@@ -226,7 +276,6 @@ export async function DELETE(request: NextRequest) {
       },
     });
 
-    // Update the betting account
     await prisma.bettingAccount.update({
       where: { id: allocation.bettingAccountId },
       data: {
@@ -247,6 +296,9 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
     console.error("Allocation release error:", error);
-    return NextResponse.json({ error: "Failed to release allocation" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to release allocation" },
+      { status: 500 }
+    );
   }
 }
