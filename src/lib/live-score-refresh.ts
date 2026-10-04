@@ -8,6 +8,10 @@ const DEFAULT_QUOTA_FLOOR = Math.max(
   Number(process.env.LIVE_SCORE_MIN_QUOTA || 75)
 );
 const RETRY_GUARD_MS = 30_000;
+const STALE_SOCCER_LIVE_GRACE_MS =
+  Math.max(120, Number(process.env.LIVE_SCORE_STALE_GRACE_MIN || 150)) *
+  60 *
+  1000;
 
 export type LiveScoreRefreshResult = {
   sport: string;
@@ -20,6 +24,7 @@ export type LiveScoreRefreshResult = {
   requestCost: number | null;
   remainingRequests: number | null;
   lastSuccessAt?: string | null;
+  staleDemoted?: number;
 };
 
 function stateKey(sport: string) {
@@ -154,6 +159,16 @@ export async function refreshOddsApiLiveSport(
   const result = await fetchOddsApiScores(sport);
   let updated = 0;
   let scoredEvents = 0;
+  const scoredProviderEventIds = new Set(
+    result.events
+      .filter(
+        (event) =>
+          Boolean(event.id) &&
+          event.homeScore != null &&
+          event.awayScore != null
+      )
+      .map((event) => event.id as string)
+  );
 
   for (const event of result.events) {
     if (!event.id || event.homeScore == null || event.awayScore == null) continue;
@@ -178,10 +193,34 @@ export async function refreshOddsApiLiveSport(
         homeScore: event.homeScore,
         awayScore: event.awayScore,
         status: event.completed ? "finished" : "live",
+        lastSyncedAt: now,
         ...(minute !== undefined ? { minute } : {}),
       },
     });
     updated += update.count;
+  }
+
+  let staleDemoted = 0;
+  if (sport.startsWith("soccer_")) {
+    const staleBefore = new Date(now.getTime() - STALE_SOCCER_LIVE_GRACE_MS);
+    const stale = await prisma.match.updateMany({
+      where: {
+        apiSource: "odds-api",
+        sport,
+        status: "live",
+        commenceTime: { lt: staleBefore },
+        externalId:
+          scoredProviderEventIds.size > 0
+            ? { not: null, notIn: [...scoredProviderEventIds] }
+            : { not: null },
+      },
+      data: {
+        status: "awaiting_result",
+        minute: null,
+        lastSyncedAt: now,
+      },
+    });
+    staleDemoted = stale.count;
   }
 
   const successAt = new Date();
@@ -195,6 +234,7 @@ export async function refreshOddsApiLiveSport(
         events: result.events.length,
         scoredEvents,
         updated,
+        staleDemoted,
       }),
     },
   });
@@ -209,6 +249,7 @@ export async function refreshOddsApiLiveSport(
     requestCost: result.requestCost,
     remainingRequests: result.remainingRequests,
     lastSuccessAt: successAt.toISOString(),
+    staleDemoted,
   };
 }
 
