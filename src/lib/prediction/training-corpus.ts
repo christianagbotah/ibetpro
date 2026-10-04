@@ -45,6 +45,20 @@ const FIRST_PARTY_CORE_FEATURE_KEYS = [
   "market_away_draw_log_ratio",
 ] as const satisfies ReadonlyArray<keyof ModelFeatureVector>;
 
+// Keep synchronized with ml-service/training/train_xgb.py MARKET_MOVEMENT_FEATURE_COLUMNS.
+const FIRST_PARTY_MARKET_MOVEMENT_FEATURE_KEYS = [
+  ...FIRST_PARTY_CORE_FEATURE_KEYS,
+  "market_snapshot_count",
+  "market_history_minutes",
+  "home_market_prob_move_open",
+  "draw_market_prob_move_open",
+  "away_market_prob_move_open",
+  "market_overround_move_open",
+  "home_market_prob_move_6h",
+  "draw_market_prob_move_6h",
+  "away_market_prob_move_6h",
+] as const satisfies ReadonlyArray<keyof ModelFeatureVector>;
+
 type HorizonKey = (typeof HORIZONS)[number]["key"];
 
 function horizonFor(minutesToKickoff: number): HorizonKey | null {
@@ -224,6 +238,7 @@ export async function captureTrainingFeatureSnapshots(
 export {
   FEATURE_SCHEMA_VERSION,
   FIRST_PARTY_CORE_FEATURE_KEYS,
+  FIRST_PARTY_MARKET_MOVEMENT_FEATURE_KEYS,
   HORIZONS,
   featureCompletenessForKeys,
 };
