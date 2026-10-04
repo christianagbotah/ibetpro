@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/session";
+import { countTickets } from "@/lib/bet-accounting";
 import {
   settleBetById,
   settleFinishedBetsForUser,
@@ -69,6 +70,17 @@ export async function POST(request: NextRequest) {
     const standaloneSettled = settled.filter(
       (result) => !result.accumulatorId
     );
+    const resultAccumulatorIds = new Set(
+      results
+        .map((result) => result.accumulatorId)
+        .filter((id): id is string => typeof id === "string" && id.length > 0)
+    );
+    const standaloneResults = results.filter((result) => !result.accumulatorId);
+    const processedTickets = standaloneResults.length + resultAccumulatorIds.size;
+    const settledTickets =
+      standaloneSettled.length + settledAccumulatorTickets.length;
+    const skippedTickets = Math.max(0, processedTickets - settledTickets);
+
     const totalProfit =
       standaloneSettled.reduce(
         (sum, result) => sum + (result.profit || 0),
@@ -89,8 +101,11 @@ export async function POST(request: NextRequest) {
       );
 
     return NextResponse.json({
-      settled: settled.length,
-      skipped: results.length - settled.length,
+      settled: settledTickets,
+      skipped: skippedTickets,
+      processedTickets,
+      processedRows: results.length,
+      settledRows: settled.length,
       bets: settled,
       settledAccumulatorTickets: settledAccumulatorTickets.length,
       totalProfit,
@@ -137,7 +152,8 @@ export async function GET() {
     ]);
 
     return NextResponse.json({
-      settleable: settleableBets.length,
+      settleable: countTickets(settleableBets),
+      settleableRows: settleableBets.length,
       settleableBets: settleableBets.map((bet) => ({
         id: bet.id,
         matchId: bet.matchId,
@@ -145,6 +161,7 @@ export async function GET() {
         selection: bet.selection,
         odds: bet.odds,
         stake: bet.stake,
+        accumulatorId: bet.accumulatorId,
         match: {
           homeTeam: bet.match.homeTeam,
           awayTeam: bet.match.awayTeam,
@@ -153,7 +170,8 @@ export async function GET() {
           status: bet.match.status,
         },
       })),
-      liveBets: liveBets.length,
+      liveBets: countTickets(liveBets),
+      liveBetRows: liveBets.length,
       liveBetsList: liveBets.map((bet) => ({
         id: bet.id,
         matchId: bet.matchId,
@@ -161,6 +179,7 @@ export async function GET() {
         selection: bet.selection,
         odds: bet.odds,
         stake: bet.stake,
+        accumulatorId: bet.accumulatorId,
         match: {
           homeTeam: bet.match.homeTeam,
           awayTeam: bet.match.awayTeam,
