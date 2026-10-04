@@ -56,9 +56,6 @@ export async function POST() {
 
     const settings = user.settings;
 
-    // Real-money execution is intentionally fail-closed until a verified
-    // bookmaker adapter confirms wager acceptance and exposes an immutable
-    // external bet id. Real mode remains connectivity/advisor-only.
     if (settings.brokerMode === "real") {
       return NextResponse.json(
         {
@@ -157,15 +154,13 @@ export async function POST() {
       where: {
         userId,
         placedAt: { gte: todayStart },
-        status: {
-          in: ["pending", "won", "lost", "cashed_out", "partial_cashout"],
-        },
       },
       select: { matchId: true, stake: true, accumulatorId: true },
     });
 
-    // Accumulator legs repeat the ticket stake, so count each accumulator only
-    // once. Row-level summation previously multiplied daily stake by leg count.
+    // Daily limits measure stake committed today, regardless of whether a
+    // ticket later wins, loses, is voided, is cashed out, or is temporarily
+    // claimed by the cashout reconciler. Accumulator legs count once per ticket.
     const dailyStake = sumTicketStake(todayBets);
 
     if (dailyStake >= settings.dailyBetLimit) {
