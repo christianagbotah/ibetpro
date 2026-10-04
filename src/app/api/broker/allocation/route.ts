@@ -2,13 +2,7 @@ import { prisma } from "@/lib/db";
 import { requireAuth } from "@/lib/session";
 import { NextRequest, NextResponse } from "next/server";
 import { calculateAllocation, fetchBrokerBalance } from "@/lib/broker-integration";
-import { getRemainingExposure } from "@/lib/bet-exposure";
-
-const OPEN_EXPOSURE_STATUSES = [
-  "pending",
-  "partial_cashout",
-  "cashout_settling",
-];
+import { calculateOpenExposure } from "@/lib/allocation-exposure";
 
 /**
  * Broker Allocation API
@@ -45,18 +39,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const activeBets = await prisma.bet.findMany({
-      where: {
-        userId,
-        bettingAccountId,
-        status: { in: OPEN_EXPOSURE_STATUSES },
-      },
-    });
-
-    const activeBetStake = activeBets.reduce(
-      (sum, bet) => sum + getRemainingExposure(bet).remainingStake,
-      0
-    );
+    const activeBetStake = await calculateOpenExposure(userId, bettingAccountId);
 
     const balance = await fetchBrokerBalance(
       account.platform,
@@ -245,23 +228,16 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const activeBets = await prisma.bet.findMany({
-      where: {
-        userId,
-        bettingAccountId: allocation.bettingAccountId,
-        status: { in: OPEN_EXPOSURE_STATUSES },
-      },
-    });
+    const activeBetStake = await calculateOpenExposure(
+      userId,
+      allocation.bettingAccountId
+    );
 
-    if (activeBets.length > 0) {
+    if (activeBetStake > 0) {
       return NextResponse.json(
         {
           error: "Cannot release allocation while there are active bets",
-          activeBets: activeBets.length,
-          activeBetStake: activeBets.reduce(
-            (sum, bet) => sum + getRemainingExposure(bet).remainingStake,
-            0
-          ),
+          activeBetStake,
         },
         { status: 400 }
       );
