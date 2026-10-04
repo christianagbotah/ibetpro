@@ -161,11 +161,27 @@ export default function BettingPage() {
   const { symbol } = useCurrency();
   const { data: bets, loading, refetch: refetchBets } = usePolling<Bet[]>("/api/bets", 15000, []);
   const { data: accounts } = useFetch<Array<{ id: string; platform: string }>>("/api/accounts", []);
-  const { data: pnlData } = usePolling<{ dailyPnl: number; weeklyPnl: number }>(
-    "/api/stats/user",
-    15000,
-    { dailyPnl: 0, weeklyPnl: 0 }
-  );
+  const { data: pnlData } = usePolling<{
+    dailyPnl: number;
+    weeklyPnl: number;
+    totalBets: number;
+    totalProfit: number;
+    totalLoss: number;
+    totalStaked: number;
+    autoBets: number;
+    accumulatorBets: number;
+    todayStaked: number;
+  }>("/api/stats/user", 15000, {
+    dailyPnl: 0,
+    weeklyPnl: 0,
+    totalBets: 0,
+    totalProfit: 0,
+    totalLoss: 0,
+    totalStaked: 0,
+    autoBets: 0,
+    accumulatorBets: 0,
+    todayStaked: 0,
+  });
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [betFilter, setBetFilter] = useState<string>("all");
   const [botRunning, setBotRunning] = useState(false);
@@ -463,23 +479,17 @@ export default function BettingPage() {
       ? enrichedBets.filter((b) => b.accumulatorId)
       : enrichedBets.filter((b) => b.status === betFilter);
 
-  const autoBets = enrichedBets.filter((b) => b.isAutoPlaced);
-  const accumulatorBets = enrichedBets.filter((b) => b.accumulatorId);
-  const totalStake = enrichedBets.reduce((sum, b) => sum + b.stake, 0);
-  const totalProfit = enrichedBets.reduce((sum, b) => sum + (b.profit || 0), 0);
+  const totalStake = pnlData.totalStaked;
+  const totalProfit = pnlData.totalProfit - pnlData.totalLoss;
 
   // AI recommended bets
   const aiRecommendedBets = enrichedBets
     .filter((b) => b.status === "pending" && b.aiConfidence && b.aiConfidence > 0.5)
     .sort((a, b) => (b.aiConfidence || 0) - (a.aiConfidence || 0));
 
-  // Daily bet limit progress
-  const todayBets = enrichedBets.filter((b) => {
-    const today = new Date();
-    const placedAt = new Date(b.placedAt);
-    return placedAt.toDateString() === today.toDateString();
-  });
-  const dailyStake = todayBets.reduce((sum, b) => sum + b.stake, 0);
+  // Daily bet limit progress uses the same user-timezone boundary and
+  // ticket-level stake accounting as the backend execution gate.
+  const dailyStake = pnlData.todayStaked;
   const dailyLimitProgress = settings.dailyBetLimit > 0
     ? Math.min((dailyStake / settings.dailyBetLimit) * 100, 100)
     : 0;
@@ -662,19 +672,19 @@ export default function BettingPage() {
         <Card className="bg-card border-border">
           <CardContent className="p-3">
             <p className="text-xs text-muted-foreground">Total Bets</p>
-            <p className="text-lg font-bold text-foreground">{enrichedBets.length}</p>
+            <p className="text-lg font-bold text-foreground">{pnlData.totalBets}</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
           <CardContent className="p-3">
             <p className="text-xs text-muted-foreground">AI-Placed</p>
-            <p className="text-lg font-bold text-primary">{autoBets.length}</p>
+            <p className="text-lg font-bold text-primary">{pnlData.autoBets}</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
           <CardContent className="p-3">
             <p className="text-xs text-muted-foreground">Accumulators</p>
-            <p className="text-lg font-bold text-purple-400">{accumulatorBets.length}</p>
+            <p className="text-lg font-bold text-purple-400">{pnlData.accumulatorBets}</p>
           </CardContent>
         </Card>
         <Card className="bg-card border-border">
