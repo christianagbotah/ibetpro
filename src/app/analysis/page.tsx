@@ -131,6 +131,40 @@ type PlayerPropState = {
   error: string | null;
 };
 
+type PlayerStatMarketKey = "shots" | "shots-on-target" | "assists";
+
+type PlayerLineCandidate = {
+  name: string;
+  line: number;
+  probability: number;
+  averageOdds: number;
+  bookmakerCount: number;
+};
+
+type PlayerLineResponse = {
+  supported?: boolean;
+  cached?: boolean;
+  source?: string;
+  disclaimer?: string;
+  market?: PlayerStatMarketKey;
+  label?: string;
+  bookmakerCount?: number;
+  candidates?: PlayerLineCandidate[];
+  error?: string;
+};
+
+type PlayerLineState = {
+  loading: boolean;
+  data: PlayerLineResponse | null;
+  error: string | null;
+};
+
+const PLAYER_STAT_LABELS: Record<PlayerStatMarketKey, string> = {
+  shots: "Shots",
+  "shots-on-target": "Shots on target",
+  assists: "Assists",
+};
+
 const PLAYER_FIRST_GOALSCORER_SPORTS = new Set([
   "soccer_epl",
   "soccer_france_ligue_one",
@@ -227,6 +261,185 @@ function marketDisplayLabel(
   return market.label;
 }
 
+function playerLineStateKey(
+  matchId: string,
+  market: PlayerStatMarketKey
+) {
+  return matchId + ":" + market;
+}
+
+function PlayerCandidatePanel({
+  title,
+  state,
+  onLoad,
+}: {
+  title: string;
+  state: PlayerPropState | undefined;
+  onLoad: () => void;
+}) {
+  return (
+    <div className="rounded-lg border border-primary/15 bg-primary/5 p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+            <UserRoundSearch className="h-4 w-4 text-primary" />
+            {title}
+          </div>
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            On-demand bookmaker consensus · supported major leagues only.
+          </p>
+        </div>
+
+        {!state?.data && (
+          <Button
+            size="sm"
+            variant="outline"
+            className="border-primary/30 text-primary"
+            disabled={state?.loading}
+            onClick={onLoad}
+          >
+            {state?.loading ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <UserRoundSearch className="h-3.5 w-3.5" />
+            )}
+            {state?.loading ? "Loading..." : "View candidates"}
+          </Button>
+        )}
+      </div>
+
+      {state?.error && (
+        <div className="mt-2 flex items-center justify-between gap-2 rounded-md bg-destructive/5 px-2.5 py-2">
+          <p className="text-[11px] text-destructive">{state.error}</p>
+          <Button size="xs" variant="ghost" onClick={onLoad}>
+            Retry
+          </Button>
+        </div>
+      )}
+
+      {state?.data?.candidates && state.data.candidates.length > 0 && (
+        <div className="mt-3 space-y-2">
+          <div className="grid gap-2 sm:grid-cols-2">
+            {state.data.candidates
+              .filter((candidate) => !candidate.noScorer)
+              .slice(0, 6)
+              .map((candidate, index) => (
+                <div
+                  key={candidate.name}
+                  className="flex items-center justify-between gap-2 rounded-md border border-border/70 bg-background/40 px-2.5 py-2"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-medium text-foreground">
+                      {index + 1}. {candidate.name}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {candidate.bookmakerCount} bookmaker
+                      {candidate.bookmakerCount === 1 ? "" : "s"} · avg odds{" "}
+                      {candidate.averageOdds.toFixed(2)}
+                    </p>
+                  </div>
+                  <span className="shrink-0 text-xs font-bold text-primary">
+                    {pct(candidate.probability)}
+                  </span>
+                </div>
+              ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            {state.data.disclaimer ||
+              "Current bookmaker consensus; not yet a trained iBetPro player model."}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function PlayerLineMarketPanel({
+  activeMarket,
+  state,
+  onSelect,
+}: {
+  activeMarket: PlayerStatMarketKey | null;
+  state: PlayerLineState | undefined;
+  onSelect: (market: PlayerStatMarketKey) => void;
+}) {
+  return (
+    <div className="rounded-lg border border-border/70 bg-secondary/10 p-3">
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
+            <Target className="h-4 w-4 text-primary" />
+            Player stat markets
+          </div>
+          <p className="mt-1 text-[10px] text-muted-foreground">
+            Choose one market to load current bookmaker-implied Over lines.
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {(Object.keys(PLAYER_STAT_LABELS) as PlayerStatMarketKey[]).map(
+            (market) => (
+              <Button
+                key={market}
+                size="xs"
+                variant={activeMarket === market ? "default" : "outline"}
+                disabled={state?.loading && activeMarket === market}
+                onClick={() => onSelect(market)}
+              >
+                {state?.loading && activeMarket === market && (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                )}
+                {PLAYER_STAT_LABELS[market]}
+              </Button>
+            )
+          )}
+        </div>
+      </div>
+
+      {state?.error && (
+        <p className="mt-2 rounded-md bg-destructive/5 px-2.5 py-2 text-[11px] text-destructive">
+          {state.error}
+        </p>
+      )}
+
+      {state?.data?.candidates && state.data.candidates.length > 0 && (
+        <div className="mt-3 space-y-2">
+          <div className="grid gap-2 sm:grid-cols-2">
+            {state.data.candidates.slice(0, 6).map((candidate, index) => (
+              <div
+                key={
+                  candidate.name +
+                  "-" +
+                  candidate.line.toFixed(2)
+                }
+                className="flex items-center justify-between gap-2 rounded-md border border-border/70 bg-background/40 px-2.5 py-2"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-medium text-foreground">
+                    {index + 1}. {candidate.name}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground">
+                    Over {candidate.line.toFixed(1)} ·{" "}
+                    {candidate.bookmakerCount} bookmaker
+                    {candidate.bookmakerCount === 1 ? "" : "s"} · avg odds{" "}
+                    {candidate.averageOdds.toFixed(2)}
+                  </p>
+                </div>
+                <span className="shrink-0 text-xs font-bold text-primary">
+                  {pct(candidate.probability)}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            {state.data.disclaimer ||
+              "Bookmaker-implied Over probability; not yet a trained iBetPro player model."}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AnalysisPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [sportFilter, setSportFilter] = useState("all");
@@ -235,6 +448,11 @@ export default function AnalysisPage() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [playerProps, setPlayerProps] = useState<Record<string, PlayerPropState>>({});
+  const [anytimeProps, setAnytimeProps] = useState<Record<string, PlayerPropState>>({});
+  const [playerLineProps, setPlayerLineProps] = useState<Record<string, PlayerLineState>>({});
+  const [activePlayerLineMarkets, setActivePlayerLineMarkets] = useState<
+    Record<string, PlayerStatMarketKey>
+  >({});
 
   useEffect(() => {
     setPage(1);
@@ -302,6 +520,106 @@ export default function AnalysisPage() {
     }
   };
 
+  const loadPlayerAnytimeGoalscorer = async (matchId: string) => {
+    setAnytimeProps((current) => ({
+      ...current,
+      [matchId]: {
+        loading: true,
+        data: current[matchId]?.data ?? null,
+        error: null,
+      },
+    }));
+
+    try {
+      const response = await fetch(
+        "/api/predictions/" + matchId + "/anytime-goalscorer",
+        { cache: "no-store" }
+      );
+      const payload = (await response.json()) as PlayerFirstGoalscorerResponse;
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Anytime goalscorer market is unavailable");
+      }
+
+      setAnytimeProps((current) => ({
+        ...current,
+        [matchId]: {
+          loading: false,
+          data: payload,
+          error: null,
+        },
+      }));
+    } catch (error) {
+      setAnytimeProps((current) => ({
+        ...current,
+        [matchId]: {
+          loading: false,
+          data: current[matchId]?.data ?? null,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Anytime goalscorer market is unavailable",
+        },
+      }));
+    }
+  };
+
+  const loadPlayerLineMarket = async (
+    matchId: string,
+    market: PlayerStatMarketKey
+  ) => {
+    setActivePlayerLineMarkets((current) => ({
+      ...current,
+      [matchId]: market,
+    }));
+
+    const key = playerLineStateKey(matchId, market);
+    setPlayerLineProps((current) => ({
+      ...current,
+      [key]: {
+        loading: true,
+        data: current[key]?.data ?? null,
+        error: null,
+      },
+    }));
+
+    try {
+      const response = await fetch(
+        "/api/predictions/" +
+          matchId +
+          "/player-markets?market=" +
+          encodeURIComponent(market),
+        { cache: "no-store" }
+      );
+      const payload = (await response.json()) as PlayerLineResponse;
+
+      if (!response.ok) {
+        throw new Error(payload.error || "Player stat market is unavailable");
+      }
+
+      setPlayerLineProps((current) => ({
+        ...current,
+        [key]: {
+          loading: false,
+          data: payload,
+          error: null,
+        },
+      }));
+    } catch (error) {
+      setPlayerLineProps((current) => ({
+        ...current,
+        [key]: {
+          loading: false,
+          data: current[key]?.data ?? null,
+          error:
+            error instanceof Error
+              ? error.message
+              : "Player stat market is unavailable",
+        },
+      }));
+    }
+  };
+
   const filteredPredictions = useMemo(() => {
     const query = search.trim().toLowerCase();
     const rows = feed.predictions.filter((item) => {
@@ -358,7 +676,7 @@ export default function AnalysisPage() {
           <p className="mt-1 max-w-4xl text-xs text-muted-foreground">
             “First goal” always includes the team most likely to score first. For
             supported EPL, Ligue 1, Bundesliga, Serie A, La Liga and MLS fixtures,
-            player first-goalscorer bookmaker candidates are also available on demand.
+            first- and anytime-goalscorer candidates plus selected player stat markets are available on demand.
           </p>
         </div>
 
@@ -379,8 +697,7 @@ export default function AnalysisPage() {
         <Card className="border-border bg-card">
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-muted-foreground">Confirmed live scores</p>
+              <div>                <p className="text-xs text-muted-foreground">Confirmed live scores</p>
                 <p className="mt-1 text-2xl font-bold">{feed.confirmedLiveCount}</p>
                 {feed.pendingLiveScoreCount > 0 && (
                   <p className="mt-0.5 text-[10px] text-amber-400">
@@ -527,12 +844,25 @@ export default function AnalysisPage() {
               match.awayScore != null;
             const currentGoalTotal =
               (match.homeScore ?? 0) + (match.awayScore ?? 0);
-            const playerFirstGoalscorerSupported =
+            const playerPropSupported =
               PLAYER_FIRST_GOALSCORER_SPORTS.has(match.sport) &&
-              Boolean(match.externalId) &&
+              Boolean(match.externalId);
+            const playerFirstGoalscorerSupported =
+              playerPropSupported &&
               (match.status === "upcoming" ||
                 (match.status === "live" && currentGoalTotal === 0));
+            const playerAnytimeGoalscorerSupported =
+              playerPropSupported &&
+              (match.status === "upcoming" || match.status === "live");
             const playerPropState = playerProps[match.id];
+            const anytimePropState = anytimeProps[match.id];
+            const activePlayerLineMarket =
+              activePlayerLineMarkets[match.id] ?? null;
+            const activePlayerLineState = activePlayerLineMarket
+              ? playerLineProps[
+                  playerLineStateKey(match.id, activePlayerLineMarket)
+                ]
+              : undefined;
             const kickoff = new Date(match.commenceTime);
             const winnerProbabilities = [
               ["Home", prediction.result.homeWin],
@@ -779,86 +1109,29 @@ export default function AnalysisPage() {
                     </div>
 
                     {playerFirstGoalscorerSupported && (
-                      <div className="rounded-lg border border-primary/15 bg-primary/5 p-3">
-                        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                          <div>
-                            <div className="flex items-center gap-1.5 text-xs font-medium text-foreground">
-                              <UserRoundSearch className="h-4 w-4 text-primary" />
-                              Player first-goalscorer candidates
-                            </div>
-                            <p className="mt-1 text-[10px] text-muted-foreground">
-                              On-demand bookmaker consensus · supported major leagues only.
-                            </p>
-                          </div>
+                      <PlayerCandidatePanel
+                        title="Player first-goalscorer candidates"
+                        state={playerPropState}
+                        onLoad={() => void loadPlayerFirstGoalscorer(match.id)}
+                      />
+                    )}
 
-                          {!playerPropState?.data && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="border-primary/30 text-primary"
-                              disabled={playerPropState?.loading}
-                              onClick={() => void loadPlayerFirstGoalscorer(match.id)}
-                            >
-                              {playerPropState?.loading ? (
-                                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                              ) : (
-                                <UserRoundSearch className="h-3.5 w-3.5" />
-                              )}
-                              {playerPropState?.loading ? "Loading..." : "View candidates"}
-                            </Button>
-                          )}
-                        </div>
+                    {playerAnytimeGoalscorerSupported && (
+                      <PlayerCandidatePanel
+                        title="Player anytime-goalscorer candidates"
+                        state={anytimePropState}
+                        onLoad={() => void loadPlayerAnytimeGoalscorer(match.id)}
+                      />
+                    )}
 
-                        {playerPropState?.error && (
-                          <div className="mt-2 flex items-center justify-between gap-2 rounded-md bg-destructive/5 px-2.5 py-2">
-                            <p className="text-[11px] text-destructive">
-                              {playerPropState.error}
-                            </p>
-                            <Button
-                              size="xs"
-                              variant="ghost"
-                              onClick={() => void loadPlayerFirstGoalscorer(match.id)}
-                            >
-                              Retry
-                            </Button>
-                          </div>
-                        )}
-
-                        {playerPropState?.data?.candidates &&
-                          playerPropState.data.candidates.length > 0 && (
-                            <div className="mt-3 space-y-2">
-                              <div className="grid gap-2 sm:grid-cols-2">
-                                {playerPropState.data.candidates
-                                  .filter((candidate) => !candidate.noScorer)
-                                  .slice(0, 6)
-                                  .map((candidate, index) => (
-                                    <div
-                                      key={candidate.name}
-                                      className="flex items-center justify-between gap-2 rounded-md border border-border/70 bg-background/40 px-2.5 py-2"
-                                    >
-                                      <div className="min-w-0">
-                                        <p className="truncate text-xs font-medium text-foreground">
-                                          {index + 1}. {candidate.name}
-                                        </p>
-                                        <p className="text-[10px] text-muted-foreground">
-                                          {candidate.bookmakerCount} bookmaker
-                                          {candidate.bookmakerCount === 1 ? "" : "s"} · avg odds{" "}
-                                          {candidate.averageOdds.toFixed(2)}
-                                        </p>
-                                      </div>
-                                      <span className="shrink-0 text-xs font-bold text-primary">
-                                        {pct(candidate.probability)}
-                                      </span>
-                                    </div>
-                                  ))}
-                              </div>
-                              <p className="text-[10px] text-muted-foreground">
-                                {playerPropState.data.disclaimer ||
-                                  "Current bookmaker consensus; not yet a trained iBetPro player model."}
-                              </p>
-                            </div>
-                          )}
-                      </div>
+                    {playerPropSupported && (
+                      <PlayerLineMarketPanel
+                        activeMarket={activePlayerLineMarket}
+                        state={activePlayerLineState}
+                        onSelect={(market) =>
+                          void loadPlayerLineMarket(match.id, market)
+                        }
+                      />
                     )}
 
                     <div className="flex flex-col gap-2 border-t border-border pt-3 sm:flex-row sm:items-center sm:justify-between">
