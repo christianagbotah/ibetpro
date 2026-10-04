@@ -235,7 +235,7 @@ export async function recordAutoSinglePlacement(
         }),
         reasoning: input.reasoning,
         confidence: input.confidence,
-        profitImpact: -input.stake,
+        profitImpact: 0,
       },
     });
 
@@ -344,7 +344,7 @@ export async function recordAutoAccumulatorPlacement(
         }),
         reasoning: `Created ${input.legs.length}-leg accumulator with total odds ${input.totalOdds.toFixed(2)}${input.bonusPercent > 0 ? ` and ${input.bonusPercent}% bonus` : ""}`,
         confidence: averageConfidence,
-        profitImpact: -input.stake,
+        profitImpact: 0,
       },
     });
 

@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/db";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuth } from "@/lib/session";
+import { getRiskPeriodStarts } from "@/lib/risk-period-pnl";
 
 /**
  * Bot Logs API
@@ -32,13 +33,21 @@ export async function GET(request: NextRequest) {
 
     const total = await prisma.botLog.count({ where });
 
-    // Get summary stats
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    // Get summary stats using the user's local calendar day.
+    const settings = await prisma.userSettings.findUnique({
+      where: { userId },
+      select: { timezone: true },
+    });
+    const { dayStart: todayStart } = getRiskPeriodStarts(settings?.timezone);
 
     const todayLogs = await prisma.botLog.findMany({
       where: { userId, createdAt: { gte: todayStart } },
     });
+    const realizedPnlActions = new Set([
+      "bet_settled",
+      "accumulator_settled",
+      "cashout_executed",
+    ]);
 
     const summary = {
       betsPlaced: todayLogs.filter((l) => l.action === "bet_placed").length,
@@ -49,7 +58,9 @@ export async function GET(request: NextRequest) {
       stopLossHit: todayLogs.filter((l) => l.action === "stop_loss_hit").length,
       profitTargetHit: todayLogs.filter((l) => l.action === "profit_target_hit").length,
       scheduleBlocked: todayLogs.filter((l) => l.action === "schedule_blocked").length,
-      totalProfitImpact: todayLogs.reduce((sum, l) => sum + (l.profitImpact || 0), 0),
+      totalProfitImpact: todayLogs
+        .filter((l) => realizedPnlActions.has(l.action))
+        .reduce((sum, l) => sum + (l.profitImpact || 0), 0),
     };
 
     return NextResponse.json({
