@@ -12,6 +12,7 @@ import {
   recordAutoSinglePlacement,
 } from "./auto-bet-placement";
 import { sumTicketStake } from "./bet-accounting";
+import { getRiskPeriodStarts } from "./risk-period-pnl";
 
 export type AutoBetPlaced = {
   matchId: string;
@@ -318,8 +319,7 @@ export async function runAutoBetCycle(userId: string): Promise<AutoBetCycleResul
     const availableAllocation =
       activeAllocation?.remainingAmount ?? bettingAccount.allocatedAmount;
 
-    const todayStart = new Date();
-    todayStart.setHours(0, 0, 0, 0);
+    const { dayStart: todayStart } = getRiskPeriodStarts(settings.timezone);
     const todayBets = await prisma.bet.findMany({
       where: { userId, placedAt: { gte: todayStart } },
       select: { matchId: true, stake: true, accumulatorId: true },
