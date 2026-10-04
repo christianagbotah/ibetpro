@@ -7,6 +7,7 @@ import {
   RATE_LIMITS,
 } from "@/lib/rate-limit";
 import { config } from "@/lib/config";
+import { getRiskPeriodPnl } from "@/lib/risk-period-pnl";
 
 export async function GET() {
   try {
@@ -35,20 +36,20 @@ export async function GET() {
           totalLoss: true,
           commissionPaid: true,
           bankroll: true,
-          dailyPnl: true,
-          weeklyPnl: true,
           createdAt: true,
         },
       }),
       prisma.userSettings.findUnique({
         where: { userId: user.id },
-        select: { commissionRate: true },
+        select: { commissionRate: true, timezone: true },
       }),
     ]);
 
     if (!userData) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    const periodPnl = await getRiskPeriodPnl(user.id, settings?.timezone);
 
     // Bet rows belonging to an accumulator are legs, not independent wager
     // tickets. Count standalone bets and accumulator tickets separately, then
@@ -214,8 +215,8 @@ export async function GET() {
         commissionPaid: userData.commissionPaid,
         commissionRate:
           settings?.commissionRate ?? config.commission.defaultRate,
-        dailyPnl: userData.dailyPnl,
-        weeklyPnl: userData.weeklyPnl,
+        dailyPnl: periodPnl.dailyPnl,
+        weeklyPnl: periodPnl.weeklyPnl,
         totalBets,
         wonBets,
         lostBets,
