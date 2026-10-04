@@ -25,14 +25,12 @@ export async function GET() {
       where: { userId },
     });
 
-    // Get recent bot logs
     const recentLogs = await prisma.botLog.findMany({
       where: { userId },
       orderBy: { createdAt: "desc" },
       take: 10,
     });
 
-    // Get today's stats
     const todayStart = new Date();
     todayStart.setHours(0, 0, 0, 0);
     const todayBets = await prisma.bet.findMany({
@@ -48,7 +46,6 @@ export async function GET() {
       .filter((b) => b.status === "won" || b.status === "cashed_out")
       .reduce((sum, b) => sum + (b.profit || 0), 0);
 
-    // Get connected account info
     const connectedAccount = await prisma.bettingAccount.findFirst({
       where: { userId, isConnected: true },
       orderBy: { allocatedAmount: "desc" },
@@ -58,7 +55,6 @@ export async function GET() {
       where: { userId, status: "active" },
     });
 
-    // Get engine stats (in-memory)
     const engineStats = botEngine.getStatus(userId);
 
     return NextResponse.json({
@@ -89,6 +85,9 @@ export async function GET() {
       } : null,
       settings: {
         autoBettingEnabled: settings?.autoBettingEnabled ?? true,
+        brokerMode: settings?.brokerMode ?? "demo",
+        botMode: settings?.botMode ?? "advisor",
+        realExecutionEnabled: false,
         riskLevel: settings?.riskLevel ?? "medium",
         dailyBetLimit: settings?.dailyBetLimit ?? 500,
         stopLossDaily: settings?.stopLossDaily ?? 200,
@@ -142,7 +141,23 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "start") {
-      // Check if already running in the engine
+      const settings = await prisma.userSettings.findUnique({
+        where: { userId },
+        select: { brokerMode: true, botMode: true, autoBettingEnabled: true },
+      });
+
+      if (settings?.brokerMode === "real" && settings.botMode === "auto") {
+        return NextResponse.json(
+          {
+            error:
+              "Automated real-money execution is not enabled yet. Switch the bot to Advisor mode or use Demo broker mode.",
+            botStatus: "stopped",
+            realExecutionEnabled: false,
+          },
+          { status: 409 }
+        );
+      }
+
       if (botEngine.isRunning(userId)) {
         return NextResponse.json({
           success: false,
@@ -151,7 +166,6 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      // Create or update bot session in DB
       await prisma.botSession.upsert({
         where: { userId },
         update: {
@@ -175,11 +189,9 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      // Start the bot engine
       const result = await botEngine.start(userId, scanIntervalSec || 30);
 
       if (!result.success) {
-        // Revert session status
         await prisma.botSession.update({
           where: { userId },
           data: { status: "stopped", stoppedAt: new Date(), stopReason: "start_failed" },
@@ -196,11 +208,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === "stop") {
-      // Get session stats before stopping
       const session = await prisma.botSession.findUnique({ where: { userId } });
       const engineStats = botEngine.getStatus(userId);
 
-      // Stop the bot engine
       await botEngine.stop(userId, "user_stopped");
 
       return NextResponse.json({
@@ -241,7 +251,6 @@ export async function PATCH() {
   try {
     const userId = await requireAuth();
 
-    // Check if bot is running (either in engine or in DB)
     const engineRunning = botEngine.isRunning(userId);
     const session = await prisma.botSession.findUnique({ where: { userId } });
 
@@ -249,8 +258,6 @@ export async function PATCH() {
       return NextResponse.json({ botStatus: "stopped", message: "Bot is not running" });
     }
 
-    // If the engine is running, the next scan will happen automatically
-    // Just return the current status
     const engineStats = botEngine.getStatus(userId);
 
     return NextResponse.json({
