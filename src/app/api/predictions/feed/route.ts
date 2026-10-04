@@ -356,6 +356,7 @@ export async function GET(request: NextRequest) {
           updated: result.updated,
           scoredEvents: result.scoredEvents,
           remainingRequests: result.remainingRequests,
+          staleDemoted: result.staleDemoted ?? 0,
           reason: result.reason ?? null,
         })),
         predictions,
