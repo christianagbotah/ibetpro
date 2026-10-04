@@ -55,7 +55,49 @@ export async function PUT(request: NextRequest) {
     const validation = validateInput(updateSettingsSchema, body);
     if (!validation.success) return validation.error;
 
-    const data = validation.data;
+    const currentSettings = await prisma.userSettings.findUnique({
+      where: { userId: user.id },
+      select: { brokerMode: true },
+    });
+
+    const requestedBrokerMode =
+      validation.data.brokerMode ?? currentSettings?.brokerMode ?? "demo";
+
+    if (requestedBrokerMode === "real") {
+      if (
+        validation.data.autoBettingEnabled === true ||
+        validation.data.botMode === "auto"
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Automated real-money execution is disabled until a verified real broker adapter confirms every wager. Use advisor mode in Real broker mode.",
+          },
+          { status: 409 }
+        );
+      }
+
+      if (validation.data.brokerMode === "real") {
+        const connectedAccounts = await prisma.bettingAccount.count({
+          where: { userId: user.id, isConnected: true },
+        });
+        if (connectedAccounts === 0) {
+          return NextResponse.json(
+            { error: "Connect at least one broker account before switching to Real mode" },
+            { status: 409 }
+          );
+        }
+      }
+    }
+
+    const data =
+      requestedBrokerMode === "real"
+        ? {
+            ...validation.data,
+            autoBettingEnabled: false,
+            botMode: "advisor" as const,
+          }
+        : validation.data;
 
     const settings = await prisma.userSettings.upsert({
       where: { userId: user.id },
