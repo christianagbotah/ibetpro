@@ -1,0 +1,42 @@
+name: One-time Active Ticket Render Patch
+
+on:
+  push:
+    branches: [work/dashboard-ticket-view-20261005]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/dashboard-ticket-view-20261005
+      - name: Render accumulator tickets once
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/components/dashboard/active-bets.tsx')
+          text = p.read_text()
+          old = '  aiReasoning: string | null;\n  match?: {'
+          new = '  aiReasoning: string | null;\n  totalLegs?: number;\n  match?: {'
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+          old = '  };\n}\n\ninterface ActiveBetsProps {'
+          new = '  } | null;\n}\n\ninterface ActiveBetsProps {'
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+          old = '{bet.match?.homeTeam} vs {bet.match?.awayTeam}'
+          new = '{bet.betType === "accumulator"\n                      ? `${bet.totalLegs || 0}-leg accumulator`\n                      : `${bet.match?.homeTeam || "Match"} vs ${bet.match?.awayTeam || "Opponent"}`}'
+          assert text.count(old) == 1, text.count(old)
+          p.write_text(text.replace(old, new))
+          PY
+          rm .github/workflows/one-time-active-ticket-render.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/components/dashboard/active-bets.tsx .github/workflows/one-time-active-ticket-render.yml
+          git commit -m "Render active accumulators as tickets"
+          git push origin HEAD:work/dashboard-ticket-view-20261005
