@@ -312,7 +312,13 @@ export function poissonBaselinePredict(input: PredictionInput): MatchPrediction 
       "Live score is unavailable; this remains a pre-match baseline and is not an in-play signal."
     );
   }
-  if (completeness < 0.65) warnings.push("Limited feature coverage; confidence is reduced.");
+  if (completeness < 0.25) {
+    warnings.push(
+      "Very sparse feature coverage; treat this as a low-evidence baseline."
+    );
+  } else if (completeness < 0.65) {
+    warnings.push("Limited feature coverage; confidence is reduced.");
+  }
   if (expected.marketInformed) {
     warnings.push(
       "Historical goal coverage is sparse; expected-goal share is informed by current 1X2 market strength."
@@ -326,8 +332,20 @@ export function poissonBaselinePredict(input: PredictionInput): MatchPrediction 
     .slice(0, 10)
     .map((s) => ({ ...s, probability: Math.round(s.probability * 10000) / 10000 }));
 
-  const separation = Math.max(homeWin, draw, awayWin) - Math.min(homeWin, draw, awayWin);
-  const confidence = clamp(0.35 + completeness * 0.35 + separation * 0.25, 0.35, 0.9);
+  const separation =
+    Math.max(homeWin, draw, awayWin) -
+    Math.min(homeWin, draw, awayWin);
+  const marketEvidenceBoost = useMarketConsensus ? 0.12 : 0;
+  const confirmedLiveBoost = hasConfirmedLiveScore ? 0.15 : 0;
+  const confidence = clamp(
+    0.2 +
+      completeness * 0.35 +
+      separation * 0.25 +
+      marketEvidenceBoost +
+      confirmedLiveBoost,
+    0.2,
+    0.9
+  );
 
   return {
     schemaVersion: "1.0",
