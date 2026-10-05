@@ -1,0 +1,122 @@
+name: One-time Dashboard Accounting Patch
+
+on:
+  push:
+    branches:
+      - work/dashboard-accounting-20261005
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/dashboard-accounting-20261005
+      - name: Correct dashboard commission and PnL semantics
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          stats = Path('src/app/api/stats/user/route.ts')
+          text = stats.read_text()
+          old = '''      todayAccumulatorStakeResult,
+              ] = await Promise.all(['''.replace('              ', '')
+          new = '''      todayAccumulatorStakeResult,
+                todayCommissionResult,
+              ] = await Promise.all(['''.replace('              ', '')
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+
+          old = '''      prisma.accumulator.aggregate({
+                where: {
+                  userId: user.id,
+                  placedAt: { gte: periodPnl.dayStart },
+                },
+                _sum: { stake: true },
+              }),
+            ]);'''.replace('              ', '')
+          new = '''      prisma.accumulator.aggregate({
+                where: {
+                  userId: user.id,
+                  placedAt: { gte: periodPnl.dayStart },
+                },
+                _sum: { stake: true },
+              }),
+              prisma.transaction.aggregate({
+                where: {
+                  userId: user.id,
+                  type: "commission",
+                  createdAt: { gte: periodPnl.dayStart },
+                },
+                _sum: { amount: true },
+              }),
+            ]);'''.replace('              ', '')
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+
+          old = '''    const todayStaked =
+                (todayStandaloneStakeResult._sum.stake || 0) +
+                (todayAccumulatorStakeResult._sum.stake || 0);'''.replace('              ', '')
+          new = old + '\n    const todayCommission = Math.abs(todayCommissionResult._sum.amount || 0);'
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+
+          old = '        todayStaked,\n        activeAccounts,'
+          new = '        todayStaked,\n        todayCommission,\n        activeAccounts,'
+          assert text.count(old) == 1, text.count(old)
+          stats.write_text(text.replace(old, new))
+
+          page = Path('src/app/page.tsx')
+          text = page.read_text()
+          old = '  weeklyPnl: number;\n}'
+          new = '  weeklyPnl: number;\n  todayCommission: number;\n}'
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+
+          old = '    weeklyPnl: 0,\n  });'
+          new = '    weeklyPnl: 0,\n    todayCommission: 0,\n  });'
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+
+          old = '  const activeBets = bets.filter((b) => b.status === "pending").length;'
+          new = '  const activeBets = stats.pendingBets;'
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+
+          old = '''  const totalCommission = bets
+              .filter((b) => b.status === "won")
+              .reduce((sum, b) => sum + (b.profit || 0) * 0.10, 0);
+
+'''.replace('          ', '')
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, '')
+
+          old = '<p className="text-xs text-muted-foreground">Session Commission</p>'
+          new = '<p className="text-xs text-muted-foreground">Today Commission</p>'
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+          old = '{symbol}{totalCommission.toFixed(2)}'
+          new = '{symbol}{stats.todayCommission.toFixed(2)}'
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+
+          old = '{symbol}{(stats.totalProfit - stats.totalLoss - stats.commissionPaid).toFixed(2)}'
+          new = '{symbol}{(stats.totalProfit - stats.totalLoss).toFixed(2)}'
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+
+          old = '{Math.round(stats.commissionRate * 100)}% commission is deducted from winning bet profits. This fee covers platform maintenance and AI model improvements.'
+          new = '{Math.round(stats.commissionRate * 100)}% commission is deducted from profitable settlements and cashouts. Net realized P&L shown above is already after commission.'
+          assert text.count(old) == 1, text.count(old)
+          page.write_text(text.replace(old, new))
+          PY
+          rm .github/workflows/one-time-dashboard-accounting.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/api/stats/user/route.ts src/app/page.tsx .github/workflows/one-time-dashboard-accounting.yml
+          git commit -m "Correct dashboard commission accounting"
+          git push origin HEAD:work/dashboard-accounting-20261005
