@@ -1,0 +1,112 @@
+name: One-time Timezone Monthly Stats Patch
+
+on:
+  push:
+    branches:
+      - work/timezone-monthly-stats-20261005
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/timezone-monthly-stats-20261005
+      - name: Align monthly stats to user timezone
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          risk = Path('src/lib/risk-period-pnl.ts')
+          text = risk.read_text()
+          marker = '''  return { timezone, dayStart, weekStart };
+          }
+
+          export async function getRiskPeriodPnl('''
+          helper = '''  return { timezone, dayStart, weekStart };
+          }
+
+          export function getCalendarMonthWindow(
+            timezoneInput?: string | null,
+            monthsAgo = 0,
+            now = new Date()
+          ) {
+            const timezone = normalizeTimezone(timezoneInput);
+            const local = zonedParts(now, timezone);
+            const monthAnchor = new Date(
+              Date.UTC(local.year, local.month - 1 - monthsAgo, 1)
+            );
+            const nextMonthAnchor = new Date(
+              Date.UTC(
+                monthAnchor.getUTCFullYear(),
+                monthAnchor.getUTCMonth() + 1,
+                1
+              )
+            );
+            const start = zonedDateTimeToUtc(
+              {
+                year: monthAnchor.getUTCFullYear(),
+                month: monthAnchor.getUTCMonth() + 1,
+                day: 1,
+              },
+              timezone
+            );
+            const end = zonedDateTimeToUtc(
+              {
+                year: nextMonthAnchor.getUTCFullYear(),
+                month: nextMonthAnchor.getUTCMonth() + 1,
+                day: 1,
+              },
+              timezone
+            );
+            const label = new Intl.DateTimeFormat("en-US", {
+              month: "short",
+              year: "2-digit",
+              timeZone: "UTC",
+            }).format(monthAnchor);
+
+            return { timezone, start, end, label };
+          }
+
+          export async function getRiskPeriodPnl('''
+          marker = marker.replace('          ', '')
+          helper = helper.replace('          ', '')
+          assert text.count(marker) == 1, text.count(marker)
+          risk.write_text(text.replace(marker, helper))
+
+          stats = Path('src/app/api/stats/user/route.ts')
+          text = stats.read_text()
+          old = 'import { getRiskPeriodPnl } from "@/lib/risk-period-pnl";'
+          new = 'import { getCalendarMonthWindow, getRiskPeriodPnl } from "@/lib/risk-period-pnl";'
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+
+          old = '''      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const monthEnd = new Date(
+                  now.getFullYear(),
+                  now.getMonth() - i + 1,
+                  1
+                );
+                const monthLabel = monthStart.toLocaleDateString("en-US", {
+                  month: "short",
+                  year: "2-digit",
+                });'''
+          old = old.replace('      ', '')
+          new = '''      const {
+                  start: monthStart,
+                  end: monthEnd,
+                  label: monthLabel,
+                } = getCalendarMonthWindow(settings?.timezone, i, now);'''.replace('      ', '')
+          assert text.count(old) == 1, text.count(old)
+          stats.write_text(text.replace(old, new))
+          PY
+          rm .github/workflows/one-time-timezone-monthly-stats.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/risk-period-pnl.ts src/app/api/stats/user/route.ts .github/workflows/one-time-timezone-monthly-stats.yml
+          git commit -m "Use user timezone for monthly stats windows"
+          git push origin HEAD:work/timezone-monthly-stats-20261005
