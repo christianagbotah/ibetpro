@@ -71,6 +71,7 @@ interface UserStats {
   commissionRate: number;
   dailyPnl: number;
   weeklyPnl: number;
+  todayCommission: number;
 }
 
 export default function DashboardPage() {
@@ -93,6 +94,7 @@ export default function DashboardPage() {
     commissionRate: 0.10,
     dailyPnl: 0,
     weeklyPnl: 0,
+    todayCommission: 0,
   });
 
   const loading = matchesLoading || betsLoading;
@@ -108,7 +110,7 @@ export default function DashboardPage() {
     );
   }
 
-  const activeBets = bets.filter((b) => b.status === "pending").length;
+  const activeBets = stats.pendingBets;
   const winRate = stats.winRate;
 
   const recommendations = matches
@@ -126,10 +128,6 @@ export default function DashboardPage() {
     .filter((b) => b.status === "won" || b.status === "lost" || b.status === "cashed_out")
     .sort((a, b) => new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime())
     .slice(0, 5);
-
-  const totalCommission = bets
-    .filter((b) => b.status === "won")
-    .reduce((sum, b) => sum + (b.profit || 0) * 0.10, 0);
 
   return (
     <div className="space-y-6">
@@ -316,21 +314,21 @@ export default function DashboardPage() {
                 <p className="text-xl font-bold text-foreground mt-1">{Math.round(stats.commissionRate * 100)}%</p>
               </div>
               <div className="rounded-lg bg-secondary/50 p-4">
-                <p className="text-xs text-muted-foreground">Session Commission</p>
+                <p className="text-xs text-muted-foreground">Today Commission</p>
                 <p className="text-xl font-bold text-amber-400 mt-1">
-                  {symbol}{totalCommission.toFixed(2)}
+                  {symbol}{stats.todayCommission.toFixed(2)}
                 </p>
               </div>
               <div className="rounded-lg bg-secondary/50 p-4">
                 <p className="text-xs text-muted-foreground">Net After Commission</p>
                 <p className="text-xl font-bold text-emerald-400 mt-1">
-                  {symbol}{(stats.totalProfit - stats.totalLoss - stats.commissionPaid).toFixed(2)}
+                  {symbol}{(stats.totalProfit - stats.totalLoss).toFixed(2)}
                 </p>
               </div>
             </div>
             <div className="rounded-lg bg-amber-400/5 border border-amber-400/10 p-3">
               <p className="text-xs text-muted-foreground">
-                {Math.round(stats.commissionRate * 100)}% commission is deducted from winning bet profits. This fee covers platform maintenance and AI model improvements.
+                {Math.round(stats.commissionRate * 100)}% commission is deducted from profitable settlements and cashouts. Net realized P&L shown above is already after commission.
               </p>
             </div>
           </CardContent>
