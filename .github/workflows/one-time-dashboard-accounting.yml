@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           ref: work/dashboard-accounting-20261005
-      - name: Correct dashboard commission and PnL semantics
+      - name: Correct dashboard accounting
         shell: bash
         run: |
           python - <<'PY'
@@ -23,44 +23,17 @@ jobs:
 
           stats = Path('src/app/api/stats/user/route.ts')
           text = stats.read_text()
-          old = '''      todayAccumulatorStakeResult,
-              ] = await Promise.all(['''.replace('              ', '')
-          new = '''      todayAccumulatorStakeResult,
-                todayCommissionResult,
-              ] = await Promise.all(['''.replace('              ', '')
+          old = '      todayAccumulatorStakeResult,\n    ] = await Promise.all(['
+          new = '      todayAccumulatorStakeResult,\n      todayCommissionResult,\n    ] = await Promise.all(['
           assert text.count(old) == 1, text.count(old)
           text = text.replace(old, new)
 
-          old = '''      prisma.accumulator.aggregate({
-                where: {
-                  userId: user.id,
-                  placedAt: { gte: periodPnl.dayStart },
-                },
-                _sum: { stake: true },
-              }),
-            ]);'''.replace('              ', '')
-          new = '''      prisma.accumulator.aggregate({
-                where: {
-                  userId: user.id,
-                  placedAt: { gte: periodPnl.dayStart },
-                },
-                _sum: { stake: true },
-              }),
-              prisma.transaction.aggregate({
-                where: {
-                  userId: user.id,
-                  type: "commission",
-                  createdAt: { gte: periodPnl.dayStart },
-                },
-                _sum: { amount: true },
-              }),
-            ]);'''.replace('              ', '')
+          old = '      prisma.accumulator.aggregate({\n        where: {\n          userId: user.id,\n          placedAt: { gte: periodPnl.dayStart },\n        },\n        _sum: { stake: true },\n      }),\n    ]);'
+          new = '      prisma.accumulator.aggregate({\n        where: {\n          userId: user.id,\n          placedAt: { gte: periodPnl.dayStart },\n        },\n        _sum: { stake: true },\n      }),\n      prisma.transaction.aggregate({\n        where: {\n          userId: user.id,\n          type: "commission",\n          createdAt: { gte: periodPnl.dayStart },\n        },\n        _sum: { amount: true },\n      }),\n    ]);'
           assert text.count(old) == 1, text.count(old)
           text = text.replace(old, new)
 
-          old = '''    const todayStaked =
-                (todayStandaloneStakeResult._sum.stake || 0) +
-                (todayAccumulatorStakeResult._sum.stake || 0);'''.replace('              ', '')
+          old = '    const todayStaked =\n      (todayStandaloneStakeResult._sum.stake || 0) +\n      (todayAccumulatorStakeResult._sum.stake || 0);'
           new = old + '\n    const todayCommission = Math.abs(todayCommissionResult._sum.amount || 0);'
           assert text.count(old) == 1, text.count(old)
           text = text.replace(old, new)
@@ -72,47 +45,20 @@ jobs:
 
           page = Path('src/app/page.tsx')
           text = page.read_text()
-          old = '  weeklyPnl: number;\n}'
-          new = '  weeklyPnl: number;\n  todayCommission: number;\n}'
-          assert text.count(old) == 1, text.count(old)
-          text = text.replace(old, new)
-
-          old = '    weeklyPnl: 0,\n  });'
-          new = '    weeklyPnl: 0,\n    todayCommission: 0,\n  });'
-          assert text.count(old) == 1, text.count(old)
-          text = text.replace(old, new)
-
-          old = '  const activeBets = bets.filter((b) => b.status === "pending").length;'
-          new = '  const activeBets = stats.pendingBets;'
-          assert text.count(old) == 1, text.count(old)
-          text = text.replace(old, new)
-
-          old = '''  const totalCommission = bets
-              .filter((b) => b.status === "won")
-              .reduce((sum, b) => sum + (b.profit || 0) * 0.10, 0);
-
-'''.replace('          ', '')
-          assert text.count(old) == 1, text.count(old)
-          text = text.replace(old, '')
-
-          old = '<p className="text-xs text-muted-foreground">Session Commission</p>'
-          new = '<p className="text-xs text-muted-foreground">Today Commission</p>'
-          assert text.count(old) == 1, text.count(old)
-          text = text.replace(old, new)
-          old = '{symbol}{totalCommission.toFixed(2)}'
-          new = '{symbol}{stats.todayCommission.toFixed(2)}'
-          assert text.count(old) == 1, text.count(old)
-          text = text.replace(old, new)
-
-          old = '{symbol}{(stats.totalProfit - stats.totalLoss - stats.commissionPaid).toFixed(2)}'
-          new = '{symbol}{(stats.totalProfit - stats.totalLoss).toFixed(2)}'
-          assert text.count(old) == 1, text.count(old)
-          text = text.replace(old, new)
-
-          old = '{Math.round(stats.commissionRate * 100)}% commission is deducted from winning bet profits. This fee covers platform maintenance and AI model improvements.'
-          new = '{Math.round(stats.commissionRate * 100)}% commission is deducted from profitable settlements and cashouts. Net realized P&L shown above is already after commission.'
-          assert text.count(old) == 1, text.count(old)
-          page.write_text(text.replace(old, new))
+          replacements = [
+            ('  weeklyPnl: number;\n}', '  weeklyPnl: number;\n  todayCommission: number;\n}'),
+            ('    weeklyPnl: 0,\n  });', '    weeklyPnl: 0,\n    todayCommission: 0,\n  });'),
+            ('  const activeBets = bets.filter((b) => b.status === "pending").length;', '  const activeBets = stats.pendingBets;'),
+            ('  const totalCommission = bets\n    .filter((b) => b.status === "won")\n    .reduce((sum, b) => sum + (b.profit || 0) * 0.10, 0);\n\n', ''),
+            ('<p className="text-xs text-muted-foreground">Session Commission</p>', '<p className="text-xs text-muted-foreground">Today Commission</p>'),
+            ('{symbol}{totalCommission.toFixed(2)}', '{symbol}{stats.todayCommission.toFixed(2)}'),
+            ('{symbol}{(stats.totalProfit - stats.totalLoss - stats.commissionPaid).toFixed(2)}', '{symbol}{(stats.totalProfit - stats.totalLoss).toFixed(2)}'),
+            ('{Math.round(stats.commissionRate * 100)}% commission is deducted from winning bet profits. This fee covers platform maintenance and AI model improvements.', '{Math.round(stats.commissionRate * 100)}% commission is deducted from profitable settlements and cashouts. Net realized P&L shown above is already after commission.'),
+          ]
+          for old, new in replacements:
+            assert text.count(old) == 1, (old, text.count(old))
+            text = text.replace(old, new)
+          page.write_text(text)
           PY
           rm .github/workflows/one-time-dashboard-accounting.yml
           git config user.name "github-actions[bot]"
