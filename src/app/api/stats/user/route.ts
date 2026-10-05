@@ -77,7 +77,11 @@ export async function GET() {
         where: { userId: user.id, accumulatorId: null, status: "lost" },
       }),
       prisma.bet.count({
-        where: { userId: user.id, accumulatorId: null, status: "pending" },
+        where: {
+          userId: user.id,
+          accumulatorId: null,
+          status: { in: ["pending", "partial_cashout"] },
+        },
       }),
       prisma.bet.count({
         where: { userId: user.id, accumulatorId: null },
@@ -89,7 +93,10 @@ export async function GET() {
         where: { userId: user.id, status: "lost" },
       }),
       prisma.accumulator.count({
-        where: { userId: user.id, status: "pending" },
+        where: {
+          userId: user.id,
+          status: { in: ["pending", "partial_cashout"] },
+        },
       }),
       prisma.accumulator.count({ where: { userId: user.id } }),
       prisma.bet.aggregate({
