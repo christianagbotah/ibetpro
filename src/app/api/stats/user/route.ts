@@ -155,12 +155,12 @@ export async function GET() {
 
     for (let i = 11; i >= 0; i--) {
       const {
-  start: monthStart,
-  end: monthEnd,
-  label: monthLabel,
-} = getCalendarMonthWindow(settings?.timezone, i, now);
+        start: monthStart,
+        end: monthEnd,
+        label: monthLabel,
+      } = getCalendarMonthWindow(settings?.timezone, i, now);
 
-const [standaloneSettled, accumulatorSettled, monthCommission] =
+      const [standaloneSettled, accumulatorSettled, monthCommission] =
         await Promise.all([
           prisma.bet.findMany({
             where: {
