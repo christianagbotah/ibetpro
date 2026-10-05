@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getAuthUser } from "@/lib/session";
 import { getCurrencyForRegion, REGIONS } from "@/lib/regions";
 import { detectRegionFromTimezone } from "@/lib/currency";
+import { getRiskPeriodPnl } from "@/lib/risk-period-pnl";
 
 export async function GET() {
   try {
@@ -15,24 +16,30 @@ export async function GET() {
       return NextResponse.json({ error: "Authentication required" }, { status: 401 });
     }
 
-    const userData = await prisma.user.findUnique({
-      where: { id: user.id },
-      select: {
-        name: true,
-        email: true,
-        role: true,
-        region: true,
-        currency: true,
-        balance: true,
-        bankroll: true,
-        dailyPnl: true,
-        weeklyPnl: true,
-      },
-    });
+    const [userData, settings] = await Promise.all([
+      prisma.user.findUnique({
+        where: { id: user.id },
+        select: {
+          name: true,
+          email: true,
+          role: true,
+          region: true,
+          currency: true,
+          balance: true,
+          bankroll: true,
+        },
+      }),
+      prisma.userSettings.findUnique({
+        where: { userId: user.id },
+        select: { timezone: true },
+      }),
+    ]);
 
     if (!userData) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
+
+    const periodPnl = await getRiskPeriodPnl(user.id, settings?.timezone);
 
     // Get currency symbol from regions
     const regionInfo = REGIONS.find((r) => r.code === userData.region);
@@ -40,6 +47,8 @@ export async function GET() {
 
     return NextResponse.json({
       ...userData,
+      dailyPnl: periodPnl.dailyPnl,
+      weeklyPnl: periodPnl.weeklyPnl,
       currencySymbol: currencyInfo?.currencySymbol || "$",
       regionName: regionInfo?.name || userData.region,
       regionFlag: regionInfo?.flag || "",
@@ -122,6 +131,14 @@ export async function PATCH(request: NextRequest) {
       });
     }
 
+    const effectiveTimezone = timezone || (
+      await prisma.userSettings.findUnique({
+        where: { userId: user.id },
+        select: { timezone: true },
+      })
+    )?.timezone;
+    const periodPnl = await getRiskPeriodPnl(user.id, effectiveTimezone);
+
     // Get updated currency symbol
     const currencyInfo = REGIONS.find((r) => r.currencyCode === updatedUser.currency);
     const regionInfo = REGIONS.find((r) => r.code === updatedUser.region);
@@ -134,8 +151,8 @@ export async function PATCH(request: NextRequest) {
       currency: updatedUser.currency,
       balance: updatedUser.balance,
       bankroll: updatedUser.bankroll,
-      dailyPnl: updatedUser.dailyPnl,
-      weeklyPnl: updatedUser.weeklyPnl,
+      dailyPnl: periodPnl.dailyPnl,
+      weeklyPnl: periodPnl.weeklyPnl,
       currencySymbol: currencyInfo?.currencySymbol || "$",
       regionName: regionInfo?.name || updatedUser.region,
       regionFlag: regionInfo?.flag || "",
