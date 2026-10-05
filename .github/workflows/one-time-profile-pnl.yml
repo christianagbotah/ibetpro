@@ -1,0 +1,109 @@
+name: One-time Authoritative Profile PnL Patch
+
+on:
+  push:
+    branches:
+      - work/profile-authoritative-pnl-20261005
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/profile-authoritative-pnl-20261005
+      - name: Use authoritative period PnL in profile API
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/app/api/user/profile/route.ts')
+          text = path.read_text()
+
+          old = 'import { detectRegionFromTimezone } from "@/lib/currency";'
+          new = old + '\nimport { getRiskPeriodPnl } from "@/lib/risk-period-pnl";'
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+
+          old = '''    const userData = await prisma.user.findUnique({
+                where: { id: user.id },
+                select: {
+                  name: true,
+                  email: true,
+                  role: true,
+                  region: true,
+                  currency: true,
+                  balance: true,
+                  bankroll: true,
+                  dailyPnl: true,
+                  weeklyPnl: true,
+                },
+              });'''.replace('              ', '')
+          new = '''    const [userData, settings] = await Promise.all([
+                prisma.user.findUnique({
+                  where: { id: user.id },
+                  select: {
+                    name: true,
+                    email: true,
+                    role: true,
+                    region: true,
+                    currency: true,
+                    balance: true,
+                    bankroll: true,
+                  },
+                }),
+                prisma.userSettings.findUnique({
+                  where: { userId: user.id },
+                  select: { timezone: true },
+                }),
+              ]);'''.replace('              ', '')
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+
+          old = '''    // Get currency symbol from regions
+              const regionInfo = REGIONS.find((r) => r.code === userData.region);'''.replace('              ', '')
+          new = '''    const periodPnl = await getRiskPeriodPnl(user.id, settings?.timezone);
+
+              // Get currency symbol from regions
+              const regionInfo = REGIONS.find((r) => r.code === userData.region);'''.replace('              ', '')
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+
+          old = '''      ...userData,
+                currencySymbol:'''.replace('              ', '')
+          new = '''      ...userData,
+                dailyPnl: periodPnl.dailyPnl,
+                weeklyPnl: periodPnl.weeklyPnl,
+                currencySymbol:'''.replace('              ', '')
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new, 1)
+
+          old = '''    // Get updated currency symbol
+              const currencyInfo = REGIONS.find((r) => r.currencyCode === updatedUser.currency);'''.replace('              ', '')
+          new = '''    const effectiveTimezone = timezone || (
+                await prisma.userSettings.findUnique({
+                  where: { userId: user.id },
+                  select: { timezone: true },
+                })
+              )?.timezone;
+              const periodPnl = await getRiskPeriodPnl(user.id, effectiveTimezone);
+
+              // Get updated currency symbol
+              const currencyInfo = REGIONS.find((r) => r.currencyCode === updatedUser.currency);'''.replace('              ', '')
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+
+          text = text.replace('      dailyPnl: updatedUser.dailyPnl,\n      weeklyPnl: updatedUser.weeklyPnl,', '      dailyPnl: periodPnl.dailyPnl,\n      weeklyPnl: periodPnl.weeklyPnl,')
+
+          path.write_text(text)
+          PY
+          rm .github/workflows/one-time-profile-pnl.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/api/user/profile/route.ts .github/workflows/one-time-profile-pnl.yml
+          git commit -m "Return authoritative calendar PnL from profile API"
+          git push origin HEAD:work/profile-authoritative-pnl-20261005
