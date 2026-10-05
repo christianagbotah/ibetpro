@@ -166,6 +166,39 @@ export function getCalendarMonthWindow(
   return { timezone, start, end, label };
 }
 
+
+export async function getRealizedPnlBreakdown(
+  userId: string,
+  start: Date,
+  end?: Date
+) {
+  const createdAt = end ? { gte: start, lt: end } : { gte: start };
+  const [profitResult, lossResult] = await Promise.all([
+    prisma.botLog.aggregate({
+      where: {
+        userId,
+        action: { in: REALIZED_PNL_ACTIONS },
+        profitImpact: { gt: 0 },
+        createdAt,
+      },
+      _sum: { profitImpact: true },
+    }),
+    prisma.botLog.aggregate({
+      where: {
+        userId,
+        action: { in: REALIZED_PNL_ACTIONS },
+        profitImpact: { lt: 0 },
+        createdAt,
+      },
+      _sum: { profitImpact: true },
+    }),
+  ]);
+
+  const profit = money(profitResult._sum.profitImpact || 0);
+  const loss = money(Math.abs(lossResult._sum.profitImpact || 0));
+  return { profit, loss, net: money(profit - loss) };
+}
+
 export async function getRiskPeriodPnl(
   userId: string,
   timezoneInput?: string | null,

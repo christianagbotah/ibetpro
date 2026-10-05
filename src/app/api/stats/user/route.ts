@@ -7,7 +7,11 @@ import {
   RATE_LIMITS,
 } from "@/lib/rate-limit";
 import { config } from "@/lib/config";
-import { getCalendarMonthWindow, getRiskPeriodPnl } from "@/lib/risk-period-pnl";
+import {
+  getCalendarMonthWindow,
+  getRealizedPnlBreakdown,
+  getRiskPeriodPnl,
+} from "@/lib/risk-period-pnl";
 
 export async function GET() {
   try {
@@ -160,46 +164,20 @@ export async function GET() {
         label: monthLabel,
       } = getCalendarMonthWindow(settings?.timezone, i, now);
 
-      const [standaloneSettled, accumulatorSettled, monthCommission] =
-        await Promise.all([
-          prisma.bet.findMany({
-            where: {
-              userId: user.id,
-              accumulatorId: null,
-              settledAt: { gte: monthStart, lt: monthEnd },
-              status: { in: ["won", "lost", "void"] },
-            },
-            select: { profit: true },
-          }),
-          prisma.accumulator.findMany({
-            where: {
-              userId: user.id,
-              settledAt: { gte: monthStart, lt: monthEnd },
-              status: { in: ["won", "lost", "void"] },
-            },
-            select: { profit: true },
-          }),
-          prisma.transaction.aggregate({
-            where: {
-              userId: user.id,
-              type: "commission",
-              createdAt: { gte: monthStart, lt: monthEnd },
-            },
-            _sum: { amount: true },
-          }),
-        ]);
+      const [realizedPnl, monthCommission] = await Promise.all([
+  getRealizedPnlBreakdown(user.id, monthStart, monthEnd),
+  prisma.transaction.aggregate({
+    where: {
+      userId: user.id,
+      type: "commission",
+      createdAt: { gte: monthStart, lt: monthEnd },
+    },
+    _sum: { amount: true },
+  }),
+]);
 
-      const resolvedProfits = [
-        ...standaloneSettled.map((entry) => entry.profit || 0),
-        ...accumulatorSettled.map((entry) => entry.profit || 0),
-      ];
-
-      const profit = resolvedProfits
-        .filter((value) => value > 0)
-        .reduce((sum, value) => sum + value, 0);
-      const loss = resolvedProfits
-        .filter((value) => value < 0)
-        .reduce((sum, value) => sum + Math.abs(value), 0);
+const profit = realizedPnl.profit;
+const loss = realizedPnl.loss;
 
       monthlyData.push({
         month: monthLabel,
