@@ -1,0 +1,40 @@
+name: Reconcile production source
+
+on:
+  push:
+    branches:
+      - work/prod-horizon-quota-sync-20261005
+    paths:
+      - .github/workflows/reconcile-prod.yml
+
+permissions:
+  contents: write
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out reconciliation branch
+        uses: actions/checkout@v4
+        with:
+          ref: work/prod-horizon-quota-sync-20261005
+          fetch-depth: 0
+
+      - name: Verify and apply production patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          base64 -d .reconcile-prod.patch.gz.b64 | gzip -d > /tmp/ibetpro-prod-reconcile.patch
+          echo "1606dac78a822b16ee0115bf65bd919123f62d5120e46568d43b2d83da63638e  /tmp/ibetpro-prod-reconcile.patch" | sha256sum -c -
+          git apply --check /tmp/ibetpro-prod-reconcile.patch
+          git apply --index /tmp/ibetpro-prod-reconcile.patch
+
+      - name: Commit reconciled production tree
+        shell: bash
+        run: |
+          set -euo pipefail
+          git rm -f .reconcile-prod.patch.gz.b64 .github/workflows/reconcile-prod.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "chore(reconcile): sync production horizon consensus and quota safeguards"
+          git push origin HEAD:work/prod-horizon-quota-sync-20261005
