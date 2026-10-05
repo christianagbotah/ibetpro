@@ -25,6 +25,7 @@ def base_frame(rows: int = 12, horizon: str = "1h") -> pd.DataFrame:
             "horizon_minutes_actual": [60] * rows,
             "feature_completeness": [0.95] * rows,
             "market_consensus_available": [True] * rows,
+            "market_consensus_age_minutes": [10] * rows,
             "market_snapshot_count": [3] * rows,
         }
     )
@@ -85,6 +86,21 @@ def test_pilot_rejects_post_kickoff_snapshot_before_training(tmp_path: Path):
     frame.loc[0, "snapshot_as_of"] = pd.Timestamp("2026-01-01T00:05:00Z")
     frame.loc[0, "horizon_minutes_actual"] = -5
     dataset = tmp_path / "leaky.csv"
+    frame.to_csv(dataset, index=False)
+
+    with pytest.raises(ValueError, match="readiness checks"):
+        run_first_party_pilot(
+            dataset,
+            tmp_path / "out",
+            "1h",
+            minimum_rows=1,
+        )
+
+
+def test_pilot_rejects_stale_horizon_consensus_before_training(tmp_path: Path):
+    frame = base_frame(10)
+    frame.loc[0, "market_consensus_age_minutes"] = 60
+    dataset = tmp_path / "stale-consensus.csv"
     frame.to_csv(dataset, index=False)
 
     with pytest.raises(ValueError, match="readiness checks"):

@@ -24,6 +24,7 @@ def _row(index: int = 0) -> dict:
         "horizon_minutes_actual": 60,
         "feature_completeness": 0.90,
         "market_consensus_available": True,
+        "market_consensus_age_minutes": 10,
         "market_snapshot_count": 4,
     }
     row.update({column: 1.0 for column in feature_columns("core")})
@@ -78,3 +79,19 @@ def test_post_kickoff_snapshot_fails(tmp_path: Path):
     checks = {check["name"]: check for check in report["checks"]}
     assert checks["pre_kickoff_snapshots"]["passed"] is False
     assert checks["horizon_window_compliance"]["passed"] is False
+
+
+def test_stale_horizon_consensus_fails(tmp_path: Path):
+    row = _row()
+    # At 60 minutes to kickoff, the 1h horizon allows 90 - 60 + 15 = 45
+    # minutes of consensus age. This row is otherwise fully valid but stale.
+    row["market_consensus_age_minutes"] = 60
+    dataset = tmp_path / "stale-consensus.csv"
+    pd.DataFrame([row]).to_csv(dataset, index=False)
+
+    report = assess(dataset, "1h", min_rows=1, min_completeness=0.70)
+
+    assert report["ready_for_first_party_training"] is False
+    checks = {check["name"]: check for check in report["checks"]}
+    assert checks["genuine_market_consensus"]["passed"] is True
+    assert checks["horizon_local_market_consensus"]["passed"] is False
