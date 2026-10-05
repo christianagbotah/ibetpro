@@ -3,7 +3,8 @@ import { prisma } from "@/lib/db";
 import { getAuthUser, isAdmin } from "@/lib/session";
 import {
   FEATURE_SCHEMA_VERSION,
-  FIRST_PARTY_CORE_FEATURE_KEYS,
+  FIRST_PARTY_FEATURE_PROFILE,
+  FIRST_PARTY_MARKET_MOVEMENT_FEATURE_KEYS,
   featureCompletenessForKeys,
 } from "@/lib/prediction/training-corpus";
 
@@ -138,7 +139,10 @@ export async function GET(request: NextRequest) {
       snapshot.featureSchemaVersion,
       snapshot.featureHash,
       snapshot.horizonMinutesActual,
-      featureCompletenessForKeys(features, FIRST_PARTY_CORE_FEATURE_KEYS),
+      featureCompletenessForKeys(
+        features,
+        FIRST_PARTY_MARKET_MOVEMENT_FEATURE_KEYS
+      ),
       snapshot.featureCompleteness,
       snapshot.marketConsensusAvailable,
       snapshot.marketSnapshotCount,
@@ -158,6 +162,7 @@ export async function GET(request: NextRequest) {
       "Cache-Control": "no-store",
       "X-iBetPro-Rows": String(snapshots.length),
       "X-iBetPro-Horizon": requestedHorizon,
+      "X-iBetPro-Feature-Profile": FIRST_PARTY_FEATURE_PROFILE,
     },
   });
 }
