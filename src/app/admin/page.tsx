@@ -119,16 +119,22 @@ interface FirstPartyCorpusReadiness {
     "24h": {
       total: number;
       labeled: number;
+      eligibleLabeled: number;
+      excludedLabeled: number;
       minLabeledFeatureCompleteness: number | null;
     };
     "6h": {
       total: number;
       labeled: number;
+      eligibleLabeled: number;
+      excludedLabeled: number;
       minLabeledFeatureCompleteness: number | null;
     };
     "1h": {
       total: number;
       labeled: number;
+      eligibleLabeled: number;
+      excludedLabeled: number;
       minLabeledFeatureCompleteness: number | null;
     };
   };
@@ -144,11 +150,14 @@ interface FirstPartyCorpusReadiness {
       "24h" | "6h" | "1h",
       {
         rows: number;
+        rawLabeledRows: number;
+        excludedRows: number;
         remainingRows: number;
         minFeatureCompleteness: number | null;
         timingValidRows: number;
         preKickoffRows: number;
         consensusRows: number;
+        horizonLocalConsensusRows: number;
         duplicateFixtureRows: number;
         checks: Record<string, boolean>;
         ready: boolean;
@@ -314,9 +323,27 @@ export default function AdminPage() {
       averageMarketSnapshotCount: 0,
       averageMarketHistoryMinutes: null,
       horizons: {
-        "24h": { total: 0, labeled: 0, minLabeledFeatureCompleteness: null },
-        "6h": { total: 0, labeled: 0, minLabeledFeatureCompleteness: null },
-        "1h": { total: 0, labeled: 0, minLabeledFeatureCompleteness: null },
+        "24h": {
+          total: 0,
+          labeled: 0,
+          eligibleLabeled: 0,
+          excludedLabeled: 0,
+          minLabeledFeatureCompleteness: null,
+        },
+        "6h": {
+          total: 0,
+          labeled: 0,
+          eligibleLabeled: 0,
+          excludedLabeled: 0,
+          minLabeledFeatureCompleteness: null,
+        },
+        "1h": {
+          total: 0,
+          labeled: 0,
+          eligibleLabeled: 0,
+          excludedLabeled: 0,
+          minLabeledFeatureCompleteness: null,
+        },
       },
       readiness: {
         featureSchemaVersion: "online-v1",
@@ -329,33 +356,42 @@ export default function AdminPage() {
         byHorizon: {
           "24h": {
             rows: 0,
+            rawLabeledRows: 0,
+            excludedRows: 0,
             remainingRows: 300,
             minFeatureCompleteness: null,
             timingValidRows: 0,
             preKickoffRows: 0,
             consensusRows: 0,
+            horizonLocalConsensusRows: 0,
             duplicateFixtureRows: 0,
             checks: {},
             ready: false,
           },
           "6h": {
             rows: 0,
+            rawLabeledRows: 0,
+            excludedRows: 0,
             remainingRows: 300,
             minFeatureCompleteness: null,
             timingValidRows: 0,
             preKickoffRows: 0,
             consensusRows: 0,
+            horizonLocalConsensusRows: 0,
             duplicateFixtureRows: 0,
             checks: {},
             ready: false,
           },
           "1h": {
             rows: 0,
+            rawLabeledRows: 0,
+            excludedRows: 0,
             remainingRows: 300,
             minFeatureCompleteness: null,
             timingValidRows: 0,
             preKickoffRows: 0,
             consensusRows: 0,
+            horizonLocalConsensusRows: 0,
             duplicateFixtureRows: 0,
             checks: {},
             ready: false,
@@ -839,7 +875,7 @@ export default function AdminPage() {
                 </p>
               </div>
               <Badge variant="outline">
-                {firstPartyCorpus.labeledSnapshots} labeled
+                {firstPartyCorpus.labeledSnapshots} raw labeled
               </Badge>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -856,12 +892,17 @@ export default function AdminPage() {
                 <div key={horizon} className="rounded-lg bg-background/40 p-3">
                   <p className="text-xs text-muted-foreground">{horizon} horizon</p>
                   <p className="text-lg font-bold text-foreground">
-                    {firstPartyCorpus.horizons[horizon].labeled}/
-                    {firstPartyCorpus.horizons[horizon].total}
+                    {firstPartyCorpus.horizons[horizon].eligibleLabeled}/
+                    {firstPartyCorpus.horizons[horizon].labeled}
                   </p>
                   <p className="text-[11px] text-muted-foreground">
-                    labeled / captured
+                    eligible / raw labeled
                   </p>
+                  {firstPartyCorpus.horizons[horizon].excludedLabeled > 0 && (
+                    <p className="mt-0.5 text-[10px] text-amber-400">
+                      {firstPartyCorpus.horizons[horizon].excludedLabeled} historical row(s) excluded
+                    </p>
+                  )}
                 </div>
               ))}
             </div>
@@ -898,8 +939,8 @@ export default function AdminPage() {
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     Schema {firstPartyCorpus.readiness.featureSchemaVersion} · profile{" "}
                     {firstPartyCorpus.readiness.featureProfile} · requires{" "}
-                    {firstPartyCorpus.readiness.pilotMinLabeledPerHorizon} labeled rows,
-                    causal timing, genuine consensus, unique fixtures and ≥
+                    {firstPartyCorpus.readiness.pilotMinLabeledPerHorizon} eligible labeled rows,
+                    causal timing, horizon-local genuine consensus, unique fixtures and ≥
                     {Math.round(firstPartyCorpus.readiness.pilotMinFeatureCompleteness * 100)}%
                     completeness for every exported row.
                   </p>
@@ -948,8 +989,11 @@ export default function AdminPage() {
                       </div>
                       <p className="mt-1 text-[11px] text-muted-foreground">
                         {gate.remainingRows > 0
-                          ? `${gate.remainingRows} more labeled rows`
-                          : "Row minimum reached"}
+                          ? `${gate.remainingRows} more eligible rows`
+                          : "Eligible row minimum reached"}
+                      </p>
+                      <p className="mt-1 text-[10px] text-muted-foreground">
+                        Raw labeled: {gate.rawLabeledRows} · excluded: {gate.excludedRows}
                       </p>
                       <p className="mt-2 text-[11px] text-muted-foreground">
                         Min completeness:{" "}
@@ -964,6 +1008,7 @@ export default function AdminPage() {
                           ["Timing", gate.checks.horizonWindowCompliance],
                           ["Pre-kickoff", gate.checks.preKickoffSnapshots],
                           ["Consensus", gate.checks.genuineMarketConsensus],
+                          ["Horizon-local", gate.checks.horizonLocalConsensusEvidence],
                           ["Completeness", gate.checks.minimumFeatureCompleteness],
                           ["Unique", gate.checks.uniqueFixtureRows],
                         ].map(([label, passed]) => (
@@ -988,7 +1033,7 @@ export default function AdminPage() {
                 <p className="mt-1 text-sm font-semibold text-foreground">
                   {firstPartyCorpus.readiness.promotionReadyHorizons.length > 0
                     ? `Volume reached: ${firstPartyCorpus.readiness.promotionReadyHorizons.join(", ")}`
-                    : `Requires ${firstPartyCorpus.readiness.promotionMinLabeledPerHorizon} labeled rows per horizon before later stability/shadow gates`}
+                    : `Requires ${firstPartyCorpus.readiness.promotionMinLabeledPerHorizon} eligible labeled rows per horizon before later stability/shadow gates`}
                 </p>
               </div>
               <div className="rounded-lg border border-border bg-background/40 p-3">
@@ -1026,7 +1071,7 @@ export default function AdminPage() {
                   key={horizon}
                   variant="outline"
                   size="sm"
-                  disabled={firstPartyCorpus.horizons[horizon].labeled === 0}
+                  disabled={firstPartyCorpus.horizons[horizon].eligibleLabeled === 0}
                   onClick={() => {
                     window.location.href =
                       `/api/admin/ml/first-party-corpus/export?horizon=${horizon}`;

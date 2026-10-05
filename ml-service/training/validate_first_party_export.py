@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 import pandas as pd
@@ -27,6 +28,7 @@ REQUIRED_COLUMNS = {
     "horizon_minutes_actual",
     "feature_completeness",
     "market_consensus_available",
+    "market_consensus_age_minutes",
     "market_snapshot_count",
 }
 
@@ -55,6 +57,9 @@ def assess(
     )
     frame["feature_completeness"] = pd.to_numeric(
         frame["feature_completeness"], errors="coerce"
+    )
+    frame["market_consensus_age_minutes"] = pd.to_numeric(
+        frame["market_consensus_age_minutes"], errors="coerce"
     )
     all_feature_completeness = pd.to_numeric(
         frame.get("all_feature_completeness", frame["feature_completeness"]),
@@ -88,6 +93,19 @@ def assess(
         .astype(str)
         .str.lower()
         .isin({"true", "1"})
+    )
+    consensus_grace_minutes = max(
+        0.0,
+        float(os.environ.get("TRAINING_HORIZON_CONSENSUS_GRACE_MIN", "15")),
+    )
+    max_consensus_age = (
+        upper - frame["horizon_minutes_actual"]
+    ).clip(lower=0) + consensus_grace_minutes
+    horizon_local_consensus = (
+        consensus
+        & frame["market_consensus_age_minutes"].notna()
+        & frame["market_consensus_age_minutes"].ge(0)
+        & frame["market_consensus_age_minutes"].le(max_consensus_age)
     )
     complete = profile_completeness >= min_completeness
     labeled = (
@@ -133,6 +151,12 @@ def assess(
             "actual": int(consensus.sum()),
             "threshold": int(len(frame)),
             "passed": bool(consensus.all()),
+        },
+        {
+            "name": "horizon_local_market_consensus",
+            "actual": int(horizon_local_consensus.sum()),
+            "threshold": int(len(frame)),
+            "passed": bool(horizon_local_consensus.all()),
         },
         {
             "name": "minimum_feature_completeness",
@@ -184,6 +208,17 @@ def assess(
             if len(frame)
             else 0.0
         ),
+        "average_market_consensus_age_minutes": (
+            float(frame["market_consensus_age_minutes"].mean())
+            if len(frame)
+            else 0.0
+        ),
+        "max_market_consensus_age_minutes": (
+            float(frame["market_consensus_age_minutes"].max())
+            if len(frame)
+            else 0.0
+        ),
+        "consensus_grace_minutes": consensus_grace_minutes,
         "checks": checks,
     }
     return report

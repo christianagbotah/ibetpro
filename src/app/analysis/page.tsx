@@ -220,9 +220,24 @@ function pct(value: number | null | undefined) {
 
 function modelLabel(item: PredictionFeedItem) {
   if (item.prediction.resultMode === "selective-model") return "Qualified model";
-  if (item.match.status === "live") return "Baseline in-play";
-  if (item.prediction.resultMode === "market-consensus") return "Market + baseline";
-  return "Baseline";
+
+  const completeness = item.prediction.dataCompleteness;
+  const hasConfirmedLiveScore =
+    item.match.status === "live" &&
+    item.match.homeScore != null &&
+    item.match.awayScore != null;
+
+  if (hasConfirmedLiveScore) return "Score-aware live baseline";
+
+  if (item.prediction.resultMode === "market-consensus") {
+    return completeness < 0.25
+      ? "Market supported · sparse stats"
+      : "Market + baseline";
+  }
+
+  if (completeness < 0.25) return "Sparse-data baseline";
+  if (completeness < 0.65) return "Limited-data baseline";
+  return "Stat-supported baseline";
 }
 
 function firstGoalProbability(item: PredictionFeedItem) {

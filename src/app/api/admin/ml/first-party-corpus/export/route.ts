@@ -5,7 +5,10 @@ import {
   FEATURE_SCHEMA_VERSION,
   FIRST_PARTY_FEATURE_PROFILE,
   FIRST_PARTY_MARKET_MOVEMENT_FEATURE_KEYS,
+  HORIZONS,
   featureCompletenessForKeys,
+  isHorizonLocalConsensusEvidence,
+  type HorizonKey,
 } from "@/lib/prediction/training-corpus";
 
 export const dynamic = "force-dynamic";
@@ -94,6 +97,35 @@ export async function GET(request: NextRequest) {
     return { snapshot, features };
   });
 
+  const requestedHorizonKey = requestedHorizon as HorizonKey;
+  const horizonWindow = HORIZONS.find(
+    (horizon) => horizon.key === requestedHorizonKey
+  );
+  const eligibleParsed = parsed.filter(({ snapshot, features }) => {
+    const rawConsensusAge = features.market_consensus_age_minutes;
+    const consensusAgeMinutes =
+      typeof rawConsensusAge === "number" && Number.isFinite(rawConsensusAge)
+        ? rawConsensusAge
+        : null;
+    const timingValid = Boolean(
+      horizonWindow &&
+        snapshot.horizonMinutesActual >= horizonWindow.minMinutes &&
+        snapshot.horizonMinutesActual <= horizonWindow.maxMinutes
+    );
+    const preKickoff = snapshot.asOf < snapshot.match.commenceTime;
+
+    return (
+      timingValid &&
+      preKickoff &&
+      isHorizonLocalConsensusEvidence(
+        requestedHorizonKey,
+        snapshot.horizonMinutesActual,
+        snapshot.marketConsensusAvailable,
+        consensusAgeMinutes
+      )
+    );
+  });
+
   const metadataColumns = [
     "fixture_id",
     "kickoff_utc",
@@ -111,6 +143,7 @@ export async function GET(request: NextRequest) {
     "feature_completeness",
     "all_feature_completeness",
     "market_consensus_available",
+    "market_consensus_age_minutes",
     "market_snapshot_count",
   ];
   const metadataColumnSet = new Set(metadataColumns);
@@ -122,7 +155,7 @@ export async function GET(request: NextRequest) {
 
   const lines = [[...metadataColumns, ...featureColumns].map(csvCell).join(",")];
 
-  for (const { snapshot, features } of parsed) {
+  for (const { snapshot, features } of eligibleParsed) {
     const homeGoals = snapshot.match.homeScore!;
     const awayGoals = snapshot.match.awayScore!;
     const row = [
@@ -145,6 +178,7 @@ export async function GET(request: NextRequest) {
       ),
       snapshot.featureCompleteness,
       snapshot.marketConsensusAvailable,
+      features.market_consensus_age_minutes ?? null,
       snapshot.marketSnapshotCount,
       ...featureColumns.map((column) => features[column] ?? null),
     ];
@@ -160,7 +194,11 @@ export async function GET(request: NextRequest) {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": `attachment; filename="${filename}"`,
       "Cache-Control": "no-store",
-      "X-iBetPro-Rows": String(snapshots.length),
+      "X-iBetPro-Rows": String(eligibleParsed.length),
+      "X-iBetPro-Raw-Rows": String(snapshots.length),
+      "X-iBetPro-Excluded-Rows": String(
+        Math.max(0, snapshots.length - eligibleParsed.length)
+      ),
       "X-iBetPro-Horizon": requestedHorizon,
       "X-iBetPro-Feature-Profile": FIRST_PARTY_FEATURE_PROFILE,
     },

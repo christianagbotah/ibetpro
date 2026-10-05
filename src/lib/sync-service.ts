@@ -18,32 +18,38 @@ import {
 } from "./external-apis";
 import { generateDemoMatches } from "./demo-data";
 import { ensureFixtureIdentity } from "./football/identity";
+import { selectPaidOddsSports } from "./odds-quota-policy";
 import { persistOddsSnapshot } from "./football/odds-history";
 import {
   captureTrainingFeatureSnapshots,
   FEATURE_SCHEMA_VERSION,
   HORIZONS,
+  maxConsensusAgeMinutesForHorizon,
 } from "./prediction/training-corpus";
 import {
   rebuildLeagueEloSnapshots,
   repairMissingCausalEloSnapshots,
 } from "./prediction/elo-snapshots";
 
-// Track last sync time to avoid excessive API calls
 let lastSyncAt: Date | null = null;
 
-// Sync interval: 30 minutes default to conserve API quota (500 req/month free tier)
-// Each sync costs N API calls (1 per sport). 10 sports × 48 syncs/day = 480 calls/day.
-// With 30-min interval: 10 sports × 48 syncs/day = 480 calls/day — STILL too much.
-// Solution: use a single multi-sport call + 30-min interval = ~48 calls/day = ~1,440/month
-// Override with SYNC_INTERVAL_MIN env var if you have a paid API plan.
 const MIN_SYNC_INTERVAL_MS = parseInt(process.env.SYNC_INTERVAL_MIN || "30", 10) * 60 * 1000;
 
-// API quota tracking
 let apiQuotaRemaining: number | null = null;
 let apiQuotaCheckedAt: Date | null = null;
-const QUOTA_CHECK_INTERVAL_MS = 60 * 60 * 1000; // re-check quota every hour
-const QUOTA_LOW_THRESHOLD = 20; // stop paid odds enrichment when fewer than this many requests remain
+const QUOTA_CHECK_INTERVAL_MS = 60 * 60 * 1000;
+const QUOTA_LOW_THRESHOLD = 20;
+const QUOTA_CONSERVE_THRESHOLD = Math.max(
+  QUOTA_LOW_THRESHOLD + 1,
+  parseInt(process.env.ODDS_API_CONSERVE_THRESHOLD || "250", 10)
+);
+const QUOTA_CAPTURE_ONLY_THRESHOLD = Math.max(
+  QUOTA_LOW_THRESHOLD + 1,
+  Math.min(
+    QUOTA_CONSERVE_THRESHOLD,
+    parseInt(process.env.ODDS_API_CAPTURE_ONLY_THRESHOLD || "150", 10)
+  )
+);
 const ODDS_REFRESH_INTERVAL_MS =
   parseInt(process.env.ODDS_REFRESH_MIN || "360", 10) * 60 * 1000;
 const SCORE_SETTLEMENT_INTERVAL_MS =
@@ -116,6 +122,41 @@ interface OddsDiscoveryResult {
   reason?: string;
   errors: string[];
   sportCandidates: OddsDiscoveryCandidate[];
+}
+
+async function refreshOddsApiQuotaEstimate() {
+  if (!config.api.oddsApiKey) return;
+
+  const quotaAge = apiQuotaCheckedAt
+    ? Date.now() - apiQuotaCheckedAt.getTime()
+    : Infinity;
+  if (apiQuotaRemaining !== null && quotaAge < QUOTA_CHECK_INTERVAL_MS) {
+    return;
+  }
+
+  try {
+    const response = await fetch(
+      `${config.apiUrls.oddsApi}/sports/?apiKey=${config.api.oddsApiKey}`,
+      { next: { revalidate: 0 } }
+    );
+    const remaining = response.headers.get("x-requests-remaining");
+    if (remaining) {
+      const parsed = parseInt(remaining, 10);
+      if (Number.isFinite(parsed)) {
+        apiQuotaRemaining = parsed;
+        apiQuotaCheckedAt = new Date();
+        console.log(
+          `[Sync] Odds API quota preflight: ${apiQuotaRemaining} requests remaining`
+        );
+      }
+    }
+  } catch (error) {
+    console.warn(
+      `[Sync] Odds API quota preflight failed: ${
+        error instanceof Error ? error.message : "Unknown error"
+      }`
+    );
+  }
 }
 
 function configuredPrioritySports(): string[] {
@@ -200,7 +241,7 @@ async function trainingCapturePrioritySports(now: Date): Promise<string[]> {
         },
         orderBy: { capturedAt: "desc" },
         take: 1,
-        select: { id: true },
+        select: { id: true, capturedAt: true },
       },
       trainingFeatureSnapshots: {
         where: { featureSchemaVersion: FEATURE_SCHEMA_VERSION },
@@ -219,11 +260,29 @@ async function trainingCapturePrioritySports(now: Date): Promise<string[]> {
     );
 
     if (!horizon) return [];
-    if (match.oddsSnapshots.length > 0) return [];
     if (
       match.trainingFeatureSnapshots.some(
         (snapshot) => snapshot.horizonKey === horizon.key
       )
+    ) {
+      return [];
+    }
+
+    // Treat the current horizon as covered only when the latest causal
+    // consensus snapshot is horizon-local. This prevents a 24h market
+    // snapshot from silently being reused as the 6h or 1h observation while
+    // still allowing one evidence-timer tick of scheduling grace.
+    const latestConsensusAt = match.oddsSnapshots[0]?.capturedAt ?? null;
+    const latestConsensusAgeMinutes = latestConsensusAt
+      ? Math.max(0, (now.getTime() - latestConsensusAt.getTime()) / 60_000)
+      : null;
+    const maxConsensusAgeMinutes = maxConsensusAgeMinutesForHorizon(
+      horizon.key,
+      minutesToKickoff
+    );
+    if (
+      latestConsensusAgeMinutes != null &&
+      latestConsensusAgeMinutes <= maxConsensusAgeMinutes
     ) {
       return [];
     }
@@ -398,8 +457,6 @@ async function syncOddsApiFixtureDiscovery(
               });
               localCreated++;
             } catch (error) {
-              // A concurrent PM2 worker may have discovered the same fixture.
-              // Treat that unique-key race as an update opportunity, not a sync failure.
               const raced = await prisma.match.findUnique({
                 where: { externalId: event.id },
                 select: { id: true },
@@ -537,9 +594,6 @@ async function syncOddsApiSettlements(): Promise<{
     }
   }
 
-  // Discover newly resolvable matches before applying the idle freshness gate.
-  // If a real match has now passed the settlement delay, do not wait up to
-  // another 24 hours merely because an earlier no-op settlement check was fresh.
   const unresolved = await prisma.match.findMany({
     where: {
       apiSource: "odds-api",
@@ -551,12 +605,7 @@ async function syncOddsApiSettlements(): Promise<{
       AND: [
         {
           OR: [
-            // Paid-odds-enriched fixtures remain settlement eligible.
             { lastSyncedAt: { not: null } },
-            // Free global discovery rows become eligible only after they have
-            // actually entered our live/result lifecycle. This prevents broad
-            // discovery from creating score calls for every competition while
-            // ensuring viewed/live fixtures cannot remain stuck forever.
             { status: { in: ["live", "awaiting_result"] } },
           ],
         },
@@ -770,11 +819,6 @@ export interface SyncResult {
   skipReason?: string;
 }
 
-/**
- * Sync upcoming match data from external APIs.
- * Automatically uses the best available data source (Odds API → API-Football → Demo).
- * Throttled to avoid hitting API rate limits (minimum 5 min between syncs).
- */
 export async function syncMatchData(force: boolean = false): Promise<SyncResult> {
   const startTime = Date.now();
   const errors: string[] = [];
@@ -783,9 +827,6 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
   const dataSource = getPrimaryDataSource();
   let oddsDiscovery: OddsDiscoveryResult | null = null;
 
-  // Free Odds API fixture discovery has its own shorter cache window and must
-  // not be blocked by the paid-odds sync throttle. This lets newly kicked-off
-  // matches enter the live set quickly without spending odds quota.
   if (dataSource === "odds-api") {
     await prisma.match.updateMany({
       where: {
@@ -816,7 +857,6 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
     }
   }
 
-  // Paid odds/data sync remains throttled independently of free discovery.
   if (!force && lastSyncAt && Date.now() - lastSyncAt.getTime() < MIN_SYNC_INTERVAL_MS) {
     const minutesSincePaidSync = Math.round(
       (Date.now() - lastSyncAt.getTime()) / 60000
@@ -838,11 +878,9 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
     };
   }
 
-  // ---- No API keys: use demo data ----
   if (dataSource === "none") {
     const existingCount = await prisma.match.count();
     if (existingCount > 0) {
-      // Demo data already loaded — just refresh if stale
       const oldestSync = await prisma.match.findFirst({
         where: { apiSource: "demo" },
         orderBy: { lastSyncedAt: "asc" },
@@ -850,7 +888,6 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
       });
 
       if (oldestSync?.lastSyncedAt && Date.now() - oldestSync.lastSyncedAt.getTime() < 30 * 60 * 1000) {
-        // Demo data is less than 30 minutes old — skip
         lastSyncAt = new Date();
         return {
           matchesSynced: 0,
@@ -863,7 +900,6 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
         };
       }
 
-      // Delete old demo data and regenerate
       await prisma.match.deleteMany({ where: { apiSource: "demo" } });
     }
 
@@ -924,10 +960,9 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
     };
   }
 
-  // ---- The Odds API: fetch real-time odds ----
   if (dataSource === "odds-api") {
-    // Low paid quota must not disable free fixture discovery. Keep the
-    // events feed current, but block paid odds enrichment until quota recovers.
+    await refreshOddsApiQuotaEstimate();
+
     let paidOddsAllowed = true;
     if (!force && apiQuotaRemaining !== null && apiQuotaRemaining < QUOTA_LOW_THRESHOLD) {
       const quotaAge = apiQuotaCheckedAt
@@ -989,17 +1024,25 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
       );
     }
 
-    const paidLimit =
-      apiQuotaRemaining !== null && apiQuotaRemaining < 100
-        ? 1
-        : PAID_SPORTS_PER_SYNC;
-    const sportsToFetch = Array.from(
-      new Set([
-        ...capturePrioritySports,
-        ...nearTermSports,
-        ...configuredPrioritySports(),
-      ])
-    ).slice(0, paidLimit);
+    const { captureOnlyMode, sportsToFetch } = selectPaidOddsSports({
+      quotaRemaining: apiQuotaRemaining,
+      force,
+      normalLimit: PAID_SPORTS_PER_SYNC,
+      conserveThreshold: QUOTA_CONSERVE_THRESHOLD,
+      captureOnlyThreshold: QUOTA_CAPTURE_ONLY_THRESHOLD,
+      capturePrioritySports,
+      nearTermSports,
+      configuredPrioritySports: configuredPrioritySports(),
+    });
+
+    if (captureOnlyMode) {
+      console.warn(
+        `[Sync] Odds API conservation mode: ${apiQuotaRemaining} remaining. ` +
+          (capturePrioritySports.length > 0
+            ? "Restricting paid odds refresh to horizon-local training-capture gaps."
+            : "No horizon-local capture gap is open, so routine paid odds enrichment is paused.")
+      );
+    }
 
     if (capturePrioritySports.length > 0) {
       console.log(
@@ -1012,11 +1055,9 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
 
     for (const sport of sportsToFetch) {
       try {
-        let shouldFetchOdds = force;
+        const capturePriority = capturePrioritySports.includes(sport);
+        let shouldFetchOdds = force || capturePriority;
 
-        // Discover fixture identity first using the provider's events endpoint.
-        // This lets routine sync cycles avoid paid odds calls when every known
-        // fixture already has reasonably fresh prices.
         try {
           const events = await fetchDiscoveryEventsWithRetry(sport);
           const eventIds = events.map((event) => event.id).filter(Boolean);
@@ -1061,6 +1102,12 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
           shouldFetchOdds =
             shouldFetchOdds || hasNewFixture || hasStaleOdds;
 
+          if (capturePriority && !hasNewFixture && !hasStaleOdds) {
+            console.log(
+              `[Sync] ${sport}: forcing one paid odds refresh for a horizon-local training-capture gap.`
+            );
+          }
+
           if (!shouldFetchOdds) {
             console.log(
               `[Sync] ${sport}: discovered ${events.length} events; odds remain fresh, skipping paid odds refresh.`
@@ -1068,8 +1115,6 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
             continue;
           }
         } catch (eventError) {
-          // Discovery failure must not make the feed disappear. Fall back to
-          // the established odds endpoint for this sport.
           errors.push(
             `Odds API event discovery ${sport}: ${eventError instanceof Error ? eventError.message : "Unknown error"}`
           );
@@ -1085,8 +1130,6 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
 
         const odds = await fetchOddsApiUpcoming(sport);
 
-        // Track API quota from response headers (fetchOddsApiUpcoming doesn't expose them,
-        // so we do a lightweight quota check on the first call only)
         if (apiQuotaRemaining === null || !apiQuotaCheckedAt ||
             Date.now() - apiQuotaCheckedAt.getTime() > QUOTA_CHECK_INTERVAL_MS) {
           try {
@@ -1101,7 +1144,6 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
               console.log(`[Sync] Odds API quota: ${apiQuotaRemaining} requests remaining`);
             }
           } catch {
-            // Quota check failed — don't block sync
           }
         }
 
@@ -1196,8 +1238,6 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
         );
       }
 
-      // Refresh causal team strength immediately after verified results land.
-      // This uses only stored finished matches and consumes no provider quota.
       for (const competition of settlement.affectedCompetitions) {
         try {
           const rebuild = await rebuildLeagueEloSnapshots(
@@ -1219,9 +1259,6 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
       );
     }
 
-    // Repair any provider-backed finished competition whose ELO history is
-    // missing. This makes ELO maintenance self-healing after transient DB errors
-    // and still consumes no provider quota.
     try {
       const repair = await repairMissingCausalEloSnapshots();
       if (repair.competitionsRebuilt > 0) {
@@ -1235,8 +1272,6 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
       );
     }
 
-    // Capture immutable 24h/6h/1h feature vectors from already-stored data.
-    // This consumes no additional provider quota.
     try {
       const capture = await captureTrainingFeatureSnapshots();
       if (capture.captured > 0) {
@@ -1255,7 +1290,6 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
       );
     }
 
-    // Only mark stale matches finished when an actual score has been observed.
     await markStaleMatchesFinished();
 
     lastSyncAt = new Date();
@@ -1269,9 +1303,8 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
     };
   }
 
-  // ---- API-Football: fetch fixtures ----
   if (dataSource === "api-football") {
-    const leagues = [39, 135, 140, 61, 2]; // EPL, Serie A, La Liga, Ligue 1, UCL
+    const leagues = [39, 135, 140, 61, 2];
 
     for (const league of leagues) {
       try {
@@ -1350,7 +1383,6 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
       }
     }
 
-    // Also fetch live fixtures
     try {
       const liveFixtures = await fetchApiFootballLiveFixtures();
       for (const fixture of liveFixtures) {
@@ -1432,7 +1464,6 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
     };
   }
 
-  // ---- SportMonks: future support ----
   lastSyncAt = new Date();
   return {
     matchesSynced: 0,
@@ -1444,10 +1475,6 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
   };
 }
 
-/**
- * Mark matches that started more than 3 hours ago as "finished"
- * if they're still in "upcoming" or "live" status (data cleanup).
- */
 async function markStaleMatchesFinished(): Promise<number> {
   const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
 
@@ -1466,9 +1493,6 @@ async function markStaleMatchesFinished(): Promise<number> {
   return result.count;
 }
 
-/**
- * Get current API quota status (for admin/monitor display).
- */
 export function getApiQuotaStatus(): { remaining: number | null; checkedAt: Date | null; lowThreshold: number } {
   return {
     remaining: apiQuotaRemaining,
