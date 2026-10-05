@@ -21,6 +21,11 @@ import {
   money,
 } from "./bet-exposure";
 import { syncOpenExposureForAccount } from "./allocation-exposure";
+import { sumTicketStake } from "./bet-accounting";
+import {
+  getRiskPeriodPnl,
+  getRiskPeriodStarts,
+} from "./risk-period-pnl";
 
 // ==================== SPORT KEY MAPPING ====================
 
@@ -575,8 +580,11 @@ class BotEngine {
       }
 
       // Check risk limits
-      const user = await prisma.user.findUnique({ where: { id: userId } });
-      const riskCheck = checkRiskLimits(user?.dailyPnl || 0, user?.weeklyPnl || 0, {
+      const [user, periodPnl] = await Promise.all([
+        prisma.user.findUnique({ where: { id: userId } }),
+        getRiskPeriodPnl(userId, settings.timezone),
+      ]);
+      const riskCheck = checkRiskLimits(periodPnl.dailyPnl, periodPnl.weeklyPnl, {
         stopLossDaily: settings.stopLossDaily,
         stopLossWeekly: settings.stopLossWeekly,
         profitTargetDaily: settings.profitTargetDaily,
@@ -584,7 +592,10 @@ class BotEngine {
       });
 
       if (!riskCheck.canBet) {
-        const reason = (user?.dailyPnl ?? 0) <= -settings.stopLossDaily ? "stop_loss" : "profit_target";
+        const stopLossHit =
+          periodPnl.dailyPnl <= -settings.stopLossDaily ||
+          periodPnl.weeklyPnl <= -settings.stopLossWeekly;
+        const reason = stopLossHit ? "stop_loss" : "profit_target";
         await this.stop(userId, reason);
         await prisma.botLog.create({
           data: {
@@ -622,8 +633,7 @@ class BotEngine {
         }
 
         // Check daily limit
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
+        const { dayStart: todayStart } = getRiskPeriodStarts(settings.timezone);
         const todayBets = await prisma.bet.findMany({
           where: {
             userId,
@@ -631,7 +641,7 @@ class BotEngine {
             status: { in: ["pending", "won", "lost", "cashed_out", "partial_cashout"] },
           },
         });
-        const dailyStake = todayBets.reduce((sum, b) => sum + b.stake, 0);
+        const dailyStake = sumTicketStake(todayBets);
         existingBetMatchIds = todayBets.map((b) => b.matchId);
 
         if (dailyStake >= settings.dailyBetLimit) {
@@ -652,8 +662,7 @@ class BotEngine {
         });
       } else {
         // In advisor mode, check for existing tips to avoid duplicates
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
+        const { dayStart: todayStart } = getRiskPeriodStarts(settings.timezone);
         const todayTips = await prisma.tip.findMany({
           where: { userId, createdAt: { gte: todayStart } },
           select: { matchId: true },
