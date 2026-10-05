@@ -903,7 +903,7 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
       matchesSynced,
       matchesUpdated: 0,
       source: "demo",
-      errors: [],
+      errors,
       durationMs: Date.now() - startTime,
       skipped: false,
     };
@@ -1394,7 +1394,7 @@ export async function syncMatchData(force: boolean = false): Promise<SyncResult>
 
     lastSyncAt = new Date();
     return {
-      matchesSynced: 0,
+      matchesSynced,
       matchesUpdated,
       source: "api-football",
       errors,
