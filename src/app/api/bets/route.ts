@@ -9,8 +9,53 @@ export async function GET(request: NextRequest) {
     const userId = await requireAuth();
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
+  const view = searchParams.get("view");
 
-    const where: Record<string, unknown> = { userId };
+  if (view === "tickets") {
+    const [standaloneBets, accumulators] = await Promise.all([
+      prisma.bet.findMany({
+        where: {
+userId,
+accumulatorId: null,
+...(status ? { status } : {}),
+        },
+        include: { match: true, bettingAccount: true },
+      }),
+      prisma.accumulator.findMany({
+        where: { userId, ...(status ? { status } : {}) },
+      }),
+    ]);
+
+    const accumulatorTickets = accumulators.map((a) => ({
+      id: a.id,
+      accumulatorId: a.id,
+      betType: "accumulator",
+      selection: "Combined ticket",
+      odds: a.totalOdds,
+      stake: a.stake,
+      potentialWin: a.potentialWin,
+      status: a.status,
+      cashoutAmount: a.cashoutAmount,
+      profit: a.profit,
+      commission: a.commission,
+      isAutoPlaced: a.isAutoPlaced,
+      aiConfidence: null,
+      aiReasoning: null,
+      placedAt: a.placedAt,
+      settledAt: a.settledAt,
+      cashedOutAt: a.cashedOutAt,
+      totalLegs: a.totalLegs,
+      match: null,
+      bettingAccount: null,
+    }));
+
+    const tickets = [...standaloneBets, ...accumulatorTickets].sort(
+      (a, b) => new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime()
+    );
+    return NextResponse.json(tickets);
+  }
+
+  const where: Record<string, unknown> = { userId };
     if (status) where.status = status;
 
     const bets = await prisma.bet.findMany({
