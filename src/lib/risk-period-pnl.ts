@@ -124,6 +124,48 @@ export function getRiskPeriodStarts(
   return { timezone, dayStart, weekStart };
 }
 
+export function getCalendarMonthWindow(
+  timezoneInput?: string | null,
+  monthsAgo = 0,
+  now = new Date()
+) {
+  const timezone = normalizeTimezone(timezoneInput);
+  const local = zonedParts(now, timezone);
+  const monthAnchor = new Date(
+    Date.UTC(local.year, local.month - 1 - monthsAgo, 1)
+  );
+  const nextMonthAnchor = new Date(
+    Date.UTC(
+      monthAnchor.getUTCFullYear(),
+      monthAnchor.getUTCMonth() + 1,
+      1
+    )
+  );
+  const start = zonedDateTimeToUtc(
+    {
+      year: monthAnchor.getUTCFullYear(),
+      month: monthAnchor.getUTCMonth() + 1,
+      day: 1,
+    },
+    timezone
+  );
+  const end = zonedDateTimeToUtc(
+    {
+      year: nextMonthAnchor.getUTCFullYear(),
+      month: nextMonthAnchor.getUTCMonth() + 1,
+      day: 1,
+    },
+    timezone
+  );
+  const label = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    year: "2-digit",
+    timeZone: "UTC",
+  }).format(monthAnchor);
+
+  return { timezone, start, end, label };
+}
+
 export async function getRiskPeriodPnl(
   userId: string,
   timezoneInput?: string | null,

@@ -7,7 +7,7 @@ import {
   RATE_LIMITS,
 } from "@/lib/rate-limit";
 import { config } from "@/lib/config";
-import { getRiskPeriodPnl } from "@/lib/risk-period-pnl";
+import { getCalendarMonthWindow, getRiskPeriodPnl } from "@/lib/risk-period-pnl";
 
 export async function GET() {
   try {
@@ -154,18 +154,13 @@ export async function GET() {
     const now = new Date();
 
     for (let i = 11; i >= 0; i--) {
-      const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthEnd = new Date(
-        now.getFullYear(),
-        now.getMonth() - i + 1,
-        1
-      );
-      const monthLabel = monthStart.toLocaleDateString("en-US", {
-        month: "short",
-        year: "2-digit",
-      });
+      const {
+  start: monthStart,
+  end: monthEnd,
+  label: monthLabel,
+} = getCalendarMonthWindow(settings?.timezone, i, now);
 
-      const [standaloneSettled, accumulatorSettled, monthCommission] =
+const [standaloneSettled, accumulatorSettled, monthCommission] =
         await Promise.all([
           prisma.bet.findMany({
             where: {
