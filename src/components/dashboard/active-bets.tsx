@@ -16,6 +16,7 @@ interface Bet {
   isAutoPlaced: boolean;
   aiConfidence: number | null;
   aiReasoning: string | null;
+  totalLegs?: number;
   match?: {
     homeTeam: string;
     awayTeam: string;
@@ -25,7 +26,7 @@ interface Bet {
     homeScore: number | null;
     awayScore: number | null;
     minute: number | null;
-  };
+  } | null;
 }
 
 interface ActiveBetsProps {
@@ -66,7 +67,9 @@ export function ActiveBets({ bets }: ActiveBetsProps) {
                     </Badge>
                   )}
                   <span className="text-sm font-medium text-foreground truncate">
-                    {bet.match?.homeTeam} vs {bet.match?.awayTeam}
+                    {bet.betType === "accumulator"
+                      ? `${bet.totalLegs || 0}-leg accumulator`
+                      : `${bet.match?.homeTeam || "Match"} vs ${bet.match?.awayTeam || "Opponent"}`}
                   </span>
                 </div>
                 <Badge
