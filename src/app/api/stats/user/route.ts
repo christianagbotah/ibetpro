@@ -165,19 +165,19 @@ export async function GET() {
       } = getCalendarMonthWindow(settings?.timezone, i, now);
 
       const [realizedPnl, monthCommission] = await Promise.all([
-  getRealizedPnlBreakdown(user.id, monthStart, monthEnd),
-  prisma.transaction.aggregate({
-    where: {
-      userId: user.id,
-      type: "commission",
-      createdAt: { gte: monthStart, lt: monthEnd },
-    },
-    _sum: { amount: true },
-  }),
-]);
+        getRealizedPnlBreakdown(user.id, monthStart, monthEnd),
+        prisma.transaction.aggregate({
+          where: {
+            userId: user.id,
+            type: "commission",
+            createdAt: { gte: monthStart, lt: monthEnd },
+          },
+          _sum: { amount: true },
+        }),
+      ]);
 
-const profit = realizedPnl.profit;
-const loss = realizedPnl.loss;
+      const profit = realizedPnl.profit;
+      const loss = realizedPnl.loss;
 
       monthlyData.push({
         month: monthLabel,

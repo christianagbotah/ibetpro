@@ -166,7 +166,6 @@ export function getCalendarMonthWindow(
   return { timezone, start, end, label };
 }
 
-
 export async function getRealizedPnlBreakdown(
   userId: string,
   start: Date,
