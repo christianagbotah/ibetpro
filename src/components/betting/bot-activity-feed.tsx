@@ -36,6 +36,7 @@ const actionConfig: Record<string, { icon: typeof Zap; color: string; label: str
   cashout_skipped: { icon: Clock, color: "text-muted-foreground", label: "Cashout Skipped", bg: "bg-secondary/50" },
   bet_settled: { icon: CheckCircle, color: "text-emerald-400", label: "Settled", bg: "bg-emerald-400/10" },
   accumulator_created: { icon: Layers, color: "text-purple-400", label: "Accumulator", bg: "bg-purple-400/10" },
+  accumulator_settled: { icon: CheckCircle, color: "text-emerald-400", label: "Acca Settled", bg: "bg-emerald-400/10" },
   stop_loss_hit: { icon: Shield, color: "text-red-400", label: "Stop-Loss", bg: "bg-red-400/10" },
   profit_target_hit: { icon: Target, color: "text-emerald-400", label: "Target Hit", bg: "bg-emerald-400/10" },
   schedule_blocked: { icon: Ban, color: "text-muted-foreground", label: "Scheduled", bg: "bg-secondary/50" },
@@ -139,6 +140,11 @@ export function BotActivityFeed({ userId, compact = false }: BotActivityFeedProp
                 const config = actionConfig[log.action] || actionConfig.bet_skipped;
                 const Icon = config.icon;
                 const details = parseDetails(log.details);
+                const isRealizedPnl = [
+                  "bet_settled",
+                  "accumulator_settled",
+                  "cashout_executed",
+                ].includes(log.action);
 
                 return (
                   <div
@@ -182,7 +188,7 @@ export function BotActivityFeed({ userId, compact = false }: BotActivityFeedProp
                         )}
 
                         {/* Profit impact */}
-                        {log.profitImpact !== null && log.profitImpact !== 0 && (
+                        {isRealizedPnl && log.profitImpact !== null && log.profitImpact !== 0 && (
                           <div className="flex items-center gap-1 mt-1">
                             {log.profitImpact > 0 ? (
                               <TrendingUp className="h-3 w-3 text-emerald-400" />
