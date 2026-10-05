@@ -9,6 +9,7 @@ import {
   FIRST_PARTY_MARKET_MOVEMENT_FEATURE_KEYS,
   HORIZONS,
   featureCompletenessForKeys,
+  isHorizonLocalConsensusEvidence,
 } from "@/lib/prediction/training-corpus";
 
 export const dynamic = "force-dynamic";
@@ -102,9 +103,11 @@ export async function GET() {
   type HorizonStats = {
     total: number;
     labeled: number;
+    eligibleLabeled: number;
     timingValid: number;
     preKickoff: number;
     consensus: number;
+    horizonLocalConsensus: number;
     minCompleteness: number | null;
     duplicateFixtureRows: number;
     fixtureIds: Set<string>;
@@ -114,9 +117,11 @@ export async function GET() {
     "24h": {
       total: 0,
       labeled: 0,
+      eligibleLabeled: 0,
       timingValid: 0,
       preKickoff: 0,
       consensus: 0,
+      horizonLocalConsensus: 0,
       minCompleteness: null,
       duplicateFixtureRows: 0,
       fixtureIds: new Set(),
@@ -124,9 +129,11 @@ export async function GET() {
     "6h": {
       total: 0,
       labeled: 0,
+      eligibleLabeled: 0,
       timingValid: 0,
       preKickoff: 0,
       consensus: 0,
+      horizonLocalConsensus: 0,
       minCompleteness: null,
       duplicateFixtureRows: 0,
       fixtureIds: new Set(),
@@ -134,9 +141,11 @@ export async function GET() {
     "1h": {
       total: 0,
       labeled: 0,
+      eligibleLabeled: 0,
       timingValid: 0,
       preKickoff: 0,
       consensus: 0,
+      horizonLocalConsensus: 0,
       minCompleteness: null,
       duplicateFixtureRows: 0,
       fixtureIds: new Set(),
@@ -161,6 +170,7 @@ export async function GET() {
       snapshot.match.awayScore != null;
     let profileCompleteness = 0;
     let coreCompleteness = 0;
+    let consensusAgeMinutes: number | null = null;
     try {
       const features = JSON.parse(snapshot.featuresJson);
       profileCompleteness = featureCompletenessForKeys(
@@ -171,9 +181,15 @@ export async function GET() {
         features,
         FIRST_PARTY_CORE_FEATURE_KEYS
       );
+      const rawConsensusAge = features.market_consensus_age_minutes;
+      consensusAgeMinutes =
+        typeof rawConsensusAge === "number" && Number.isFinite(rawConsensusAge)
+          ? rawConsensusAge
+          : null;
     } catch {
       profileCompleteness = 0;
       coreCompleteness = 0;
+      consensusAgeMinutes = null;
     }
 
     if (snapshot.horizonKey in horizons) {
@@ -184,25 +200,38 @@ export async function GET() {
       if (hasLabel) {
         horizon.labeled++;
         const window = horizonWindows.get(key);
-        if (
+        const timingValid = Boolean(
           window &&
-          snapshot.horizonMinutesActual >= window.minMinutes &&
-          snapshot.horizonMinutesActual <= window.maxMinutes
-        ) {
-          horizon.timingValid++;
-        }
-        if (snapshot.asOf < snapshot.kickoffAt) horizon.preKickoff++;
-        if (snapshot.marketConsensusAvailable) horizon.consensus++;
-        horizon.minCompleteness =
-          horizon.minCompleteness == null
-            ? profileCompleteness
-            : Math.min(horizon.minCompleteness, profileCompleteness);
+            snapshot.horizonMinutesActual >= window.minMinutes &&
+            snapshot.horizonMinutesActual <= window.maxMinutes
+        );
+        const preKickoff = snapshot.asOf < snapshot.kickoffAt;
+        const horizonLocalConsensus = isHorizonLocalConsensusEvidence(
+          key,
+          snapshot.horizonMinutesActual,
+          snapshot.marketConsensusAvailable,
+          consensusAgeMinutes
+        );
 
-        const fixtureId = snapshot.match.externalId || snapshot.featureHash;
-        if (horizon.fixtureIds.has(fixtureId)) {
-          horizon.duplicateFixtureRows++;
-        } else {
-          horizon.fixtureIds.add(fixtureId);
+        if (timingValid) horizon.timingValid++;
+        if (preKickoff) horizon.preKickoff++;
+        if (snapshot.marketConsensusAvailable) horizon.consensus++;
+        if (horizonLocalConsensus) horizon.horizonLocalConsensus++;
+
+        const eligible = timingValid && preKickoff && horizonLocalConsensus;
+        if (eligible) {
+          horizon.eligibleLabeled++;
+          horizon.minCompleteness =
+            horizon.minCompleteness == null
+              ? profileCompleteness
+              : Math.min(horizon.minCompleteness, profileCompleteness);
+
+          const fixtureId = snapshot.match.externalId || snapshot.featureHash;
+          if (horizon.fixtureIds.has(fixtureId)) {
+            horizon.duplicateFixtureRows++;
+          } else {
+            horizon.fixtureIds.add(fixtureId);
+          }
         }
       }
     }
@@ -225,6 +254,8 @@ export async function GET() {
         {
           total: value.total,
           labeled: value.labeled,
+          eligibleLabeled: value.eligibleLabeled,
+          excludedLabeled: Math.max(0, value.labeled - value.eligibleLabeled),
           minLabeledFeatureCompleteness: value.minCompleteness,
         },
       ]
@@ -234,6 +265,8 @@ export async function GET() {
     {
       total: number;
       labeled: number;
+      eligibleLabeled: number;
+      excludedLabeled: number;
       minLabeledFeatureCompleteness: number | null;
     }
   >;
@@ -242,7 +275,8 @@ export async function GET() {
     (Object.entries(horizons) as Array<[HorizonKey, HorizonStats]>).map(
       ([key, value]) => {
         const checks = {
-          minimumRows: value.labeled >= PILOT_MIN_LABELED_PER_HORIZON,
+          minimumRows:
+            value.eligibleLabeled >= PILOT_MIN_LABELED_PER_HORIZON,
           singleExpectedHorizon: true,
           horizonWindowCompliance:
             value.labeled > 0 && value.timingValid === value.labeled,
@@ -250,6 +284,9 @@ export async function GET() {
             value.labeled > 0 && value.preKickoff === value.labeled,
           genuineMarketConsensus:
             value.labeled > 0 && value.consensus === value.labeled,
+          horizonLocalConsensusEvidence:
+            value.eligibleLabeled > 0 &&
+            value.horizonLocalConsensus >= value.eligibleLabeled,
           minimumFeatureCompleteness:
             value.minCompleteness != null &&
             value.minCompleteness >= PILOT_MIN_FEATURE_COMPLETENESS,
@@ -260,15 +297,18 @@ export async function GET() {
         return [
           key,
           {
-            rows: value.labeled,
+            rows: value.eligibleLabeled,
+            rawLabeledRows: value.labeled,
+            excludedRows: Math.max(0, value.labeled - value.eligibleLabeled),
             remainingRows: Math.max(
               0,
-              PILOT_MIN_LABELED_PER_HORIZON - value.labeled
+              PILOT_MIN_LABELED_PER_HORIZON - value.eligibleLabeled
             ),
             minFeatureCompleteness: value.minCompleteness,
             timingValidRows: value.timingValid,
             preKickoffRows: value.preKickoff,
             consensusRows: value.consensus,
+            horizonLocalConsensusRows: value.horizonLocalConsensus,
             duplicateFixtureRows: value.duplicateFixtureRows,
             checks,
             ready: Object.values(checks).every(Boolean),
@@ -280,11 +320,14 @@ export async function GET() {
     HorizonKey,
     {
       rows: number;
+      rawLabeledRows: number;
+      excludedRows: number;
       remainingRows: number;
       minFeatureCompleteness: number | null;
       timingValidRows: number;
       preKickoffRows: number;
       consensusRows: number;
+      horizonLocalConsensusRows: number;
       duplicateFixtureRows: number;
       checks: Record<string, boolean>;
       ready: boolean;
@@ -320,7 +363,7 @@ export async function GET() {
       promotionReadyHorizons: Object.entries(horizonSummary)
         .filter(
           ([, value]) =>
-            value.labeled >= PROMOTION_MIN_LABELED_PER_HORIZON
+            value.eligibleLabeled >= PROMOTION_MIN_LABELED_PER_HORIZON
         )
         .map(([key]) => key),
       byHorizon: pilotValidatorByHorizon,
