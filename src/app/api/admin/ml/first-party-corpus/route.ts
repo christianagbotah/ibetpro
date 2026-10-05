@@ -4,6 +4,7 @@ import { getAuthUser, isAdmin } from "@/lib/session";
 import {
   captureTrainingFeatureSnapshots,
   FEATURE_SCHEMA_VERSION,
+  FIRST_PARTY_FEATURE_PROFILE,
   FIRST_PARTY_CORE_FEATURE_KEYS,
   FIRST_PARTY_MARKET_MOVEMENT_FEATURE_KEYS,
   HORIZONS,
@@ -309,7 +310,7 @@ export async function GET() {
     horizons: horizonSummary,
     readiness: {
       featureSchemaVersion: FEATURE_SCHEMA_VERSION,
-      featureProfile: "market_movement",
+      featureProfile: FIRST_PARTY_FEATURE_PROFILE,
       pilotMinLabeledPerHorizon: PILOT_MIN_LABELED_PER_HORIZON,
       pilotMinFeatureCompleteness: PILOT_MIN_FEATURE_COMPLETENESS,
       promotionMinLabeledPerHorizon: PROMOTION_MIN_LABELED_PER_HORIZON,
