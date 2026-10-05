@@ -11,6 +11,15 @@ const HORIZONS = [
   { key: "1h", minMinutes: 30, maxMinutes: 90 },
 ] as const;
 
+// The evidence timer runs every 10 minutes. Allow one timer tick plus a small
+// scheduling margin so a consensus snapshot captured just before a horizon
+// opens is still considered horizon-local, while snapshots from prior horizons
+// are rejected.
+const HORIZON_CONSENSUS_GRACE_MINUTES = Math.max(
+  0,
+  Number(process.env.TRAINING_HORIZON_CONSENSUS_GRACE_MIN || 15)
+);
+
 // Keep synchronized with ml-service/training/train_xgb.py CORE_FEATURE_COLUMNS.
 const FIRST_PARTY_CORE_FEATURE_KEYS = [
   "home_elo",
@@ -59,7 +68,19 @@ const FIRST_PARTY_MARKET_MOVEMENT_FEATURE_KEYS = [
   "away_market_prob_move_6h",
 ] as const satisfies ReadonlyArray<keyof ModelFeatureVector>;
 
-type HorizonKey = (typeof HORIZONS)[number]["key"];
+export type HorizonKey = (typeof HORIZONS)[number]["key"];
+
+export function maxConsensusAgeMinutesForHorizon(
+  horizonKey: HorizonKey,
+  minutesToKickoff: number
+): number {
+  const horizon = HORIZONS.find((item) => item.key === horizonKey);
+  if (!horizon) return 0;
+  return (
+    Math.max(0, horizon.maxMinutes - minutesToKickoff) +
+    HORIZON_CONSENSUS_GRACE_MINUTES
+  );
+}
 
 function horizonFor(minutesToKickoff: number): HorizonKey | null {
   return (
@@ -107,6 +128,7 @@ export interface TrainingCaptureResult {
   captured: number;
   skippedExisting: number;
   skippedNoConsensus: number;
+  skippedStaleConsensus: number;
   skippedOutsideHorizon: number;
   errors: string[];
 }
@@ -118,6 +140,7 @@ export async function captureTrainingFeatureSnapshots(
   let captured = 0;
   let skippedExisting = 0;
   let skippedNoConsensus = 0;
+  let skippedStaleConsensus = 0;
   let skippedOutsideHorizon = 0;
 
   const lowerBound = new Date(now.getTime() + 25 * 60_000);
@@ -188,6 +211,20 @@ export async function captureTrainingFeatureSnapshots(
         continue;
       }
 
+      const maxConsensusAgeMinutes = maxConsensusAgeMinutesForHorizon(
+        horizonKey,
+        minutesToKickoff
+      );
+      const consensusAgeMinutes = features.market_consensus_age_minutes;
+
+      if (
+        consensusAgeMinutes == null ||
+        consensusAgeMinutes > maxConsensusAgeMinutes
+      ) {
+        skippedStaleConsensus++;
+        continue;
+      }
+
       const featuresJson = canonicalFeatureJson(features);
       const featureHash = createHash("sha256")
         .update(featuresJson)
@@ -230,6 +267,7 @@ export async function captureTrainingFeatureSnapshots(
     captured,
     skippedExisting,
     skippedNoConsensus,
+    skippedStaleConsensus,
     skippedOutsideHorizon,
     errors,
   };
@@ -237,6 +275,7 @@ export async function captureTrainingFeatureSnapshots(
 
 export {
   FEATURE_SCHEMA_VERSION,
+  HORIZON_CONSENSUS_GRACE_MINUTES,
   FIRST_PARTY_CORE_FEATURE_KEYS,
   FIRST_PARTY_MARKET_MOVEMENT_FEATURE_KEYS,
   HORIZONS,
