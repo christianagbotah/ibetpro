@@ -122,6 +122,7 @@ export async function GET() {
       autoAccumulatorTotal,
       todayStandaloneStakeResult,
       todayAccumulatorStakeResult,
+      todayCommissionResult,
     ] = await Promise.all([
       prisma.bet.count({
         where: {
@@ -148,6 +149,14 @@ export async function GET() {
         },
         _sum: { stake: true },
       }),
+      prisma.transaction.aggregate({
+        where: {
+          userId: user.id,
+          type: "commission",
+          createdAt: { gte: periodPnl.dayStart },
+        },
+        _sum: { amount: true },
+      }),
     ]);
 
     const autoBets = autoStandaloneTotal + autoAccumulatorTotal;
@@ -155,6 +164,7 @@ export async function GET() {
     const todayStaked =
       (todayStandaloneStakeResult._sum.stake || 0) +
       (todayAccumulatorStakeResult._sum.stake || 0);
+    const todayCommission = Math.abs(todayCommissionResult._sum.amount || 0);
 
     const monthlyData: Array<{
       month: string;
@@ -246,6 +256,7 @@ export async function GET() {
         autoBets,
         accumulatorBets,
         todayStaked,
+        todayCommission,
         activeAccounts,
         monthlyData,
         recentBets,
