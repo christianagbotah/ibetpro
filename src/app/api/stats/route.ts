@@ -49,9 +49,14 @@ export async function GET() {
       }),
       prisma.accumulator.count({ where: { status: "lost" } }),
       prisma.bet.count({
-        where: { accumulatorId: null, status: "pending" },
+        where: {
+          accumulatorId: null,
+          status: { in: ["pending", "partial_cashout"] },
+        },
       }),
-      prisma.accumulator.count({ where: { status: "pending" } }),
+      prisma.accumulator.count({
+        where: { status: { in: ["pending", "partial_cashout"] } },
+      }),
       prisma.bet.aggregate({
         where: { accumulatorId: null },
         _sum: { stake: true },

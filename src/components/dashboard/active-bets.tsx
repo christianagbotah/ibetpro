@@ -34,7 +34,9 @@ interface ActiveBetsProps {
 
 export function ActiveBets({ bets }: ActiveBetsProps) {
   const { symbol } = useCurrency();
-  const pendingBets = bets.filter((b) => b.status === "pending");
+  const pendingBets = bets.filter((b) =>
+    ["pending", "partial_cashout"].includes(b.status)
+  );
 
   return (
     <Card className="bg-card border-border">
@@ -75,7 +77,7 @@ export function ActiveBets({ bets }: ActiveBetsProps) {
                       : "border-border"
                   }
                 >
-                  {bet.status}
+                  {bet.status === "partial_cashout" ? "Partial Cashout" : bet.status}
                 </Badge>
               </div>
 
