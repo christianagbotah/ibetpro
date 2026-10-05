@@ -1,0 +1,68 @@
+name: One-time Dashboard Ticket Page Patch
+
+on:
+  push:
+    branches: [work/dashboard-ticket-view-20261005]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/dashboard-ticket-view-20261005
+      - name: Consume ticket-normalized bets
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/app/page.tsx')
+          text = p.read_text()
+
+          replacements = [
+            ('  placedAt: string;\n  match?: {', '  placedAt: string;\n  settledAt?: string | null;\n  cashedOutAt?: string | null;\n  totalLegs?: number;\n  match?: {'),
+            ('  };\n}\n\ninterface UserStats {', '  } | null;\n}\n\ninterface UserStats {'),
+            ('usePolling<Bet[]>("/api/bets", 15000, [])', 'usePolling<Bet[]>("/api/bets?view=tickets", 15000, [])'),
+            ('    .filter((b) => b.status === "won" || b.status === "lost" || b.status === "cashed_out")\n    .sort((a, b) => new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime())', '    .filter((b) => ["won", "lost", "cashed_out", "partial_cashout", "void"].includes(b.status))\n    .sort((a, b) => {\n      const bTime = b.cashedOutAt || b.settledAt || b.placedAt;\n      const aTime = a.cashedOutAt || a.settledAt || a.placedAt;\n      return new Date(bTime).getTime() - new Date(aTime).getTime();\n    })'),
+            ('{bet.match?.homeTeam} vs {bet.match?.awayTeam}', '{dashboardBetLabel(bet)}'),
+            ('bet.status === "won" ? "bg-emerald-400/10" : "bg-red-400/10"', 'realizedPnlForDisplay(bet) >= 0 ? "bg-emerald-400/10" : "bg-red-400/10"'),
+            ('bet.status === "won" ? "text-emerald-400" : "text-red-400 rotate-180"', 'realizedPnlForDisplay(bet) >= 0 ? "text-emerald-400" : "text-red-400 rotate-180"'),
+            ('bet.status === "won" ? "text-emerald-400" : "text-red-400"', 'realizedPnlForDisplay(bet) >= 0 ? "text-emerald-400" : "text-red-400"'),
+            ('{bet.status === "won" ? "+" : "-"}{symbol}{Math.abs(bet.profit || bet.stake).toFixed(2)}', '{realizedPnlForDisplay(bet) >= 0 ? "+" : ""}{symbol}{realizedPnlForDisplay(bet).toFixed(2)}'),
+            ('{new Date(bet.placedAt).toLocaleDateString()}', '{new Date(dashboardActivityDate(bet)).toLocaleDateString()}'),
+          ]
+          for old, new in replacements:
+            assert text.count(old) == 1, (old, text.count(old))
+            text = text.replace(old, new)
+
+          marker = '\nexport default function DashboardPage() {'
+          helpers = '''
+          function realizedPnlForDisplay(bet: Bet) {
+            if (bet.profit != null) return bet.profit;
+            return bet.status === "lost" ? -bet.stake : 0;
+          }
+
+          function dashboardBetLabel(bet: Bet) {
+            if (bet.betType === "accumulator") {
+              return `${bet.totalLegs || 0}-leg accumulator`;
+            }
+            return `${bet.match?.homeTeam || "Match"} vs ${bet.match?.awayTeam || "Opponent"}`;
+          }
+
+          function dashboardActivityDate(bet: Bet) {
+            return bet.cashedOutAt || bet.settledAt || bet.placedAt;
+          }
+
+          export default function DashboardPage() {'''.replace('          ', '')
+          assert text.count(marker) == 1, text.count(marker)
+          p.write_text(text.replace(marker, '\n' + helpers, 1))
+          PY
+          rm .github/workflows/one-time-dashboard-ticket-page.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/app/page.tsx .github/workflows/one-time-dashboard-ticket-page.yml
+          git commit -m "Use ticket-normalized dashboard bets"
+          git push origin HEAD:work/dashboard-ticket-view-20261005
