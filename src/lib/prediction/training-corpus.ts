@@ -4,6 +4,7 @@ import { buildOnlineModelFeatures } from "./model-features";
 import type { ModelFeatureVector } from "./contracts";
 
 const FEATURE_SCHEMA_VERSION = "online-v1";
+const FIRST_PARTY_FEATURE_PROFILE = "market_movement" as const;
 
 const HORIZONS = [
   { key: "24h", minMinutes: 18 * 60, maxMinutes: 30 * 60 },
@@ -237,6 +238,7 @@ export async function captureTrainingFeatureSnapshots(
 
 export {
   FEATURE_SCHEMA_VERSION,
+  FIRST_PARTY_FEATURE_PROFILE,
   FIRST_PARTY_CORE_FEATURE_KEYS,
   FIRST_PARTY_MARKET_MOVEMENT_FEATURE_KEYS,
   HORIZONS,

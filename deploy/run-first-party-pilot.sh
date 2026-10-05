@@ -5,6 +5,7 @@ DATASET="${1:-}"
 HORIZON="${2:-}"
 MINIMUM_ROWS="${FIRST_PARTY_PILOT_MIN_LABELED:-300}"
 MINIMUM_COMPLETENESS="${FIRST_PARTY_MIN_COMPLETENESS:-0.70}"
+FEATURE_PROFILE="${FIRST_PARTY_FEATURE_PROFILE:-market_movement}"
 
 if [[ -z "$DATASET" || -z "$HORIZON" ]]; then
   echo "Usage: $0 <first-party-horizon.csv> <24h|6h|1h>" >&2
@@ -15,6 +16,14 @@ case "$HORIZON" in
   24h|6h|1h) ;;
   *)
     echo "Unsupported horizon: $HORIZON" >&2
+    exit 2
+    ;;
+esac
+
+case "$FEATURE_PROFILE" in
+  core|core_stats|market_movement|enriched) ;;
+  *)
+    echo "Unsupported feature profile: $FEATURE_PROFILE" >&2
     exit 2
     ;;
 esac
@@ -38,7 +47,8 @@ fi
 mkdir -p "$OUTPUT"
 cd "$ML_CURRENT/ml-service"
 
-"$VENV/bin/python" -m training.run_first_party_pilot   --dataset "$DATASET"   --output "$OUTPUT"   --horizon "$HORIZON"   --minimum-rows "$MINIMUM_ROWS"   --minimum-completeness "$MINIMUM_COMPLETENESS"   --feature-profile core
+"$VENV/bin/python" -m training.run_first_party_pilot   --dataset "$DATASET"   --output "$OUTPUT"   --horizon "$HORIZON"   --minimum-rows "$MINIMUM_ROWS"   --minimum-completeness "$MINIMUM_COMPLETENESS"   --feature-profile "$FEATURE_PROFILE"
 
 echo "First-party pilot evidence written to: $OUTPUT"
+echo "Feature profile: $FEATURE_PROFILE"
 echo "No live model configuration or ML_MODEL_MODE value was changed."
