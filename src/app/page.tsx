@@ -44,6 +44,9 @@ interface Bet {
   aiReasoning: string | null;
   profit: number | null;
   placedAt: string;
+  settledAt?: string | null;
+  cashedOutAt?: string | null;
+  totalLegs?: number;
   match?: {
     homeTeam: string;
     awayTeam: string;
@@ -53,7 +56,7 @@ interface Bet {
     homeScore: number | null;
     awayScore: number | null;
     minute: number | null;
-  };
+  } | null;
 }
 
 interface UserStats {
@@ -74,11 +77,28 @@ interface UserStats {
   todayCommission: number;
 }
 
+
+function realizedPnlForDisplay(bet: Bet) {
+  if (bet.profit != null) return bet.profit;
+  return bet.status === "lost" ? -bet.stake : 0;
+}
+
+function dashboardBetLabel(bet: Bet) {
+  if (bet.betType === "accumulator") {
+    return `${bet.totalLegs || 0}-leg accumulator`;
+  }
+  return `${bet.match?.homeTeam || "Match"} vs ${bet.match?.awayTeam || "Opponent"}`;
+}
+
+function dashboardActivityDate(bet: Bet) {
+  return bet.cashedOutAt || bet.settledAt || bet.placedAt;
+}
+
 export default function DashboardPage() {
   const { user, isAuthenticated } = useAuth();
   const { symbol } = useCurrency();
   const { data: matches, loading: matchesLoading } = usePolling<Match[]>("/api/matches", 30000, []);
-  const { data: bets, loading: betsLoading } = usePolling<Bet[]>("/api/bets", 15000, []);
+  const { data: bets, loading: betsLoading } = usePolling<Bet[]>("/api/bets?view=tickets", 15000, []);
   const { data: stats } = usePolling<UserStats>("/api/stats/user", 15000, {
     balance: 0,
     bankroll: 0,
@@ -125,8 +145,12 @@ export default function DashboardPage() {
   const pendingLiveScores = liveMatches.length - confirmedLiveMatches.length;
 
   const recentSettled = bets
-    .filter((b) => b.status === "won" || b.status === "lost" || b.status === "cashed_out")
-    .sort((a, b) => new Date(b.placedAt).getTime() - new Date(a.placedAt).getTime())
+    .filter((b) => ["won", "lost", "cashed_out", "partial_cashout", "void"].includes(b.status))
+    .sort((a, b) => {
+      const bTime = b.cashedOutAt || b.settledAt || b.placedAt;
+      const aTime = a.cashedOutAt || a.settledAt || a.placedAt;
+      return new Date(bTime).getTime() - new Date(aTime).getTime();
+    })
     .slice(0, 5);
 
   return (
@@ -267,13 +291,13 @@ export default function DashboardPage() {
                 <div key={bet.id} className="flex items-center justify-between rounded-lg bg-secondary/50 p-3">
                   <div className="flex items-center gap-3">
                     <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                      bet.status === "won" ? "bg-emerald-400/10" : "bg-red-400/10"
+                      realizedPnlForDisplay(bet) >= 0 ? "bg-emerald-400/10" : "bg-red-400/10"
                     }`}>
-                      <TrendingUp className={`h-4 w-4 ${bet.status === "won" ? "text-emerald-400" : "text-red-400 rotate-180"}`} />
+                      <TrendingUp className={`h-4 w-4 ${realizedPnlForDisplay(bet) >= 0 ? "text-emerald-400" : "text-red-400 rotate-180"}`} />
                     </div>
                     <div>
                       <p className="text-sm font-medium text-foreground">
-                        {bet.match?.homeTeam} vs {bet.match?.awayTeam}
+                        {dashboardBetLabel(bet)}
                       </p>
                       <p className="text-xs text-muted-foreground">
                         {bet.selection} @ {bet.odds}
@@ -281,11 +305,11 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className={`text-sm font-bold ${bet.status === "won" ? "text-emerald-400" : "text-red-400"}`}>
-                      {bet.status === "won" ? "+" : "-"}{symbol}{Math.abs(bet.profit || bet.stake).toFixed(2)}
+                    <p className={`text-sm font-bold ${realizedPnlForDisplay(bet) >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                      {realizedPnlForDisplay(bet) >= 0 ? "+" : ""}{symbol}{realizedPnlForDisplay(bet).toFixed(2)}
                     </p>
                     <p className="text-[10px] text-muted-foreground">
-                      {new Date(bet.placedAt).toLocaleDateString()}
+                      {new Date(dashboardActivityDate(bet)).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
