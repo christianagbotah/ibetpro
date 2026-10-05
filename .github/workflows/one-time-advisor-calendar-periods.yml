@@ -1,0 +1,84 @@
+name: One-time Advisor Calendar Period Patch
+
+on:
+  push:
+    branches:
+      - work/advisor-calendar-periods-20261005
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: work/advisor-calendar-periods-20261005
+      - name: Align Advisor calendar periods
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('src/lib/bot-engine-legacy.ts')
+          text = path.read_text()
+
+          old = 'import { syncOpenExposureForAccount } from "./allocation-exposure";'
+          new = '''import { syncOpenExposureForAccount } from "./allocation-exposure";
+          import { sumTicketStake } from "./bet-accounting";
+          import {
+            getRiskPeriodPnl,
+            getRiskPeriodStarts,
+          } from "./risk-period-pnl";'''
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+
+          old = '''      const user = await prisma.user.findUnique({ where: { id: userId } });
+          const riskCheck = checkRiskLimits(user?.dailyPnl || 0, user?.weeklyPnl || 0, {
+            stopLossDaily: settings.stopLossDaily,
+            stopLossWeekly: settings.stopLossWeekly,
+            profitTargetDaily: settings.profitTargetDaily,
+            profitTargetWeekly: settings.profitTargetWeekly,
+          });
+
+          if (!riskCheck.canBet) {
+            const reason = (user?.dailyPnl ?? 0) <= -settings.stopLossDaily ? "stop_loss" : "profit_target";'''
+          new = '''      const [user, periodPnl] = await Promise.all([
+            prisma.user.findUnique({ where: { id: userId } }),
+            getRiskPeriodPnl(userId, settings.timezone),
+          ]);
+          const riskCheck = checkRiskLimits(periodPnl.dailyPnl, periodPnl.weeklyPnl, {
+            stopLossDaily: settings.stopLossDaily,
+            stopLossWeekly: settings.stopLossWeekly,
+            profitTargetDaily: settings.profitTargetDaily,
+            profitTargetWeekly: settings.profitTargetWeekly,
+          });
+
+          if (!riskCheck.canBet) {
+            const stopLossHit =
+              periodPnl.dailyPnl <= -settings.stopLossDaily ||
+              periodPnl.weeklyPnl <= -settings.stopLossWeekly;
+            const reason = stopLossHit ? "stop_loss" : "profit_target";'''
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+
+          old = '''        const todayStart = new Date();
+          todayStart.setHours(0, 0, 0, 0);'''
+          new = '''        const { dayStart: todayStart } = getRiskPeriodStarts(settings.timezone);'''
+          assert text.count(old) == 2, text.count(old)
+          text = text.replace(old, new)
+
+          old = '        const dailyStake = todayBets.reduce((sum, b) => sum + b.stake, 0);'
+          new = '        const dailyStake = sumTicketStake(todayBets);'
+          assert text.count(old) == 1, text.count(old)
+          text = text.replace(old, new)
+
+          path.write_text(text)
+          PY
+          rm .github/workflows/one-time-advisor-calendar-periods.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src/lib/bot-engine-legacy.ts .github/workflows/one-time-advisor-calendar-periods.yml
+          git commit -m "Use authoritative calendar periods in Advisor mode"
+          git push origin HEAD:work/advisor-calendar-periods-20261005
